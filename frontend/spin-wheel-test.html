@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spin Wheel Rotation Test Harness</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 1.2em;
+      margin-bottom: 40px;
+      opacity: 0.9;
+    }
+
+    .test-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .wheel-container {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .wheel-wrapper {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      margin: 0 auto;
+    }
+
+    .wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 4px solid white;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      transition: transform 4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
+
+    .pointer-triangle {
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 30px solid #EF4444;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    .controls {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    .control-group {
+      margin: 20px 0;
+    }
+
+    label {
+      display: block;
+      color: #374151;
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+    }
+
+    select, input {
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #e5e7eb;
+      min-width: 300px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px 5px;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    .info-panel {
+      background: white;
+      color: #374151;
+      border-radius: 15px;
+      padding: 25px;
+      margin-top: 30px;
+    }
+
+    .info-panel h3 {
+      margin-top: 0;
+      color: #1f2937;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .info-label {
+      font-weight: bold;
+      color: #6b7280;
+    }
+
+    .info-value {
+      font-family: 'Courier New', monospace;
+      color: #1f2937;
+      font-weight: bold;
+    }
+
+    .results-table {
+      width: 100%;
+      margin-top: 20px;
+      border-collapse: collapse;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .results-table th {
+      background: #f9fafb;
+      font-weight: bold;
+      color: #374151;
+    }
+
+    .highlight {
+      background: #fef3c7;
+      font-weight: bold;
+    }
+
+    .formula-box {
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .error-box {
+      background: #fee2e2;
+      border: 2px solid #fca5a5;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎰 Spin Wheel Rotation Test Harness</h1>
+    <p class="subtitle">Professional-grade empirical testing to determine correct rotation formula</p>
+
+    <div class="test-grid">
+      <!-- Test Wheel -->
+      <div class="wheel-container">
+        <h2 style="color: #1f2937; text-align: center; margin-top: 0;">Test Wheel</h2>
+
+        <div class="wheel-wrapper">
+          <!-- Pointer at TOP -->
+          <div class="pointer">
+            <div class="pointer-triangle"></div>
+          </div>
+
+          <!-- Wheel -->
+          <div id="testWheel" class="wheel">
+            <svg viewBox="0 0 400 400" style="transform: rotate(-90deg);" width="100%" height="100%">
+              <!-- Slices will be drawn here -->
+              <g id="slices"></g>
+
+              <!-- Gradients -->
+              <defs id="gradients"></defs>
+            </svg>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="control-group">
+            <label for="targetSlice">Target Slice to Land At Top:</label>
+            <select id="targetSlice">
+              <option value="0">Slice 0: Try Again (Gray)</option>
+              <option value="1">Slice 1: 5% (Green)</option>
+              <option value="2">Slice 2: 10% (Orange)</option>
+              <option value="3">Slice 3: 5% (Green)</option>
+              <option value="4">Slice 4: Try Again (Gray)</option>
+              <option value="5">Slice 5: 15% (Red)</option>
+              <option value="6">Slice 6: 5% (Green)</option>
+              <option value="7">Slice 7: 10% (Orange)</option>
+              <option value="8">Slice 8: 5% (Green)</option>
+              <option value="9">Slice 9: Try Again (Gray)</option>
+              <option value="10">Slice 10: 5% (Green)</option>
+              <option value="11">Slice 11: 10% (Orange)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="rotationInput">Manual Rotation (degrees):</label>
+            <input type="number" id="rotationInput" value="0" min="0" max="360" step="15">
+          </div>
+
+          <button onclick="rotateToSlice()">🎯 Rotate to Selected Slice</button>
+          <button onclick="applyManualRotation()">🔧 Apply Manual Rotation</button>
+          <button onclick="resetWheel()">🔄 Reset Wheel</button>
+          <button onclick="runFullTest()">🧪 Run Complete Test Suite</button>
+        </div>
+      </div>
+
+      <!-- Information Panel -->
+      <div class="wheel-container">
+        <h2 style="color: #1f2937; text-align: center; margin-top: 0;">Current State</h2>
+
+        <div class="info-panel" style="margin-top: 0;">
+          <h3>Wheel Position</h3>
+          <div class="info-row">
+            <span class="info-label">Current Rotation:</span>
+            <span class="info-value" id="currentRotation">0°</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Normalized (0-360°):</span>
+            <span class="info-value" id="normalizedRotation">0°</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Slice at Top (Visual):</span>
+            <span class="info-value" id="visualSlice">Slice 3: 5%</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Slice at Top (Formula):</span>
+            <span class="info-value" id="calculatedSlice">Calculating...</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Match Status:</span>
+            <span class="info-value" id="matchStatus">⏳ Testing...</span>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          <strong>Current Formula:</strong><br>
+          rotation = (75 - sliceIndex × 30) % 360
+        </div>
+
+        <div id="errorBox" class="error-box" style="display: none;">
+          <strong>⚠️ MISMATCH DETECTED!</strong>
+          <div id="errorDetails"></div>
+        </div>
+
+        <div class="info-panel">
+          <h3>Test Results</h3>
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Slice</th>
+                <th>Label</th>
+                <th>Expected Rotation</th>
+                <th>Test Result</th>
+              </tr>
+            </thead>
+            <tbody id="testResults">
+              <tr><td colspan="4" style="text-align: center; color: #9ca3af;">Run test suite to see results</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Wheel slice configuration (matches SpinWheel.tsx)
+    const WHEEL_SLICES = [
+      { id: 'try_again', label: 'Try Again', color: '#6B7280' },
+      { id: '5%', label: '5%', color: '#10B981' },
+      { id: '10%', label: '10%', color: '#F59E0B' },
+      { id: '5%', label: '5%', color: '#10B981' },
+      { id: 'try_again', label: 'Try Again', color: '#6B7280' },
+      { id: '15%', label: '15%', color: '#EF4444' },
+      { id: '5%', label: '5%', color: '#10B981' },
+      { id: '10%', label: '10%', color: '#F59E0B' },
+      { id: '5%', label: '5%', color: '#10B981' },
+      { id: 'try_again', label: 'Try Again', color: '#6B7280' },
+      { id: '5%', label: '5%', color: '#10B981' },
+      { id: '10%', label: '10%', color: '#F59E0B' },
+    ];
+
+    const totalSlices = WHEEL_SLICES.length;
+    const sliceAngle = 360 / totalSlices;
+    let currentRotation = 0;
+
+    // Draw the wheel
+    function drawWheel() {
+      const slicesContainer = document.getElementById('slices');
+      const gradientsContainer = document.getElementById('gradients');
+      slicesContainer.innerHTML = '';
+      gradientsContainer.innerHTML = '';
+
+      const radius = 180;
+      const centerX = 200;
+      const centerY = 200;
+
+      WHEEL_SLICES.forEach((slice, index) => {
+        const startAngle = index * sliceAngle;
+        const endAngle = (index + 1) * sliceAngle;
+
+        const startAngleRad = (startAngle * Math.PI) / 180;
+        const endAngleRad = (endAngle * Math.PI) / 180;
+
+        const x1 = centerX + radius * Math.cos(startAngleRad);
+        const y1 = centerY + radius * Math.sin(startAngleRad);
+        const x2 = centerX + radius * Math.cos(endAngleRad);
+        const y2 = centerY + radius * Math.sin(endAngleRad);
+
+        const pathData = [
+          `M ${centerX} ${centerY}`,
+          `L ${x1} ${y1}`,
+          `A ${radius} ${radius} 0 0 1 ${x2} ${y2}`,
+          'Z'
+        ].join(' ');
+
+        // Create path
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathData);
+        path.setAttribute('fill', slice.color);
+        path.setAttribute('stroke', 'white');
+        path.setAttribute('stroke-width', '2');
+        slicesContainer.appendChild(path);
+
+        // Create text label
+        const textAngle = (startAngle + endAngle) / 2;
+        const textRadius = radius * 0.7;
+        const textX = centerX + textRadius * Math.cos(textAngle * Math.PI / 180);
+        const textY = centerY + textRadius * Math.sin(textAngle * Math.PI / 180);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', textX);
+        text.setAttribute('y', textY);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.setAttribute('fill', 'white');
+        text.setAttribute('font-weight', 'bold');
+        text.setAttribute('font-size', '18');
+        text.setAttribute('style', `transform: rotate(${textAngle + 90}deg); transform-origin: ${textX}px ${textY}px;`);
+        text.textContent = slice.label;
+        slicesContainer.appendChild(text);
+      });
+    }
+
+    // Update info display
+    function updateInfo() {
+      const normalized = ((currentRotation % 360) + 360) % 360;
+      document.getElementById('currentRotation').textContent = currentRotation.toFixed(1) + '°';
+      document.getElementById('normalizedRotation').textContent = normalized.toFixed(1) + '°';
+
+      // Calculate which slice SHOULD be at top using current formula
+      const calculatedIndex = Math.round(((75 - normalized + 360) % 360) / sliceAngle) % totalSlices;
+      document.getElementById('calculatedSlice').textContent =
+        `Slice ${calculatedIndex}: ${WHEEL_SLICES[calculatedIndex].label}`;
+
+      // Determine which slice is ACTUALLY at top (empirical)
+      // The SVG is rotated -90°, so:
+      // - At wheel rotation 0°, the slice at 90° in SVG coords is at top
+      // - Slice at 90° = slice index 3 (since 90/30 = 3)
+      // - When wheel rotates by R°, the slice at (90° - R°) in SVG is at top
+      // - Slice index = ((90 - R) / 30) % 12
+
+      const visualSliceAngle = ((90 - normalized) + 360) % 360;
+      const visualIndex = Math.round(visualSliceAngle / sliceAngle) % totalSlices;
+      document.getElementById('visualSlice').textContent =
+        `Slice ${visualIndex}: ${WHEEL_SLICES[visualIndex].label}`;
+
+      // Check if they match
+      const match = visualIndex === calculatedIndex;
+      const matchStatus = document.getElementById('matchStatus');
+      if (match) {
+        matchStatus.innerHTML = '✅ <strong style="color: #10b981;">MATCH!</strong>';
+        document.getElementById('errorBox').style.display = 'none';
+      } else {
+        matchStatus.innerHTML = '❌ <strong style="color: #ef4444;">MISMATCH!</strong>';
+        document.getElementById('errorBox').style.display = 'block';
+        document.getElementById('errorDetails').innerHTML = `
+          <p><strong>Visual:</strong> Slice ${visualIndex} (${WHEEL_SLICES[visualIndex].label})</p>
+          <p><strong>Formula:</strong> Slice ${calculatedIndex} (${WHEEL_SLICES[calculatedIndex].label})</p>
+          <p><strong>Error:</strong> Formula is WRONG! Off by ${Math.abs(visualIndex - calculatedIndex)} slices.</p>
+        `;
+      }
+    }
+
+    // Rotate to specific slice
+    function rotateToSlice() {
+      const targetIndex = parseInt(document.getElementById('targetSlice').value);
+
+      // Using current formula: rotation = (75 - index × 30) % 360
+      const targetRotation = ((75 - targetIndex * sliceAngle) + 360) % 360;
+
+      currentRotation = targetRotation;
+      document.getElementById('testWheel').style.transform = `rotate(${currentRotation}deg)`;
+
+      setTimeout(() => {
+        updateInfo();
+      }, 4100); // Wait for animation
+    }
+
+    // Apply manual rotation
+    function applyManualRotation() {
+      currentRotation = parseInt(document.getElementById('rotationInput').value);
+      document.getElementById('testWheel').style.transform = `rotate(${currentRotation}deg)`;
+      document.getElementById('testWheel').style.transition = 'none';
+      setTimeout(() => {
+        document.getElementById('testWheel').style.transition = 'transform 4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        updateInfo();
+      }, 50);
+    }
+
+    // Reset wheel
+    function resetWheel() {
+      currentRotation = 0;
+      document.getElementById('testWheel').style.transform = 'rotate(0deg)';
+      document.getElementById('testWheel').style.transition = 'none';
+      setTimeout(() => {
+        document.getElementById('testWheel').style.transition = 'transform 4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        updateInfo();
+      }, 50);
+    }
+
+    // Run complete test suite
+    async function runFullTest() {
+      const results = [];
+      const testResultsBody = document.getElementById('testResults');
+      testResultsBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Running tests...</td></tr>';
+
+      document.getElementById('testWheel').style.transition = 'none';
+
+      for (let sliceIndex = 0; sliceIndex < totalSlices; sliceIndex++) {
+        // Test current formula
+        const expectedRotation = ((75 - sliceIndex * sliceAngle) + 360) % 360;
+
+        // Apply rotation
+        currentRotation = expectedRotation;
+        document.getElementById('testWheel').style.transform = `rotate(${currentRotation}deg)`;
+
+        // Calculate which slice is ACTUALLY at top (empirical)
+        const normalized = ((currentRotation % 360) + 360) % 360;
+        const visualSliceAngle = ((90 - normalized) + 360) % 360;
+        const actualIndex = Math.round(visualSliceAngle / sliceAngle) % totalSlices;
+
+        const isCorrect = actualIndex === sliceIndex;
+
+        results.push({
+          targetIndex: sliceIndex,
+          targetLabel: WHEEL_SLICES[sliceIndex].label,
+          expectedRotation,
+          actualIndex,
+          actualLabel: WHEEL_SLICES[actualIndex].label,
+          isCorrect
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      // Display results
+      testResultsBody.innerHTML = results.map(r => `
+        <tr class="${r.isCorrect ? '' : 'highlight'}">
+          <td>Slice ${r.targetIndex}</td>
+          <td>${r.targetLabel}</td>
+          <td>${r.expectedRotation}°</td>
+          <td>${r.isCorrect ? '✅ Correct' : `❌ Landed on Slice ${r.actualIndex} (${r.actualLabel})`}</td>
+        </tr>
+      `).join('');
+
+      // Summary
+      const correctCount = results.filter(r => r.isCorrect).length;
+      const percentage = ((correctCount / totalSlices) * 100).toFixed(0);
+
+      if (correctCount === totalSlices) {
+        alert(`🎉 SUCCESS! All ${totalSlices} tests passed (100%)!\n\nThe formula is CORRECT!`);
+      } else {
+        const errors = results.filter(r => !r.isCorrect);
+        alert(`❌ FAILED! Only ${correctCount}/${totalSlices} tests passed (${percentage}%).\n\n` +
+              `Formula is WRONG!\n\n` +
+              `Errors:\n` + errors.map(e =>
+                `- Slice ${e.targetIndex} (${e.targetLabel}): landed on Slice ${e.actualIndex} (${e.actualLabel})`
+              ).join('\n'));
+      }
+
+      // Reset
+      resetWheel();
+    }
+
+    // Initialize
+    drawWheel();
+    updateInfo();
+  </script>
+</body>
+</html>
+
+
+
+
+
+

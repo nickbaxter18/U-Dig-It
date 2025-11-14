@@ -1,0 +1,177 @@
+{
+  "errorPatterns": {
+    "backend-TypeError-.ts": [
+      {
+        "errorType": "TypeError",
+        "errorMessage": "Cannot read property 'id' of undefined",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "attemptedSolution": "Add null check before accessing user.id",
+        "timestamp": 1760653420066,
+        "success": true,
+        "successfulSolution": "Add null check before accessing user.id"
+      },
+      {
+        "errorType": "TypeError",
+        "errorMessage": "Cannot read property 'id' of undefined",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "attemptedSolution": "Check if user exists before accessing properties",
+        "timestamp": 1760653420067,
+        "success": true,
+        "successfulSolution": "Check if user exists before accessing properties"
+      }
+    ],
+    "frontend-ValidationError-.tsx": [
+      {
+        "errorType": "ValidationError",
+        "errorMessage": "Invalid email format",
+        "context": {
+          "filePath": "/src/components/UserProfile.tsx",
+          "domains": [
+            "frontend"
+          ],
+          "workingPatterns": [
+            "component-development"
+          ]
+        },
+        "attemptedSolution": "Validate email format before processing",
+        "timestamp": 1760653420066,
+        "success": false
+      }
+    ],
+    "frontend-NetworkError-.tsx": [
+      {
+        "errorType": "NetworkError",
+        "errorMessage": "Failed to fetch user data",
+        "context": {
+          "filePath": "/src/components/UserProfile.tsx",
+          "domains": [
+            "frontend"
+          ],
+          "workingPatterns": [
+            "component-development"
+          ]
+        },
+        "attemptedSolution": "Implement retry logic for network requests",
+        "timestamp": 1760653420067,
+        "success": false
+      }
+    ]
+  },
+  "failedSolutions": {
+    "add null check before accessing userid": [
+      {
+        "errorKey": "backend-TypeError-.ts",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "timestamp": 1760653420066
+      }
+    ],
+    "validate email format before processing": [
+      {
+        "errorKey": "frontend-ValidationError-.tsx",
+        "context": {
+          "filePath": "/src/components/UserProfile.tsx",
+          "domains": [
+            "frontend"
+          ],
+          "workingPatterns": [
+            "component-development"
+          ]
+        },
+        "timestamp": 1760653420066
+      }
+    ],
+    "check if user exists before accessing properties": [
+      {
+        "errorKey": "backend-TypeError-.ts",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "timestamp": 1760653420067
+      }
+    ],
+    "implement retry logic for network requests": [
+      {
+        "errorKey": "frontend-NetworkError-.tsx",
+        "context": {
+          "filePath": "/src/components/UserProfile.tsx",
+          "domains": [
+            "frontend"
+          ],
+          "workingPatterns": [
+            "component-development"
+          ]
+        },
+        "timestamp": 1760653420067
+      }
+    ]
+  },
+  "successfulSolutions": {
+    "add null check before accessing userid": [
+      {
+        "errorKey": "backend-TypeError-.ts",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "timestamp": 1760653420066
+      }
+    ],
+    "check if user exists before accessing properties": [
+      {
+        "errorKey": "backend-TypeError-.ts",
+        "context": {
+          "filePath": "/src/auth/auth.service.ts",
+          "domains": [
+            "backend"
+          ],
+          "workingPatterns": [
+            "api-development"
+          ]
+        },
+        "timestamp": 1760653420067
+      }
+    ]
+  },
+  "errorStats": {
+    "totalErrors": 4,
+    "totalSolutions": 2,
+    "successRate": 0.3333333333333333,
+    "commonErrors": {}
+  },
+  "timestamp": "2025-10-16T22:23:40.068Z"
+}

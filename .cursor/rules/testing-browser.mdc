@@ -1,0 +1,235 @@
+---
+description: "Browser automation testing standards, test account credentials, and E2E testing protocols"
+alwaysApply: false
+globs: ["**/e2e/**/*", "**/*.spec.ts", "**/test/**/*"]
+contextFiles:
+  - "frontend/e2e/**/*"
+  - ".cursor/rules/TESTING.mdc"
+autoReview: true
+---
+
+# Browser Testing & Automation
+
+## 🎯 Purpose
+
+Browser automation standards, test account credentials, and E2E testing protocols for the Kubota Rental Platform.
+
+---
+
+## Test Account (MANDATORY)
+
+```typescript
+// ✅ ALWAYS use test account for automation
+const TEST_CREDENTIALS = {
+  email: "aitest2@udigit.ca",
+  password: "TestAI2024!@#$",
+  firstName: "AI",
+  lastName: "Tester",
+  phone: "(506) 555-0199",
+  company: "AI Testing Co",
+};
+```
+
+---
+
+## Standard Login Procedure
+
+```typescript
+// ✅ CORRECT - Email/password login ONLY
+async function loginTestUser() {
+  // 1. Navigate to sign-in
+  await browser_navigate("http://localhost:3000/auth/signin");
+  await browser_wait_for("Sign in with email");
+
+  // 2. Click email sign-in
+  await browser_click("Sign in with email button", ref);
+
+  // 3. Fill credentials
+  await browser_fill_form([
+    { name: "Email Address", value: TEST_CREDENTIALS.email, ref },
+    { name: "Password", value: TEST_CREDENTIALS.password, ref },
+  ]);
+
+  // 4. Submit
+  await browser_click("Sign In button", ref);
+
+  // 5. Verify success
+  await browser_wait_for("Welcome back, AI!");
+}
+
+// ❌ FORBIDDEN - Never use OAuth for testing
+// Google OAuth is blocked in automated browsers
+// GitHub OAuth not configured for testing
+```
+
+---
+
+## Browser Testing Rules
+
+1. ✅ **Use email/password authentication ONLY**
+2. ✅ **Take snapshots before interactions**
+3. ✅ **Wait for page states**
+4. ✅ **Handle dropdown menus with JavaScript**
+5. ✅ **Verify auth state**
+
+---
+
+## Dropdown Menu Navigation
+
+```typescript
+// ✅ CORRECT - Use JavaScript for dropdowns
+await browser_evaluate(`
+  const buttons = Array.from(document.querySelectorAll('button'));
+  const profileButton = buttons.find(btn =>
+    btn.textContent?.includes('AI') &&
+    btn.className.includes('flex items-center')
+  );
+  if (profileButton) profileButton.click();
+`);
+
+// Click link in dropdown
+await browser_evaluate(`
+  const links = Array.from(document.querySelectorAll('a[href="/profile"]'));
+  const dropdownLink = links.find(link =>
+    link.className.includes('flex items-center')
+  );
+  if (dropdownLink) dropdownLink.click();
+`);
+```
+
+---
+
+## E2E Testing Scenarios
+
+### Complete Booking Flow
+
+```typescript
+// ✅ CORRECT - Test full user journey
+describe("Complete booking flow", () => {
+  it("allows customer to book equipment end-to-end", async () => {
+    // 1. Login
+    await loginTestUser();
+
+    // 2. Navigate to equipment page
+    await browser_navigate("http://localhost:3000/equipment");
+    await browser_snapshot();
+
+    // 3. Select equipment
+    await browser_click("Kubota SVL-75", ref);
+    await browser_wait_for("Book Now");
+
+    // 4. Start booking
+    await browser_click("Book Now", ref);
+    await browser_wait_for("Select rental dates");
+
+    // 5. Fill booking form
+    await browser_fill_form([
+      { name: "Start Date", value: "2025-11-10", ref },
+      { name: "End Date", value: "2025-11-15", ref },
+      { name: "Delivery Address", value: "123 Test St", ref },
+    ]);
+
+    // 6. Submit booking
+    await browser_click("Continue to Payment", ref);
+    await browser_wait_for("Booking Summary");
+
+    // 7. Verify pricing
+    const screenshot = await browser_take_screenshot();
+    expect(screenshot).toContainText("Total: $");
+
+    // 8. Complete (don't actually pay in tests)
+    await browser_snapshot();
+    expect(page).toContainText("Payment Information");
+  });
+});
+```
+
+### Error Handling Tests
+
+```typescript
+// ✅ CORRECT - Test error scenarios
+describe("Error handling", () => {
+  it("shows error when equipment unavailable", async () => {
+    await loginTestUser();
+    await browser_navigate("http://localhost:3000/book/unavailable-id");
+    await browser_wait_for("Equipment not found");
+  });
+
+  it("prevents booking overlapping dates", async () => {
+    await loginTestUser();
+    await browser_navigate("http://localhost:3000/book/equipment-1");
+    await browser_fill_form([
+      { name: "Start Date", value: "2025-11-01", ref },
+      { name: "End Date", value: "2025-11-05", ref },
+    ]);
+    await browser_click("Check Availability", ref);
+    await browser_wait_for("Equipment not available for selected dates");
+  });
+});
+```
+
+---
+
+## Performance Testing
+
+### Performance Assertions
+
+```typescript
+// ✅ CORRECT - Performance budgets
+it("loads equipment page in under 1 second", async () => {
+  const startTime = Date.now();
+  await browser_navigate("http://localhost:3000/equipment");
+  await browser_wait_for("Equipment Catalog");
+  const loadTime = Date.now() - startTime;
+
+  expect(loadTime).toBeLessThan(1000);
+});
+```
+
+---
+
+## Accessibility Testing
+
+### Automated A11y Checks
+
+```typescript
+// ✅ CORRECT - Check accessibility
+import { axe } from 'jest-axe';
+
+it('has no accessibility violations', async () => {
+  const { container } = render(<BookingForm />);
+  const results = await axe(container);
+  expect(results).toHaveNoViolations();
+});
+```
+
+### Keyboard Navigation Tests
+
+```typescript
+// ✅ CORRECT - Test keyboard access
+it('allows keyboard navigation through form', async () => {
+  render(<BookingForm />);
+  fireEvent.keyDown(document, { key: 'Tab' });
+  expect(screen.getByLabelText('Equipment')).toHaveFocus();
+});
+```
+
+---
+
+## ✅ Browser Testing Checklist
+
+- [ ] Use test account credentials
+- [ ] Email/password login only (no OAuth)
+- [ ] Take snapshots before interactions
+- [ ] Verify auth state
+- [ ] Handle dropdowns with JavaScript
+- [ ] Check console logs for errors
+
+---
+
+**Remember**:
+
+- 🤖 **Browser automation for E2E**
+- 🔐 **Use test account ONLY**
+- 📊 **Monitor performance**
+- ♿ **Test accessibility**

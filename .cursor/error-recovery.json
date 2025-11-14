@@ -1,0 +1,121 @@
+{
+  "$schema": "https://cursor.sh/schemas/error-recovery.json",
+  "name": "Error Recovery Pattern Library",
+  "description": "Track errors and auto-suggest fixes based on patterns",
+  
+  "enabled": true,
+  "trackErrors": true,
+  "suggestFixes": true,
+  "learnFromHistory": true,
+  
+  "patterns": {
+    "TypeError: Cannot read property": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Add null check",
+          "pattern": "if (!{var}) return;",
+          "confidence": 0.9
+        },
+        {
+          "fix": "Use optional chaining",
+          "pattern": "{var}?.{prop}",
+          "confidence": 0.85
+        },
+        {
+          "fix": "Add type guard",
+          "pattern": "if (typeof {var} !== 'undefined' && {var} !== null)",
+          "confidence": 0.8
+        }
+      ]
+    },
+    "ReferenceError:.*is not defined": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Check import statement",
+          "pattern": "import { {var} } from '{module}';",
+          "confidence": 0.95
+        },
+        {
+          "fix": "Check variable scope",
+          "pattern": "Variable may be out of scope",
+          "confidence": 0.7
+        }
+      ]
+    },
+    "SyntaxError: Unexpected token": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Check for missing brackets/parentheses",
+          "pattern": "Review syntax around line {line}",
+          "confidence": 0.9
+        }
+      ]
+    },
+    "TypeError:.*is not a function": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Check function import",
+          "pattern": "import { {func} } from '{module}';",
+          "confidence": 0.9
+        },
+        {
+          "fix": "Check function is defined",
+          "pattern": "const {func} = ...",
+          "confidence": 0.8
+        }
+      ]
+    },
+    "Supabase.*error": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Check RLS policies",
+          "pattern": "Verify row-level security policies",
+          "confidence": 0.85
+        },
+        {
+          "fix": "Check authentication",
+          "pattern": "Verify user is authenticated",
+          "confidence": 0.8
+        },
+        {
+          "fix": "Check query syntax",
+          "pattern": "Review Supabase query syntax",
+          "confidence": 0.75
+        }
+      ]
+    },
+    "Stripe.*error": {
+      "frequency": 0,
+      "suggestions": [
+        {
+          "fix": "Check API key",
+          "pattern": "Verify STRIPE_SECRET_KEY is set",
+          "confidence": 0.9
+        },
+        {
+          "fix": "Check request format",
+          "pattern": "Verify Stripe API request format",
+          "confidence": 0.8
+        }
+      ]
+    }
+  },
+  
+  "learning": {
+    "trackSuccessfulFixes": true,
+    "updateConfidence": true,
+    "shareAcrossTeam": false
+  },
+  
+  "ui": {
+    "showInline": true,
+    "showInProblems": true,
+    "autoApply": false,
+    "requireConfirmation": true
+  }
+}

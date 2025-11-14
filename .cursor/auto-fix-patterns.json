@@ -1,0 +1,96 @@
+{
+  "$schema": "https://cursor.sh/schemas/auto-fix-patterns.json",
+  "name": "Auto-Fix Pattern Library",
+  "description": "Automatically fix common code patterns and anti-patterns",
+  
+  "patterns": [
+    {
+      "id": "console-to-logger",
+      "name": "Convert console.* to logger.*",
+      "description": "Replace console.log/debug/warn/error with structured logger",
+      "pattern": "console\\.(log|debug|warn|error)",
+      "replacement": "logger.$1",
+      "files": ["**/*.{ts,tsx}"],
+      "exclude": [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/node_modules/**",
+        "**/dist/**"
+      ],
+      "autoApply": true,
+      "priority": "high",
+      "examples": [
+        {
+          "before": "console.log('User logged in:', user.email);",
+          "after": "logger.info('User logged in', { userId: user.id, email: user.email });"
+        },
+        {
+          "before": "console.error('Payment failed:', error);",
+          "after": "logger.error('Payment failed', { error }, error);"
+        }
+      ]
+    },
+    {
+      "id": "todo-extraction",
+      "name": "Extract TODOs to Issues",
+      "description": "Convert TODO comments to trackable issues",
+      "pattern": "//\\s*TODO:\\s*(.+)",
+      "action": "extract-to-issue",
+      "createIssue": true,
+      "autoApply": false,
+      "priority": "medium"
+    },
+    {
+      "id": "any-to-unknown",
+      "name": "Replace 'any' with 'unknown'",
+      "description": "Safer type handling - use unknown instead of any",
+      "pattern": ":\\s*any\\b",
+      "replacement": ": unknown",
+      "files": ["**/*.{ts,tsx}"],
+      "autoApply": false,
+      "priority": "medium",
+      "requiresReview": true
+    },
+    {
+      "id": "missing-error-handling",
+      "name": "Add Error Handling",
+      "description": "Detect missing try-catch blocks in async functions",
+      "pattern": "async\\s+function\\s+\\w+.*\\{[^}]*await[^}]*\\}",
+      "action": "suggest-error-handling",
+      "autoApply": false,
+      "priority": "high"
+    },
+    {
+      "id": "missing-null-check",
+      "name": "Add Null Checks",
+      "description": "Suggest null checks for potentially undefined values",
+      "pattern": "\\w+\\.\\w+",
+      "action": "suggest-null-check",
+      "autoApply": false,
+      "priority": "medium"
+    },
+    {
+      "id": "hardcoded-strings",
+      "name": "Extract Hardcoded Strings",
+      "description": "Suggest extracting hardcoded strings to constants",
+      "pattern": "\"[A-Z][^\"]{10,}\"",
+      "action": "suggest-extraction",
+      "autoApply": false,
+      "priority": "low"
+    }
+  ],
+  
+  "settings": {
+    "autoApplyOnSave": false,
+    "showSuggestions": true,
+    "requireConfirmation": true,
+    "batchMode": true,
+    "previewChanges": true
+  },
+  
+  "statistics": {
+    "trackFixes": true,
+    "showMetrics": true,
+    "reportFrequency": "weekly"
+  }
+}

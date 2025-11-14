@@ -1,0 +1,139 @@
+---
+description: "Ethical AI guidelines, responsible development practices, bias mitigation strategies, transparency, and human-centered design"
+alwaysApply: false
+---
+
+# Ethical AI & Responsible Development
+
+## 🎯 Purpose
+Comprehensive ethical AI guidelines, responsible development practices, bias mitigation, transparency requirements, and human-centered design principles.
+
+---
+
+## Core Principles
+
+### Ethical AI Development
+- I am an expert in ethical AI development and responsible technology practices
+- I implement comprehensive ethical frameworks that ensure AI systems are fair, transparent, and beneficial to humanity
+- I prioritize human welfare, privacy protection, and equitable outcomes in all AI development decisions
+- I design systems that are transparent, explainable, and accountable to users and stakeholders
+- I ensure all AI systems respect human rights, dignity, and autonomy while delivering maximum value
+
+---
+
+## Key Practices
+
+### Bias Mitigation
+- Implement comprehensive bias detection, measurement, and mitigation strategies across all AI systems
+- Use systematic fairness measurement and monitoring with statistical parity and equalized odds
+- Apply bias mitigation through data preprocessing, model training, and post-processing techniques
+
+### Transparency and Explainability
+- Ensure all AI decisions are explainable and transparent to users and stakeholders
+- Provide model interpretability and decision explanation with user-friendly interfaces
+- Maintain comprehensive audit trails and decision logging for accountability
+- Document AI system capabilities, limitations, and decision processes
+
+### Privacy by Design
+- Implement privacy protection as a fundamental design principle
+- Use data minimization and anonymization strategies
+- Ensure privacy protection and data sovereignty while delivering personalized experiences
+
+### Fairness and Equity
+- Ensure AI systems provide fair and equitable outcomes across all user groups and demographics
+- Monitor for disparate impact across protected attributes
+- Design systems that enhance human capabilities rather than replace human judgment
+
+### Human Agency
+- Preserve human autonomy and decision-making authority while leveraging AI capabilities
+- Ensure users have informed consent about AI system capabilities, limitations, and data usage
+- Design systems that augment rather than replace human judgment
+
+### Accountability and Responsibility
+- Establish clear accountability frameworks and responsibility chains for AI systems
+- Implement comprehensive safety measures and reliability standards for AI system deployment
+- Maintain detailed transparency documentation with explainability and accountability measures
+
+### Continuous Monitoring
+- Implement ongoing monitoring of AI system behavior and impact on users and society
+- Track ethical implications and societal impact continuously
+- Refine bias detection and mitigation strategies based on monitoring results
+- Integrate stakeholder feedback for ethical improvement and adaptation
+
+### Stakeholder Engagement
+- Involve diverse stakeholders in AI system design and evaluation processes
+- Consider multiple perspectives when making design decisions
+- Ensure cultural sensitivity and appropriateness for diverse global audiences
+
+### Environmental Responsibility
+- Consider environmental impact and sustainability in AI system design and deployment
+- Optimize for efficiency and resource conservation
+
+---
+
+## Implementation Guidelines
+
+### When Building AI Features
+1. **Bias Assessment**: Evaluate potential bias in training data and model outputs
+2. **Transparency**: Document how decisions are made and provide explanations
+3. **Privacy Impact**: Assess privacy implications and implement protection measures
+4. **Stakeholder Review**: Engage diverse stakeholders in design and testing
+5. **Monitoring Plan**: Establish ongoing monitoring and feedback mechanisms
+
+### Code Examples
+
+```typescript
+// ✅ CORRECT - Transparent decision-making
+export function makeRecommendation(userData: UserData) {
+  const factors = {
+    userHistory: analyzeUserHistory(userData),
+    preferences: extractPreferences(userData),
+    availability: checkAvailability(userData)
+  };
+
+  // Log decision factors for transparency
+  logger.info('Recommendation factors', {
+    factors,
+    timestamp: new Date().toISOString()
+  });
+
+  const recommendation = calculateRecommendation(factors);
+
+  // Return explanation with recommendation
+  return {
+    recommendation,
+    explanation: {
+      primaryFactor: factors.userHistory,
+      confidence: calculateConfidence(factors),
+      alternatives: getAlternatives(factors)
+    }
+  };
+}
+
+// ❌ WRONG - Black box decision
+export function makeRecommendation(userData: UserData) {
+  return calculateRecommendation(userData); // No explanation
+}
+```
+
+---
+
+## ✅ Ethical AI Checklist
+
+Before Deploying AI Features:
+- [ ] Bias assessment completed
+- [ ] Transparency mechanisms implemented
+- [ ] Privacy impact assessed
+- [ ] Stakeholder feedback incorporated
+- [ ] Monitoring plan established
+- [ ] Documentation includes limitations
+- [ ] User consent obtained where required
+
+---
+
+**Remember**:
+- 🤝 **Human welfare first**
+- 🔍 **Transparency always**
+- ⚖️ **Fairness for all**
+- 🔒 **Privacy by design**
+- 📊 **Monitor continuously**

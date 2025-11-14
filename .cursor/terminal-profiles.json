@@ -1,0 +1,52 @@
+{
+  "profiles": [
+    {
+      "name": "Enhanced Bash",
+      "description": "AI-optimized bash terminal with enhanced functions",
+      "path": "/bin/bash",
+      "args": [
+        "--login",
+        "-c",
+        "source /home/vscode/Kubota-rental-platform/.cursor/startup.sh && exec bash"
+      ],
+      "icon": "terminal-bash",
+      "color": "terminal.ansiBlue"
+    },
+    {
+      "name": "Development Terminal",
+      "description": "Terminal optimized for development work",
+      "path": "/bin/bash",
+      "args": [
+        "--login",
+        "-c",
+        "cd /home/vscode/Kubota-rental-platform && source /home/vscode/Kubota-rental-platform/.cursor/terminal-config.sh && exec bash"
+      ],
+      "icon": "code",
+      "color": "terminal.ansiGreen"
+    },
+    {
+      "name": "AI Assistant",
+      "description": "Terminal with AI assistance functions",
+      "path": "/bin/bash",
+      "args": [
+        "--login",
+        "-c",
+        "source /home/vscode/Kubota-rental-platform/.cursor/ai-assistant.sh && exec bash"
+      ],
+      "icon": "robot",
+      "color": "terminal.ansiMagenta"
+    },
+    {
+      "name": "Project Root",
+      "description": "Terminal starting in project root",
+      "path": "/bin/bash",
+      "args": [
+        "--login",
+        "-c",
+        "cd /home/vscode/Kubota-rental-platform && exec bash"
+      ],
+      "icon": "home",
+      "color": "terminal.ansiYellow"
+    }
+  ]
+}

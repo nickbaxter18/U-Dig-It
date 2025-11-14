@@ -1,0 +1,161 @@
+---
+description: "Test coverage requirements, CI/CD integration, visual regression, and quality assurance standards"
+alwaysApply: false
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/test/**/*", "**/e2e/**/*"]
+contextFiles:
+  - ".github/workflows/**/*"
+  - "jest.config.js"
+  - "vitest.config.ts"
+  - ".cursor/rules/TESTING.mdc"
+autoReview: true
+---
+
+# Testing Quality & Coverage Standards
+
+## 🎯 Purpose
+Test coverage requirements, CI/CD integration, visual regression testing, and quality assurance standards.
+
+---
+
+## Testing Philosophy
+
+### Testing Pyramid
+```
+        ┌─────────┐
+        │   E2E   │  ← Browser automation (10%)
+        ├─────────┤
+        │Integration│ ← API + Database (30%)
+        ├─────────┤
+        │   Unit   │  ← Business logic (60%)
+        └─────────┘
+```
+
+### Coverage Targets
+- **Unit Tests**: 80% minimum
+- **Integration Tests**: Critical user flows
+- **E2E Tests**: Key user journeys
+- **Overall**: 80% code coverage
+
+---
+
+## Test Coverage & Quality
+
+### Coverage Requirements
+```json
+// jest.config.js or vitest.config.js
+{
+  "coverageThreshold": {
+    "global": {
+      "branches": 80,
+      "functions": 80,
+      "lines": 80,
+      "statements": 80
+    }
+  }
+}
+```
+
+### Coverage Reports
+```bash
+# ✅ Generate coverage
+pnpm test:coverage
+
+# ✅ View HTML report
+open coverage/index.html
+```
+
+---
+
+## Visual Regression Testing
+
+### Screenshot Comparison
+```typescript
+// ✅ CORRECT - Visual regression
+it('matches equipment card snapshot', () => {
+  const { container } = render(
+    <EquipmentCard equipment={testEquipment} />
+  );
+
+  expect(container).toMatchSnapshot();
+});
+```
+
+---
+
+## CI/CD Integration
+
+### Pre-Commit Checks
+```bash
+# ✅ Run before every commit
+pnpm test
+pnpm lint
+pnpm type-check
+snyk_code_scan
+```
+
+### PR Checks
+```yaml
+# .github/workflows/pr-checks.yml
+name: PR Checks
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+      - run: pnpm install
+      - run: pnpm test:coverage
+      - run: pnpm lint
+      - run: pnpm type-check
+```
+
+---
+
+## Performance Testing
+
+### Load Testing
+```yaml
+# artillery-config.yml
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained load"
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike"
+
+scenarios:
+  - name: "Browse equipment"
+    flow:
+      - get:
+          url: "/equipment"
+      - think: 2
+      - get:
+          url: "/equipment/kubota-svl-75"
+```
+
+---
+
+## ✅ Testing Quality Checklist
+
+Before Committing:
+- [ ] All tests passing
+- [ ] Coverage ≥ 80%
+- [ ] No accessibility violations
+- [ ] Performance budgets met
+- [ ] Visual regression tests updated
+
+---
+
+**Remember**:
+- ✅ **80% coverage minimum**
+- 📊 **Monitor performance**
+- ♿ **Test accessibility**
+- 🔄 **CI/CD integration**

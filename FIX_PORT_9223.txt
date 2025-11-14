@@ -1,0 +1,28 @@
+# ============================================
+# TROUBLESHOOTING: Port 9223 is already in use
+# ============================================
+# Run these commands on your HOST machine:
+
+# Step 1: Find what's using port 9223
+lsof -i :9223
+# OR
+sudo netstat -tulpn | grep 9223
+# OR
+sudo ss -tulpn | grep 9223
+
+# Step 2: Kill the process (replace <PID> with actual PID from step 1)
+kill -9 <PID>
+
+# Step 3: Verify port is free
+lsof -i :9223
+# Should return nothing
+
+# Step 4: Start Chrome again
+google-chrome --headless --remote-debugging-port=9223 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=/tmp/chrome-debug-9223 http://localhost:3000 > /tmp/chrome-9223.log 2>&1 &
+
+# Step 5: Check Chrome started successfully
+sleep 2
+tail -20 /tmp/chrome-9223.log
+
+# Step 6: Test from container
+# curl http://10.0.0.108:9223/json/version

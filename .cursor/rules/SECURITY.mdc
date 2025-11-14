@@ -1,0 +1,82 @@
+---
+description: "Security standards, threat protection, compliance requirements, and vulnerability management"
+alwaysApply: true
+---
+
+# Security & Compliance
+
+## 🎯 Purpose
+Comprehensive security protocols, threat protection, and compliance standards for the Kubota Rental Platform.
+
+---
+
+## Security-First Development
+
+### Core Security Principles
+1. **Zero Trust**: Verify everything, trust nothing
+2. **Defense in Depth**: Multiple layers of security
+3. **Least Privilege**: Minimum necessary access
+4. **Input Validation**: Never trust user input
+5. **Secure by Default**: Security built-in, not bolted-on
+
+---
+
+## Specialized Security Rules
+
+For detailed security standards, see:
+- **Security Standards**: `security-standards.mdc` - Input validation, authentication, authorization, API security
+- **Security Compliance**: `security-compliance.mdc` - Snyk integration, compliance, incident response, payment security
+
+---
+
+## Snyk Security Integration
+
+### Mandatory Snyk Scanning
+
+**ALWAYS run Snyk scans for new code:**
+
+1. **Run scan** for new first-party code in Snyk-supported languages
+   ```typescript
+   // ✅ ALWAYS scan new code
+   // Use snyk_code_scan tool for generated code
+   ```
+
+2. **Fix issues** using Snyk results context
+   - Review Snyk findings
+   - Fix security vulnerabilities
+   - Address dependency issues
+
+3. **Rescan** after fixes
+   - Verify issues are resolved
+   - Ensure no new issues introduced
+
+4. **Repeat** until no issues found
+   - Continue scanning and fixing
+   - Don't proceed until clean scan
+
+**Process:**
+- Scan → Fix → Rescan → Repeat until clean
+
+---
+
+## ✅ Security Checklist
+
+Code Changes:
+- [ ] **Snyk scan passed** (`snyk_code_scan`) - MANDATORY
+- [ ] Input validation implemented
+- [ ] XSS prevention applied
+- [ ] SQL injection prevented
+- [ ] Authentication verified
+- [ ] Authorization checked
+- [ ] Rate limiting applied
+- [ ] Audit logging added
+
+---
+
+**Remember**:
+- 🔒 **Security is NOT optional**
+- 🛡️ **Defense in depth**
+- 🔍 **Snyk scan ALWAYS** - Run for all new code
+- ✅ **Validate EVERYTHING**
+- 📊 **Audit EVERYTHING**
+- 🚨 **Monitor CONTINUOUSLY**

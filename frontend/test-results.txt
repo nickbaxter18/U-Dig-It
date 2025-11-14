@@ -1,0 +1,9 @@
+src/lib/__tests__: FAILED - 14 files failed, 2 passed - Tests: 156 failed, 222 passed
+src/components/auth/__tests__: FAILED - 3 files failed,  passed - Tests: 30 failed, 34 passed
+src/components/admin/__tests__: FAILED - 11 files failed,  passed - Tests: 82 failed, 46 passed
+src/components/booking/__tests__: FAILED - 9 files failed,  passed - Tests: 75 failed,  passed
+src/components/contracts/__tests__: FAILED - 5 files failed,  passed - Tests: 33 failed,  passed
+src/components/providers/__tests__: FAILED - 1 files failed,  passed - Tests: 27 failed, 2 passed
+src/app/api/__tests__: FAILED - 15 files failed, 1 passed - Tests: 53 failed, 42 passed
+src/lib/validators/__tests__: PASSED - 1 files, 33 tests
+src/lib/supabase/__tests__: FAILED -  files failed,  passed - Tests:  failed,  passed

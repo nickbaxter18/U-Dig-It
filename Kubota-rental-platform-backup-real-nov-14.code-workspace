@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"name": "Kubota-rental-platform",
+			"path": "."
+		}
+	],
+    "settings": {
+        "testing.automaticallyOpenTestResults": "neverOpen",
+        "task.autoDetect": "on",
+        "task.quickOpen.history": 10,
+        "task.problemMatchers.neverPrompt": true,
+        "task.saveBeforeRun": "never",
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.scrollback": 10000,
+        "files.associations": {
+            "*.css": "tailwindcss"
+        }
+    }
+}

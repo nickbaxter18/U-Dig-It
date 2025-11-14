@@ -1,0 +1,39 @@
+{
+  "$schema": "https://cursor.sh/schemas/code-archaeology.json",
+  "name": "Code Archaeology Assistant",
+  "description": "Explain code using git history and AI analysis",
+  
+  "enabled": true,
+  "useGitBlame": true,
+  "analyzeCommits": true,
+  "explainRationale": true,
+  
+  "keyboardShortcut": "Ctrl+Shift+?",
+  
+  "analysis": {
+    "includeGitBlame": true,
+    "includeCommitMessages": true,
+    "includeRelatedCommits": true,
+    "includeCodeComments": true,
+    "includePRs": true
+  },
+  
+  "prompts": {
+    "system": "You are a code archaeology expert. Explain why code exists, its history, and rationale.",
+    "user": "Explain this code:\n\n{code}\n\nGit History:\n{gitBlame}\n\nCommit Messages:\n{commits}\n\nProvide:\n1. Why this code exists\n2. When it was added\n3. What problem it solves\n4. Any concerns or improvements"
+  },
+  
+  "output": {
+    "format": "markdown",
+    "includeTimeline": true,
+    "includeRationale": true,
+    "includeSuggestions": true
+  },
+  
+  "examples": [
+    {
+      "code": "const logger = createLogger();",
+      "explanation": "Added in commit abc123 to replace console.log with structured logging for better observability in production."
+    }
+  ]
+}

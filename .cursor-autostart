@@ -1,0 +1,25 @@
+#!/bin/bash
+# This file is checked by Cursor on workspace open
+# It ensures the frontend auto-starts on port 3000
+
+FRONTEND_DIR="/home/vscode/Kubota-rental-platform/frontend"
+
+# Check if frontend is already running
+if curl -s http://localhost:3000 > /dev/null 2>&1; then
+    echo "✅ Frontend already running on port 3000"
+    exit 0
+fi
+
+# Start the frontend using the clean startup script
+echo "🚀 Auto-starting frontend..."
+bash /home/vscode/Kubota-rental-platform/start-frontend-clean.sh > /tmp/cursor-autostart.log 2>&1 &
+
+# Give it a moment to start
+sleep 3
+
+# Verify it started
+if curl -s http://localhost:3000 > /dev/null 2>&1; then
+    echo "✅ Frontend started successfully on port 3000"
+else
+    echo "⚠️ Frontend may still be starting... check http://localhost:3000"
+fi

@@ -1,0 +1,152 @@
+---
+description: "System architecture patterns, microservices design, and distributed systems principles"
+globs: ["**/architecture/**/*", "**/infrastructure/**/*", "**/services/**/*", "docker-compose.yml"]
+alwaysApply: false
+---
+
+# System Architecture & Scalability
+
+## 🎯 Purpose
+Advanced system architecture patterns, microservices design, distributed systems principles, and enterprise-scale system design methodologies.
+
+---
+
+## Core Architecture Principles
+
+### Expert Architecture Practices
+- I am a system architecture expert specializing in scalable, distributed, and enterprise-grade system design
+- I implement architectural patterns that ensure scalability, maintainability, and resilience at enterprise scale
+- I design systems using microservices, event-driven architecture, and cloud-native patterns
+- I prioritize system reliability, fault tolerance, and disaster recovery in all architectural decisions
+- I create systems that can scale horizontally and vertically while maintaining performance and consistency
+
+---
+
+## Architecture Patterns
+
+### Scalability by Design
+- Implement horizontal and vertical scaling patterns with auto-scaling capabilities
+- Design systems with scalability, maintainability, and resilience as core architectural principles
+- Support growth from startup to enterprise scale
+
+### Microservices Architecture
+- Design loosely coupled, independently deployable services with clear boundaries
+- Use domain-driven design and bounded context identification
+- Implement service registry, discovery, and lifecycle management
+
+### Event-Driven Design
+- Implement event-driven architecture with message queues and event sourcing patterns
+- Design inter-service communication using API design, message queues, and event-driven communication
+- Support asynchronous processing and decoupled services
+
+### Fault Tolerance
+- Design systems with circuit breakers, bulkheads, and graceful degradation patterns
+- Create fault-tolerant, self-healing systems capable of graceful degradation
+- Implement retry strategies and fallback mechanisms
+
+### Data Consistency
+- Implement appropriate consistency models with eventual consistency and CQRS patterns
+- Choose consistency models based on use case requirements
+- Balance between strong consistency and availability
+
+### API Gateway Pattern
+- Implement API gateways for routing, authentication, and cross-cutting concerns
+- Centralize API management and security
+- Provide unified interface for clients
+
+### Database Architecture
+- Design database strategies with read replicas, sharding, and caching layers
+- Optimize for read and write performance
+- Implement appropriate caching strategies
+
+### Service Discovery
+- Implement service discovery and health checking for dynamic service management
+- Support dynamic service registration and discovery
+- Monitor service health and availability
+
+### Configuration Management
+- Implement externalized configuration with environment-specific deployments
+- Separate configuration from code
+- Support multiple deployment environments
+
+### Monitoring and Observability
+- Design comprehensive monitoring with metrics, logging, and tracing
+- Design for observability, monitoring, and operational excellence from the ground up
+- Provide visibility into system behavior and performance
+
+### Security Architecture
+- Implement security at every layer with defense-in-depth strategies
+- Apply security principles throughout the architecture
+- Protect against common attack vectors
+
+### Deployment Architecture
+- Design deployment strategies with blue-green, canary, and rolling deployments
+- Minimize downtime during deployments
+- Support rapid rollback capabilities
+
+---
+
+## Implementation Guidelines
+
+### When Designing Systems
+1. **Scalability**: Consider growth and scaling requirements
+2. **Reliability**: Design for fault tolerance and resilience
+3. **Maintainability**: Keep architecture clear and documented
+4. **Security**: Apply security at every layer
+5. **Observability**: Build in monitoring and logging
+
+### Code Examples
+
+```typescript
+// ✅ CORRECT - Scalable service design
+export class BookingService {
+  private cache: Map<string, Booking>;
+  private db: Database;
+  private eventBus: EventBus;
+
+  async getBooking(id: string): Promise<Booking> {
+    // Check cache first
+    if (this.cache.has(id)) {
+      return this.cache.get(id)!;
+    }
+
+    // Fallback to database
+    const booking = await this.db.getBooking(id);
+
+    // Cache result
+    this.cache.set(id, booking);
+
+    return booking;
+  }
+
+  async createBooking(data: BookingData): Promise<Booking> {
+    // Create booking
+    const booking = await this.db.createBooking(data);
+
+    // Publish event for other services
+    await this.eventBus.publish('booking.created', booking);
+
+    return booking;
+  }
+}
+```
+
+---
+
+## ✅ Architecture Checklist
+
+When Designing Systems:
+- [ ] Scalability considered
+- [ ] Fault tolerance implemented
+- [ ] Monitoring in place
+- [ ] Security applied
+- [ ] Documentation complete
+- [ ] Deployment strategy defined
+
+---
+
+**Remember**:
+- 🏗️ **Design for scale**
+- 🛡️ **Build for resilience**
+- 📊 **Monitor everything**
+- 🔒 **Security first**

@@ -1,0 +1,81 @@
+{
+  "isRunning": false,
+  "agents": {
+    "optimization": {
+      "name": "Network Optimization Agent",
+      "status": "idle",
+      "lastRun": 0,
+      "metrics": {
+        "optimizationsApplied": 1,
+        "performanceGains": [],
+        "recommendationsGenerated": 1
+      }
+    },
+    "evolution": {
+      "name": "Pattern Evolution Agent",
+      "status": "idle",
+      "lastRun": 0,
+      "metrics": {
+        "patternsEvolved": 0,
+        "newPatternsDiscovered": 0,
+        "evolutionCycles": 0
+      }
+    },
+    "health": {
+      "name": "Health Monitor Agent",
+      "status": "idle",
+      "lastRun": 0,
+      "metrics": {
+        "healthChecks": 1,
+        "issuesDetected": 0,
+        "alertsGenerated": 0
+      }
+    },
+    "performance": {
+      "name": "Performance Analyzer Agent",
+      "status": "idle",
+      "lastRun": 0,
+      "metrics": {
+        "analysesPerformed": 1,
+        "bottlenecksIdentified": 1,
+        "optimizationsSuggested": 1
+      }
+    }
+  },
+  "health": {
+    "lastCheck": 1760649339194,
+    "status": "good",
+    "issues": []
+  },
+  "optimizationHistory": [
+    {
+      "timestamp": 1760649339193,
+      "agent": "optimization",
+      "recommendations": [
+        {
+          "type": "neighbor-optimization",
+          "description": "Average neighbor score below optimal threshold",
+          "impact": "medium",
+          "action": "Review and strengthen neighbor relationships",
+          "id": "opt-1760649339193-hsr3i3cuw",
+          "timestamp": 1760649339193,
+          "applied": true,
+          "priority": 2
+        }
+      ],
+      "appliedOptimizations": [
+        {
+          "type": "neighbor-optimization",
+          "description": "Average neighbor score below optimal threshold",
+          "impact": "medium",
+          "action": "Review and strengthen neighbor relationships",
+          "id": "opt-1760649339193-hsr3i3cuw",
+          "timestamp": 1760649339193,
+          "applied": true,
+          "priority": 2
+        }
+      ],
+      "efficiencyGain": 0.08890195873546253
+    }
+  ]
+}

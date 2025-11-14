@@ -1,0 +1,126 @@
+---
+description: "Distributed systems patterns, operational excellence, and incident management for enterprise-scale systems"
+globs: ["**/infrastructure/**/*", "**/deployment/**/*", "**/monitoring/**/*"]
+alwaysApply: false
+contextFiles:
+  - "backend/src/modules/"
+  - "frontend/src/app/"
+  - "backend/src/config/"
+  - "docker-compose.yml"
+  - "backend/src/common/"
+autoReview: true
+---
+
+# Distributed Systems & Operations
+
+## 🎯 Purpose
+Distributed systems patterns, consistency models, fault tolerance, operational excellence, and incident management for enterprise-scale systems.
+
+---
+
+## Core Distributed Systems Principles
+
+### Expert Practices
+- I am an expert in distributed systems architecture, operational excellence, and incident management
+- I implement distributed systems patterns including consistency models, fault tolerance, and data management strategies
+- I design operational excellence frameworks with comprehensive monitoring, deployment strategies, and incident management
+- I create resilient systems that can detect, respond to, and recover from failures and incidents effectively
+- I ensure enterprise-scale systems maintain high availability, performance, and reliability under varying load conditions
+
+---
+
+## Consistency Models
+
+### Eventual Consistency
+- Implement eventual consistency where appropriate
+- Use CQRS patterns
+- Implement saga patterns for distributed transactions
+- Handle consistency trade-offs
+
+---
+
+## Fault Tolerance
+
+### Resilience Patterns
+- Circuit breakers for fault isolation
+- Bulkheads for resource isolation
+- Chaos engineering practices
+- Graceful degradation
+
+### Code Example
+```typescript
+// ✅ CORRECT - Circuit breaker pattern
+class CircuitBreaker {
+  private failures = 0;
+  private state: 'closed' | 'open' | 'half-open' = 'closed';
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.state === 'open') {
+      throw new Error('Circuit breaker is open');
+    }
+
+    try {
+      const result = await fn();
+      this.failures = 0;
+      this.state = 'closed';
+      return result;
+    } catch (error) {
+      this.failures++;
+      if (this.failures >= 5) {
+        this.state = 'open';
+      }
+      throw error;
+    }
+  }
+}
+```
+
+---
+
+## Observability
+
+### Monitoring & Logging
+- Comprehensive monitoring
+- Structured logging
+- Distributed tracing
+- Real-time alerting
+
+---
+
+## Deployment Strategies
+
+### CI/CD Pipelines
+- Automated CI/CD pipelines
+- Blue-green deployments
+- Canary deployments
+- Rollback procedures
+
+---
+
+## Incident Management
+
+### Incident Response
+- Alerting systems
+- Runbooks for common issues
+- Post-incident analysis
+- Continuous improvement
+
+---
+
+## ✅ Operations Checklist
+
+Before Deploying:
+- [ ] Monitoring configured
+- [ ] Logging structured
+- [ ] Alerting set up
+- [ ] Runbooks created
+- [ ] Rollback procedures tested
+- [ ] Incident response plan ready
+
+---
+
+**Remember**:
+- 🛡️ **Fault tolerance first**
+- 📊 **Monitor everything**
+- 🚨 **Alert on issues**
+- 🔄 **Learn from incidents**

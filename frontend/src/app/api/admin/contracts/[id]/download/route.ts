@@ -1,0 +1,215 @@
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { createServiceClient } from '@/lib/supabase/service';
+import { NextRequest, NextResponse } from 'next/server';
+
+const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes for download links
+
+function parseStorageUrl(storageUrl: string): { bucket: string; path: string } | null {
+  try {
+    const url = new URL(storageUrl);
+    const segments = url.pathname.split('/').filter(Boolean);
+    const objectIndex = segments.findIndex(segment => segment === 'object');
+
+    if (objectIndex === -1 || segments.length <= objectIndex + 2) {
+      return null;
+    }
+
+    const bucket = segments[objectIndex + 2];
+    const pathSegments = segments.slice(objectIndex + 3);
+
+    if (!bucket || pathSegments.length === 0) {
+      return null;
+    }
+
+    return {
+      bucket,
+      path: decodeURIComponent(pathSegments.join('/')),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /api/admin/contracts/[id]/download
+ * Download contract PDF
+ *
+ * Admin-only endpoint
+ */
+export async function GET(
+  request: NextRequest,
+  context: { params?: { id?: string } }
+) {
+  try {
+    const params = context.params ?? {};
+    let contractId = params.id;
+
+    if (!contractId) {
+      const url = new URL(request.url);
+      const segments = url.pathname.split('/').filter(Boolean);
+      const contractsIdx = segments.findIndex(segment => segment === 'contracts');
+      if (contractsIdx >= 0 && segments.length > contractsIdx + 1) {
+        contractId = segments[contractsIdx + 1];
+      }
+    }
+
+    if (!contractId) {
+      return NextResponse.json({ error: 'Contract id is required' }, { status: 400 });
+    }
+
+    if (!/^[0-9a-fA-F-]{36}$/.test(contractId)) {
+      return NextResponse.json({ error: 'Invalid contract id' }, { status: 400 });
+    }
+
+    // 1. Verify authentication
+    const { supabase, user, error } = await requireAdmin(request);
+    if (error) return error;
+
+    // 3. Fetch contract
+    const { data: contract, error: contractError } = await supabase
+      .from('contracts')
+      .select('id, "contractNumber", "documentUrl", "signedDocumentUrl", "signedDocumentPath"')
+      .eq('id', contractId)
+      .single();
+
+    if (contractError) throw contractError;
+
+    if (!contract) {
+      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    }
+
+    const serviceClient = createServiceClient();
+
+    let downloadUrl: string | null = null;
+    let storageBucket: string | null = null;
+    let storagePath: string | null = null;
+
+    if (contract.signedDocumentPath) {
+      storageBucket = 'signed-contracts';
+      storagePath = contract.signedDocumentPath;
+    }
+
+    if (!storagePath && contract.signedDocumentUrl) {
+      const parsed = parseStorageUrl(contract.signedDocumentUrl);
+      if (parsed) {
+        storageBucket = parsed.bucket;
+        storagePath = parsed.path;
+      }
+    }
+
+    if (!storagePath && contract.documentUrl) {
+      const parsed = parseStorageUrl(contract.documentUrl);
+      if (parsed) {
+        storageBucket = parsed.bucket;
+        storagePath = parsed.path;
+      } else {
+        downloadUrl = contract.documentUrl;
+      }
+    }
+
+    if (!storageBucket && contract.signedDocumentPath) {
+      storageBucket = 'signed-contracts';
+    }
+
+    if (!downloadUrl) {
+      if (!storageBucket || !storagePath) {
+        return NextResponse.json(
+          { error: 'Contract PDF not yet generated' },
+          { status: 404 }
+        );
+      }
+
+      const bucketClient = supabase.storage.from(storageBucket);
+      const { data: signedData, error: signedError } = await bucketClient.createSignedUrl(
+        storagePath,
+        SIGNED_URL_TTL_SECONDS
+      );
+
+      if (signedError) {
+        logger.warn(
+          'Primary client failed to create signed URL',
+          {
+            component: 'contracts-download-api',
+            action: 'signed_url_warning',
+            metadata: {
+              bucket: storageBucket,
+              path: storagePath,
+              error: signedError.message,
+            },
+          },
+          signedError
+        );
+      } else {
+        downloadUrl = signedData?.signedUrl ?? null;
+      }
+
+      if (!downloadUrl && serviceClient) {
+        const { data: serviceSignedData, error: serviceSignedError } = await serviceClient.storage
+          .from(storageBucket)
+          .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
+        if (serviceSignedError) {
+          logger.error(
+            'Service role failed to create signed URL for contract',
+            {
+              component: 'contracts-download-api',
+              action: 'signed_url_error',
+              metadata: {
+                bucket: storageBucket,
+                path: storagePath,
+                error: serviceSignedError.message,
+              },
+            },
+            serviceSignedError
+          );
+        } else {
+          downloadUrl = serviceSignedData?.signedUrl ?? null;
+        }
+      }
+    }
+
+    if (!downloadUrl) {
+      if (!contract.signedDocumentUrl && !contract.documentUrl) {
+        return NextResponse.json(
+          { error: 'Contract PDF not yet generated' },
+          { status: 404 }
+        );
+      }
+
+      downloadUrl = contract.signedDocumentUrl ?? contract.documentUrl ?? null;
+    }
+
+    logger.info('Contract download URL generated', {
+      component: 'contracts-download-api',
+      action: 'download_url_ready',
+      metadata: {
+        contractId,
+        contractNumber: contract.contractNumber,
+        adminId: user.id,
+        downloadUrl,
+      },
+    });
+
+    return NextResponse.json({
+      downloadUrl,
+      contractId,
+      contractNumber: contract.contractNumber,
+    });
+  } catch (error: any) {
+    logger.error(
+      'Contract download error',
+      {
+        component: 'contracts-download-api',
+        action: 'error',
+      },
+      error
+    );
+
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+

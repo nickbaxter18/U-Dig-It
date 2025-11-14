@@ -1,0 +1,3276 @@
+{
+  "timestamp": "2025-10-16T21:14:44.666Z",
+  "totalSyntheses": 1,
+  "totalInsights": 0,
+  "knowledgeGraph": {
+    "advanced-problem-solving": {
+      "rule": {
+        "name": "advanced-problem-solving",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "advanced",
+          "problem-solving",
+          "strategies",
+          "solution",
+          "synthesis",
+          "and",
+          "validation",
+          "frameworks",
+          "for",
+          "complex",
+          "scenarios.",
+          "use",
+          "when",
+          "tackling",
+          "complex",
+          "technical",
+          "challenges",
+          "architectural",
+          "decisions",
+          "or",
+          "multi-component",
+          "integration",
+          "problems",
+          "requiring",
+          "systematic",
+          "approach",
+          "and",
+          "comprehensive",
+          "solution",
+          "validation."
+        ],
+        "description": "Advanced problem-solving strategies, solution synthesis, and validation frameworks for complex scenarios. Use when tackling complex technical challenges, architectural decisions, or multi-component integration problems requiring systematic approach and comprehensive solution validation."
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "advanced-prompting-techniques": {
+      "rule": {
+        "name": "advanced-prompting-techniques",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "advanced",
+          "prompting",
+          "techniques",
+          "tree-of-thought",
+          "exploration",
+          "and",
+          "creative",
+          "problem-solving",
+          "strategies.",
+          "use",
+          "when",
+          "facing",
+          "creative",
+          "challenges",
+          "brainstorming",
+          "sessions",
+          "or",
+          "when",
+          "conventional",
+          "approaches",
+          "fail",
+          "and",
+          "innovative",
+          "thinking",
+          "is",
+          "required",
+          "for",
+          "breakthrough",
+          "solutions."
+        ],
+        "description": "Advanced prompting techniques, tree-of-thought exploration, and creative problem-solving strategies. Use when facing creative challenges, brainstorming sessions, or when conventional approaches fail and innovative thinking is required for breakthrough solutions."
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "advanced-prompting": {
+      "rule": {
+        "name": "advanced-prompting",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "core",
+          "reasoning",
+          "patterns",
+          "and",
+          "chain-of-thought",
+          "techniques",
+          "for",
+          "systematic",
+          "problem",
+          "decomposition",
+          "-",
+          "essential",
+          "for",
+          "all",
+          "development",
+          "work"
+        ],
+        "description": "Core reasoning patterns and chain-of-thought techniques for systematic problem decomposition - essential for all development work"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "api-database-standards": {
+      "rule": {
+        "name": "api-database-standards",
+        "domains": [
+          "backend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "api",
+          "design",
+          "standards",
+          "database",
+          "architecture",
+          "and",
+          "backend",
+          "development",
+          "best",
+          "practices"
+        ],
+        "description": "API design standards, database architecture, and backend development best practices",
+        "context": "backend/src/**/*.ts,backend/typeorm.config.ts"
+      },
+      "connections": {},
+      "insights": [
+        {
+          "type": "domain-insight",
+          "title": "backend Domain Optimization",
+          "description": "Strong clustering around backend domain suggests focused expertise activation.",
+          "recommendation": "Leverage backend domain knowledge for enhanced problem-solving.",
+          "rules": [
+            "backend-development",
+            "api-database-standards",
+            "privacy-human-centered-design",
+            "testing-scenarios"
+          ],
+          "confidence": 1,
+          "impact": "high"
+        },
+        {
+          "type": "synergy-insight",
+          "title": "Capability Synergy: backend-development + api-database-standards",
+          "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+          "recommendation": "Combine insights from both rules for enhanced problem-solving.",
+          "combinedCapabilities": [],
+          "confidence": 1,
+          "impact": "medium"
+        },
+        {
+          "type": "cascade-insight",
+          "title": "Activation Cascade: backend-development → api-database-standards",
+          "description": "Strong activation cascade from backend-development to api-database-standards.",
+          "recommendation": "Pre-load api-database-standards when backend-development activates.",
+          "cascadeStrength": 0.8384615384615386,
+          "confidence": 0.8384615384615386,
+          "impact": "medium"
+        },
+        {
+          "type": "meta-insight",
+          "title": "Multi-Pattern Optimization Opportunity",
+          "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+          "recommendation": "Apply multi-dimensional reasoning approach for optimal results.",
+          "patternCount": 3,
+          "confidence": 0.8,
+          "impact": "high"
+        },
+        {
+          "type": "meta-insight",
+          "title": "High Pattern Coherence",
+          "description": "Strong pattern coherence (87.5%) indicates optimal rule coordination.",
+          "recommendation": "Current rule combination is highly effective for this context.",
+          "coherence": 0.8748206969690346,
+          "confidence": 0.8748206969690346,
+          "impact": "medium"
+        }
+      ],
+      "patterns": [
+        {
+          "type": "domain-clustering",
+          "description": "Rules cluster around specific domains",
+          "clusters": [
+            {
+              "domain": "backend",
+              "rules": [
+                "backend-development",
+                "api-database-standards",
+                "privacy-human-centered-design",
+                "testing-scenarios"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "security",
+              "rules": [
+                "security-compliance",
+                "privacy-human-centered-design"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "frontend",
+              "rules": [
+                "privacy-human-centered-design",
+                "testing-scenarios",
+                "design-components",
+                "design-accessibility",
+                "design-colors-typography",
+                "design-layout-spacing"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "testing",
+              "rules": [
+                "testing-scenarios",
+                "testing-quality-assurance",
+                "test-management-framework"
+              ],
+              "strength": 1
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "capability-synergy",
+          "description": "Rules create synergistic capabilities",
+          "synergies": [
+            {
+              "rule1": "backend-development",
+              "rule2": "api-database-standards",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "test-management-framework",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "activation-cascade",
+          "description": "Rules activate in predictable sequences",
+          "cascades": [
+            {
+              "from": "backend-development",
+              "to": "api-database-standards",
+              "strength": 0.8384615384615386,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "security-compliance",
+              "to": "privacy-human-centered-design",
+              "strength": 0.46333333333333343,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "privacy-human-centered-design",
+              "to": "testing-scenarios",
+              "strength": 0.5391304347826088,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-scenarios",
+              "to": "design-components",
+              "strength": 0.46060606060606063,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-components",
+              "to": "design-accessibility",
+              "strength": 0.7600000000000001,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-accessibility",
+              "to": "design-colors-typography",
+              "strength": 0.7352941176470589,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-colors-typography",
+              "to": "design-layout-spacing",
+              "strength": 0.7666666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "documentation-excellence",
+              "to": "system-architecture",
+              "strength": 0.7166666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-quality-assurance",
+              "to": "performance-optimization",
+              "strength": 0.3400000000000001,
+              "cascadeType": "neighbor-activation"
+            }
+          ],
+          "strength": 0.6244620909071038
+        }
+      ]
+    },
+    "backend-development": {
+      "rule": {
+        "name": "backend-development",
+        "domains": [
+          "backend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "backend",
+          "development",
+          "standards",
+          "for",
+          "nestjs",
+          "typeorm",
+          "and",
+          "api",
+          "design"
+        ],
+        "description": "Backend development standards for NestJS, TypeORM, and API design",
+        "context": "backend/src/**/*.ts,backend/typeorm.config.ts"
+      },
+      "connections": {},
+      "insights": [
+        {
+          "type": "domain-insight",
+          "title": "backend Domain Optimization",
+          "description": "Strong clustering around backend domain suggests focused expertise activation.",
+          "recommendation": "Leverage backend domain knowledge for enhanced problem-solving.",
+          "rules": [
+            "backend-development",
+            "api-database-standards",
+            "privacy-human-centered-design",
+            "testing-scenarios"
+          ],
+          "confidence": 1,
+          "impact": "high"
+        },
+        {
+          "type": "synergy-insight",
+          "title": "Capability Synergy: backend-development + api-database-standards",
+          "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+          "recommendation": "Combine insights from both rules for enhanced problem-solving.",
+          "combinedCapabilities": [],
+          "confidence": 1,
+          "impact": "medium"
+        },
+        {
+          "type": "cascade-insight",
+          "title": "Activation Cascade: backend-development → api-database-standards",
+          "description": "Strong activation cascade from backend-development to api-database-standards.",
+          "recommendation": "Pre-load api-database-standards when backend-development activates.",
+          "cascadeStrength": 0.8384615384615386,
+          "confidence": 0.8384615384615386,
+          "impact": "medium"
+        },
+        {
+          "type": "meta-insight",
+          "title": "Multi-Pattern Optimization Opportunity",
+          "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+          "recommendation": "Apply multi-dimensional reasoning approach for optimal results.",
+          "patternCount": 3,
+          "confidence": 0.8,
+          "impact": "high"
+        },
+        {
+          "type": "meta-insight",
+          "title": "High Pattern Coherence",
+          "description": "Strong pattern coherence (87.5%) indicates optimal rule coordination.",
+          "recommendation": "Current rule combination is highly effective for this context.",
+          "coherence": 0.8748206969690346,
+          "confidence": 0.8748206969690346,
+          "impact": "medium"
+        }
+      ],
+      "patterns": [
+        {
+          "type": "domain-clustering",
+          "description": "Rules cluster around specific domains",
+          "clusters": [
+            {
+              "domain": "backend",
+              "rules": [
+                "backend-development",
+                "api-database-standards",
+                "privacy-human-centered-design",
+                "testing-scenarios"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "security",
+              "rules": [
+                "security-compliance",
+                "privacy-human-centered-design"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "frontend",
+              "rules": [
+                "privacy-human-centered-design",
+                "testing-scenarios",
+                "design-components",
+                "design-accessibility",
+                "design-colors-typography",
+                "design-layout-spacing"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "testing",
+              "rules": [
+                "testing-scenarios",
+                "testing-quality-assurance",
+                "test-management-framework"
+              ],
+              "strength": 1
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "capability-synergy",
+          "description": "Rules create synergistic capabilities",
+          "synergies": [
+            {
+              "rule1": "backend-development",
+              "rule2": "api-database-standards",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "test-management-framework",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "activation-cascade",
+          "description": "Rules activate in predictable sequences",
+          "cascades": [
+            {
+              "from": "backend-development",
+              "to": "api-database-standards",
+              "strength": 0.8384615384615386,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "security-compliance",
+              "to": "privacy-human-centered-design",
+              "strength": 0.46333333333333343,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "privacy-human-centered-design",
+              "to": "testing-scenarios",
+              "strength": 0.5391304347826088,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-scenarios",
+              "to": "design-components",
+              "strength": 0.46060606060606063,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-components",
+              "to": "design-accessibility",
+              "strength": 0.7600000000000001,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-accessibility",
+              "to": "design-colors-typography",
+              "strength": 0.7352941176470589,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-colors-typography",
+              "to": "design-layout-spacing",
+              "strength": 0.7666666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "documentation-excellence",
+              "to": "system-architecture",
+              "strength": 0.7166666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-quality-assurance",
+              "to": "performance-optimization",
+              "strength": 0.3400000000000001,
+              "cascadeType": "neighbor-activation"
+            }
+          ],
+          "strength": 0.6244620909071038
+        }
+      ]
+    },
+    "cognitive-architecture": {
+      "rule": {
+        "name": "cognitive-architecture",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "advanced",
+          "cognitive",
+          "reasoning",
+          "patterns",
+          "working",
+          "memory",
+          "optimization",
+          "and",
+          "multi-dimensional",
+          "problem-solving",
+          "frameworks"
+        ],
+        "description": "Advanced cognitive reasoning patterns, working memory optimization, and multi-dimensional problem-solving frameworks"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "complex-problem-solving": {
+      "rule": {
+        "name": "complex-problem-solving",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "advanced",
+          "problem",
+          "decomposition",
+          "multi-step",
+          "reasoning",
+          "and",
+          "complex",
+          "scenario",
+          "handling",
+          "for",
+          "challenging",
+          "development",
+          "tasks.",
+          "use",
+          "when",
+          "facing",
+          "complex",
+          "architectural",
+          "decisions",
+          "multi-system",
+          "integrations",
+          "or",
+          "scenarios",
+          "requiring",
+          "systematic",
+          "problem",
+          "breakdown",
+          "and",
+          "solution",
+          "synthesis."
+        ],
+        "description": "Advanced problem decomposition, multi-step reasoning, and complex scenario handling for challenging development tasks. Use when facing complex architectural decisions, multi-system integrations, or scenarios requiring systematic problem breakdown and solution synthesis."
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "design-accessibility": {
+      "rule": {
+        "name": "design-accessibility",
+        "domains": [
+          "frontend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "accessibility",
+          "standards",
+          "wcag",
+          "compliance",
+          "and",
+          "inclusive",
+          "design",
+          "principles"
+        ],
+        "description": "Accessibility standards, WCAG compliance, and inclusive design principles",
+        "context": "frontend/**/*.tsx,frontend/**/*.css,frontend/**/*.ts"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "design-colors-typography": {
+      "rule": {
+        "name": "design-colors-typography",
+        "domains": [
+          "frontend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "color",
+          "theory",
+          "brand",
+          "guidelines",
+          "and",
+          "typography",
+          "standards",
+          "for",
+          "kubota",
+          "rental",
+          "platform"
+        ],
+        "description": "Color theory, brand guidelines, and typography standards for Kubota rental platform",
+        "context": "frontend/**/*.tsx,frontend/**/*.css,frontend/**/*.ts"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "design-components": {
+      "rule": {
+        "name": "design-components",
+        "domains": [
+          "frontend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "component",
+          "design",
+          "standards",
+          "for",
+          "buttons",
+          "forms",
+          "navigation",
+          "and",
+          "interactive",
+          "elements"
+        ],
+        "description": "Component design standards for buttons, forms, navigation, and interactive elements",
+        "context": "frontend/**/*.tsx,frontend/**/*.css,frontend/**/*.ts"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "design-layout-spacing": {
+      "rule": {
+        "name": "design-layout-spacing",
+        "domains": [
+          "frontend"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "layout",
+          "systems",
+          "spacing",
+          "guidelines",
+          "and",
+          "grid",
+          "standards",
+          "for",
+          "consistent",
+          "visual",
+          "structure"
+        ],
+        "description": "Layout systems, spacing guidelines, and grid standards for consistent visual structure",
+        "context": "frontend/**/*.tsx,frontend/**/*.css,frontend/**/*.ts"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "development-standards": {
+      "rule": {
+        "name": "development-standards",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "core",
+          "development",
+          "standards",
+          "for",
+          "typescript",
+          "react",
+          "next.js",
+          "and",
+          "full-stack",
+          "best",
+          "practices"
+        ],
+        "description": "Core development standards for TypeScript, React, Next.js, and full-stack best practices"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "distributed-systems-operations": {
+      "rule": {
+        "name": "distributed-systems-operations",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "distributed",
+          "systems",
+          "patterns",
+          "operational",
+          "excellence",
+          "and",
+          "incident",
+          "management",
+          "for",
+          "enterprise-scale",
+          "systems"
+        ],
+        "description": "Distributed systems patterns, operational excellence, and incident management for enterprise-scale systems",
+        "context": "**/infrastructure/**/*,**/deployment/**/*,**/monitoring/**/*"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "documentation-excellence": {
+      "rule": {
+        "name": "documentation-excellence",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "documentation",
+          "excellence",
+          "standards",
+          "knowledge",
+          "management",
+          "and",
+          "technical",
+          "writing",
+          "best",
+          "practices"
+        ],
+        "description": "Documentation excellence standards, knowledge management, and technical writing best practices",
+        "context": "**/*.md,**/README*,**/CHANGELOG*,**/CONTRIBUTING*"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "e2e-testing-quality-assurance": {
+      "rule": {
+        "name": "e2e-testing-quality-assurance",
+        "domains": [
+          "testing"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "end-to-end",
+          "testing",
+          "cross-browser",
+          "compatibility",
+          "accessibility",
+          "testing",
+          "and",
+          "comprehensive",
+          "quality",
+          "assurance"
+        ],
+        "description": "End-to-end testing, cross-browser compatibility, accessibility testing, and comprehensive quality assurance",
+        "context": "**/e2e/**/**,**/*.test.ts,**/*.spec.ts,**/test/**/**"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "emergency-response": {
+      "rule": {
+        "name": "emergency-response",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "emergency",
+          "response",
+          "protocols",
+          "crisis",
+          "management",
+          "and",
+          "rapid",
+          "deployment",
+          "strategies",
+          "for",
+          "critical",
+          "system",
+          "issues.",
+          "use",
+          "when",
+          "facing",
+          "production",
+          "outages",
+          "critical",
+          "bugs",
+          "security",
+          "incidents",
+          "or",
+          "any",
+          "situation",
+          "requiring",
+          "immediate",
+          "response",
+          "and",
+          "rapid",
+          "resolution."
+        ],
+        "description": "Emergency response protocols, crisis management, and rapid deployment strategies for critical system issues. Use when facing production outages, critical bugs, security incidents, or any situation requiring immediate response and rapid resolution."
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "ethical-ai-responsibility": {
+      "rule": {
+        "name": "ethical-ai-responsibility",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "ethical",
+          "ai",
+          "guidelines",
+          "responsible",
+          "development",
+          "practices",
+          "and",
+          "bias",
+          "mitigation",
+          "strategies"
+        ],
+        "description": "Ethical AI guidelines, responsible development practices, and bias mitigation strategies"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "kubota-business-logic": {
+      "rule": {
+        "name": "kubota-business-logic",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "kubota",
+          "rental",
+          "platform",
+          "domain",
+          "expertise",
+          "booking",
+          "workflows",
+          "and",
+          "business",
+          "intelligence"
+        ],
+        "description": "Kubota rental platform domain expertise, booking workflows, and business intelligence"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "performance-critical-optimization": {
+      "rule": {
+        "name": "performance-critical-optimization",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "critical",
+          "performance",
+          "optimization",
+          "strategies",
+          "bottleneck",
+          "identification",
+          "and",
+          "high-performance",
+          "system",
+          "design.",
+          "use",
+          "when",
+          "dealing",
+          "with",
+          "performance",
+          "issues",
+          "slow",
+          "queries",
+          "memory",
+          "leaks",
+          "or",
+          "when",
+          "designing",
+          "high-traffic",
+          "systems",
+          "requiring",
+          "optimal",
+          "performance."
+        ],
+        "description": "Critical performance optimization strategies, bottleneck identification, and high-performance system design. Use when dealing with performance issues, slow queries, memory leaks, or when designing high-traffic systems requiring optimal performance."
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "performance-optimization": {
+      "rule": {
+        "name": "performance-optimization",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "performance",
+          "optimization",
+          "strategies",
+          "resource",
+          "management",
+          "and",
+          "scalability",
+          "patterns"
+        ],
+        "description": "Performance optimization strategies, resource management, and scalability patterns",
+        "context": "**/config/**/**,**/lib/**/**,**/utils/**/**,**/optimization/**/**"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "privacy-human-centered-design": {
+      "rule": {
+        "name": "privacy-human-centered-design",
+        "domains": [
+          "backend",
+          "frontend",
+          "security"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "privacy",
+          "protection",
+          "human-centered",
+          "design",
+          "principles",
+          "and",
+          "accessibility",
+          "standards",
+          "for",
+          "ethical",
+          "ai",
+          "development"
+        ],
+        "description": "Privacy protection, human-centered design principles, and accessibility standards for ethical AI development",
+        "context": "backend/src/auth/**/*,frontend/src/lib/auth.ts,frontend/src/app/api/auth/**/*,frontend/src/app/privacy/page.tsx,guards/auth.guard.ts,auth/authentication.ts,user/user-service.ts,backend/src/entities/user.entity.ts,privacy/privacy-policy.md"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "rule-design-excellence-framework": {
+      "rule": {
+        "name": "rule-design-excellence-framework",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "always",
+        "keywords": [
+          "comprehensive",
+          "framework",
+          "for",
+          "optimal",
+          "cursor",
+          "rule",
+          "design",
+          "validation",
+          "and",
+          "performance",
+          "optimization"
+        ],
+        "description": "Comprehensive framework for optimal Cursor rule design, validation, and performance optimization"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "security-compliance": {
+      "rule": {
+        "name": "security-compliance",
+        "domains": [
+          "security"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "comprehensive",
+          "security",
+          "protocols",
+          "threat",
+          "modeling",
+          "compliance",
+          "standards",
+          "and",
+          "defense-in-depth",
+          "strategies"
+        ],
+        "description": "Comprehensive security protocols, threat modeling, compliance standards, and defense-in-depth strategies",
+        "context": "**/auth/**/**,**/security/**/**,**/guards/**/**,**/decorators/**/**"
+      },
+      "connections": {},
+      "insights": [
+        {
+          "type": "domain-insight",
+          "title": "backend Domain Optimization",
+          "description": "Strong clustering around backend domain suggests focused expertise activation.",
+          "recommendation": "Leverage backend domain knowledge for enhanced problem-solving.",
+          "rules": [
+            "backend-development",
+            "api-database-standards",
+            "privacy-human-centered-design",
+            "testing-scenarios"
+          ],
+          "confidence": 1,
+          "impact": "high"
+        },
+        {
+          "type": "synergy-insight",
+          "title": "Capability Synergy: backend-development + api-database-standards",
+          "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+          "recommendation": "Combine insights from both rules for enhanced problem-solving.",
+          "combinedCapabilities": [],
+          "confidence": 1,
+          "impact": "medium"
+        },
+        {
+          "type": "cascade-insight",
+          "title": "Activation Cascade: backend-development → api-database-standards",
+          "description": "Strong activation cascade from backend-development to api-database-standards.",
+          "recommendation": "Pre-load api-database-standards when backend-development activates.",
+          "cascadeStrength": 0.8384615384615386,
+          "confidence": 0.8384615384615386,
+          "impact": "medium"
+        },
+        {
+          "type": "meta-insight",
+          "title": "Multi-Pattern Optimization Opportunity",
+          "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+          "recommendation": "Apply multi-dimensional reasoning approach for optimal results.",
+          "patternCount": 3,
+          "confidence": 0.8,
+          "impact": "high"
+        },
+        {
+          "type": "meta-insight",
+          "title": "High Pattern Coherence",
+          "description": "Strong pattern coherence (87.5%) indicates optimal rule coordination.",
+          "recommendation": "Current rule combination is highly effective for this context.",
+          "coherence": 0.8748206969690346,
+          "confidence": 0.8748206969690346,
+          "impact": "medium"
+        }
+      ],
+      "patterns": [
+        {
+          "type": "domain-clustering",
+          "description": "Rules cluster around specific domains",
+          "clusters": [
+            {
+              "domain": "backend",
+              "rules": [
+                "backend-development",
+                "api-database-standards",
+                "privacy-human-centered-design",
+                "testing-scenarios"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "security",
+              "rules": [
+                "security-compliance",
+                "privacy-human-centered-design"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "frontend",
+              "rules": [
+                "privacy-human-centered-design",
+                "testing-scenarios",
+                "design-components",
+                "design-accessibility",
+                "design-colors-typography",
+                "design-layout-spacing"
+              ],
+              "strength": 1
+            },
+            {
+              "domain": "testing",
+              "rules": [
+                "testing-scenarios",
+                "testing-quality-assurance",
+                "test-management-framework"
+              ],
+              "strength": 1
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "capability-synergy",
+          "description": "Rules create synergistic capabilities",
+          "synergies": [
+            {
+              "rule1": "backend-development",
+              "rule2": "api-database-standards",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "backend-development",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "security-compliance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "api-database-standards",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "privacy-human-centered-design",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "security-compliance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-scenarios",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "privacy-human-centered-design",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-components",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-scenarios",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-accessibility",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-components",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-colors-typography",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-accessibility",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "design-layout-spacing",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-colors-typography",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "documentation-excellence",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "design-layout-spacing",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "system-architecture",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "documentation-excellence",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "testing-quality-assurance",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "system-architecture",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "performance-optimization",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "testing-quality-assurance",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "test-management-framework",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "performance-optimization",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            },
+            {
+              "rule1": "test-management-framework",
+              "rule2": "emergency-response",
+              "overlap": 1,
+              "combinedCapabilities": []
+            }
+          ],
+          "strength": 1
+        },
+        {
+          "type": "activation-cascade",
+          "description": "Rules activate in predictable sequences",
+          "cascades": [
+            {
+              "from": "backend-development",
+              "to": "api-database-standards",
+              "strength": 0.8384615384615386,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "security-compliance",
+              "to": "privacy-human-centered-design",
+              "strength": 0.46333333333333343,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "privacy-human-centered-design",
+              "to": "testing-scenarios",
+              "strength": 0.5391304347826088,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-scenarios",
+              "to": "design-components",
+              "strength": 0.46060606060606063,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-components",
+              "to": "design-accessibility",
+              "strength": 0.7600000000000001,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-accessibility",
+              "to": "design-colors-typography",
+              "strength": 0.7352941176470589,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "design-colors-typography",
+              "to": "design-layout-spacing",
+              "strength": 0.7666666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "documentation-excellence",
+              "to": "system-architecture",
+              "strength": 0.7166666666666668,
+              "cascadeType": "neighbor-activation"
+            },
+            {
+              "from": "testing-quality-assurance",
+              "to": "performance-optimization",
+              "strength": 0.3400000000000001,
+              "cascadeType": "neighbor-activation"
+            }
+          ],
+          "strength": 0.6244620909071038
+        }
+      ]
+    },
+    "system-architecture": {
+      "rule": {
+        "name": "system-architecture",
+        "domains": [],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "system",
+          "architecture",
+          "patterns",
+          "microservices",
+          "design",
+          "and",
+          "distributed",
+          "systems",
+          "principles"
+        ],
+        "description": "System architecture patterns, microservices design, and distributed systems principles",
+        "context": "**/architecture/**/**,**/infrastructure/**/**,**/services/**/**,docker-compose.yml"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "test-management-framework": {
+      "rule": {
+        "name": "test-management-framework",
+        "domains": [
+          "testing"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "test",
+          "data",
+          "management",
+          "environment",
+          "management",
+          "and",
+          "comprehensive",
+          "test",
+          "reporting",
+          "frameworks"
+        ],
+        "description": "Test data management, environment management, and comprehensive test reporting frameworks",
+        "context": "**/test-data/**/**,**/test-env/**/**,**/reports/**/**"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "testing-quality-assurance": {
+      "rule": {
+        "name": "testing-quality-assurance",
+        "domains": [
+          "testing"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "comprehensive",
+          "testing",
+          "strategies",
+          "quality",
+          "assurance",
+          "protocols",
+          "and",
+          "automated",
+          "testing",
+          "frameworks"
+        ],
+        "description": "Comprehensive testing strategies, quality assurance protocols, and automated testing frameworks",
+        "context": "**/*.test.ts,**/*.spec.ts,**/test/**/*,**/__tests__/**/*"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    },
+    "testing-scenarios": {
+      "rule": {
+        "name": "testing-scenarios",
+        "domains": [
+          "backend",
+          "frontend",
+          "testing"
+        ],
+        "capabilities": [],
+        "focus": [],
+        "complexity": "low",
+        "activation": "contextual",
+        "keywords": [
+          "comprehensive",
+          "testing",
+          "scenarios",
+          "edge",
+          "case",
+          "handling",
+          "and",
+          "quality",
+          "assurance",
+          "strategies",
+          "for",
+          "robust",
+          "software",
+          "development"
+        ],
+        "description": "Comprehensive testing scenarios, edge case handling, and quality assurance strategies for robust software development",
+        "context": "frontend/e2e/**/*.spec.ts,backend/src/__tests__/**/*"
+      },
+      "connections": {},
+      "insights": [],
+      "patterns": []
+    }
+  },
+  "learningInsights": [
+    {
+      "type": "learning-insight",
+      "title": "Insight Effectiveness Analysis",
+      "description": "Most effective insight types identified.",
+      "effectiveTypes": [
+        [
+          "meta-insight",
+          2
+        ],
+        [
+          "domain-insight",
+          1
+        ],
+        [
+          "synergy-insight",
+          1
+        ]
+      ],
+      "recommendation": "Focus on generating these insight types.",
+      "confidence": 0.8,
+      "impact": "medium"
+    }
+  ],
+  "synthesisPatterns": {}
+}

@@ -1,0 +1,11 @@
+
+> udigit-rentals-frontend@1.0.0 build /home/vscode/Kubota-rental-platform/frontend
+> next build
+
+   ▲ Next.js 16.0.0 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 10.0s
+   Running TypeScript ...
+ ELIFECYCLE  Command failed with exit code 1.

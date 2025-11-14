@@ -1,0 +1,787 @@
+---
+description: Browser automation testing and login procedures for Kubota Rental Platform
+alwaysApply: false
+---
+
+# Browser Testing & Login Protocol
+
+## Test Account Credentials
+
+**ALWAYS use these credentials for browser automation testing:**
+
+```json
+{
+  "email": "aitest2@udigit.ca",
+  "password": "TestAI2024!@#$",
+  "firstName": "AI",
+  "lastName": "Tester",
+  "phone": "(506) 555-0199",
+  "company": "AI Testing Co"
+}
+```
+
+**Important:** These credentials are also stored in `frontend/test.config.json` (gitignored).
+
+---
+
+## Standard Login Procedure
+
+When asked to "login", "test the application", or "perform browser tests", follow this exact sequence:
+
+### Step 1: Navigate to Sign-In Page
+```typescript
+mcp_cursor-playwright_browser_navigate({
+  url: "http://localhost:3000/auth/signin"
+})
+```
+
+### Step 2: Wait for Page Load
+```typescript
+mcp_cursor-playwright_browser_wait_for({
+  text: "Sign in with email",
+  timeout: 5000
+})
+```
+
+### Step 3: Click "Sign in with email" Button
+```typescript
+mcp_cursor-playwright_browser_click({
+  element: "Sign in with email button",
+  ref: "[use ref from snapshot]"
+})
+```
+
+### Step 4: Fill Login Credentials
+```typescript
+mcp_cursor-playwright_browser_fill_form({
+  fields: [
+    {
+      name: "Email Address",
+      type: "textbox",
+      ref: "[use ref from snapshot]",
+      value: "aitest2@udigit.ca"
+    },
+    {
+      name: "Password",
+      type: "textbox",
+      ref: "[use ref from snapshot]",
+      value: "TestAI2024!@#$"
+    }
+  ]
+})
+```
+
+### Step 5: Click "Sign In" Button
+```typescript
+mcp_cursor-playwright_browser_click({
+  element: "Sign In button",
+  ref: "[use ref from snapshot]"
+})
+```
+
+### Step 6: Verify Login Success
+Wait for redirect to dashboard and verify auth state in console logs:
+```
+[SupabaseAuthProvider] Auth state changed: SIGNED_IN aitest2@udigit.ca
+[Dashboard] Auth state: {user: true, loading: false, initialized: true}
+```
+
+---
+
+## Quick Login Function
+
+For rapid testing, use this JavaScript evaluation approach:
+
+```typescript
+// Navigate to login page
+await browser_navigate("http://localhost:3000/auth/signin")
+
+// Wait for page load
+await browser_wait_for("Sign in with email")
+
+// Take snapshot to get refs
+await browser_snapshot()
+
+// Fill and submit using refs from snapshot
+await browser_fill_form([
+  { name: "Email Address", value: "aitest2@udigit.ca", ref: "[from_snapshot]" },
+  { name: "Password", value: "TestAI2024!@#$", ref: "[from_snapshot]" }
+])
+
+// Click sign in
+await browser_click("Sign In button", "[from_snapshot]")
+
+// Verify
+await browser_wait_for("Welcome back, AI!")
+```
+
+---
+
+## Common Testing Workflows
+
+### 1. Login and Test Navigation
+```typescript
+// Login (use procedure above)
+await login()
+
+// Test dashboard access
+await browser_snapshot() // Verify "Welcome back, AI!" is visible
+
+// Navigate to profile
+await browser_click("Profile link", ref)
+await browser_snapshot() // Verify "Profile Settings" is visible
+
+// Navigate back to dashboard
+await browser_click("Dashboard link", ref)
+await browser_snapshot() // Verify back on dashboard
+```
+
+### 2. Test Dropdown Menu Navigation
+```typescript
+// After login...
+
+// Open profile dropdown (requires JavaScript since not in a11y tree)
+await browser_evaluate(`
+  const buttons = Array.from(document.querySelectorAll('button'));
+  const profileButton = buttons.find(btn =>
+    btn.textContent?.includes('AI') &&
+    btn.textContent?.length < 10 &&
+    btn.className.includes('flex items-center')
+  );
+  if (profileButton) {
+    profileButton.click();
+    return { success: true };
+  }
+  return { success: false };
+`)
+
+// Click Profile link in dropdown
+await browser_evaluate(`
+  const profileLinks = Array.from(document.querySelectorAll('a[href="/profile"]'));
+  const dropdownLink = profileLinks.find(link =>
+    link.className.includes('flex items-center') &&
+    link.className.includes('text-gray-700')
+  );
+  if (dropdownLink) {
+    dropdownLink.click();
+    return { success: true };
+  }
+  return { success: false };
+`)
+
+// Verify navigation
+await browser_snapshot() // Should be on profile page
+```
+
+### 3. Test Booking Flow
+```typescript
+// After login...
+await browser_navigate("http://localhost:3000/book")
+await browser_snapshot()
+
+// Fill booking form
+await browser_fill_form([
+  { name: "Equipment", value: "Kubota SVL-75", ref: "[from_snapshot]" },
+  { name: "Start Date", value: "2025-11-01", ref: "[from_snapshot]" },
+  { name: "End Date", value: "2025-11-05", ref: "[from_snapshot]" }
+])
+
+// Submit and verify
+await browser_click("Submit button", ref)
+await browser_wait_for("Booking confirmed")
+```
+
+---
+
+## Critical Rules for Browser Testing
+
+### 🚨 ALWAYS Follow These Rules:
+
+1. **Use Email/Password Authentication ONLY**
+   - ❌ NEVER use Google OAuth (it's blocked in automated browsers)
+   - ❌ NEVER use GitHub OAuth (not configured for testing)
+   - ✅ ALWAYS use email/password with test account
+
+2. **Take Snapshots Before Interactions**
+   - Always call `browser_snapshot()` to get element refs
+   - Never guess or hardcode element refs
+   - Refs change between page loads
+
+3. **Wait for Page States**
+   - Use `browser_wait_for()` after navigation
+   - Wait for text/elements to appear before interacting
+   - Check console logs for auth state changes
+
+4. **Handle Dropdown Menus with JavaScript**
+   - Dropdown menus often not in accessibility tree
+   - Use `browser_evaluate()` to find and click
+   - Look for elements by className and content
+
+5. **Verify Auth State**
+   - Check for: `[SupabaseAuthProvider] Session found, user logged in`
+   - Check for: `[Dashboard] Auth state: {user: true, loading: false, initialized: true}`
+   - If seeing redirects, auth hasn't initialized yet
+
+---
+
+## Troubleshooting
+
+### Issue: "Invalid email or password"
+**Cause:** Test account email not confirmed
+**Solution:**
+```sql
+UPDATE auth.users
+SET email_confirmed_at = NOW(),
+    confirmation_token = '',
+    email_change = ''
+WHERE email = 'aitest2@udigit.ca';
+```
+
+### Issue: Redirect to sign-in page even when logged in
+**Cause:** Auth state hasn't initialized yet
+**Solution:** Wait for console log: `initialized: true` before navigation
+
+### Issue: "This browser or app may not be secure"
+**Cause:** Trying to use Google OAuth
+**Solution:** Use email/password login instead
+
+### Issue: Element not found in snapshot
+**Cause:** Dropdown menu or hidden element
+**Solution:** Use `browser_evaluate()` with JavaScript selector
+
+---
+
+## Browser Automation Tool Reference
+
+### Navigation
+- `browser_navigate(url)` - Go to URL
+- `browser_navigate_back()` - Go back
+- `browser_tabs(action)` - Manage tabs
+
+### Interaction
+- `browser_click(element, ref)` - Click elements
+- `browser_type(element, ref, text)` - Type text
+- `browser_fill_form(fields)` - Fill multiple fields
+- `browser_hover(element, ref)` - Hover elements
+- `browser_select_option(element, ref, values)` - Select dropdown
+
+### Verification
+- `browser_snapshot()` - Get page accessibility tree
+- `browser_take_screenshot()` - Capture visual state
+- `browser_console_messages()` - View console logs
+- `browser_network_requests()` - View API calls
+- `browser_evaluate(function)` - Run custom JavaScript
+
+### Waiting
+- `browser_wait_for({ text })` - Wait for text to appear
+- `browser_wait_for({ time })` - Wait specified seconds
+
+---
+
+## Expected Console Logs
+
+### Successful Login Sequence
+```
+[SupabaseAuthProvider] Initializing auth...
+GoTrueClient@0 #_recoverAndRefresh() session from storage null
+GoTrueClient@0 #_saveSession() {access_token: eyJhbGci...}
+[SupabaseAuthProvider] Auth state changed: SIGNED_IN aitest2@udigit.ca
+GoTrueClient@0 #_notifyAllSubscribers(SIGNED_IN) begin
+[Dashboard] Auth state: {user: true, loading: false, initialized: true}
+```
+
+### Failed Login Indicators
+```
+❌ Email sign in error: AuthApiError: Email not confirmed
+❌ Email sign in error: AuthApiError: Database error querying schema
+❌ Invalid email or password. Please try again.
+```
+
+---
+
+## Authentication Architecture
+
+### Client-Side Protected Pages
+- `/dashboard` - Uses `initialized` flag to prevent redirect loops
+- `/profile` - Uses `initialized` flag to prevent redirect loops
+
+### Server-Side Protected Pages
+- `/book/*` - Protected by middleware (can access cookies)
+- `/auth/signout` - Protected by middleware
+
+### Auth State Management
+```typescript
+const { user, loading, initialized } = useAuth();
+
+// Always check initialized before redirecting
+if (initialized && !loading && !user) {
+  router.push('/auth/signin');
+}
+```
+
+---
+
+## Testing Best Practices
+
+### 1. Start Fresh
+- Always start from unauthenticated state
+- Clear any existing sessions if needed
+- Verify no session in console logs before login
+
+### 2. Verify Each Step
+- Take snapshots after major actions
+- Check console logs for errors
+- Verify URL changes after navigation
+
+### 3. Monitor Auth State
+- Watch for `SIGNED_IN` event
+- Confirm `initialized: true` before testing
+- Check session expiry (3600 seconds)
+
+### 4. Handle Async Operations
+- Wait for text to appear after form submission
+- Wait for URL changes after navigation
+- Wait for auth state to update
+
+### 5. Document Issues
+- Capture screenshots when tests fail
+- Save console logs for debugging
+- Note the exact sequence that caused failure
+
+---
+
+## Quick Reference
+
+### Login (One-Liner Goal)
+"Login to the application using the test account"
+
+### Expected Result
+- ✅ URL: `http://localhost:3000/dashboard`
+- ✅ Console: `SIGNED_IN aitest2@udigit.ca`
+- ✅ Page shows: "Welcome back, AI!"
+- ✅ Profile dropdown available
+- ✅ No redirect loops
+
+### Time to Complete
+- ~10-15 seconds for full login sequence
+- ~2-3 tool calls minimum (navigate, fill, click)
+
+---
+
+## Session Persistence
+
+Once logged in, the session persists for **1 hour (3600 seconds)**.
+
+### Session Details
+- Stored in: `localStorage['supabase.auth.token']`
+- Auto-refresh: 90 seconds before expiry
+- Token type: JWT (access_token + refresh_token)
+- Expiry monitoring: Check `GoTrueClient` logs
+
+### To Check Session Status
+```javascript
+browser_evaluate(`
+  const session = JSON.parse(localStorage.getItem('supabase.auth.token'));
+  return {
+    isLoggedIn: !!session,
+    expiresAt: session?.expires_at,
+    userEmail: session?.user?.email
+  };
+`)
+```
+
+---
+
+## Integration with Development Workflow
+
+### When to Use Browser Testing
+
+**Use browser automation when:**
+- ✅ Testing user-facing features (navigation, forms, UI)
+- ✅ Reproducing user-reported bugs
+- ✅ Verifying authentication flows
+- ✅ Testing protected page access
+- ✅ Checking responsive design
+- ✅ Validating form submissions
+
+**Don't use browser automation when:**
+- ❌ Testing backend API directly (use Supabase MCP tools)
+- ❌ Checking database schemas (use `mcp_supabase_list_tables`)
+- ❌ Running SQL queries (use `mcp_supabase_execute_sql`)
+- ❌ Simple code reviews or refactoring
+
+### Coordination with Other Tools
+
+**Browser Testing + Supabase:**
+```typescript
+// 1. Check database first
+const users = await mcp_supabase_execute_sql(`
+  SELECT * FROM auth.users WHERE email = 'aitest2@udigit.ca'
+`);
+
+// 2. Then test in browser
+await browser_navigate("http://localhost:3000/dashboard")
+await login()
+await verifyDashboard()
+```
+
+**Browser Testing + Code Search:**
+```typescript
+// 1. Find relevant code
+await codebase_search("How does the profile page handle authentication?")
+
+// 2. Test the actual behavior
+await browser_navigate("http://localhost:3000/profile")
+await login()
+await verifyProfilePage()
+
+// 3. Compare code vs actual behavior
+```
+
+---
+
+## Security Considerations
+
+### ⚠️ Test Credentials Management
+
+1. **NEVER commit test credentials to git**
+   - `test.config.json` is in `.gitignore`
+   - This rule file is acceptable (read-only documentation)
+
+2. **Use separate test account for automation**
+   - `aitest2@udigit.ca` is ONLY for AI testing
+   - Different from production user `udigitrentalsinc@gmail.com`
+
+3. **Email confirmation bypass for testing**
+   - Test accounts confirmed via SQL (not email links)
+   - Only acceptable for local development
+   - Never do this in production
+
+4. **Session security**
+   - Sessions stored in localStorage (client-side only)
+   - Auto-expire after 1 hour
+   - Refresh tokens managed by Supabase
+
+---
+
+## Common Testing Scenarios
+
+### Scenario 1: Verify Dashboard After Login
+```typescript
+await browser_navigate("http://localhost:3000/auth/signin")
+await browser_wait_for("Sign in with email")
+await browser_click("Sign in with email button", ref)
+await browser_fill_form([
+  { name: "Email Address", value: "aitest2@udigit.ca" },
+  { name: "Password", value: "TestAI2024!@#$" }
+])
+await browser_click("Sign In button", ref)
+await browser_wait_for("Welcome back, AI!")
+// ✅ Success: Dashboard loaded
+```
+
+### Scenario 2: Test Profile Page Access
+```typescript
+// After login...
+await browser_click("Profile link", ref)
+await browser_wait_for("Profile Settings")
+// Verify user data
+await browser_snapshot()
+// Should show: AI Tester, aitest2@udigit.ca, (506) 555-0199
+```
+
+### Scenario 3: Test Dropdown Navigation
+```typescript
+// After login on dashboard...
+
+// Open profile dropdown
+await browser_evaluate(`
+  const buttons = Array.from(document.querySelectorAll('button'));
+  const profileButton = buttons.find(btn =>
+    btn.textContent?.includes('AI') &&
+    btn.textContent?.length < 10 &&
+    btn.className.includes('flex items-center')
+  );
+  if (profileButton) profileButton.click();
+`)
+
+// Click Dashboard link in dropdown
+await browser_evaluate(`
+  const links = Array.from(document.querySelectorAll('a[href="/dashboard"]'));
+  const dropdownLink = links.find(link =>
+    link.className.includes('flex items-center') &&
+    link.className.includes('text-gray-700')
+  );
+  if (dropdownLink) dropdownLink.click();
+`)
+
+// Verify navigation
+await browser_snapshot()
+```
+
+---
+
+## Expected Test Results
+
+### Dashboard Page (When Logged In)
+- URL: `http://localhost:3000/dashboard`
+- Heading: "Welcome back, AI!"
+- Stats: 0 Total Bookings, $0.00 Total Spent, 0 Upcoming, 0 Completed
+- Quick Actions: New Booking, Profile, Support, Downloads
+- Auth State: `{user: true, loading: false, initialized: true}`
+
+### Profile Page (When Logged In)
+- URL: `http://localhost:3000/profile`
+- Heading: "Profile Settings"
+- User Info: AI Tester, aitest2@udigit.ca
+- Phone: (506) 555-0199
+- Company: AI Testing Co
+- Auth State: `{user: true, loading: false, initialized: true}`
+
+### Sign-In Page (When Not Logged In)
+- URL: `http://localhost:3000/auth/signin`
+- Heading: "Welcome back"
+- Options: Google, GitHub, Email/Password
+- Auth State: `{user: null, loading: false, initialized: true}`
+
+---
+
+## Error Handling
+
+### If Login Fails with "Email not confirmed"
+```typescript
+await mcp_supabase_execute_sql(`
+  UPDATE auth.users
+  SET email_confirmed_at = NOW(),
+      confirmation_token = '',
+      email_change = '',
+      email_change_token_new = '',
+      email_change_token_current = '',
+      reauthentication_token = '',
+      recovery_token = ''
+  WHERE email = 'aitest2@udigit.ca';
+`)
+
+// Then retry login
+```
+
+### If Login Fails with "Database error"
+**Check Supabase logs:**
+```typescript
+await mcp_supabase_get_logs({ service: "auth" })
+// Look for: "Scan error on column index"
+// This means NULL values in required fields
+```
+
+### If Redirect Loop Occurs
+**Check console logs for:**
+```
+[Dashboard] Fully initialized with no user, redirecting to sign-in
+```
+
+**This means:**
+- Session not found in localStorage
+- Need to login again
+- Or session expired (>1 hour)
+
+---
+
+## Testing Limitations
+
+### ❌ Cannot Test
+1. **Google OAuth login** - Blocked by Google security
+2. **Email verification links** - Requires email access
+3. **SMS notifications** - Requires phone access
+4. **Payment processing** - Requires real Stripe integration
+5. **GPS tracking** - Requires location permissions
+
+### ✅ Can Test
+1. **Email/password authentication**
+2. **Page navigation (all routes)**
+3. **Form submissions**
+4. **Data display**
+5. **UI interactions**
+6. **Session management**
+7. **Protected page access**
+8. **Dropdown menus (via JavaScript)**
+
+---
+
+## Performance Expectations
+
+### Typical Execution Times
+- Navigate to page: 1-2 seconds
+- Fill form field: <100ms per field
+- Click button: <100ms
+- Wait for element: 1-3 seconds (depends on timeout)
+- Take snapshot: 500ms-1s
+- Take screenshot: 1-2 seconds
+- Evaluate JavaScript: <100ms
+
+### Full Login Sequence
+- Total time: 10-15 seconds
+- Tool calls: 5-7 minimum
+- Network requests: 3-4 (auth API calls)
+
+---
+
+## Coordination with AI Workflow
+
+### When User Says: "Test [feature]"
+
+**Step 1:** Determine if login required
+- Protected pages: Dashboard, Profile, Book → **Login first**
+- Public pages: Home, Equipment, About → **No login needed**
+
+**Step 2:** Execute login if needed
+```typescript
+if (requiresAuth) {
+  await performStandardLogin();
+}
+```
+
+**Step 3:** Navigate to feature
+```typescript
+await browser_navigate(featureUrl);
+await browser_snapshot();
+```
+
+**Step 4:** Perform test actions
+```typescript
+await interactWithFeature();
+await verifyExpectedBehavior();
+```
+
+**Step 5:** Report results
+- ✅ Success: Describe what worked
+- ❌ Failure: Capture screenshot, save console logs, report issue
+
+---
+
+## Integration with Supabase Backend
+
+### Before Testing, Verify Database State
+```typescript
+// Check if test user exists
+const result = await mcp_supabase_execute_sql(`
+  SELECT email, email_confirmed_at
+  FROM auth.users
+  WHERE email = 'aitest2@udigit.ca'
+`);
+
+// If not confirmed, fix it
+if (!result[0].email_confirmed_at) {
+  await confirmTestUserEmail();
+}
+```
+
+### After Testing, Check Data Created
+```typescript
+// Verify bookings created
+const bookings = await mcp_supabase_execute_sql(`
+  SELECT * FROM bookings
+  WHERE customerId = (
+    SELECT id FROM auth.users WHERE email = 'aitest2@udigit.ca'
+  )
+`);
+```
+
+---
+
+## Meta-Rules for AI Sessions
+
+### Always Apply These Patterns:
+
+1. **Proactive Testing:**
+   - When fixing bugs, test the fix in the browser
+   - Don't just assume code changes work
+   - Verify user-facing behavior
+
+2. **Systematic Approach:**
+   - Login first (if needed)
+   - Navigate to feature
+   - Take snapshot
+   - Interact
+   - Verify result
+
+3. **Evidence-Based:**
+   - Capture screenshots of success/failure
+   - Save console logs as proof
+   - Document exact steps taken
+
+4. **Comprehensive Reporting:**
+   - Report what you tested
+   - Show evidence (screenshots, logs)
+   - Explain any failures clearly
+
+---
+
+## Quick Start Template
+
+When asked to test anything, use this template:
+
+```typescript
+// 1. Login (if needed)
+await browser_navigate("http://localhost:3000/auth/signin")
+await browser_click("Sign in with email", ref)
+await browser_fill_form([
+  { name: "Email Address", value: "aitest2@udigit.ca" },
+  { name: "Password", value: "TestAI2024!@#$" }
+])
+await browser_click("Sign In", ref)
+await browser_wait_for("Welcome back, AI!")
+
+// 2. Navigate to feature
+await browser_navigate(featureUrl)
+await browser_snapshot()
+
+// 3. Perform test
+await interactWithFeature()
+
+// 4. Verify result
+await browser_snapshot()
+await browser_take_screenshot()
+
+// 5. Report
+"✅ Test passed" or "❌ Test failed: [reason]"
+```
+
+---
+
+## Recovery Procedures
+
+### If Browser State Becomes Unstable
+1. Navigate to sign-out: `await browser_navigate("http://localhost:3000/auth/signout")`
+2. Wait for redirect: `await browser_wait_for("Welcome")`
+3. Start fresh login sequence
+
+### If Session Expires During Testing
+```
+GoTrueClient@0 #_autoRefreshTokenTick() access token expires in 0 ticks
+```
+**Action:** Perform fresh login
+
+### If Database State Becomes Corrupted
+```sql
+-- Reset test user if needed
+DELETE FROM auth.users WHERE email = 'aitest2@udigit.ca';
+-- Then create new account via sign-up flow
+```
+
+---
+
+## Summary
+
+**Test Account:** `aitest2@udigit.ca` / `TestAI2024!@#$`
+**Login Method:** Email/Password ONLY (no OAuth)
+**Standard Flow:** Navigate → Click "Sign in with email" → Fill form → Submit → Verify
+**Session Duration:** 1 hour (auto-refresh)
+**Browser Tools:** Playwright via MCP
+**Documentation:** See `BROWSER_TESTING_GUIDE.md` for details
+
+**Status:** ✅ Fully operational and tested
+**Last Verified:** October 26, 2025
+
+---
+
+Remember: **Always use email/password authentication. Never use Google OAuth for automated testing.**

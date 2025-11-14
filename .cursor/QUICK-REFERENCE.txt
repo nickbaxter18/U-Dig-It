@@ -1,0 +1,34 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                  CURSOR 2.0 QUICK REFERENCE                       ║
+╠═══════════════════════════════════════════════════════════════════╣
+║                                                                   ║
+║  COMPOSER (Multi-Agent AI)                                        ║
+║  ├─ Open:           Ctrl+Shift+C                                  ║
+║  ├─ Accept:         Ctrl+Enter                                    ║
+║  ├─ Reject:         Ctrl+Shift+R                                  ║
+║  └─ Explain:        Ctrl+Shift+E                                  ║
+║                                                                   ║
+║  PARALLEL AGENTS                                                  ║
+║  ├─ New Agent:      Ctrl+Shift+N                                  ║
+║  ├─ Switch:         Ctrl+Tab                                      ║
+║  ├─ Merge:          Ctrl+Shift+M                                  ║
+║  └─ View All:       Ctrl+Shift+A                                  ║
+║                                                                   ║
+║  VOICE INPUT                                                      ║
+║  ├─ Push-to-Talk:   Ctrl+Shift+V (hold)                           ║
+║  ├─ Toggle:         Alt+V                                         ║
+║  └─ Cancel:         Escape                                        ║
+║                                                                   ║
+║  COMMON WORKFLOWS                                                 ║
+║  ├─ "Start parallel workflow fullStackFeature"                    ║
+║  ├─ "Start parallel workflow bugFixing"                           ║
+║  ├─ "Generate tests for [component]"                              ║
+║  ├─ "Refactor [target] to [pattern]"                              ║
+║  └─ "Optimize performance for [feature]"                          ║
+║                                                                   ║
+║  DOCUMENTATION                                                    ║
+║  ├─ Full Guide:     .cursor/CURSOR-2.0-SETUP-GUIDE.md             ║
+║  ├─ Shortcuts:      .cursor/KEYBOARD-SHORTCUTS.md                 ║
+║  └─ Workflows:      .cursor/parallel-agents-config.json           ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝

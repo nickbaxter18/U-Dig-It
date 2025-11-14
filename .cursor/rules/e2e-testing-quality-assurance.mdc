@@ -1,0 +1,146 @@
+---
+description: "End-to-end testing, cross-browser compatibility, accessibility testing, and comprehensive quality assurance"
+globs: ["**/e2e/**/*", "**/*.test.ts", "**/*.spec.ts", "**/test/**/*"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/components/__tests__/"
+  - "backend/src/**/*.spec.ts"
+  - "frontend/e2e/"
+  - "frontend/jest.config.js"
+  - "backend/test/"
+autoReview: true
+---
+
+# E2E Testing & Quality Assurance
+
+## 🎯 Purpose
+End-to-end testing, cross-browser compatibility, accessibility testing, and comprehensive quality assurance for enterprise applications.
+
+---
+
+## Core E2E Testing Principles
+
+### Expert E2E Practices
+- I am an expert in end-to-end testing, cross-browser compatibility, accessibility testing, and comprehensive quality assurance
+- I implement comprehensive E2E testing strategies with user journey testing and realistic scenario validation
+- I ensure cross-browser compatibility and accessibility compliance across all platforms and devices
+- I design quality assurance frameworks that ensure comprehensive validation of all system components
+- I create testing strategies that validate user experience, performance, and accessibility standards
+
+---
+
+## User Journey Testing
+
+### Complete User Journeys
+- Test complete user journeys with realistic scenarios
+- Cover edge cases
+- Test error scenarios
+- Validate user flows end-to-end
+
+### Code Example
+```typescript
+// ✅ CORRECT - Complete user journey test
+describe('Booking flow', () => {
+  it('allows user to complete booking end-to-end', async () => {
+    await loginTestUser();
+    await browser_navigate('/equipment');
+    await browser_click('Kubota SVL-75', ref);
+    await browser_click('Book Now', ref);
+    await browser_fill_form([...]);
+    await browser_click('Submit', ref);
+    await browser_wait_for('Booking confirmed');
+  });
+});
+```
+
+---
+
+## Cross-Browser Testing
+
+### Browser Compatibility
+- Test across major browsers (Chrome, Firefox, Safari, Edge)
+- Automated browser management
+- Test on different devices
+- Verify consistent behavior
+
+---
+
+## Accessibility Testing
+
+### Comprehensive A11y Testing
+- Automated accessibility testing
+- Manual validation with screen readers
+- WCAG compliance verification
+- Keyboard navigation testing
+
+### Code Example
+```typescript
+// ✅ CORRECT - Accessibility testing
+import { axe } from 'jest-axe';
+
+it('has no accessibility violations', async () => {
+  const { container } = render(<BookingForm />);
+  const results = await axe(container);
+  expect(results).toHaveNoViolations();
+});
+```
+
+---
+
+## Quality Assurance
+
+### Code Quality
+- Static analysis
+- Linting
+- Code quality metrics
+- Automated enforcement
+
+### Performance Quality
+- Performance regression testing
+- Optimization validation
+- Core Web Vitals monitoring
+
+### Security Quality
+- Security testing integration
+- Vulnerability scanning
+- Validation of security measures
+
+---
+
+## Test Data Management
+
+### Test Data Standards
+- Realistic test datasets
+- Anonymized data
+- Proper test data lifecycle
+- Cleanup after tests
+
+---
+
+## Continuous Quality
+
+### Quality Improvement
+- Continuous quality improvement processes
+- Regular quality reviews
+- Track quality metrics
+- Automated quality gates
+
+---
+
+## ✅ E2E Testing Checklist
+
+Before Releasing:
+- [ ] User journeys tested end-to-end
+- [ ] Cross-browser compatibility verified
+- [ ] Accessibility tested (WCAG AA)
+- [ ] Performance validated
+- [ ] Security tested
+- [ ] Test data managed properly
+
+---
+
+**Remember**:
+- 🧪 **Test complete journeys**
+- 🌐 **Cross-browser testing**
+- ♿ **Accessibility always**
+- 🔒 **Security validated**

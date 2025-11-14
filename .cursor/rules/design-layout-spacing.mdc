@@ -1,0 +1,234 @@
+---
+description: "Layout systems, spacing guidelines, and grid standards for consistent visual structure"
+globs: ["frontend/**/*.tsx", "frontend/**/*.css", "frontend/**/*.ts"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/styles/"
+  - "frontend/tailwind.config.js"
+  - "frontend/src/components/"
+  - "frontend/src/app/"
+autoReview: true
+---
+
+# Design Layout & Spacing Systems
+
+## 🎯 Purpose
+Comprehensive layout systems, spacing guidelines, and grid standards for consistent visual structure and user experience.
+
+---
+
+## Core Layout Principles
+
+### Expert Layout Practices
+- I am a layout and spacing expert specializing in grid systems, white space optimization, and visual hierarchy
+- I create consistent spacing systems that enhance readability and user experience
+- I implement responsive layouts that work seamlessly across all devices and screen sizes
+- I prioritize visual balance, content flow, and intuitive navigation patterns
+- I ensure all layouts meet accessibility standards and provide excellent user experience
+
+---
+
+## Spacing System
+
+### Base Unit
+- **8px base unit** for all spacing
+- Consistent scaling: 4px, 8px, 12px, 16px, 24px, 32px, 48px, 64px, 80px
+- Use spacing tokens throughout
+- Maintain proportional relationships
+
+### Spacing Guidelines
+- **Between related elements**: 8px-16px
+- **Between sections**: 24px-48px
+- **Page margins**: 16px-24px (mobile), 32px-48px (desktop)
+- **Component padding**: 16px-24px
+
+### Code Example
+```tsx
+// ✅ CORRECT - Use spacing tokens
+<div className="space-y-6"> {/* 24px spacing */}
+  <section className="p-4"> {/* 16px padding */}
+    <h2 className="mb-3">Title</h2> {/* 12px margin */}
+  </section>
+</div>
+```
+
+---
+
+## Grid System
+
+### 12-Column Grid
+- **Desktop**: 12-column grid with 24px gutters
+- **Max-width**: 1200px for content
+- **Mobile**: 100% width, single column
+- Flexible gutters that adapt to screen size
+
+### Grid Usage
+- Use grid for complex layouts
+- Use flexbox for simple layouts
+- Maintain consistent column widths
+- Responsive breakpoints
+
+### Code Example
+```tsx
+// ✅ CORRECT - Grid layout
+<div className="grid grid-cols-12 gap-6 max-w-1200 mx-auto">
+  <div className="col-span-12 md:col-span-8">Main content</div>
+  <div className="col-span-12 md:col-span-4">Sidebar</div>
+</div>
+```
+
+---
+
+## White Space Rules
+
+### White Space Guidelines
+- **Minimum**: 20% white space on page
+- **Between related elements**: 24px
+- **Between sections**: 48px
+- Use white space strategically to highlight important content
+
+### Visual Balance
+- Distribute visual weight evenly
+- Use symmetry and asymmetry strategically
+- Create breathing room
+- Prevent visual clutter
+
+---
+
+## Visual Hierarchy
+
+### Content Priority
+- Establish clear content priority
+- Use size, spacing, and positioning
+- Guide users naturally through content
+- Highlight important information
+
+### Hierarchy Techniques
+- **Size**: Larger = more important
+- **Spacing**: More space = more emphasis
+- **Position**: Top-left = primary focus
+- **Color**: High contrast = attention
+
+---
+
+## Responsive Breakpoints
+
+### Breakpoint System
+- **Mobile**: 320px
+- **Tablet**: 768px
+- **Desktop**: 1024px
+- **Large Desktop**: 1280px
+- **XL Desktop**: 1536px
+
+### Mobile-First Approach
+- Design for mobile screens first
+- Progressively enhance for larger screens
+- Test on actual devices
+- Ensure usability at all sizes
+
+### Code Example
+```tsx
+// ✅ CORRECT - Mobile-first responsive
+<div className="
+  grid grid-cols-1 gap-4
+  md:grid-cols-2 md:gap-6
+  lg:grid-cols-3 lg:gap-8
+">
+  {items.map(item => <Card key={item.id} item={item} />)}
+</div>
+```
+
+---
+
+## Content Density
+
+### Density Guidelines
+- Maximum 3-5 elements per viewport height
+- Avoid overcrowding
+- Allow content to breathe
+- Prioritize readability
+
+---
+
+## Container Standards
+
+### Container Widths
+- **Content**: Max-width 1200px
+- **Full-width**: For backgrounds and hero sections
+- **Centered**: Use `mx-auto` for centering
+- **Responsive**: Adapt to screen size
+
+### Code Example
+```tsx
+// ✅ CORRECT - Container usage
+<div className="bg-gray-100"> {/* Full-width background */}
+  <div className="max-w-1200 mx-auto px-4"> {/* Content container */}
+    <Content />
+  </div>
+</div>
+```
+
+---
+
+## Layout Flexibility
+
+### Content Adaptation
+- Design for content adaptation
+- Handle varying content lengths gracefully
+- Use flexible layouts (flexbox/grid)
+- Avoid fixed heights where possible
+
+---
+
+## Accessibility Spacing
+
+### Touch Targets
+- Ensure adequate spacing for touch targets (minimum 44px)
+- Spacing between interactive elements (minimum 8px)
+- Screen reader friendly spacing
+- Focus indicator spacing
+
+---
+
+## Implementation Examples
+
+### Layout Patterns
+```tsx
+// ✅ CORRECT - Card grid layout
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {cards.map(card => (
+    <Card key={card.id} className="p-6">
+      {card.content}
+    </Card>
+  ))}
+</div>
+
+// ✅ CORRECT - Flexbox layout
+<div className="flex flex-col md:flex-row gap-4 items-center">
+  <div className="flex-1">Content</div>
+  <div className="flex-shrink-0">Sidebar</div>
+</div>
+```
+
+---
+
+## ✅ Layout Checklist
+
+Before Implementing:
+- [ ] Spacing uses 8px base unit
+- [ ] Grid system implemented correctly
+- [ ] White space adequate (20% minimum)
+- [ ] Visual hierarchy clear
+- [ ] Responsive breakpoints tested
+- [ ] Content density appropriate
+- [ ] Container widths correct
+- [ ] Mobile-first approach used
+- [ ] Touch targets properly spaced
+
+---
+
+**Remember**:
+- 📐 **8px base unit**
+- 📱 **Mobile-first**
+- 🎯 **Visual hierarchy**
+- ♿ **Accessibility spacing**

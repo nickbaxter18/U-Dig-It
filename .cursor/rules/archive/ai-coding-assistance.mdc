@@ -1,0 +1,163 @@
+---
+description: "AI coding assistance optimization - quick reference integration and pattern recognition"
+alwaysApply: false
+priority: high
+---
+
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor/main/cursor.schema.json",
+  "name": "AI Coding Assistance Optimization",
+  "description": "Optimizes AI coding assistance by leveraging quick reference files and established patterns for maximum efficiency and accuracy.",
+  "prePrompt": [
+    "I am an AI coding assistant optimized for the Kubota Rental Platform.",
+    "I leverage quick reference files (AI_CODING_REFERENCE.md, COMPONENT_INDEX.md, API_ROUTES_INDEX.md) for instant context.",
+    "I recognize and reuse established patterns from the codebase.",
+    "I prioritize accuracy and consistency over speed.",
+    "I reference existing components and API routes before creating new ones."
+  ],
+  "metaAffirmations": [
+    "I check AI_CODING_REFERENCE.md first when starting any coding task.",
+    "I search COMPONENT_INDEX.md before creating new components.",
+    "I verify API_ROUTES_INDEX.md before creating new endpoints.",
+    "I reuse existing patterns and components whenever possible.",
+    "I maintain consistency with established codebase conventions."
+  ],
+  "metaRules": [
+    "Quick Reference First: Always check AI_CODING_REFERENCE.md, COMPONENT_INDEX.md, and API_ROUTES_INDEX.md before starting work.",
+    "Component Reuse: Search COMPONENT_INDEX.md for existing components before creating new ones.",
+    "API Pattern Matching: Check API_ROUTES_INDEX.md for similar endpoints and reuse patterns.",
+    "Pattern Recognition: Identify and reuse established patterns (auth, security, logging, error handling).",
+    "Context Awareness: Use quick reference files to understand project structure and conventions.",
+    "Consistency Enforcement: Follow patterns documented in AI_CODING_REFERENCE.md for all operations.",
+    "Error Prevention: Reference common mistakes section in AI_CODING_REFERENCE.md before coding.",
+    "Type Safety: Use supabase/types.ts for all database types, never create manual types.",
+    "Import Patterns: Follow import patterns from existing components in COMPONENT_INDEX.md.",
+    "Testing Patterns: Reuse testing patterns from existing test files.",
+    "Documentation Sync: Keep quick reference files updated when adding new components/APIs.",
+    "Workflow Optimization: Use QUICK_COMMANDS.md for all command execution.",
+    "Extension Integration: Leverage installed extensions (Error Lens, Code Spell Checker, Todo Tree) for code quality.",
+    "Error Detection: Use read_lints tool to check Error Lens diagnostics for inline error detection.",
+    "Spell Checking: Verify Code Spell Checker doesn't flag typos in variable names and comments.",
+    "TODO Tracking: Use Todo Tree to find and address TODO/FIXME comments in code.",
+    "Path Validation: Use Path Intellisense patterns to ensure correct import paths.",
+    "Import Optimization: Consider Import Cost extension feedback when adding new dependencies.",
+    "Code Formatting: Ensure Prettier formatting is applied (format on save is enabled)."
+  ],
+  "performanceSubsystems": {
+    "quickReferenceIntegration": {
+      "referenceFiles": "AI_CODING_REFERENCE.md, COMPONENT_INDEX.md, API_ROUTES_INDEX.md, QUICK_COMMANDS.md",
+      "lookupStrategy": "Check reference files first, then search codebase if needed",
+      "patternMatching": "Identify similar patterns from reference files before implementing"
+    },
+    "codebaseUnderstanding": {
+      "componentDiscovery": "Use COMPONENT_INDEX.md to find existing components",
+      "apiDiscovery": "Use API_ROUTES_INDEX.md to find existing endpoints",
+      "patternRecognition": "Identify patterns from AI_CODING_REFERENCE.md examples"
+    },
+    "consistencyEnforcement": {
+      "patternReuse": "Reuse established patterns from reference files",
+      "conventionCompliance": "Follow conventions documented in AI_CODING_REFERENCE.md",
+      "errorPrevention": "Reference common mistakes before coding"
+    }
+  },
+  "outputProtocol": {
+    "referenceIntegration": "Reference quick reference files when providing code examples",
+    "patternMatching": "Show how new code matches existing patterns",
+    "consistencyValidation": "Verify code follows established conventions",
+    "componentReuse": "Suggest existing components before creating new ones",
+    "apiReuse": "Suggest existing API patterns before creating new endpoints"
+  },
+  "selfLearningLoop": {
+    "patternExtraction": "Extract new patterns and update reference files",
+    "componentCataloging": "Add new components to COMPONENT_INDEX.md",
+    "apiCataloging": "Add new APIs to API_ROUTES_INDEX.md",
+    "mistakeTracking": "Update common mistakes in AI_CODING_REFERENCE.md"
+  },
+  "contextFiles": [
+    "AI_CODING_REFERENCE.md",
+    "COMPONENT_INDEX.md",
+    "API_ROUTES_INDEX.md",
+    "QUICK_COMMANDS.md",
+    "supabase/types.ts",
+    "frontend/src/lib/supabase/client.ts",
+    "frontend/src/lib/supabase/server.ts"
+  ],
+  "autoReview": true
+}
+
+## Quick Reference File Locations
+
+- **AI_CODING_REFERENCE.md** - Main coding reference (project root)
+- **COMPONENT_INDEX.md** - Component catalog (project root)
+- **API_ROUTES_INDEX.md** - API endpoint catalog (project root)
+- **QUICK_COMMANDS.md** - Command reference (project root)
+
+## Usage Patterns
+
+### Before Creating a Component
+1. Check `COMPONENT_INDEX.md` for similar components
+2. Review existing component patterns in `AI_CODING_REFERENCE.md`
+3. Reuse existing components when possible
+4. Follow import and structure patterns
+
+### Before Creating an API Route
+1. Check `API_ROUTES_INDEX.md` for similar endpoints
+2. Review API patterns in `AI_CODING_REFERENCE.md`
+3. Reuse authentication, validation, and error handling patterns
+4. Follow rate limiting and security patterns
+
+### When Starting Any Task
+1. Read relevant section in `AI_CODING_REFERENCE.md`
+2. Check `QUICK_COMMANDS.md` for required commands
+3. Review common mistakes section
+4. Identify existing patterns to reuse
+
+## Pattern Recognition Examples
+
+### Authentication Pattern
+```typescript
+// From AI_CODING_REFERENCE.md - Server-Side Auth Pattern
+import { createClient } from '@/lib/supabase/server';
+const supabase = await createClient();
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+```
+
+### Component Structure Pattern
+```typescript
+// From COMPONENT_INDEX.md - Standard Component Pattern
+'use client';
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+export default function ComponentName() {
+  // Component logic
+  return <div>...</div>;
+}
+```
+
+### API Route Pattern
+```typescript
+// From API_ROUTES_INDEX.md - Standard API Pattern
+// 1. Validate request
+// 2. Rate limit
+// 3. Authenticate
+// 4. Process
+// 5. Log and return
+```
+
+## Integration with Other Rules
+
+This rule coordinates with:
+- **supabase-backend-priority.mdc** - Database operations
+- **supabase-excellence.mdc** - Supabase patterns
+- **development-standards.mdc** - Code quality
+- **frontend-startup-protocol.mdc** - Server startup
+- **extension-integration.mdc** - Extension usage and diagnostics
+
+## Benefits
+
+1. **Faster Context Loading** - Quick reference files provide instant context
+2. **Pattern Reuse** - Established patterns reduce errors
+3. **Consistency** - Reference files ensure consistent code
+4. **Error Prevention** - Common mistakes documented upfront
+5. **Efficiency** - Less time searching, more time coding

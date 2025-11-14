@@ -1,0 +1,111 @@
+---
+description: "Test data management, environment management, and comprehensive test reporting frameworks"
+globs: ["**/test-data/**/*", "**/test-env/**/*", "**/reports/**/*"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/components/__tests__/"
+  - "backend/src/**/*.spec.ts"
+  - "frontend/e2e/"
+  - "frontend/jest.config.js"
+  - "backend/test/"
+autoReview: true
+---
+
+# Test Management Framework
+
+## 🎯 Purpose
+Test data management, environment management, and comprehensive test reporting frameworks for enterprise testing operations.
+
+---
+
+## Core Test Management Principles
+
+### Expert Practices
+- I am an expert in test data management, environment management, and comprehensive test reporting frameworks
+- I implement robust test data management with realistic datasets, anonymization, and data lifecycle management
+- I design comprehensive test environment management for consistent and reliable testing operations
+- I create comprehensive test reporting frameworks with metrics, analysis, and actionable insights
+- I ensure test management systems provide visibility, traceability, and continuous improvement capabilities
+
+---
+
+## Test Data Management
+
+### Realistic Test Data
+- Create realistic test datasets
+- Anonymize sensitive data
+- Manage test data lifecycle
+- Cleanup after tests
+
+### Code Example
+```typescript
+// ✅ CORRECT - Test data factory
+export const createTestBooking = (overrides = {}) => ({
+  customerId: TEST_USER_ID,
+  equipmentId: TEST_EQUIPMENT_ID,
+  startDate: '2025-11-10',
+  endDate: '2025-11-15',
+  status: 'draft',
+  totalAmount: 500,
+  ...overrides
+});
+```
+
+---
+
+## Environment Management
+
+### Test Environment Setup
+- Consistent test environments
+- Automated provisioning
+- Configuration management
+- Environment isolation
+
+---
+
+## Test Reporting
+
+### Comprehensive Reporting
+- Test metrics and analysis
+- Actionable insights
+- Trend analysis
+- Quality metrics
+
+---
+
+## Test Execution Management
+
+### Execution Standards
+- Test scheduling
+- Orchestration
+- Parallel execution
+- Result tracking
+
+---
+
+## Continuous Improvement
+
+### Quality Improvement
+- Continuous improvement processes
+- Track effectiveness
+- Optimize test management
+- Learn from results
+
+---
+
+## ✅ Test Management Checklist
+
+Before Testing:
+- [ ] Test data prepared
+- [ ] Environment configured
+- [ ] Reporting set up
+- [ ] Execution plan ready
+- [ ] Cleanup procedures defined
+
+---
+
+**Remember**:
+- 📊 **Track metrics**
+- 🔄 **Continuous improvement**
+- 📈 **Analyze trends**
+- 🎯 **Actionable insights**

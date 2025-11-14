@@ -1,0 +1,144 @@
+{
+  "actions": [
+    {
+      "id": "generate-supabase-migration",
+      "name": "Generate Supabase Migration",
+      "description": "Creates a new Supabase migration with RLS policies, indexes, and triggers",
+      "command": "node scripts/generate-migration.js",
+      "inputs": [
+        {
+          "name": "migration-name",
+          "type": "string",
+          "description": "Name of the migration (snake_case)",
+          "required": true
+        },
+        {
+          "name": "table-name",
+          "type": "string",
+          "description": "Name of the table to create",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "migration-file",
+          "type": "file",
+          "description": "Path to the created migration file"
+        }
+      ],
+      "template": "template://supabase-migration"
+    },
+    {
+      "id": "create-api-route",
+      "name": "Create API Route with Security",
+      "description": "Creates a secure API route with auth, validation, rate limiting, and error handling",
+      "command": "node scripts/create-api-route.js",
+      "inputs": [
+        {
+          "name": "route-path",
+          "type": "string",
+          "description": "API route path (e.g., /api/bookings)",
+          "required": true
+        },
+        {
+          "name": "method",
+          "type": "string",
+          "description": "HTTP method (GET, POST, PUT, DELETE, PATCH)",
+          "required": true,
+          "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "route-file",
+          "type": "file",
+          "description": "Path to the created API route file"
+        }
+      ],
+      "template": "template://api-route"
+    },
+    {
+      "id": "generate-component",
+      "name": "Generate Component with Tests",
+      "description": "Creates a React component with tests, accessibility, and error handling",
+      "command": "node scripts/generate-component.js",
+      "inputs": [
+        {
+          "name": "component-name",
+          "type": "string",
+          "description": "Name of the component (PascalCase)",
+          "required": true
+        },
+        {
+          "name": "component-type",
+          "type": "string",
+          "description": "Component type",
+          "required": false,
+          "enum": ["client", "server"],
+          "default": "client"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "component-file",
+          "type": "file",
+          "description": "Path to the created component file"
+        },
+        {
+          "name": "test-file",
+          "type": "file",
+          "description": "Path to the created test file"
+        }
+      ],
+      "template": "template://component"
+    },
+    {
+      "id": "run-security-scan",
+      "name": "Run Security Scan",
+      "description": "Runs Snyk security scan on the codebase",
+      "command": "snyk_code_scan",
+      "inputs": [
+        {
+          "name": "path",
+          "type": "string",
+          "description": "Path to scan (default: current directory)",
+          "required": false,
+          "default": "."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "scan-results",
+          "type": "json",
+          "description": "Security scan results"
+        }
+      ]
+    },
+    {
+      "id": "optimize-database-query",
+      "name": "Optimize Database Query",
+      "description": "Analyzes and optimizes a database query",
+      "command": "node scripts/optimize-query.js",
+      "inputs": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "SQL query to optimize",
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "name": "optimized-query",
+          "type": "string",
+          "description": "Optimized SQL query"
+        },
+        {
+          "name": "recommendations",
+          "type": "json",
+          "description": "Optimization recommendations"
+        }
+      ]
+    }
+  ]
+}

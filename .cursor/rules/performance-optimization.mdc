@@ -1,0 +1,238 @@
+---
+description: "Performance optimization strategies, resource management, and scalability patterns"
+globs: ["**/config/**/*", "**/lib/**/*", "**/utils/**/*", "**/optimization/**/*"]
+alwaysApply: false
+contextFiles:
+  - "frontend/next.config.js"
+  - "backend/src/config/"
+  - "frontend/src/lib/"
+  - "backend/src/modules/"
+autoReview: true
+---
+
+# Performance Optimization
+
+## 🎯 Purpose
+Advanced performance optimization strategies, resource management, scalability patterns, and efficiency maximization for enterprise applications.
+
+---
+
+## Core Performance Principles
+
+### Expert Performance Practices
+- I am a performance engineering expert specializing in optimization, scalability, and resource efficiency
+- I implement comprehensive performance strategies across frontend, backend, database, and infrastructure layers
+- I optimize for Core Web Vitals, database performance, API response times, and resource utilization
+- I design systems for horizontal and vertical scalability with predictive performance modeling
+- I implement continuous performance monitoring and automated optimization feedback loops
+
+---
+
+## Performance Budgets
+
+### Budget Enforcement
+- Establish and enforce performance budgets for all system components
+- Set budgets for bundle size, load time, API response time
+- Implement automated performance regression detection
+- Monitor budgets in CI/CD pipeline
+
+### Code Example
+```typescript
+// ✅ CORRECT - Performance budget
+const PERFORMANCE_BUDGETS = {
+  bundleSize: 250 * 1024, // 250KB
+  loadTime: 1000, // 1 second
+  apiResponseTime: 200, // 200ms
+  lcp: 2500, // 2.5 seconds
+  fid: 100, // 100ms
+  cls: 0.1 // 0.1
+};
+```
+
+---
+
+## Core Web Vitals Optimization
+
+### LCP (Largest Contentful Paint)
+- Optimize images and fonts
+- Use efficient loading strategies
+- Minimize render-blocking resources
+- Target: < 2.5 seconds
+
+### FID (First Input Delay)
+- Minimize JavaScript execution time
+- Use code splitting
+- Defer non-critical JavaScript
+- Target: < 100ms
+
+### CLS (Cumulative Layout Shift)
+- Reserve space for images and ads
+- Avoid inserting content above existing content
+- Use aspect ratio boxes
+- Target: < 0.1
+
+---
+
+## Database Performance
+
+### Query Optimization
+- Use indexes on frequently queried columns
+- Avoid N+1 queries
+- Use connection pooling
+- Optimize JOIN operations
+
+### Code Example
+```typescript
+// ✅ CORRECT - Optimized query
+const { data } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status')
+  .eq('customerId', userId)
+  .order('created_at', { ascending: false })
+  .limit(20);
+
+// ❌ WRONG - Inefficient query
+const { data } = await supabase
+  .from('bookings')
+  .select('*') // Selects all columns
+  .eq('customerId', userId); // No limit
+```
+
+---
+
+## Caching Strategy
+
+### Multi-Layer Caching
+- **Browser**: Static assets, API responses
+- **CDN**: Images, fonts, static files
+- **Application**: In-memory caching
+- **Database**: Query result caching
+
+### Code Example
+```typescript
+// ✅ CORRECT - Multi-layer caching
+// Browser cache (via headers)
+export async function GET() {
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+    }
+  });
+}
+
+// Application cache
+const cache = new Map();
+function getCachedData(key: string) {
+  if (cache.has(key)) return cache.get(key);
+  const data = fetchData();
+  cache.set(key, data);
+  return data;
+}
+```
+
+---
+
+## Code Splitting
+
+### Dynamic Imports
+- Route-based code splitting
+- Component-level code splitting
+- Lazy load heavy components
+- Reduce initial bundle size
+
+### Code Example
+```typescript
+// ✅ CORRECT - Dynamic import
+const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
+  loading: () => <Spinner />,
+  ssr: false
+});
+
+// ✅ CORRECT - Route splitting
+const AdminDashboard = dynamic(() => import('@/app/admin/dashboard'));
+```
+
+---
+
+## Resource Optimization
+
+### Image Optimization
+- Use Next.js Image component
+- Optimize image formats (WebP, AVIF)
+- Lazy load images
+- Use appropriate sizes
+
+### Font Optimization
+- Use `next/font` for font optimization
+- Preload critical fonts
+- Use font-display: swap
+- Subset fonts when possible
+
+---
+
+## API Performance
+
+### Request Optimization
+- Implement request batching
+- Use pagination
+- Compress responses
+- Cache API responses
+
+### Code Example
+```typescript
+// ✅ CORRECT - Paginated API
+export async function GET(request: NextRequest) {
+  const page = parseInt(request.nextUrl.searchParams.get('page') || '1');
+  const limit = 20;
+  const offset = (page - 1) * limit;
+
+  const { data, count } = await supabase
+    .from('bookings')
+    .select('*', { count: 'exact' })
+    .range(offset, offset + limit - 1);
+
+  return NextResponse.json({ data, total: count, page, limit });
+}
+```
+
+---
+
+## Memory Management
+
+### Efficient Memory Usage
+- Avoid memory leaks
+- Clean up event listeners
+- Use WeakMap/WeakSet where appropriate
+- Monitor memory usage
+
+---
+
+## Monitoring and Profiling
+
+### Performance Monitoring
+- Implement continuous performance monitoring
+- Set up automated alerting
+- Track Core Web Vitals
+- Profile slow operations
+
+---
+
+## ✅ Performance Checklist
+
+Before Deploying:
+- [ ] Performance budgets met
+- [ ] Core Web Vitals optimized
+- [ ] Database queries optimized
+- [ ] Caching strategy implemented
+- [ ] Code splitting applied
+- [ ] Images optimized
+- [ ] API responses compressed
+- [ ] Memory leaks checked
+
+---
+
+**Remember**:
+- ⚡ **Performance budgets first**
+- 📊 **Monitor continuously**
+- 🎯 **Core Web Vitals priority**
+- 🔍 **Profile before optimizing**

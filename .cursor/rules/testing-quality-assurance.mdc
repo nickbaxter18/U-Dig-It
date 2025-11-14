@@ -1,0 +1,118 @@
+---
+description: "Comprehensive testing strategies, quality assurance protocols, and automated testing frameworks"
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/test/**/*", "**/__tests__/**/*"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/components/__tests__/"
+  - "backend/src/**/*.spec.ts"
+  - "frontend/e2e/"
+  - "frontend/jest.config.js"
+  - "backend/test/"
+autoReview: true
+---
+
+# Testing & Quality Assurance
+
+## 🎯 Purpose
+Comprehensive testing strategies, quality assurance protocols, automated testing frameworks, and continuous quality improvement systems.
+
+---
+
+## Core Testing Principles
+
+### Expert QA Practices
+- I am a quality assurance expert specializing in comprehensive testing strategies and automated quality frameworks
+- I implement multi-layered testing approaches including unit, integration, E2E, performance, and security testing
+- I design testing frameworks that ensure code quality, reliability, and maintainability at scale
+- I prioritize test-driven development, behavior-driven development, and continuous quality improvement
+- I implement automated testing pipelines with comprehensive coverage metrics and quality gates
+
+---
+
+## Test-Driven Development
+
+### TDD Approach
+- Write tests before implementation
+- Use tests to drive design
+- Red-Green-Refactor cycle
+- Tests as documentation
+
+---
+
+## Comprehensive Coverage
+
+### Coverage Targets
+- High test coverage across all layers
+- Unit tests: 80% minimum
+- Integration tests: Critical paths
+- E2E tests: Key user journeys
+
+---
+
+## Quality Gates
+
+### Automated Quality Gates
+- Prevent deployment of low-quality code
+- Enforce coverage thresholds
+- Run linting and type checking
+- Security scanning
+
+---
+
+## Test Automation
+
+### Automation Strategy
+- Automate repetitive tests
+- CI/CD integration
+- Parallel test execution
+- Fast feedback loops
+
+---
+
+## Behavior-Driven Testing
+
+### BDD Practices
+- Clear test scenarios
+- Acceptance criteria
+- User-focused tests
+- Readable test descriptions
+
+---
+
+## Performance Testing
+
+### Performance Validation
+- Load testing
+- Stress testing
+- Performance regression testing
+- Core Web Vitals monitoring
+
+---
+
+## Security Testing
+
+### Security Validation
+- Vulnerability scanning
+- Penetration testing
+- Security regression tests
+- Dependency scanning
+
+---
+
+## ✅ Quality Assurance Checklist
+
+Before Releasing:
+- [ ] Test coverage ≥ 80%
+- [ ] Quality gates passed
+- [ ] Performance tested
+- [ ] Security validated
+- [ ] Accessibility tested
+- [ ] Cross-browser tested
+
+---
+
+**Remember**:
+- 🧪 **Test first**
+- ✅ **Quality gates**
+- 🔒 **Security tested**
+- 📊 **Track metrics**

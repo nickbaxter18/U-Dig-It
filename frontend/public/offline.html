@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - U-Dig It Rentals</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      padding: 48px 32px;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #E1BC56 0%, #F5D47E 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #1a1a1a;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    p {
+      font-size: 18px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #E1BC56;
+      color: #1a1a1a;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #F5D47E;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(225, 188, 86, 0.4);
+    }
+
+    .status {
+      margin-top: 24px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .status.online {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .spinner {
+      display: none;
+      width: 40px;
+      height: 40px;
+      margin: 20px auto;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #E1BC56;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry, we'll reconnect you as soon as you're back online.</p>
+
+    <button class="btn" onclick="checkConnection()">Try Again</button>
+
+    <div class="spinner" id="spinner"></div>
+    <div class="status" id="status">
+      Checking connection status...
+    </div>
+  </div>
+
+  <script>
+    let isChecking = false;
+
+    // Check connection status on load
+    window.addEventListener('load', () => {
+      updateConnectionStatus();
+      // Auto-check every 3 seconds
+      setInterval(updateConnectionStatus, 3000);
+    });
+
+    // Listen for online/offline events
+    window.addEventListener('online', () => {
+      updateConnectionStatus();
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    });
+
+    window.addEventListener('offline', () => {
+      updateConnectionStatus();
+    });
+
+    function updateConnectionStatus() {
+      const status = document.getElementById('status');
+      const isOnline = navigator.onLine;
+
+      if (isOnline) {
+        status.className = 'status online';
+        status.innerHTML = '✅ Connection restored! Redirecting...';
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+      } else {
+        status.className = 'status';
+        status.innerHTML = '❌ No internet connection detected';
+      }
+    }
+
+    async function checkConnection() {
+      if (isChecking) return;
+
+      isChecking = true;
+      const spinner = document.getElementById('spinner');
+      const status = document.getElementById('status');
+      const btn = document.querySelector('.btn');
+
+      spinner.style.display = 'block';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      status.innerHTML = '🔄 Checking connection...';
+
+      try {
+        // Try to fetch a small resource to verify connectivity
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch('/manifest.json', {
+          method: 'HEAD',
+          cache: 'no-cache',
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          status.className = 'status online';
+          status.innerHTML = '✅ Connection restored! Redirecting...';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        } else {
+          throw new Error('Network response was not ok');
+        }
+      } catch (error) {
+        status.className = 'status';
+        status.innerHTML = '❌ Still offline. Please check your connection.';
+      } finally {
+        spinner.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        isChecking = false;
+      }
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+

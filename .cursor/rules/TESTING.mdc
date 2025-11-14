@@ -1,0 +1,62 @@
+---
+description: "Comprehensive testing standards, browser automation, quality assurance, and test coverage requirements"
+alwaysApply: true
+---
+
+# Testing & Quality Assurance
+
+## 🎯 Purpose
+Comprehensive testing strategies, browser automation protocols, and quality assurance standards for the Kubota Rental Platform.
+
+---
+
+## Testing Philosophy
+
+### Testing Pyramid
+```
+        ┌─────────┐
+        │   E2E   │  ← Browser automation (10%)
+        ├─────────┤
+        │Integration│ ← API + Database (30%)
+        ├─────────┤
+        │   Unit   │  ← Business logic (60%)
+        └─────────┘
+```
+
+### Coverage Targets
+- **Unit Tests**: 80% minimum
+- **Integration Tests**: Critical user flows
+- **E2E Tests**: Key user journeys
+- **Overall**: 80% code coverage
+
+---
+
+## Specialized Testing Rules
+
+For detailed testing standards, see:
+- **Browser Testing**: `testing-browser.mdc` - E2E testing, browser automation, test account
+- **Unit & Integration**: `testing-unit-integration.mdc` - Test structure, mocking, database tests
+- **Quality & Coverage**: `testing-quality.mdc` - Coverage requirements, CI/CD, visual regression
+
+---
+
+## ✅ Testing Checklist
+
+Before Committing:
+- [ ] Unit tests written for new business logic
+- [ ] Integration tests for new API routes
+- [ ] E2E tests for new user flows
+- [ ] All tests passing
+- [ ] Coverage ≥ 80%
+- [ ] No accessibility violations
+- [ ] Performance budgets met
+
+---
+
+**Remember**:
+- 🧪 **Test FIRST, code SECOND**
+- ✅ **80% coverage minimum**
+- 🤖 **Browser automation for E2E**
+- 🔐 **Use test account ONLY**
+- 📊 **Monitor performance**
+- ♿ **Test accessibility**

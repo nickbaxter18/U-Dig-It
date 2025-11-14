@@ -1,0 +1,7 @@
+
+> udigit-rentals-frontend@1.0.0 test:coverage /home/vscode/Kubota-rental-platform/frontend
+> NODE_OPTIONS='--max-old-space-size=16384' vitest run --coverage
+
+ MISSING DEPENDENCY  Cannot find dependency '@vitest/coverage-v8'
+
+ ELIFECYCLE  Command failed with exit code 1.

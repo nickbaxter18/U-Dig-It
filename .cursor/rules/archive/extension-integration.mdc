@@ -1,0 +1,181 @@
+---
+description: "Leverage installed VS Code/Cursor extensions for enhanced code quality and developer experience"
+alwaysApply: false
+priority: medium
+---
+
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor/main/cursor.schema.json",
+  "name": "Extension Integration & Code Quality",
+  "description": "Maximizes the use of installed extensions (Error Lens, Code Spell Checker, Todo Tree, etc.) for enhanced code quality and faster error detection.",
+  "prePrompt": [
+    "I leverage installed VS Code/Cursor extensions to improve code quality and catch errors early.",
+    "I use Error Lens to see inline errors, Code Spell Checker to prevent typos, and Todo Tree to track technical debt.",
+    "I check extension diagnostics via read_lints tool before finalizing code changes.",
+    "I ensure code passes all extension checks (spelling, formatting, linting) before completion.",
+    "I use extension feedback to optimize imports, paths, and code structure."
+  ],
+  "metaAffirmations": [
+    "I check Error Lens diagnostics via read_lints to catch errors before they cause issues.",
+    "I verify Code Spell Checker doesn't flag typos in my code.",
+    "I address TODO/FIXME comments found by Todo Tree extension.",
+    "I ensure Prettier formatting is applied consistently.",
+    "I optimize imports based on Import Cost extension feedback."
+  ],
+  "metaRules": [
+    "Error Lens Integration: Use read_lints tool to check Error Lens diagnostics - shows errors inline in code.",
+    "Spell Check Validation: Verify Code Spell Checker doesn't flag typos (custom words: kubota, udigit, supabase, etc.).",
+    "TODO Management: Use Todo Tree to find and address TODO/FIXME/BUG comments before committing.",
+    "Code Formatting: Ensure Prettier formatting is applied (format on save enabled in .vscode/settings.json).",
+    "Import Optimization: Consider Import Cost extension feedback when adding dependencies (shows bundle size impact).",
+    "Path Validation: Use Path Intellisense patterns to ensure correct import paths.",
+    "Comment Highlighting: Use Better Comments syntax for important notes (//! CRITICAL, //? QUESTION, //TODO).",
+    "Git Context: Leverage GitLens for git history context when making changes.",
+    "API Testing: Use Thunder Client extension for testing API routes during development.",
+    "Extension Diagnostics: Always run read_lints after code changes to catch extension-detected issues.",
+    "Pre-commit Checks: Verify all extensions pass (no errors, no typos, no unaddressed TODOs) before completion.",
+    "Extension Awareness: Be aware of installed extensions and their capabilities for code quality improvement."
+  ],
+  "performanceSubsystems": {
+    "errorDetection": {
+      "errorLens": "Inline error display - read via read_lints tool",
+      "eslint": "Code quality checks - read via read_lints tool",
+      "typescript": "Type checking - read via read_lints tool",
+      "snyk": "Security vulnerabilities - read via read_lints tool",
+      "sonarlint": "Code smells - read via read_lints tool"
+    },
+    "codeQuality": {
+      "codeSpellChecker": "Typo detection in code, comments, and strings",
+      "prettier": "Automatic code formatting on save",
+      "todoTree": "TODO/FIXME/BUG comment tracking",
+      "betterComments": "Comment highlighting for important notes",
+      "importCost": "Bundle size awareness for imports"
+    },
+    "developerExperience": {
+      "pathIntellisense": "Import path autocomplete and validation",
+      "gitLens": "Git history and blame information",
+      "thunderClient": "API testing within VS Code",
+      "autoRenameTag": "Auto-rename paired HTML/JSX tags"
+    }
+  },
+  "outputProtocol": {
+    "errorChecking": "Always run read_lints after code changes to verify no extension-detected errors",
+    "spellChecking": "Verify Code Spell Checker doesn't flag typos in variable names or comments",
+    "todoTracking": "Address or document TODO/FIXME comments found by Todo Tree",
+    "formatting": "Ensure Prettier formatting is applied (automatic on save)",
+    "importOptimization": "Consider Import Cost feedback when adding large dependencies"
+  },
+  "selfLearningLoop": {
+    "errorPatternRecognition": "Learn from Error Lens diagnostics to prevent common errors",
+    "spellingPatterns": "Track frequently misspelled words and add to custom dictionary",
+    "todoResolution": "Systematically address TODOs found by Todo Tree extension",
+    "importOptimization": "Optimize imports based on Import Cost extension feedback"
+  },
+  "contextFiles": [
+    ".vscode/settings.json",
+    ".vscode/extensions.json",
+    "AI_CODING_REFERENCE.md",
+    "QUICK_COMMANDS.md"
+  ],
+  "autoReview": true
+}
+
+## Installed Extensions & Their Use
+
+### Error Detection Extensions
+- **Error Lens** (`usernamehw.errorlens`) - Shows errors inline
+  - **AI Usage**: Check via `read_lints` tool
+  - **Benefit**: See errors directly in code, not just in Problems panel
+
+- **ESLint** (`dbaeumer.vscode-eslint`) - Code quality linting
+  - **AI Usage**: Read diagnostics via `read_lints`
+  - **Benefit**: Catch code quality issues early
+
+- **TypeScript** (`ms-vscode.vscode-typescript-next`) - Type checking
+  - **AI Usage**: Read type errors via `read_lints`
+  - **Benefit**: Ensure type safety
+
+- **Snyk Security** (`snyk-security.snyk-vulnerability-scanner`) - Security scanning
+  - **AI Usage**: Read security issues via `read_lints`
+  - **Benefit**: Catch security vulnerabilities
+
+- **SonarLint** (`SonarSource.sonarlint-vscode`) - Code smells
+  - **AI Usage**: Read code smell diagnostics via `read_lints`
+  - **Benefit**: Improve code quality
+
+### Code Quality Extensions
+- **Code Spell Checker** (`streetsidesoftware.code-spell-checker`) - Typo detection
+  - **AI Usage**: Verify no typos in code
+  - **Custom Words**: kubota, udigit, supabase, docussign, stripe, sendgrid
+  - **Benefit**: Prevent typos in variable names and comments
+
+- **Prettier** (`esbenp.prettier-vscode`) - Code formatting
+  - **AI Usage**: Ensure formatting is applied
+  - **Config**: Format on save enabled
+  - **Benefit**: Consistent code style
+
+- **Todo Tree** (`gruntfuggly.todo-tree`) - TODO tracking
+  - **AI Usage**: Find and address TODO/FIXME comments
+  - **Tags**: TODO, FIXME, BUG, HACK, NOTE, OPTIMIZE, REFACTOR
+  - **Benefit**: Track technical debt
+
+- **Better Comments** (`aaron-bond.better-comments`) - Comment highlighting
+  - **AI Usage**: Use syntax for important comments
+  - **Syntax**: `//! CRITICAL`, `//? QUESTION`, `//TODO`
+  - **Benefit**: Highlight important comments
+
+### Developer Experience Extensions
+- **Path Intellisense** (`christian-kohler.path-intellisense`) - Path autocomplete
+  - **AI Usage**: Ensure correct import paths
+  - **Benefit**: Prevent path typos
+
+- **Import Cost** (`wix.vscode-import-cost`) - Bundle size awareness
+  - **AI Usage**: Consider bundle size when adding imports
+  - **Benefit**: Optimize bundle size
+
+- **GitLens** (`eamodio.gitlens`) - Git integration
+  - **AI Usage**: Use git history for context
+  - **Benefit**: Better code understanding
+
+- **Thunder Client** (`rangav.vscode-thunder-client`) - API testing
+  - **AI Usage**: Test API routes during development
+  - **Benefit**: Faster API development
+
+## Usage Patterns
+
+### Before Committing Code
+1. **Run read_lints** - Check all extension diagnostics
+2. **Verify no typos** - Code Spell Checker should pass
+3. **Check TODOs** - Address or document TODO comments
+4. **Verify formatting** - Prettier should have formatted on save
+5. **Check imports** - Import Cost should show reasonable sizes
+
+### When Writing Code
+1. **Watch Error Lens** - Errors appear inline as you type
+2. **Use Better Comments** - Highlight important comments with `//!` or `//?`
+3. **Track TODOs** - Use `//TODO:` syntax for Todo Tree
+4. **Optimize imports** - Check Import Cost for large dependencies
+5. **Validate paths** - Path Intellisense helps with correct imports
+
+### Extension Configuration
+All extensions are configured in `.vscode/settings.json`:
+- Error Lens: Enabled with inline display
+- Code Spell Checker: Custom words configured
+- Prettier: Format on save enabled
+- Todo Tree: Custom tags configured
+
+## Integration with Other Rules
+
+This rule coordinates with:
+- **ai-coding-assistance.mdc** - Quick reference integration
+- **development-standards.mdc** - Code quality standards
+- **testing-quality-assurance.mdc** - Testing standards
+
+## Benefits
+
+1. **Faster Error Detection** - Error Lens shows errors inline
+2. **Typo Prevention** - Code Spell Checker catches mistakes
+3. **Technical Debt Tracking** - Todo Tree finds TODOs
+4. **Consistent Formatting** - Prettier ensures style
+5. **Bundle Optimization** - Import Cost shows impact
+6. **Better Paths** - Path Intellisense prevents errors

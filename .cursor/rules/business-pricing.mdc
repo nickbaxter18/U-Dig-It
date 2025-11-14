@@ -1,0 +1,216 @@
+---
+description: "Pricing strategies, payment processing, and financial calculations for equipment rentals"
+alwaysApply: false
+globs: ["**/booking/**/*", "**/payment/**/*", "**/pricing/**/*"]
+---
+
+# Business Pricing & Payments
+
+## 🎯 Purpose
+Pricing strategies, payment processing, and financial calculations for the Kubota Rental Platform.
+
+---
+
+## Pricing Strategy
+
+### Dynamic Pricing Calculation
+```typescript
+// ✅ Multi-factor pricing
+interface PricingFactors {
+  equipmentType: string;
+  baseDailyRate: number;
+  duration: number;        // days
+  season: 'peak' | 'regular' | 'off';
+  deliveryDistance: number; // km
+  insurance: boolean;
+  operator: boolean;        // Operator included?
+}
+
+export function calculateBookingTotal(factors: PricingFactors) {
+  let total = 0;
+  const breakdown = [];
+
+  // 1. Base rental cost
+  const rentalCost = factors.baseDailyRate * factors.duration;
+  total += rentalCost;
+  breakdown.push({ item: 'Equipment rental', amount: rentalCost });
+
+  // 2. Duration discount
+  if (factors.duration >= 7) {
+    const discount = rentalCost * 0.10; // 10% weekly discount
+    total -= discount;
+    breakdown.push({ item: 'Weekly discount', amount: -discount });
+  } else if (factors.duration >= 30) {
+    const discount = rentalCost * 0.20; // 20% monthly discount
+    total -= discount;
+    breakdown.push({ item: 'Monthly discount', amount: -discount });
+  }
+
+  // 3. Seasonal adjustment
+  const seasonalMultiplier = {
+    'peak': 1.15,      // +15% May-September
+    'regular': 1.0,    // Standard rate
+    'off': 0.85        // -15% November-March
+  };
+  const seasonalAdjustment = rentalCost * (seasonalMultiplier[factors.season] - 1);
+  total += seasonalAdjustment;
+  if (seasonalAdjustment !== 0) {
+    breakdown.push({ item: 'Seasonal adjustment', amount: seasonalAdjustment });
+  }
+
+  // 4. Delivery fee
+  const deliveryFee = calculateDeliveryFee(factors.deliveryDistance);
+  total += deliveryFee;
+  breakdown.push({ item: 'Delivery & pickup', amount: deliveryFee });
+
+  // 5. Insurance (optional)
+  if (factors.insurance) {
+    const insuranceFee = rentalCost * 0.08; // 8% of rental
+    total += insuranceFee;
+    breakdown.push({ item: 'Insurance coverage', amount: insuranceFee });
+  }
+
+  // 6. Operator (optional)
+  if (factors.operator) {
+    const operatorFee = 150 * factors.duration; // $150/day
+    total += operatorFee;
+    breakdown.push({ item: 'Certified operator', amount: operatorFee });
+  }
+
+  // 7. Taxes (HST 15% in NB)
+  const taxes = total * 0.15;
+  total += taxes;
+  breakdown.push({ item: 'HST (15%)', amount: taxes });
+
+  return {
+    subtotal: total - taxes,
+    taxes,
+    total: Math.round(total * 100) / 100,
+    breakdown
+  };
+}
+
+function calculateDeliveryFee(distanceKm: number): number {
+  if (distanceKm <= 10) return 50;  // Flat $50 within 10km
+  if (distanceKm <= 25) return 75;  // $75 within 25km
+  if (distanceKm <= 50) return 125; // $125 within 50km
+  return 125 + ((distanceKm - 50) * 2); // $2/km beyond 50km
+}
+```
+
+### Seasonal Pricing Logic
+```typescript
+// ✅ New Brunswick construction season
+export function getCurrentSeason(date: Date): 'peak' | 'regular' | 'off' {
+  const month = date.getMonth(); // 0-11
+
+  if (month >= 4 && month <= 8) {
+    return 'peak'; // May-September (construction season)
+  } else if (month === 3 || month === 9) {
+    return 'regular'; // April, October (shoulder months)
+  } else {
+    return 'off'; // November-March (winter)
+  }
+}
+```
+
+---
+
+## Payment Processing
+
+### Payment Types
+```typescript
+type PaymentType =
+  | 'deposit'        // Initial deposit (30%)
+  | 'payment'        // Full or partial payment
+  | 'refund'         // Refund to customer
+  | 'adjustment';    // Pricing adjustment
+
+// ✅ Deposit requirement
+export function calculateDepositAmount(totalAmount: number): number {
+  return Math.round(totalAmount * 0.30 * 100) / 100; // 30% deposit
+}
+
+// ✅ Payment schedule options
+interface PaymentSchedule {
+  deposit: number;      // Due at booking
+  remaining: number;    // Balance
+  installments?: {
+    amount: number;
+    dueDate: Date;
+  }[];
+}
+
+export function generatePaymentSchedule(
+  totalAmount: number,
+  startDate: Date,
+  allowInstallments: boolean
+): PaymentSchedule {
+  const deposit = calculateDepositAmount(totalAmount);
+  const remaining = totalAmount - deposit;
+
+  const schedule: PaymentSchedule = { deposit, remaining };
+
+  // Installments for bookings > $1000
+  if (allowInstallments && totalAmount > 1000) {
+    const numInstallments = 3;
+    const installmentAmount = remaining / numInstallments;
+
+    schedule.installments = Array.from({ length: numInstallments }, (_, i) => ({
+      amount: Math.round(installmentAmount * 100) / 100,
+      dueDate: addDays(new Date(), (i + 1) * 7) // Weekly
+    }));
+  } else {
+    // Full payment due 3 days before start
+    schedule.installments = [{
+      amount: remaining,
+      dueDate: addDays(startDate, -3)
+    }];
+  }
+
+  return schedule;
+}
+```
+
+---
+
+## Local Market Considerations
+
+### New Brunswick Regulations
+- **HST**: 15% (Harmonized Sales Tax)
+- **Insurance**: Minimum liability coverage required
+- **Operator Licensing**: Heavy equipment requires certification
+- **Environmental**: Fuel spill protocols, emission standards
+- **Seasonal**: Winter operation guidelines (Nov-March)
+
+### Service Area
+- **Primary**: Saint John metropolitan area
+- **Extended**: Within 50km radius
+- **Delivery**: Available for additional fee
+- **Pickup**: Available at rental yard
+
+---
+
+## ✅ Pricing & Payment Checklist
+
+Pricing Calculation:
+- [ ] Base rate applied
+- [ ] Duration discounts applied
+- [ ] Seasonal rates applied
+- [ ] Delivery fee included
+- [ ] Insurance fee included (if applicable)
+- [ ] Operator fee included (if applicable)
+- [ ] HST (15%) calculated correctly
+
+Payment Processing:
+- [ ] Deposit (30%) calculated
+- [ ] Payment schedule generated
+- [ ] Installments configured (if applicable)
+
+---
+
+**Remember**:
+- 🏗️ **Construction season: May-September**
+- 📍 **Local market: Saint John, NB**
+- 💰 **HST: 15%**
+- 📱 **Transparent pricing**

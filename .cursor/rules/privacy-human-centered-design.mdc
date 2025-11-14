@@ -1,0 +1,113 @@
+---
+description: "Privacy protection, human-centered design principles, and accessibility standards for ethical AI development"
+globs: ["backend/src/auth/**/*", "frontend/src/lib/auth.ts", "frontend/src/app/api/auth/**/*", "frontend/src/app/privacy/page.tsx"]
+alwaysApply: false
+contextFiles:
+  - "backend/src/auth/"
+  - "frontend/src/app/privacy/"
+  - "privacy/privacy-policy.md"
+autoReview: true
+---
+
+# Privacy & Human-Centered Design
+
+## 🎯 Purpose
+Privacy protection, human-centered design principles, accessibility standards, and cultural sensitivity for ethical AI development.
+
+---
+
+## Core Privacy Principles
+
+### Expert Privacy Practices
+- I am an expert in privacy protection, human-centered design, and accessibility standards for AI systems
+- I implement comprehensive privacy protection with data minimization, anonymization, and consent management
+- I prioritize human agency, autonomy, and decision-making authority in all AI system designs
+- I ensure comprehensive accessibility and cultural sensitivity for diverse global user bases
+- I create AI systems that enhance human capabilities while preserving human dignity and autonomy
+
+---
+
+## Privacy by Design
+
+### Data Minimization
+- Collect only minimum data necessary
+- Purpose limitation
+- Data retention policies
+- Anonymization techniques
+
+### Consent Management
+- Clear, informed consent mechanisms
+- Granular privacy controls
+- Opt-in/opt-out mechanisms
+- Consent tracking
+
+---
+
+## Human Agency
+
+### User Autonomy
+- Preserve human decision-making authority
+- Provide user control over AI interactions
+- Transparent AI decision-making
+- User override capabilities
+
+---
+
+## Accessibility Standards
+
+### WCAG Compliance
+- WCAG 2.1 AA standards minimum
+- Screen reader support
+- Keyboard navigation
+- Inclusive design for all abilities
+
+---
+
+## Cultural Sensitivity
+
+### Global Considerations
+- Culturally appropriate design
+- Localization support
+- Cultural adaptation
+- Respect diverse perspectives
+
+---
+
+## Transparency
+
+### AI Decision-Making
+- Clear explanations of AI decisions
+- Transparent data usage
+- Privacy practices documented
+- User-friendly explanations
+
+---
+
+## Ethical AI
+
+### Ethical Principles
+- Prioritize human welfare
+- Fair treatment across user groups
+- Bias detection and mitigation
+- Accountability frameworks
+
+---
+
+## ✅ Privacy Checklist
+
+Before Deploying:
+- [ ] Data minimization implemented
+- [ ] Consent management in place
+- [ ] Privacy policy clear
+- [ ] User controls provided
+- [ ] Accessibility verified
+- [ ] Cultural sensitivity considered
+- [ ] Transparency ensured
+
+---
+
+**Remember**:
+- 🔒 **Privacy by design**
+- 👤 **Human agency first**
+- ♿ **Accessibility always**
+- 🌍 **Cultural sensitivity**

@@ -1,0 +1,64 @@
+---
+description: "Kubota Rental Platform business logic, booking workflows, pricing, and industry-specific requirements"
+alwaysApply: true
+---
+
+# Business Logic & Domain Rules
+
+## 🎯 Purpose
+Domain-specific rules for equipment rental, booking management, pricing strategies, and customer experience for the Kubota Rental Platform.
+
+---
+
+## Core Business Principles
+
+### Brand Values
+- **Reliability**: Equipment and service must be dependable
+- **Quality**: Enterprise-grade solutions and experiences
+- **Safety**: Operator certification, equipment inspection protocols
+- **Customer Service**: Proactive communication and support
+- **Local Focus**: Saint John, New Brunswick market expertise
+
+---
+
+## Specialized Business Rules
+
+For detailed business logic, see:
+- **Business Workflows**: `business-workflows.mdc` - Equipment management, booking processes, customer operations
+- **Business Pricing**: `business-pricing.mdc` - Pricing strategies, payment processing, financial calculations
+- **Business Operations**: `business-operations.mdc` - Reporting, analytics, local market considerations
+
+---
+
+## ✅ Business Logic Checklist
+
+Booking Creation:
+- [ ] Availability verified
+- [ ] Pricing calculated correctly
+- [ ] Seasonal rates applied
+- [ ] Delivery fee included
+- [ ] Payment schedule generated
+- [ ] Customer notified
+
+Equipment Management:
+- [ ] Status tracked in real-time
+- [ ] Maintenance scheduled
+- [ ] Location updated
+- [ ] Inspection completed
+- [ ] Safety checks passed
+
+Customer Experience:
+- [ ] Clear communication
+- [ ] Transparent pricing
+- [ ] Proactive notifications
+- [ ] Support available
+- [ ] Feedback collected
+
+---
+
+**Remember**:
+- 🏗️ **Construction season: May-September**
+- 📍 **Local market: Saint John, NB**
+- 💰 **HST: 15%**
+- 🔧 **Safety first, always**
+- 📱 **Proactive communication**

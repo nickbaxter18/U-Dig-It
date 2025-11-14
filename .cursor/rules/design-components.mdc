@@ -1,0 +1,279 @@
+---
+description: "Component design standards for buttons, forms, navigation, and interactive elements"
+globs: ["frontend/**/*.tsx", "frontend/**/*.css", "frontend/**/*.ts"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/components/"
+  - "frontend/src/styles/"
+  - "frontend/src/lib/"
+  - "frontend/src/app/"
+autoReview: true
+---
+
+# Component Design Standards
+
+## 🎯 Purpose
+Comprehensive component design standards for buttons, forms, navigation, and interactive elements with accessibility and usability focus.
+
+---
+
+## Core Component Principles
+
+### Expert Component Practices
+- I am a component design expert specializing in interactive elements, form design, and navigation patterns
+- I create intuitive, accessible, and visually appealing components that enhance user experience
+- I implement consistent design patterns that users can learn once and apply everywhere
+- I prioritize accessibility, usability, and conversion optimization in all component designs
+- I ensure all components work seamlessly across devices and assistive technologies
+
+---
+
+## Button Standards
+
+### Primary Buttons
+- Solid background with high contrast
+- Minimum 44px height
+- Clear hover/focus states
+- Accessible via keyboard
+- ARIA labels for screen readers
+
+### Button States
+- **Default**: Primary brand color
+- **Hover**: Darker shade, cursor pointer
+- **Focus**: Visible outline (2px)
+- **Active**: Pressed state feedback
+- **Disabled**: Reduced opacity, no interaction
+
+### Code Example
+```tsx
+// ✅ CORRECT - Accessible button
+<button
+  className="px-6 py-3 bg-[#E1BC56] text-white rounded-lg hover:bg-[#D4A94A] focus:outline-2 focus:outline-offset-2"
+  aria-label="Submit booking"
+>
+  Book Now
+</button>
+
+// ❌ WRONG - No accessibility
+<div onClick={handleClick}>Book</div>
+```
+
+---
+
+## Form Design Standards
+
+### Input Fields
+- Minimum 48px height
+- Labels above fields with 8px spacing
+- Clear error/success states
+- Inline validation feedback
+- Helpful error recovery suggestions
+
+### Form Accessibility
+- Labels associated with inputs (`htmlFor` + `id`)
+- Error messages linked to fields (`aria-describedby`)
+- Clear instructions
+- Keyboard navigation support
+
+### Code Example
+```tsx
+// ✅ CORRECT - Accessible form field
+<div>
+  <label htmlFor="email" className="block mb-2">
+    Email Address
+  </label>
+  <input
+    id="email"
+    type="email"
+    aria-describedby="email-error"
+    aria-invalid={hasError}
+    className="h-12 px-4 border rounded-lg"
+  />
+  {hasError && (
+    <p id="email-error" className="text-red-600 mt-1" role="alert">
+      Please enter a valid email address
+    </p>
+  )}
+</div>
+```
+
+---
+
+## Navigation Patterns
+
+### Navigation Standards
+- Consistent placement across pages
+- Clear hierarchy
+- Breadcrumbs for deep navigation
+- Mobile-first approach
+- Keyboard accessible
+
+### Navigation Components
+- Main navigation: Horizontal on desktop, hamburger on mobile
+- Breadcrumbs: Show current location
+- Pagination: Clear current page indicator
+- Tabs: Accessible via keyboard (arrow keys)
+
+---
+
+## Interactive States
+
+### Required States
+All interactive elements must have:
+- **Hover**: Visual feedback on mouse over
+- **Focus**: Visible focus indicator (keyboard navigation)
+- **Active**: Pressed state feedback
+- **Disabled**: Clear disabled appearance
+
+### Touch Targets
+- Minimum 44px x 44px for all interactive elements
+- Adequate spacing between targets (minimum 8px)
+- Larger targets on mobile devices
+
+---
+
+## Loading States
+
+### Loading Indicators
+- Progress indicators for long operations
+- Skeleton screens for content loading
+- Disabled states during processing
+- Clear feedback on completion
+
+### Code Example
+```tsx
+// ✅ CORRECT - Loading state
+{isLoading ? (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+  </div>
+) : (
+  <Content />
+)}
+```
+
+---
+
+## Error Handling
+
+### Error Display Standards
+- Clear error messages
+- Inline validation
+- Helpful error recovery suggestions
+- Accessible error announcements (`role="alert"`)
+
+### Code Example
+```tsx
+// ✅ CORRECT - Accessible error handling
+{error && (
+  <div role="alert" aria-live="polite" className="text-red-600">
+    <p className="font-semibold">Error:</p>
+    <p>{error.message}</p>
+    <button onClick={handleRetry}>Try Again</button>
+  </div>
+)}
+```
+
+---
+
+## Accessibility Requirements
+
+### Keyboard Navigation
+- All interactive elements accessible via keyboard
+- Logical tab order
+- Visible focus indicators
+- Escape key closes modals/dropdowns
+
+### Screen Reader Support
+- Semantic HTML elements
+- ARIA labels where needed
+- Descriptive alt text for images
+- Proper heading hierarchy (h1 → h2 → h3)
+
+### Code Example
+```tsx
+// ✅ CORRECT - Screen reader accessible
+<nav aria-label="Main navigation">
+  <ul>
+    <li>
+      <a href="/equipment" aria-current={isCurrent ? 'page' : undefined}>
+        Equipment
+      </a>
+    </li>
+  </ul>
+</nav>
+```
+
+---
+
+## Visual Hierarchy
+
+### Component Relationships
+- Consistent sizing for related components
+- Consistent spacing between components
+- Clear visual grouping
+- Proper use of whitespace
+
+---
+
+## Responsive Design
+
+### Component Adaptation
+- Components adapt to screen size
+- Maintain usability on all devices
+- Touch-friendly on mobile
+- Desktop-optimized layouts
+
+---
+
+## Performance Optimization
+
+### Component Performance
+- Optimize component rendering
+- Use lazy loading where appropriate
+- Efficient state management
+- Memoization for expensive calculations
+
+### Code Example
+```tsx
+// ✅ CORRECT - Optimized component
+const ExpensiveComponent = memo(({ data }) => {
+  const processedData = useMemo(() => {
+    return expensiveCalculation(data);
+  }, [data]);
+
+  return <div>{processedData}</div>;
+});
+```
+
+---
+
+## Brand Consistency
+
+### Kubota Brand Elements
+- Maintain Kubota brand colors
+- Use brand typography
+- Follow brand guidelines
+- Ensure component functionality
+
+---
+
+## ✅ Component Checklist
+
+Before Implementing:
+- [ ] All interactive elements have hover/focus/active states
+- [ ] Touch targets are minimum 44px x 44px
+- [ ] Keyboard navigation works correctly
+- [ ] Screen reader tested
+- [ ] Error states are clear and helpful
+- [ ] Loading states provide feedback
+- [ ] Responsive on all devices
+- [ ] ARIA labels where needed
+
+---
+
+**Remember**:
+- ♿ **Accessibility first**
+- 🎯 **Consistent patterns**
+- 📱 **Mobile-first**
+- ⚡ **Performance matters**

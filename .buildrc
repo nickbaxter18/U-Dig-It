@@ -1,0 +1,6 @@
+# Build optimization configuration
+BUILD_CACHE=true
+PARALLEL_BUILDS=true
+BUILD_OPTIMIZATION=true
+CACHE_DIR=.build-cache
+PARALLEL_JOBS=4

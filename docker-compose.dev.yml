@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: mcr.microsoft.com/devcontainers/javascript-node:20
+    volumes:
+      - ..:/workspaces:cached
+    command: sleep infinity
+    network_mode: bridge
+    devices:
+      # Camera device passthrough - allows container to access host camera
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/video2:/dev/video2
+    environment:
+      - NODE_ENV=development
+    user: node
+    working_dir: /home/vscode/Kubota-rental-platform
+

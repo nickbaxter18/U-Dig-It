@@ -1,0 +1,77 @@
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import { PrismaClient } from '@prisma/client';
+
+// Custom adapter for our existing database schema
+export function createCustomPrismaAdapter(prisma: PrismaClient) {
+  return {
+    ...PrismaAdapter(prisma),
+    // Override methods to work with our custom schema
+    async createUser(user: unknown) {
+      const newUser = await prisma.user.create({
+        data: {
+          email: (user as any).email,
+          first_name: (user as any).name?.split(' ')[0] || '',
+          last_name: (user as any).name?.split(' ')[1] || '',
+          password_hash: '', // OAuth users don't have passwords
+          role: 'customer',
+          is_active: true,
+        },
+      });
+
+      return {
+        id: newUser.id,
+        email: newUser.email,
+        name: `${newUser.first_name} ${newUser.last_name}`,
+        image: (user as any).image,
+      };
+    },
+
+    async getUser(id: string) {
+      const user = await prisma.user.findUnique({
+        where: { id },
+      });
+
+      if (!user) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: `${user.first_name} ${user.last_name}`,
+        image: null,
+      };
+    },
+
+    async getUserByEmail(email: string) {
+      const user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: `${user.first_name} ${user.last_name}`,
+        image: null,
+      };
+    },
+
+    async updateUser(user: unknown) {
+      const updatedUser = await prisma.user.update({
+        where: { id: (user as any).id },
+        data: {
+          email: (user as any).email,
+          first_name: (user as any).name?.split(' ')[0] || '',
+          last_name: (user as any).name?.split(' ')[1] || '',
+        },
+      });
+
+      return {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        name: `${updatedUser.first_name} ${updatedUser.last_name}`,
+        image: (user as any).image,
+      };
+    },
+  };
+}

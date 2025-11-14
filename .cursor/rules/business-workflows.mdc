@@ -1,0 +1,327 @@
+---
+description: "Business workflows for equipment management, booking processes, and customer operations"
+alwaysApply: false
+globs: ["**/booking/**/*", "**/equipment/**/*", "**/book/**/*"]
+---
+
+# Business Workflows
+
+## 🎯 Purpose
+Equipment management, booking workflows, and customer operations for the Kubota Rental Platform.
+
+---
+
+## Core Business Principles
+
+### Brand Values
+- **Reliability**: Equipment and service must be dependable
+- **Quality**: Enterprise-grade solutions and experiences
+- **Safety**: Operator certification, equipment inspection protocols
+- **Customer Service**: Proactive communication and support
+- **Local Focus**: Saint John, New Brunswick market expertise
+
+---
+
+## Equipment Management
+
+### Equipment Status Tracking
+```typescript
+// Equipment statuses
+type EquipmentStatus =
+  | 'available'      // Ready to rent
+  | 'rented'         // Currently on rental
+  | 'maintenance'    // Under maintenance
+  | 'unavailable'    // Out of service
+  | 'reserved';      // Booked but not picked up
+
+// ✅ Real-time availability check
+export async function checkAvailability(
+  equipmentId: string,
+  startDate: string,
+  endDate: string
+) {
+  const supabase = createClient();
+
+  // Check for conflicts (bookings, maintenance, blackouts)
+  const { data: blocks } = await supabase
+    .from('availability_blocks')
+    .select('id, start_at_utc, end_at_utc, reason')
+    .eq('equipment_id', equipmentId)
+    .or(`and(start_at_utc.lte.${endDate},end_at_utc.gte.${startDate})`)
+    .order('start_at_utc');
+
+  return {
+    available: blocks.length === 0,
+    conflicts: blocks
+  };
+}
+```
+
+### Maintenance Scheduling
+```typescript
+// ✅ Predictive maintenance tracking
+interface MaintenanceSchedule {
+  equipmentId: string;
+  lastMaintenance: Date;
+  nextMaintenance: Date;
+  hoursUntilDue: number;
+  type: 'routine' | 'repair' | 'inspection';
+}
+
+// Auto-schedule based on usage hours
+export function calculateNextMaintenance(
+  equipment: Equipment,
+  usageHours: number
+): Date {
+  const maintenanceInterval = 250; // hours
+  const hoursUntilDue = maintenanceInterval - (usageHours % maintenanceInterval);
+  const daysUntilDue = Math.ceil(hoursUntilDue / 8); // 8 hrs/day avg
+
+  return addDays(new Date(), daysUntilDue);
+}
+```
+
+---
+
+## Booking Workflow
+
+### Multi-Step Booking Process
+```typescript
+// ✅ Booking stages with validation
+type BookingStatus =
+  | 'draft'          // Customer building booking
+  | 'pending'        // Submitted, awaiting approval
+  | 'confirmed'      // Approved, payment pending
+  | 'paid'           // Payment complete
+  | 'active'         // Equipment picked up
+  | 'completed'      // Equipment returned
+  | 'cancelled';     // Booking cancelled
+
+// Stage 1: Create draft booking
+export async function createDraftBooking(data: BookingFormData) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Validate availability
+  const availability = await checkAvailability(
+    data.equipmentId,
+    data.startDate,
+    data.endDate
+  );
+
+  if (!availability.available) {
+    throw new Error('Equipment not available for selected dates');
+  }
+
+  // Calculate pricing
+  const pricing = await calculateBookingTotal(data);
+
+  // Create draft
+  const { data: booking } = await supabase
+    .from('bookings')
+    .insert({
+      customerId: user.id,
+      equipmentId: data.equipmentId,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      deliveryAddress: data.deliveryAddress,
+      status: 'draft',
+      totalAmount: pricing.total,
+      breakdown: pricing.breakdown
+    })
+    .select()
+    .single();
+
+  return booking;
+}
+
+// Stage 2: Submit for approval
+export async function submitBooking(bookingId: string) {
+  const supabase = createClient();
+
+  // Re-validate availability
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('equipmentId, startDate, endDate')
+    .eq('id', bookingId)
+    .single();
+
+  const availability = await checkAvailability(
+    booking.equipmentId,
+    booking.startDate,
+    booking.endDate
+  );
+
+  if (!availability.available) {
+    throw new Error('Equipment no longer available');
+  }
+
+  // Update status
+  await supabase
+    .from('bookings')
+    .update({ status: 'pending' })
+    .eq('id', bookingId);
+
+  // Notify admin
+  await sendAdminNotification('new_booking', bookingId);
+}
+```
+
+---
+
+## Customer Communication
+
+### Automated Notifications
+```typescript
+// ✅ Email notification triggers
+type NotificationType =
+  | 'booking_confirmed'
+  | 'payment_received'
+  | 'payment_reminder'
+  | 'delivery_scheduled'
+  | 'pickup_reminder'
+  | 'return_reminder'
+  | 'maintenance_notice'
+  | 'booking_cancelled';
+
+// Notification timing
+const notificationSchedule = {
+  payment_reminder: -3,      // 3 days before due
+  pickup_reminder: -1,       // 1 day before
+  return_reminder: -1,       // 1 day before return
+  delivery_scheduled: -1     // 1 day before delivery
+};
+```
+
+---
+
+## Safety & Compliance
+
+### Operator Certification Validation
+```typescript
+// ✅ Check operator certification
+interface OperatorCertification {
+  customerId: string;
+  certificationType: string;
+  issueDate: Date;
+  expiryDate: Date;
+  verificationStatus: 'pending' | 'verified' | 'expired';
+}
+
+export async function validateOperatorCertification(
+  customerId: string,
+  equipmentType: string
+): Promise<boolean> {
+  const supabase = createClient();
+
+  const { data: cert } = await supabase
+    .from('operator_certifications')
+    .select('*')
+    .eq('customer_id', customerId)
+    .eq('equipment_type', equipmentType)
+    .gte('expiry_date', new Date().toISOString())
+    .eq('verification_status', 'verified')
+    .single();
+
+  return !!cert;
+}
+```
+
+### Equipment Inspection Requirements
+```typescript
+// ✅ Pre-rental inspection checklist
+interface InspectionChecklist {
+  equipmentId: string;
+  inspectedAt: Date;
+  inspectorId: string;
+  items: {
+    category: string;
+    item: string;
+    status: 'pass' | 'fail' | 'na';
+    notes?: string;
+  }[];
+  overallStatus: 'pass' | 'fail';
+  nextInspectionDue: Date;
+}
+
+// Required before every rental
+export async function performPreRentalInspection(
+  equipmentId: string
+): Promise<InspectionChecklist> {
+  // Inspection items vary by equipment type
+  const items = [
+    { category: 'Safety', item: 'Seatbelt functional', status: 'pass' },
+    { category: 'Safety', item: 'Lights operational', status: 'pass' },
+    { category: 'Mechanical', item: 'Hydraulics responsive', status: 'pass' },
+    { category: 'Mechanical', item: 'Engine starts cleanly', status: 'pass' },
+    { category: 'Appearance', item: 'No visible damage', status: 'pass' }
+  ];
+
+  return {
+    equipmentId,
+    inspectedAt: new Date(),
+    inspectorId: 'inspector-id',
+    items,
+    overallStatus: 'pass',
+    nextInspectionDue: addDays(new Date(), 30)
+  };
+}
+```
+
+---
+
+## Inventory & Location Tracking
+
+### Real-Time Equipment Location
+```typescript
+// ✅ GPS tracking integration
+interface EquipmentLocation {
+  equipmentId: string;
+  latitude: number;
+  longitude: number;
+  lastUpdated: Date;
+  status: 'on_site' | 'in_transit' | 'at_customer';
+  currentBookingId?: string;
+}
+
+// Update location from GPS device
+export async function updateEquipmentLocation(
+  equipmentId: string,
+  coords: { lat: number; lng: number }
+) {
+  const supabase = createClient();
+
+  await supabase
+    .from('equipment_locations')
+    .upsert({
+      equipment_id: equipmentId,
+      latitude: coords.lat,
+      longitude: coords.lng,
+      last_updated: new Date().toISOString()
+    });
+}
+```
+
+---
+
+## ✅ Business Workflows Checklist
+
+Booking Creation:
+- [ ] Availability verified
+- [ ] Pricing calculated correctly
+- [ ] Customer notified
+
+Equipment Management:
+- [ ] Status tracked in real-time
+- [ ] Maintenance scheduled
+- [ ] Location updated
+- [ ] Inspection completed
+- [ ] Safety checks passed
+
+---
+
+**Remember**:
+- 🏗️ **Construction season: May-September**
+- 📍 **Local market: Saint John, NB**
+- 🔧 **Safety first, always**
+- 📱 **Proactive communication**

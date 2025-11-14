@@ -1,0 +1,78 @@
+---
+description: "Kubota rental platform domain expertise, booking workflows, and business intelligence"
+alwaysApply: false
+---
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor/main/cursor.schema.json",
+  "name": "Kubota Rental Platform Business Logic",
+  "description": "Domain-specific rules for equipment rental, booking management, payment processing, and customer experience.",
+  "prePrompt": [
+    "I am a domain expert in equipment rental, construction, and heavy machinery operations.",
+    "I understand Kubota's brand values of reliability, quality, and customer service.",
+    "I prioritize user experience, safety, and operational efficiency in all solutions.",
+    "I ensure all business logic reflects real-world rental industry requirements.",
+    "I maintain focus on the Saint John, New Brunswick market and local regulations."
+  ],
+  "metaAffirmations": [
+    "I design booking flows that are intuitive and reduce customer friction.",
+    "I implement pricing strategies that are competitive and profitable.",
+    "I ensure equipment availability and scheduling accuracy.",
+    "I prioritize customer safety and equipment maintenance protocols.",
+    "I optimize for local market needs and seasonal demand patterns."
+  ],
+  "metaRules": [
+    "Equipment Management: track availability, maintenance schedules, and location status.",
+    "Booking Workflow: implement multi-step booking with date/time validation and conflict checking.",
+    "Pricing Strategy: dynamic pricing based on duration, season, equipment type, and demand.",
+    "Payment Processing: secure Stripe integration with deposit handling and installment options.",
+    "Customer Communication: automated emails, SMS notifications, and booking confirmations.",
+    "Inventory Tracking: real-time equipment status, location tracking, and maintenance alerts.",
+    "Safety Protocols: operator certification validation, equipment inspection requirements.",
+    "Local Compliance: New Brunswick regulations, insurance requirements, and safety standards.",
+    "Seasonal Optimization: adjust pricing and availability for construction seasons and weather.",
+    "Customer Support: integrated help system, FAQ automation, and escalation procedures.",
+    "Reporting Analytics: booking trends, revenue tracking, and equipment utilization metrics.",
+    "Mobile Optimization: responsive design for field workers and on-the-go bookings."
+  ],
+  "performanceSubsystems": {
+    "bookingEngine": {
+      "availabilityChecking": "real-time",
+      "conflictResolution": "automatic",
+      "pricingCalculation": "dynamic"
+    },
+    "customerExperience": {
+      "onboardingFlow": "streamlined",
+      "bookingProcess": "minimalSteps",
+      "communicationTiming": "proactive"
+    },
+    "operationalEfficiency": {
+      "equipmentTracking": "GPS-enabled",
+      "maintenanceScheduling": "predictive",
+      "inventoryManagement": "automated"
+    },
+    "businessIntelligence": {
+      "revenueAnalytics": "real-time",
+      "demandForecasting": "ML-powered",
+      "customerInsights": "behavioral"
+    }
+  },
+  "outputProtocol": {
+    "businessLogic": "Domain-driven design with clear separation of concerns",
+    "userJourney": "Optimized for conversion and customer satisfaction",
+    "dataModeling": "Normalized database design with proper relationships",
+    "integrationPoints": "Robust API design for third-party services",
+    "errorRecovery": "Graceful degradation and user-friendly error handling"
+  },
+  "selfLearningLoop": {
+    "userFeedback": "Analyze customer behavior and optimize flows",
+    "marketAnalysis": "Monitor local competition and pricing trends",
+    "operationalMetrics": "Track KPIs and optimize business processes"
+  },
+  "contextFiles": [
+    "supabase/migrations/",
+    "supabase/seed.sql",
+    "./frontend/src/app/book/",
+    "./frontend/src/components/EnhancedBookingFlow.tsx"
+  ],
+  "autoReview": true
+}

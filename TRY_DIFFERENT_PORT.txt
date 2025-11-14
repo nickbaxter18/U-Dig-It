@@ -1,0 +1,14 @@
+# If port 9223 is stuck, try a different port (e.g., 9224)
+
+# Kill everything
+sudo killall -9 chrome chromium chromium-browser 2>/dev/null
+sleep 2
+
+# Start on port 9224 instead
+google-chrome --headless --remote-debugging-port=9224 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=/tmp/chrome-debug-9224 http://localhost:3000 > /tmp/chrome-9224.log 2>&1 &
+
+sleep 3
+curl http://localhost:9224/json/version
+
+# Then test from container:
+# curl http://10.0.0.108:9224/json/version

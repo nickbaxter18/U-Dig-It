@@ -1,0 +1,35 @@
+
+> udigit-rentals-frontend@1.0.0 build /home/vscode/Kubota-rental-platform/frontend
+> next build
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /home/vscode/Kubota-rental-platform/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /home/vscode/Kubota-rental-platform/frontend/pnpm-lock.yaml
+
+   ▲ Next.js 16.0.0 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ✓ optimizeCss
+     · optimizePackageImports
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 10.5s
+   Running TypeScript ...
+Failed to compile.
+
+./src/app/api/admin/payments/refund/route.ts:7:3
+Type error: Type '"2024-12-18.acacia"' is not assignable to type '"2025-09-30.clover"'.
+
+[0m [90m  5 |[39m
+ [90m  6 |[39m [36mconst[39m stripe [33m=[39m [36mnew[39m [33mStripe[39m(process[33m.[39menv[33m.[39m[33mSTRIPE_SECRET_KEY[39m[33m![39m[33m,[39m {
+[31m[1m>[22m[39m[90m  7 |[39m   apiVersion[33m:[39m [32m'2024-12-18.acacia'[39m[33m,[39m
+ [90m    |[39m   [31m[1m^[22m[39m
+ [90m  8 |[39m })[33m;[39m
+ [90m  9 |[39m
+ [90m 10 |[39m [90m/**[39m[0m
+Next.js build worker exited with code: 1 and signal: null
+ ELIFECYCLE  Command failed with exit code 1.

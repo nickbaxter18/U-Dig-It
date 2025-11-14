@@ -1,0 +1,284 @@
+{
+  "timestamp": "2025-10-16T22:26:39.845Z",
+  "overallScore": 1.388888888888889,
+  "grade": "D",
+  "testResults": [
+    {
+      "testName": "Recommendation Generation",
+      "results": [
+        {
+          "testName": "Backend API Development",
+          "responseTime": 31.961714,
+          "recommendationCount": 5,
+          "confidence": 0.8000000000000002,
+          "insightsCount": 6,
+          "passed": true
+        },
+        {
+          "testName": "Frontend Component Development",
+          "responseTime": 16.65439099999999,
+          "recommendationCount": 6,
+          "confidence": 0.8000000000000002,
+          "insightsCount": 4,
+          "passed": true
+        },
+        {
+          "testName": "Testing Implementation",
+          "responseTime": 25.268907000000013,
+          "recommendationCount": 7,
+          "confidence": 0.8000000000000002,
+          "insightsCount": 5,
+          "passed": true
+        }
+      ],
+      "summary": {
+        "avgRecommendations": 6,
+        "avgConfidence": 0.8000000000000002,
+        "avgResponseTime": 24.628337333333334,
+        "passRate": 1
+      }
+    },
+    {
+      "testName": "Hot Rules Performance",
+      "results": [
+        {
+          "testName": "Backend Domain (Hot)",
+          "responseTime": 20.589647000000014,
+          "usedHotRules": true,
+          "passed": false
+        },
+        {
+          "testName": "Frontend Domain (Hot)",
+          "responseTime": 15.586822000000012,
+          "usedHotRules": true,
+          "passed": false
+        },
+        {
+          "testName": "Testing Domain (Hot)",
+          "responseTime": 25.43149299999999,
+          "usedHotRules": true,
+          "passed": false
+        }
+      ],
+      "summary": {
+        "avgResponseTime": 20.53598733333334,
+        "hotRulesUsage": 1,
+        "passRate": 0
+      }
+    },
+    {
+      "testName": "Smart Caching",
+      "results": [
+        {
+          "testName": "Context 1",
+          "responseTime": 21.876165000000015,
+          "wasCacheHit": false,
+          "recommendationCount": 5
+        },
+        {
+          "testName": "Context 2",
+          "responseTime": 23.564887999999996,
+          "wasCacheHit": false,
+          "recommendationCount": 5
+        },
+        {
+          "testName": "Context 3",
+          "responseTime": 21.201025000000016,
+          "wasCacheHit": false,
+          "recommendationCount": 5
+        },
+        {
+          "testName": "Context 4",
+          "responseTime": 0.1516210000000342,
+          "wasCacheHit": true,
+          "recommendationCount": 5
+        },
+        {
+          "testName": "Context 5",
+          "responseTime": 0.07109700000000885,
+          "wasCacheHit": true,
+          "recommendationCount": 5
+        }
+      ],
+      "summary": {
+        "cacheHitRate": 0.4,
+        "avgResponseTime": 13.372959200000015,
+        "targetMet": false
+      }
+    },
+    {
+      "testName": "Intent Detection",
+      "results": [
+        {
+          "testName": "Testing Intent",
+          "detectedIntents": [
+            "testing",
+            "security",
+            "service-development"
+          ],
+          "expectedIntents": [
+            "testing"
+          ],
+          "passed": true
+        },
+        {
+          "testName": "API Development Intent",
+          "detectedIntents": [
+            "api-development"
+          ],
+          "expectedIntents": [
+            "api-development"
+          ],
+          "passed": true
+        },
+        {
+          "testName": "UI Development Intent",
+          "detectedIntents": [
+            "ui-development"
+          ],
+          "expectedIntents": [
+            "ui-development"
+          ],
+          "passed": true
+        },
+        {
+          "testName": "Security Intent",
+          "detectedIntents": [
+            "security",
+            "service-development"
+          ],
+          "expectedIntents": [
+            "security"
+          ],
+          "passed": true
+        },
+        {
+          "testName": "Database Intent",
+          "detectedIntents": [
+            "database"
+          ],
+          "expectedIntents": [
+            "database"
+          ],
+          "passed": true
+        }
+      ],
+      "summary": {
+        "passRate": 1,
+        "targetMet": true
+      }
+    },
+    {
+      "testName": "Context Persistence",
+      "results": [
+        {
+          "step": 1,
+          "currentFile": "/src/entities/user.entity.ts",
+          "recentFiles": 5,
+          "activeDomains": 3,
+          "workingPatterns": 4,
+          "currentTask": "user-management"
+        },
+        {
+          "step": 2,
+          "currentFile": "/src/api/users.service.ts",
+          "recentFiles": 5,
+          "activeDomains": 3,
+          "workingPatterns": 4,
+          "currentTask": "user-management"
+        },
+        {
+          "step": 3,
+          "currentFile": "/src/api/users.controller.ts",
+          "recentFiles": 5,
+          "activeDomains": 3,
+          "workingPatterns": 4,
+          "currentTask": "user-management"
+        },
+        {
+          "step": 4,
+          "currentFile": "/src/api/users.service.spec.ts",
+          "recentFiles": 5,
+          "activeDomains": 3,
+          "workingPatterns": 3,
+          "currentTask": "user-management"
+        },
+        {
+          "step": 5,
+          "currentFile": "/src/components/UserProfile.tsx",
+          "recentFiles": 5,
+          "activeDomains": 3,
+          "workingPatterns": 3,
+          "currentTask": "ui-development"
+        }
+      ],
+      "summary": {
+        "contextRichness": 11,
+        "targetMet": true
+      }
+    },
+    {
+      "testName": "Multi-File Context",
+      "results": [
+        {
+          "testName": "Service File",
+          "detectedRelationships": [
+            "imports",
+            "controller"
+          ],
+          "expectedRelationships": [
+            "controller",
+            "test",
+            "entity"
+          ],
+          "passed": false
+        },
+        {
+          "testName": "Component File",
+          "detectedRelationships": [
+            "imports"
+          ],
+          "expectedRelationships": [
+            "test"
+          ],
+          "passed": false
+        }
+      ],
+      "summary": {
+        "passRate": 0,
+        "targetMet": false
+      }
+    }
+  ],
+  "cacheStats": {
+    "hits": 2,
+    "misses": 14,
+    "totalRequests": 16,
+    "hitRate": "12.5%",
+    "cacheSize": 14,
+    "successPatterns": 0
+  },
+  "workingContext": {
+    "currentFile": "/src/components/UserProfile.tsx",
+    "recentFiles": [
+      "/src/api/users.service.spec.ts",
+      "/src/entities/user.entity.ts",
+      "/src/api/clients.service.ts",
+      "/src/api/customers.service.ts",
+      "/src/api/users.service.ts"
+    ],
+    "activeDomains": [
+      "backend",
+      "frontend",
+      "testing"
+    ],
+    "workingPatterns": [
+      "data-modeling",
+      "testing",
+      "component-development"
+    ],
+    "currentTask": "ui-development",
+    "activeFeature": "users.service.spec",
+    "relatedFiles": 16
+  }
+}

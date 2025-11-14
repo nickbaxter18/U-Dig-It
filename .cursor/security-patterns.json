@@ -1,0 +1,98 @@
+{
+  "$schema": "https://cursor.sh/schemas/security-patterns.json",
+  "name": "Security Anti-Pattern Detector",
+  "description": "Detect and prevent security vulnerabilities",
+  
+  "enabled": true,
+  "blockOnCritical": true,
+  "suggestFixes": true,
+  
+  "patterns": {
+    "hardcoded-secrets": {
+      "enabled": true,
+      "severity": "critical",
+      "patterns": [
+        "password\\s*=\\s*['\"][^'\"]+['\"]",
+        "api[_-]?key\\s*=\\s*['\"][^'\"]+['\"]",
+        "secret\\s*=\\s*['\"][^'\"]+['\"]",
+        "token\\s*=\\s*['\"][^'\"]+['\"]"
+      ],
+      "suggestion": "Move to environment variables",
+      "autoFix": false
+    },
+    "sql-injection-risk": {
+      "enabled": true,
+      "severity": "high",
+      "patterns": [
+        "\\$\\{.*\\}.*SELECT",
+        "\\+.*SELECT",
+        "query\\(.*\\$\\{"
+      ],
+      "suggestion": "Use parameterized queries",
+      "autoFix": false
+    },
+    "xss-vulnerability": {
+      "enabled": true,
+      "severity": "high",
+      "patterns": [
+        "dangerouslySetInnerHTML",
+        "innerHTML\\s*=",
+        "eval\\("
+      ],
+      "suggestion": "Use safe HTML rendering or sanitize input",
+      "autoFix": false
+    },
+    "missing-authentication": {
+      "enabled": true,
+      "severity": "high",
+      "patterns": [
+        "export\\s+async\\s+function\\s+(GET|POST|PUT|DELETE|PATCH).*\\{[^}]*supabase[^}]*\\}"
+      ],
+      "check": "verify-auth-check",
+      "suggestion": "Add authentication check",
+      "autoFix": false
+    },
+    "missing-rate-limiting": {
+      "enabled": true,
+      "severity": "medium",
+      "patterns": [
+        "export\\s+async\\s+function\\s+(POST|PUT|DELETE).*\\{"
+      ],
+      "check": "verify-rate-limit",
+      "suggestion": "Add rate limiting",
+      "autoFix": false
+    },
+    "missing-input-validation": {
+      "enabled": true,
+      "severity": "high",
+      "patterns": [
+        "await\\s+request\\.json\\(\\)"
+      ],
+      "check": "verify-validation",
+      "suggestion": "Add input validation with Zod",
+      "autoFix": false
+    },
+    "exposed-service-role-key": {
+      "enabled": true,
+      "severity": "critical",
+      "patterns": [
+        "SUPABASE_SERVICE_ROLE_KEY.*NEXT_PUBLIC",
+        "process\\.env\\.SUPABASE_SERVICE_ROLE_KEY.*client"
+      ],
+      "suggestion": "Service role key should never be exposed to client",
+      "autoFix": false
+    }
+  },
+  
+  "checks": {
+    "onSave": true,
+    "onCommit": true,
+    "inCI": true,
+    "realTime": true
+  },
+  
+  "integration": {
+    "snyk": true,
+    "eslint-plugin-security": true
+  }
+}

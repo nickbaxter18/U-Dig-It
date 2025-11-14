@@ -1,0 +1,301 @@
+{
+  "$schema": "https://cursor.sh/schemas/cursor-2.0-config.json",
+  "version": "2.0",
+  "name": "Kubota Rental Platform - Maximum Engineering Power",
+  "description": "Optimized Cursor 2.0 configuration for maximum software engineering capabilities",
+
+  "composer": {
+    "enabled": true,
+    "model": "claude-sonnet-4.5",
+    "fallbackModel": "gpt-4-turbo",
+    "maxTokens": 1000000,
+    "temperature": 0.7,
+    "topP": 0.95,
+
+    "features": {
+      "multiFileEditing": true,
+      "contextualAwareness": true,
+      "codebaseIndexing": true,
+      "semanticSearch": true,
+      "intelligentSuggestions": true,
+      "autoImports": true,
+      "refactoringAssistance": true,
+      "testGeneration": true,
+      "documentationGeneration": true
+    },
+
+    "behavior": {
+      "autoSaveOnEdit": true,
+      "confirmBeforeDelete": true,
+      "showDiffPreview": true,
+      "parallelEditing": true,
+      "batchOperations": true,
+      "intelligentMerging": true
+    },
+
+    "codebaseContext": {
+      "maxFiles": 100,
+      "maxLinesPerFile": 10000,
+      "includeTests": true,
+      "includeDocumentation": true,
+      "priorityPatterns": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.jsx",
+        "**/supabase/**",
+        "**/.cursor/rules/**"
+      ]
+    },
+
+    "optimization": {
+      "cacheStrategy": "aggressive",
+      "prefetchContext": true,
+      "incrementalIndexing": true,
+      "smartContextWindow": true,
+      "memoryOptimization": true
+    }
+  },
+
+  "parallelAgents": {
+    "enabled": true,
+    "maxConcurrent": 4,
+    "strategy": "adaptive",
+
+    "modes": {
+      "local": {
+        "enabled": true,
+        "useWorktrees": true,
+        "maxWorktrees": 3,
+        "autoCleanup": true,
+        "isolationLevel": "branch"
+      },
+      "cloud": {
+        "enabled": true,
+        "provider": "cursor-cloud",
+        "maxInstances": 4,
+        "autoScale": true,
+        "costOptimization": true
+      }
+    },
+
+    "taskDistribution": {
+      "strategy": "intelligent",
+      "loadBalancing": true,
+      "priorityQueue": true,
+      "dependencyAware": true
+    },
+
+    "models": {
+      "primary": "claude-sonnet-4.5",
+      "secondary": "gpt-4-turbo",
+      "specialized": {
+        "frontend": "claude-sonnet-4.5",
+        "backend": "claude-sonnet-4.5",
+        "database": "claude-sonnet-4.5",
+        "testing": "gpt-4-turbo",
+        "documentation": "gpt-4-turbo",
+        "refactoring": "claude-sonnet-4.5"
+      }
+    }
+  },
+
+  "voiceInput": {
+    "enabled": true,
+    "language": "en-US",
+    "autoActivation": false,
+    "pushToTalk": true,
+    "hotkey": "Ctrl+Shift+V",
+
+    "recognition": {
+      "provider": "native",
+      "accuracy": "high",
+      "noiseReduction": true,
+      "punctuationAuto": true,
+      "codeKeywords": true
+    },
+
+    "commands": {
+      "natural": true,
+      "technical": true,
+      "codeSpecific": true,
+      "customVocabulary": [
+        "Supabase",
+        "Kubota",
+        "TypeScript",
+        "Next.js",
+        "RLS",
+        "PostgreSQL"
+      ]
+    },
+
+    "feedback": {
+      "visual": true,
+      "audio": true,
+      "transcription": true,
+      "confidence": true
+    }
+  },
+
+  "modelSelection": {
+    "autoSwitch": true,
+    "contextAware": true,
+
+    "rules": [
+      {
+        "condition": "fileType === 'typescript' && complexity > 7",
+        "model": "claude-sonnet-4.5",
+        "reason": "Complex TypeScript requires advanced reasoning"
+      },
+      {
+        "condition": "task === 'refactor' && fileCount > 5",
+        "model": "claude-sonnet-4.5",
+        "reason": "Multi-file refactoring needs comprehensive context"
+      },
+      {
+        "condition": "task === 'test-generation'",
+        "model": "gpt-4-turbo",
+        "reason": "GPT-4 excels at test case generation"
+      },
+      {
+        "condition": "fileType === 'sql' || database === true",
+        "model": "claude-sonnet-4.5",
+        "reason": "Database operations require careful analysis"
+      },
+      {
+        "condition": "security === true || auth === true",
+        "model": "claude-sonnet-4.5",
+        "reason": "Security-critical code needs maximum attention"
+      }
+    ],
+
+    "fallbackStrategy": "cascade",
+    "retryWithAlternate": true,
+    "trackPerformance": true
+  },
+
+  "workspace": {
+    "indexing": {
+      "enabled": true,
+      "incremental": true,
+      "semantic": true,
+      "priority": "high",
+      "excludePatterns": [
+        "**/node_modules/**",
+        "**/.git/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/*.log"
+      ]
+    },
+
+    "context": {
+      "smartSelection": true,
+      "recentFiles": 20,
+      "relatedFiles": true,
+      "dependencyTracking": true,
+      "usagePatterns": true
+    },
+
+    "performance": {
+      "lazyLoading": true,
+      "virtualScrolling": true,
+      "cacheOptimization": "aggressive",
+      "backgroundProcessing": true
+    }
+  },
+
+  "keybindings": {
+    "composer": {
+      "open": "Ctrl+Shift+C",
+      "accept": "Ctrl+Enter",
+      "reject": "Ctrl+Shift+R",
+      "nextSuggestion": "Alt+]",
+      "prevSuggestion": "Alt+[",
+      "explainCode": "Ctrl+Shift+E",
+      "generateTests": "Ctrl+Shift+T",
+      "refactor": "Ctrl+Shift+F"
+    },
+    "parallelAgents": {
+      "newAgent": "Ctrl+Shift+N",
+      "switchAgent": "Ctrl+Tab",
+      "mergeResults": "Ctrl+Shift+M",
+      "viewAll": "Ctrl+Shift+A"
+    },
+    "voice": {
+      "pushToTalk": "Ctrl+Shift+V",
+      "toggle": "Alt+V",
+      "cancel": "Escape"
+    }
+  },
+
+  "ai": {
+    "contextWindow": 1000000,
+    "smartContextSelection": true,
+    "prioritizeRecentEdits": true,
+    "includeProjectRules": true,
+    "adaptToStyle": true,
+
+    "features": {
+      "codeCompletion": {
+        "enabled": true,
+        "multiLine": true,
+        "contextAware": true,
+        "latency": "low"
+      },
+      "codeReview": {
+        "enabled": true,
+        "automatic": false,
+        "severity": "all",
+        "includeStyle": true
+      },
+      "documentation": {
+        "enabled": true,
+        "autoGenerate": false,
+        "style": "JSDoc",
+        "includeExamples": true
+      },
+      "testing": {
+        "enabled": true,
+        "framework": "auto-detect",
+        "coverage": true,
+        "edgeCases": true
+      }
+    }
+  },
+
+  "integration": {
+    "git": {
+      "commitMessages": true,
+      "prDescriptions": true,
+      "conflictResolution": true
+    },
+    "terminal": {
+      "commandSuggestions": true,
+      "errorExplanation": true,
+      "scriptGeneration": true
+    },
+    "database": {
+      "queryOptimization": true,
+      "schemaVisualization": true,
+      "migrationAssistance": true
+    }
+  },
+
+  "analytics": {
+    "trackUsage": true,
+    "modelPerformance": true,
+    "responseTime": true,
+    "successRate": true,
+    "userSatisfaction": true
+  },
+
+  "experimental": {
+    "multiModalInput": true,
+    "advancedRefactoring": true,
+    "architectureVisualization": true,
+    "predictiveCoding": true,
+    "collaborativeAI": true
+  }
+}
+

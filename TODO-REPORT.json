@@ -1,0 +1,682 @@
+{
+  "byType": {
+    "TODO": [
+      {
+        "file": "frontend/src/app/admin/customers/page.tsx",
+        "line": 539,
+        "type": "TODO",
+        "text": "Navigate to bookings page filtered by customer",
+        "fullMatch": "// TODO: Navigate to bookings page filtered by customer"
+      },
+      {
+        "file": "frontend/src/app/admin/customers/page.tsx",
+        "line": 548,
+        "type": "TODO",
+        "text": "Navigate to new booking page with customer pre-filled",
+        "fullMatch": "// TODO: Navigate to new booking page with customer pre-filled"
+      },
+      {
+        "file": "frontend/src/app/admin/equipment/page.tsx",
+        "line": 428,
+        "type": "TODO",
+        "text": "Open maintenance schedule modal",
+        "fullMatch": "// TODO: Open maintenance schedule modal"
+      },
+      {
+        "file": "frontend/src/app/api/spin/roll/route.ts",
+        "line": 316,
+        "type": "TODO",
+        "text": "Re-enable Stripe integration once credentials are configured",
+        "fullMatch": "// TODO: Re-enable Stripe integration once credentials are configured"
+      },
+      {
+        "file": "frontend/src/app/api/spin/roll/route.ts",
+        "line": 355,
+        "type": "TODO",
+        "text": "Create spin_audit_log table or use existing audit_logs table",
+        "fullMatch": "// TODO: Create spin_audit_log table or use existing audit_logs table"
+      },
+      {
+        "file": "frontend/src/app/api/spin/roll/route.ts",
+        "line": 411,
+        "type": "TODO",
+        "text": "Fire analytics events:",
+        "fullMatch": "// TODO: Fire analytics events:"
+      },
+      {
+        "file": "frontend/src/app/api/spin/start/route.ts",
+        "line": 125,
+        "type": "TODO",
+        "text": "Re-enable for production - disabled for testing",
+        "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+      },
+      {
+        "file": "frontend/src/app/api/spin/start/route.ts",
+        "line": 161,
+        "type": "TODO",
+        "text": "Re-enable for production - disabled for testing",
+        "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+      },
+      {
+        "file": "frontend/src/app/api/spin/start/route.ts",
+        "line": 282,
+        "type": "TODO",
+        "text": "Re-enable for production - disabled for testing",
+        "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+      },
+      {
+        "file": "frontend/src/app/api/spin/start/route.ts",
+        "line": 339,
+        "type": "TODO",
+        "text": "Fire analytics event: spin_session_created",
+        "fullMatch": "// TODO: Fire analytics event: spin_session_created"
+      },
+      {
+        "file": "frontend/src/app/api/stripe/capture-security-hold/route.ts",
+        "line": 156,
+        "type": "TODO",
+        "text": "Implement email/SMS",
+        "fullMatch": "// TODO: Implement email/SMS"
+      },
+      {
+        "file": "frontend/src/app/api/stripe/place-security-hold/route.ts",
+        "line": 196,
+        "type": "TODO",
+        "text": "Implement email/SMS notification",
+        "fullMatch": "// TODO: Implement email/SMS notification"
+      },
+      {
+        "file": "frontend/src/app/api/stripe/release-security-hold/route.ts",
+        "line": 138,
+        "type": "TODO",
+        "text": "Implement email/SMS",
+        "fullMatch": "// TODO: Implement email/SMS"
+      },
+      {
+        "file": "frontend/src/app/api/webhook/stripe/route.ts",
+        "line": 179,
+        "type": "TODO",
+        "text": "Send payment confirmation email",
+        "fullMatch": "// TODO: Send payment confirmation email"
+      },
+      {
+        "file": "frontend/src/app/api/webhook/stripe/route.ts",
+        "line": 268,
+        "type": "TODO",
+        "text": "Send payment confirmation email",
+        "fullMatch": "// TODO: Send payment confirmation email"
+      },
+      {
+        "file": "frontend/src/app/api/webhook/stripe/route.ts",
+        "line": 334,
+        "type": "TODO",
+        "text": "Send payment failed email",
+        "fullMatch": "// TODO: Send payment failed email"
+      },
+      {
+        "file": "frontend/src/app/api/webhook/stripe/route.ts",
+        "line": 426,
+        "type": "TODO",
+        "text": "Send refund confirmation email",
+        "fullMatch": "// TODO: Send refund confirmation email"
+      },
+      {
+        "file": "frontend/src/app/api/webhook/stripe/route.ts",
+        "line": 490,
+        "type": "TODO",
+        "text": "Notify admin team about dispute",
+        "fullMatch": "// TODO: Notify admin team about dispute"
+      },
+      {
+        "file": "frontend/src/app/api/webhooks/stripe/route.ts",
+        "line": 417,
+        "type": "TODO",
+        "text": "Send payment receipt email",
+        "fullMatch": "// TODO: Send payment receipt email"
+      },
+      {
+        "file": "frontend/src/app/api/webhooks/stripe/route.ts",
+        "line": 843,
+        "type": "TODO",
+        "text": "Record in financial_transactions as a loss",
+        "fullMatch": "// TODO: Record in financial_transactions as a loss"
+      },
+      {
+        "file": "frontend/src/app/book/actions.ts",
+        "line": 184,
+        "type": "TODO",
+        "text": "Add admin notification email function if needed",
+        "fullMatch": "// TODO: Add admin notification email function if needed"
+      },
+      {
+        "file": "frontend/src/app/book/actions.ts",
+        "line": 195,
+        "type": "TODO",
+        "text": "Fix revalidateTag signature issue",
+        "fullMatch": "// TODO: Fix revalidateTag signature issue"
+      },
+      {
+        "file": "frontend/src/app/book/page.tsx",
+        "line": 31,
+        "type": "TODO",
+        "text": "Re-enable these booking enhancement components when they're created",
+        "fullMatch": "// TODO: Re-enable these booking enhancement components when they're created"
+      },
+      {
+        "file": "frontend/src/app/booking/[id]/actions-completion.ts",
+        "line": 602,
+        "type": "TODO",
+        "text": "Implement delivery scheduling integration",
+        "fullMatch": "// TODO: Implement delivery scheduling integration"
+      },
+      {
+        "file": "frontend/src/app/booking/[id]/actions.ts",
+        "line": 277,
+        "type": "TODO",
+        "text": "Process refund through Stripe if refundAmount > 0",
+        "fullMatch": "// TODO: Process refund through Stripe if refundAmount > 0"
+      },
+      {
+        "file": "frontend/src/app/booking/[id]/actions.ts",
+        "line": 278,
+        "type": "TODO",
+        "text": "Send cancellation confirmation email",
+        "fullMatch": "// TODO: Send cancellation confirmation email"
+      },
+      {
+        "file": "frontend/src/app/booking/[id]/actions.ts",
+        "line": 279,
+        "type": "TODO",
+        "text": "Update availability calendar",
+        "fullMatch": "// TODO: Update availability calendar"
+      },
+      {
+        "file": "frontend/src/app/dashboard/bookings/page.tsx",
+        "line": 352,
+        "type": "TODO",
+        "text": "Implement cancellation",
+        "fullMatch": "// TODO: Implement cancellation"
+      },
+      {
+        "file": "frontend/src/app/support/page.tsx",
+        "line": 282,
+        "type": "TODO",
+        "text": "Implement API call to send message",
+        "fullMatch": "// TODO: Implement API call to send message"
+      },
+      {
+        "file": "frontend/src/components/AdminDashboard.tsx",
+        "line": 75,
+        "type": "TODO",
+        "text": "Replace with actual API calls",
+        "fullMatch": "// TODO: Replace with actual API calls"
+      },
+      {
+        "file": "frontend/src/components/EmailNotification.tsx",
+        "line": 3,
+        "type": "TODO",
+        "text": "This component needs refactoring - the email-service module doesn't export these types",
+        "fullMatch": "// TODO: This component needs refactoring - the email-service module doesn't export these types"
+      },
+      {
+        "file": "frontend/src/components/EmailNotification.tsx",
+        "line": 40,
+        "type": "TODO",
+        "text": "Implement email service integration",
+        "fullMatch": "// TODO: Implement email service integration"
+      },
+      {
+        "file": "frontend/src/components/SearchResults.tsx",
+        "line": 79,
+        "type": "TODO",
+        "text": "Implement booking flow",
+        "fullMatch": "// TODO: Implement booking flow"
+      },
+      {
+        "file": "frontend/src/components/contracts/EnhancedContractSigner.tsx",
+        "line": 239,
+        "type": "TODO",
+        "text": "Get real IP",
+        "fullMatch": "// TODO: Get real IP"
+      },
+      {
+        "file": "frontend/src/lib/availability-service.ts",
+        "line": 111,
+        "type": "TODO",
+        "text": "get from equipment table",
+        "fullMatch": "// TODO: get from equipment table"
+      },
+      {
+        "file": "frontend/src/lib/email/spin-notifications.ts",
+        "line": 9,
+        "type": "TODO",
+        "text": "Create email templates: SpinReminder24h, SpinReminder4h, SpinWinnerEmail",
+        "fullMatch": "// TODO: Create email templates: SpinReminder24h, SpinReminder4h, SpinWinnerEmail"
+      },
+      {
+        "file": "frontend/src/lib/email/spin-notifications.ts",
+        "line": 54,
+        "type": "TODO",
+        "text": "Uncomment when packages are installed",
+        "fullMatch": "// TODO: Uncomment when packages are installed"
+      },
+      {
+        "file": "frontend/src/lib/email/spin-notifications.ts",
+        "line": 190,
+        "type": "TODO",
+        "text": "Uncomment when resend is installed",
+        "fullMatch": "// TODO: Uncomment when resend is installed"
+      },
+      {
+        "file": "frontend/src/lib/email/spin-notifications.ts",
+        "line": 229,
+        "type": "TODO",
+        "text": "Implement SendGrid integration",
+        "fullMatch": "// TODO: Implement SendGrid integration"
+      },
+      {
+        "file": "frontend/src/lib/email/spin-notifications.ts",
+        "line": 247,
+        "type": "TODO",
+        "text": "Implement AWS SES integration",
+        "fullMatch": "// TODO: Implement AWS SES integration"
+      },
+      {
+        "file": "frontend/src/lib/error-handler.ts",
+        "line": 176,
+        "type": "TODO",
+        "text": "Send to error reporting service (Sentry, LogRocket, etc.)",
+        "fullMatch": "// TODO: Send to error reporting service (Sentry, LogRocket, etc.)"
+      },
+      {
+        "file": "frontend/src/lib/feature-flags.ts",
+        "line": 114,
+        "type": "TODO",
+        "text": "Load from feature flag service (LaunchDarkly, Flagsmith, etc.)",
+        "fullMatch": "// TODO: Load from feature flag service (LaunchDarkly, Flagsmith, etc.)"
+      },
+      {
+        "file": "frontend/src/lib/job-scheduler.ts",
+        "line": 289,
+        "type": "TODO",
+        "text": "Implement automated hold release",
+        "fullMatch": "// TODO: Implement automated hold release"
+      },
+      {
+        "file": "frontend/src/lib/job-scheduler.ts",
+        "line": 301,
+        "type": "TODO",
+        "text": "Implement reminder emails",
+        "fullMatch": "// TODO: Implement reminder emails"
+      },
+      {
+        "file": "frontend/src/lib/job-scheduler.ts",
+        "line": 313,
+        "type": "TODO",
+        "text": "Implement insurance validation",
+        "fullMatch": "// TODO: Implement insurance validation"
+      },
+      {
+        "file": "frontend/src/lib/supabase/api-client.ts",
+        "line": 63,
+        "type": "TODO",
+        "text": "implement alternative date suggestions",
+        "fullMatch": "// TODO: implement alternative date suggestions"
+      },
+      {
+        "file": "frontend/src/lib/supabase/api-client.ts",
+        "line": 65,
+        "type": "TODO",
+        "text": "get from equipment table",
+        "fullMatch": "// TODO: get from equipment table"
+      }
+    ],
+    "OPTIMIZE": [
+      {
+        "file": "frontend/src/components/ProfilePictureUpload.tsx",
+        "line": 173,
+        "type": "OPTIMIZE",
+        "text": "image",
+        "fullMatch": "// Optimize image"
+      }
+    ]
+  },
+  "todos": [
+    {
+      "file": "frontend/src/app/admin/customers/page.tsx",
+      "line": 539,
+      "type": "TODO",
+      "text": "Navigate to bookings page filtered by customer",
+      "fullMatch": "// TODO: Navigate to bookings page filtered by customer"
+    },
+    {
+      "file": "frontend/src/app/admin/customers/page.tsx",
+      "line": 548,
+      "type": "TODO",
+      "text": "Navigate to new booking page with customer pre-filled",
+      "fullMatch": "// TODO: Navigate to new booking page with customer pre-filled"
+    },
+    {
+      "file": "frontend/src/app/admin/equipment/page.tsx",
+      "line": 428,
+      "type": "TODO",
+      "text": "Open maintenance schedule modal",
+      "fullMatch": "// TODO: Open maintenance schedule modal"
+    },
+    {
+      "file": "frontend/src/app/api/spin/roll/route.ts",
+      "line": 316,
+      "type": "TODO",
+      "text": "Re-enable Stripe integration once credentials are configured",
+      "fullMatch": "// TODO: Re-enable Stripe integration once credentials are configured"
+    },
+    {
+      "file": "frontend/src/app/api/spin/roll/route.ts",
+      "line": 355,
+      "type": "TODO",
+      "text": "Create spin_audit_log table or use existing audit_logs table",
+      "fullMatch": "// TODO: Create spin_audit_log table or use existing audit_logs table"
+    },
+    {
+      "file": "frontend/src/app/api/spin/roll/route.ts",
+      "line": 411,
+      "type": "TODO",
+      "text": "Fire analytics events:",
+      "fullMatch": "// TODO: Fire analytics events:"
+    },
+    {
+      "file": "frontend/src/app/api/spin/start/route.ts",
+      "line": 125,
+      "type": "TODO",
+      "text": "Re-enable for production - disabled for testing",
+      "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+    },
+    {
+      "file": "frontend/src/app/api/spin/start/route.ts",
+      "line": 161,
+      "type": "TODO",
+      "text": "Re-enable for production - disabled for testing",
+      "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+    },
+    {
+      "file": "frontend/src/app/api/spin/start/route.ts",
+      "line": 282,
+      "type": "TODO",
+      "text": "Re-enable for production - disabled for testing",
+      "fullMatch": "// TODO: Re-enable for production - disabled for testing"
+    },
+    {
+      "file": "frontend/src/app/api/spin/start/route.ts",
+      "line": 339,
+      "type": "TODO",
+      "text": "Fire analytics event: spin_session_created",
+      "fullMatch": "// TODO: Fire analytics event: spin_session_created"
+    },
+    {
+      "file": "frontend/src/app/api/stripe/capture-security-hold/route.ts",
+      "line": 156,
+      "type": "TODO",
+      "text": "Implement email/SMS",
+      "fullMatch": "// TODO: Implement email/SMS"
+    },
+    {
+      "file": "frontend/src/app/api/stripe/place-security-hold/route.ts",
+      "line": 196,
+      "type": "TODO",
+      "text": "Implement email/SMS notification",
+      "fullMatch": "// TODO: Implement email/SMS notification"
+    },
+    {
+      "file": "frontend/src/app/api/stripe/release-security-hold/route.ts",
+      "line": 138,
+      "type": "TODO",
+      "text": "Implement email/SMS",
+      "fullMatch": "// TODO: Implement email/SMS"
+    },
+    {
+      "file": "frontend/src/app/api/webhook/stripe/route.ts",
+      "line": 179,
+      "type": "TODO",
+      "text": "Send payment confirmation email",
+      "fullMatch": "// TODO: Send payment confirmation email"
+    },
+    {
+      "file": "frontend/src/app/api/webhook/stripe/route.ts",
+      "line": 268,
+      "type": "TODO",
+      "text": "Send payment confirmation email",
+      "fullMatch": "// TODO: Send payment confirmation email"
+    },
+    {
+      "file": "frontend/src/app/api/webhook/stripe/route.ts",
+      "line": 334,
+      "type": "TODO",
+      "text": "Send payment failed email",
+      "fullMatch": "// TODO: Send payment failed email"
+    },
+    {
+      "file": "frontend/src/app/api/webhook/stripe/route.ts",
+      "line": 426,
+      "type": "TODO",
+      "text": "Send refund confirmation email",
+      "fullMatch": "// TODO: Send refund confirmation email"
+    },
+    {
+      "file": "frontend/src/app/api/webhook/stripe/route.ts",
+      "line": 490,
+      "type": "TODO",
+      "text": "Notify admin team about dispute",
+      "fullMatch": "// TODO: Notify admin team about dispute"
+    },
+    {
+      "file": "frontend/src/app/api/webhooks/stripe/route.ts",
+      "line": 417,
+      "type": "TODO",
+      "text": "Send payment receipt email",
+      "fullMatch": "// TODO: Send payment receipt email"
+    },
+    {
+      "file": "frontend/src/app/api/webhooks/stripe/route.ts",
+      "line": 843,
+      "type": "TODO",
+      "text": "Record in financial_transactions as a loss",
+      "fullMatch": "// TODO: Record in financial_transactions as a loss"
+    },
+    {
+      "file": "frontend/src/app/book/actions.ts",
+      "line": 184,
+      "type": "TODO",
+      "text": "Add admin notification email function if needed",
+      "fullMatch": "// TODO: Add admin notification email function if needed"
+    },
+    {
+      "file": "frontend/src/app/book/actions.ts",
+      "line": 195,
+      "type": "TODO",
+      "text": "Fix revalidateTag signature issue",
+      "fullMatch": "// TODO: Fix revalidateTag signature issue"
+    },
+    {
+      "file": "frontend/src/app/book/page.tsx",
+      "line": 31,
+      "type": "TODO",
+      "text": "Re-enable these booking enhancement components when they're created",
+      "fullMatch": "// TODO: Re-enable these booking enhancement components when they're created"
+    },
+    {
+      "file": "frontend/src/app/booking/[id]/actions-completion.ts",
+      "line": 602,
+      "type": "TODO",
+      "text": "Implement delivery scheduling integration",
+      "fullMatch": "// TODO: Implement delivery scheduling integration"
+    },
+    {
+      "file": "frontend/src/app/booking/[id]/actions.ts",
+      "line": 277,
+      "type": "TODO",
+      "text": "Process refund through Stripe if refundAmount > 0",
+      "fullMatch": "// TODO: Process refund through Stripe if refundAmount > 0"
+    },
+    {
+      "file": "frontend/src/app/booking/[id]/actions.ts",
+      "line": 278,
+      "type": "TODO",
+      "text": "Send cancellation confirmation email",
+      "fullMatch": "// TODO: Send cancellation confirmation email"
+    },
+    {
+      "file": "frontend/src/app/booking/[id]/actions.ts",
+      "line": 279,
+      "type": "TODO",
+      "text": "Update availability calendar",
+      "fullMatch": "// TODO: Update availability calendar"
+    },
+    {
+      "file": "frontend/src/app/dashboard/bookings/page.tsx",
+      "line": 352,
+      "type": "TODO",
+      "text": "Implement cancellation",
+      "fullMatch": "// TODO: Implement cancellation"
+    },
+    {
+      "file": "frontend/src/app/support/page.tsx",
+      "line": 282,
+      "type": "TODO",
+      "text": "Implement API call to send message",
+      "fullMatch": "// TODO: Implement API call to send message"
+    },
+    {
+      "file": "frontend/src/components/AdminDashboard.tsx",
+      "line": 75,
+      "type": "TODO",
+      "text": "Replace with actual API calls",
+      "fullMatch": "// TODO: Replace with actual API calls"
+    },
+    {
+      "file": "frontend/src/components/EmailNotification.tsx",
+      "line": 3,
+      "type": "TODO",
+      "text": "This component needs refactoring - the email-service module doesn't export these types",
+      "fullMatch": "// TODO: This component needs refactoring - the email-service module doesn't export these types"
+    },
+    {
+      "file": "frontend/src/components/EmailNotification.tsx",
+      "line": 40,
+      "type": "TODO",
+      "text": "Implement email service integration",
+      "fullMatch": "// TODO: Implement email service integration"
+    },
+    {
+      "file": "frontend/src/components/ProfilePictureUpload.tsx",
+      "line": 173,
+      "type": "OPTIMIZE",
+      "text": "image",
+      "fullMatch": "// Optimize image"
+    },
+    {
+      "file": "frontend/src/components/SearchResults.tsx",
+      "line": 79,
+      "type": "TODO",
+      "text": "Implement booking flow",
+      "fullMatch": "// TODO: Implement booking flow"
+    },
+    {
+      "file": "frontend/src/components/contracts/EnhancedContractSigner.tsx",
+      "line": 239,
+      "type": "TODO",
+      "text": "Get real IP",
+      "fullMatch": "// TODO: Get real IP"
+    },
+    {
+      "file": "frontend/src/lib/availability-service.ts",
+      "line": 111,
+      "type": "TODO",
+      "text": "get from equipment table",
+      "fullMatch": "// TODO: get from equipment table"
+    },
+    {
+      "file": "frontend/src/lib/email/spin-notifications.ts",
+      "line": 9,
+      "type": "TODO",
+      "text": "Create email templates: SpinReminder24h, SpinReminder4h, SpinWinnerEmail",
+      "fullMatch": "// TODO: Create email templates: SpinReminder24h, SpinReminder4h, SpinWinnerEmail"
+    },
+    {
+      "file": "frontend/src/lib/email/spin-notifications.ts",
+      "line": 54,
+      "type": "TODO",
+      "text": "Uncomment when packages are installed",
+      "fullMatch": "// TODO: Uncomment when packages are installed"
+    },
+    {
+      "file": "frontend/src/lib/email/spin-notifications.ts",
+      "line": 190,
+      "type": "TODO",
+      "text": "Uncomment when resend is installed",
+      "fullMatch": "// TODO: Uncomment when resend is installed"
+    },
+    {
+      "file": "frontend/src/lib/email/spin-notifications.ts",
+      "line": 229,
+      "type": "TODO",
+      "text": "Implement SendGrid integration",
+      "fullMatch": "// TODO: Implement SendGrid integration"
+    },
+    {
+      "file": "frontend/src/lib/email/spin-notifications.ts",
+      "line": 247,
+      "type": "TODO",
+      "text": "Implement AWS SES integration",
+      "fullMatch": "// TODO: Implement AWS SES integration"
+    },
+    {
+      "file": "frontend/src/lib/error-handler.ts",
+      "line": 176,
+      "type": "TODO",
+      "text": "Send to error reporting service (Sentry, LogRocket, etc.)",
+      "fullMatch": "// TODO: Send to error reporting service (Sentry, LogRocket, etc.)"
+    },
+    {
+      "file": "frontend/src/lib/feature-flags.ts",
+      "line": 114,
+      "type": "TODO",
+      "text": "Load from feature flag service (LaunchDarkly, Flagsmith, etc.)",
+      "fullMatch": "// TODO: Load from feature flag service (LaunchDarkly, Flagsmith, etc.)"
+    },
+    {
+      "file": "frontend/src/lib/job-scheduler.ts",
+      "line": 289,
+      "type": "TODO",
+      "text": "Implement automated hold release",
+      "fullMatch": "// TODO: Implement automated hold release"
+    },
+    {
+      "file": "frontend/src/lib/job-scheduler.ts",
+      "line": 301,
+      "type": "TODO",
+      "text": "Implement reminder emails",
+      "fullMatch": "// TODO: Implement reminder emails"
+    },
+    {
+      "file": "frontend/src/lib/job-scheduler.ts",
+      "line": 313,
+      "type": "TODO",
+      "text": "Implement insurance validation",
+      "fullMatch": "// TODO: Implement insurance validation"
+    },
+    {
+      "file": "frontend/src/lib/supabase/api-client.ts",
+      "line": 63,
+      "type": "TODO",
+      "text": "implement alternative date suggestions",
+      "fullMatch": "// TODO: implement alternative date suggestions"
+    },
+    {
+      "file": "frontend/src/lib/supabase/api-client.ts",
+      "line": 65,
+      "type": "TODO",
+      "text": "get from equipment table",
+      "fullMatch": "// TODO: get from equipment table"
+    }
+  ]
+}

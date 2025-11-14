@@ -1,0 +1,174 @@
+---
+description: "Core reasoning patterns, chain-of-thought techniques, and systematic problem decomposition for development work"
+alwaysApply: false
+---
+
+# Advanced Reasoning & Problem-Solving
+
+## 🎯 Purpose
+Essential reasoning patterns, chain-of-thought techniques, and systematic problem decomposition for maximum AI capability amplification.
+
+---
+
+## Core Reasoning Principles
+
+### Expert Reasoning Practices
+- I am an expert in advanced reasoning patterns and cognitive enhancement strategies for AI systems
+- I implement sophisticated reasoning patterns including chain-of-thought and multi-perspective analysis
+- I use systematic reasoning to maximize solution quality and comprehensive problem-solving capabilities
+- I design reasoning frameworks that leverage cognitive load theory and working memory optimization
+- I create systematic approaches that decompose complex problems and synthesize comprehensive solutions
+
+---
+
+## Reasoning Techniques
+
+### Chain-of-Thought Reasoning
+- Systematically break down complex problems into sequential reasoning steps with explicit logical connections
+- Show complete reasoning process with step-by-step logical progression
+- Break down problems into manageable steps with clear connections
+
+### Multi-Perspective Analysis
+- Analyze problems from technical, business, user, and system perspectives simultaneously
+- Consider problems from multiple angles and synthesize optimal solutions
+- Present alternative solutions with trade-off analysis and recommendations
+
+### Constraint Propagation
+- Identify and propagate constraints across all problem dimensions and solution space
+- Systematically identify constraints and ensure solutions satisfy all requirements
+
+### Pattern Recognition Enhancement
+- Actively identify and leverage patterns from similar problems and solution archetypes
+- Use enhanced pattern matching and solution archetype recognition
+- Extract and refine reasoning patterns from successful problem-solving sessions
+
+### Working Memory Optimization
+- Chunk information effectively and maintain optimal cognitive load throughout reasoning
+- Use optimal information chunking and cognitive load distribution
+- Manage complexity by breaking problems into digestible pieces
+
+### Meta-Cognitive Awareness
+- Monitor reasoning processes and optimize strategies based on problem complexity and type
+- Use real-time reasoning process monitoring and optimization
+- Continuously optimize reasoning strategies based on effectiveness
+
+### Solution Validation
+- Implement systematic validation of solutions against requirements, constraints, and edge cases
+- Provide systematic validation against all requirements and constraints
+- Test solutions thoroughly before implementation
+
+### Creative Synthesis
+- Combine insights from multiple domains and perspectives to generate innovative solutions
+- Present comprehensive solution architecture with all components and interactions
+- Integrate feedback and iteration cycles to refine and improve reasoning quality
+
+### Context Switching
+- Efficiently switch between different problem contexts while maintaining reasoning continuity
+- Maintain context across different problem domains
+- Preserve important information when switching focus
+
+### Abstraction and Generalization
+- Identify abstract principles and create reusable solution patterns
+- Extract generalizable patterns from specific solutions
+- Create reusable frameworks and templates
+
+---
+
+## Problem-Solving Workflow
+
+### Step-by-Step Approach
+1. **Decompose**: Break problem into atomic components
+2. **Analyze**: Consider from multiple perspectives (technical, business, user, system)
+3. **Pattern Match**: Identify similar solved problems
+4. **Synthesize**: Combine insights into comprehensive solution
+5. **Validate**: Verify against all requirements and constraints
+6. **Optimize**: Refine for performance and clarity
+
+### Example Workflow
+
+```typescript
+// ✅ CORRECT - Systematic problem decomposition
+// Problem: Implement booking cancellation feature
+
+// Step 1: Decompose
+// - Cancel booking API endpoint
+// - Update booking status
+// - Handle refunds
+// - Notify customer
+// - Update equipment availability
+
+// Step 2: Analyze from perspectives
+// Technical: API design, database updates, transaction handling
+// Business: Refund policy, cancellation fees, booking terms
+// User: Clear cancellation process, confirmation, refund timeline
+// System: Availability updates, notification system, audit trail
+
+// Step 3: Pattern Match
+// Similar to: Payment processing (transaction handling)
+// Similar to: Booking creation (availability updates)
+
+// Step 4: Synthesize Solution
+// - Create cancellation API with validation
+// - Use database transaction for atomicity
+// - Apply refund policy based on timing
+// - Send confirmation email
+// - Update equipment availability
+// - Log cancellation in audit trail
+
+// Step 5: Validate
+// - Handles edge cases (already started, paid, etc.)
+// - Maintains data consistency
+// - Follows business rules
+// - Provides good UX
+
+// Step 6: Optimize
+// - Efficient database queries
+// - Clear error messages
+// - Proper logging
+```
+
+---
+
+## Output Protocol
+
+### Reasoning Transparency
+- Show complete reasoning process with step-by-step logical progression
+- Explain why each step is taken
+- Document assumptions and trade-offs
+
+### Solution Architecture
+- Present comprehensive solution architecture with all components and interactions
+- Show how components work together
+- Identify dependencies and interfaces
+
+### Validation Matrix
+- Provide systematic validation against all requirements and constraints
+- Test edge cases and error conditions
+- Verify business rules are followed
+
+### Implementation Guidance
+- Provide detailed implementation steps with rationale and best practices
+- Include code examples and patterns
+- Document potential pitfalls and solutions
+
+---
+
+## ✅ Reasoning Checklist
+
+When Solving Complex Problems:
+- [ ] Problem decomposed into manageable steps
+- [ ] Multiple perspectives considered
+- [ ] Similar patterns identified
+- [ ] Solution validated against requirements
+- [ ] Edge cases considered
+- [ ] Implementation plan clear
+- [ ] Trade-offs documented
+
+---
+
+**Remember**:
+- 🧠 **Think systematically**
+- 🔍 **Consider all perspectives**
+- 🎯 **Validate thoroughly**
+- 📊 **Document reasoning**
+- 🔄 **Iterate and improve**

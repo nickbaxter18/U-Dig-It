@@ -1,0 +1,62 @@
+# ========================================
+# Kubota Rental Platform - Environment Variables
+# ========================================
+#
+# INSTRUCTIONS:
+# 1. Copy this entire file to frontend/.env.local
+# 2. Replace all placeholder values with your actual API keys
+# 3. NEVER commit .env.local to git (it's already in .gitignore)
+#
+# ========================================
+
+# ========= SUPABASE =========
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+NEXT_PUBLIC_SUPABASE_ALLOW_LOCAL=false
+NEXT_PUBLIC_SUPABASE_FALLBACK_URL=https://bnimazxnqligusckahab.supabase.co
+NEXT_PUBLIC_SUPABASE_FALLBACK_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc
+SUPABASE_FALLBACK_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc2NjQ5OSwiZXhwIjoyMDc1MzQyNDk5fQ.jYftXcbltZw63xjwi0ZaI5K0ICcEPKzF7XYpeRZ45Sg
+
+# ========= IDKIT =========
+IDKIT_API_URL=https://your-idkit-instance.example.com
+IDKIT_API_KEY=your-idkit-api-key-here
+IDKIT_WEBHOOK_SECRET=your-idkit-webhook-secret-here
+
+# ========= STRIPE (TEST MODE) =========
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+
+# ========= EMAIL (SENDGRID) =========
+EMAIL_PROVIDER=sendgrid
+SENDGRID_API_KEY=SG.your_sendgrid_api_key_here
+EMAIL_FROM=NickBaxter@udigit.ca
+EMAIL_FROM_NAME=U-Dig It Rentals
+
+# ========= GOOGLE MAPS =========
+# ⚠️ CRITICAL: Use your NEW regenerated API key here!
+#
+# Steps to get your key:
+# 1. Go to: https://console.cloud.google.com/apis/credentials?project=alien-hologram-475820-n5
+# 2. Click "Regenerate Key" on the exposed key
+# 3. Copy the NEW key (starts with AIza...)
+# 4. Paste it below
+# 5. Add HTTP referrer restrictions (see URGENT_ACTION_REQUIRED.md)
+# 6. Add API restrictions (see URGENT_ACTION_REQUIRED.md)
+#
+GOOGLE_MAPS_API_KEY=AIza...YOUR_NEW_REGENERATED_KEY_HERE
+
+# ========= FEATURE FLAGS =========
+NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS=true
+NEXT_PUBLIC_ENABLE_EMAIL_NOTIFICATIONS=true
+
+# ========================================
+# REMINDER:
+# - NEVER commit .env.local to git
+# - NEVER share these keys publicly
+# - ALWAYS add API restrictions to all keys
+# - ALWAYS set up billing alerts
+# ========================================
+
+

@@ -1,0 +1,406 @@
+{
+  "cursor.ai.enabled": true,
+  "cursor.composer.enabled": true,
+  "cursor.parallelAgents.enabled": true,
+  "cursor.voice.enabled": true,
+  "cursor.modelSelection.auto": true,
+
+  "cursor.composer.maxTokens": 1000000,
+  "cursor.composer.model": "claude-sonnet-4.5",
+  "cursor.composer.fallbackModel": "gpt-4-turbo",
+  "cursor.composer.multiFileEditing": true,
+  "cursor.composer.contextualAwareness": true,
+
+  "cursor.parallelAgents.maxConcurrent": 4,
+  "cursor.parallelAgents.useWorktrees": true,
+  "cursor.parallelAgents.autoMerge": false,
+
+  "cursor.voice.pushToTalk": true,
+  "cursor.voice.hotkey": "Ctrl+Shift+V",
+  "cursor.voice.accuracy": "high",
+
+  "cursor.modelSelection.autoSwitch": true,
+  "cursor.modelSelection.contextAware": true,
+  "cursor.modelSelection.trackPerformance": true,
+
+  "npm.packageManager": "pnpm",
+
+  // ============================================
+  // Editor Intelligence (Maximize AI Power)
+  // ============================================
+  "editor.inlineSuggest.enabled": true,
+  "editor.suggest.preview": true,
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": true,
+    "strings": true
+  },
+  "editor.suggest.showWords": false,
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  "editor.suggest.localityBonus": true,
+  "editor.suggestSelection": "first",
+  "editor.wordBasedSuggestions": "matchingDocuments",
+  "editor.wordBasedSuggestionsMode": "matchingDocuments",
+  "editor.inlineSuggest.showToolbar": "always",
+  "editor.parameterHints.enabled": true,
+  "editor.hover.enabled": true,
+  "editor.hover.delay": 100,
+  "editor.linkedEditing": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "editor.guides.highlightActiveIndentation": true,
+  "editor.semanticHighlighting.enabled": true,
+  "editor.codeLens": true,
+  "editor.renderWhitespace": "boundary",
+  "editor.renderControlCharacters": false,
+  "editor.renderLineHighlight": "all",
+  "editor.showFoldingControls": "always",
+  "editor.foldingHighlight": true,
+  "editor.unfoldOnClickAfterEndOfLine": true,
+
+  // ============================================
+  // Search & File Intelligence (Maximize AI Power)
+  // ============================================
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.cursor/worktrees": true,
+    "**/.next": true,
+    "**/coverage": true,
+    "**/.turbo": true
+  },
+  "search.smartCase": true,
+  "search.useGlobalIgnoreFiles": true,
+  "search.useIgnoreFiles": true,
+  "search.followSymlinks": false,
+  "search.maxResults": 20000,
+  "search.collapseResults": "alwaysCollapse",
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.turbo/**": true,
+    "**/coverage/**": true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.turbo": true
+  },
+  "files.associations": {
+    "*.mdc": "markdown",
+    "*.env*": "dotenv"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+
+  // ============================================
+  // TypeScript Intelligence (Maximize AI Power)
+  // ============================================
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.suggest.autoImports": true,
+  "typescript.suggest.completeFunctionCalls": true,
+  "typescript.suggest.completeJSDocs": true,
+  "typescript.suggest.enabled": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "typescript.inlayHints.parameterNames.enabled": "all",
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.propertyDeclarationTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+  "typescript.inlayHints.enumValues.enabled": true,
+  "typescript.inlayHints.parameterTypes.enabled": true,
+  "typescript.disableAutomaticTypeAcquisition": false,
+  "typescript.tsserver.maxTsServerMemory": 8192,
+  "typescript.tsserver.watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriority",
+    "synchronousWatchDirectory": true,
+    "excludeDirectories": ["**/node_modules", "**/.git", "**/.next"]
+  },
+  "typescript.preferences.quoteStyle": "single",
+  "typescript.format.enable": false,
+
+  // ============================================
+  // JavaScript Intelligence (Maximize AI Power)
+  // ============================================
+  "javascript.suggest.autoImports": true,
+  "javascript.suggest.completeFunctionCalls": true,
+  "javascript.suggest.completeJSDocs": true,
+  "javascript.suggest.enabled": true,
+  "javascript.updateImportsOnFileMove.enabled": "always",
+  "javascript.preferences.includePackageJsonAutoImports": "on",
+  "javascript.preferences.quoteStyle": "single",
+  "javascript.format.enable": false,
+
+  // ============================================
+  // ESLint Intelligence (Maximize AI Power)
+  // ============================================
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "eslint.run": "onType",
+  "eslint.lintTask.enable": true,
+  "eslint.codeActionsOnSave.mode": "all",
+  "eslint.format.enable": true,
+  "eslint.useFlatConfig": true,
+
+  // ============================================
+  // Task & Automation (Maximize AI Power)
+  // ============================================
+  "task.allowAutomaticTasks": "on",
+  "task.autoDetect": "on",
+  "task.quickOpen.detail": true,
+  "task.quickOpen.skip": false,
+
+  // ============================================
+  // Extension-Specific Settings
+  // ============================================
+
+  // Error Lens - Show errors inline
+  "errorLens.enabled": true,
+  "errorLens.enabledDiagnosticLevels": ["error", "warning"],
+  "errorLens.followCursor": "activeLine",
+  "errorLens.gutterIconsEnabled": true,
+
+  // Code Spell Checker - Custom words for this project
+  "cSpell.words": [
+    "kubota",
+    "udigit",
+    "supabase",
+    "docussign",
+    "stripe",
+    "sendgrid",
+    "bookings",
+    "equipment",
+    "rental",
+    "trackloader",
+    "svl"
+  ],
+  "cSpell.enabledFileTypes": {
+    "typescript": true,
+    "typescriptreact": true,
+    "javascript": true,
+    "javascriptreact": true,
+    "markdown": true
+  },
+
+  // Todo Tree - Find TODO comments
+  "todo-tree.general.tags": [
+    "TODO",
+    "FIXME",
+    "BUG",
+    "HACK",
+    "NOTE",
+    "OPTIMIZE",
+    "REFACTOR"
+  ],
+  "todo-tree.highlights.customHighlight": {
+    "TODO": {
+      "foreground": "#ff6b6b",
+      "iconColour": "#ff6b6b"
+    },
+    "FIXME": {
+      "foreground": "#ffa500",
+      "iconColour": "#ffa500"
+    },
+    "BUG": {
+      "foreground": "#ff0000",
+      "iconColour": "#ff0000"
+    }
+  },
+
+  // Better Comments - Highlight important comments
+  "better-comments.highlightPlainText": true,
+
+  // Path Intellisense - Auto-complete paths
+  "path-intellisense.autoSlashAfterDirectory": true,
+  "path-intellisense.extensionOnImport": true,
+
+  // Import Cost - Show bundle size
+  "importCost.smallPackageSize": 50,
+  "importCost.mediumPackageSize": 100,
+  "importCost.largePackageSize": 200,
+
+  // Prettier - Code formatting
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // GitLens - Git integration
+  "gitlens.codeLens.enabled": true,
+  "gitlens.currentLine.enabled": true,
+  "gitlens.hovers.enabled": true,
+
+  // Thunder Client - API testing
+  "thunder-client.workspaceRelativePath": ".thunder-client",
+
+  // Supabase - Database connection
+  "supabase.dbUrl": "",
+  "supabase.anonKey": "",
+  "supabase.serviceRoleKey": "",
+
+  // ============================================
+  // Performance & Diagnostics (Maximize AI Power)
+  // ============================================
+  "editor.largeFileOptimizations": false,
+  "editor.maxTokenizationLineLength": 20000,
+  "editor.suggest.filterGraceful": true,
+  "editor.suggest.shareSuggestSelections": true,
+  "editor.suggest.showStatusBar": true,
+  "editor.acceptSuggestionOnCommitCharacter": true,
+  "editor.acceptSuggestionOnEnter": "on",
+  "editor.tabCompletion": "on",
+  "editor.snippetSuggestions": "top",
+  "editor.suggest.showKeywords": true,
+  "editor.suggest.showSnippets": true,
+  "editor.suggest.showClasses": true,
+  "editor.suggest.showFunctions": true,
+  "editor.suggest.showVariables": true,
+  "editor.suggest.showModules": true,
+  "editor.suggest.showProperties": true,
+  "editor.suggest.showEvents": true,
+  "editor.suggest.showOperators": true,
+  "editor.suggest.showUnits": true,
+  "editor.suggest.showValues": true,
+  "editor.suggest.showConstants": true,
+  "editor.suggest.showEnums": true,
+  "editor.suggest.showEnumMembers": true,
+  "editor.suggest.showStructs": true,
+  "editor.suggest.showInterfaces": true,
+  "editor.suggest.showTypeParameters": true,
+  "editor.suggest.showIssues": true,
+  "editor.suggest.showUsers": true,
+  "editor.suggest.showColors": true,
+  "editor.suggest.showFiles": true,
+  "editor.suggest.showReferences": true,
+  "editor.suggest.showFolders": true,
+  "editor.suggest.showText": true,
+  "editor.suggest.showCustomcolors": true,
+  "editor.suggest.showDeprecated": true,
+
+  // ============================================
+  // Git Intelligence (Maximize AI Power)
+  // ============================================
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "git.autofetch": true,
+  "git.autofetchPeriod": 180,
+  "git.enabled": true,
+  "git.path": "git",
+  "git.scanRepositories": [
+    "/home/vscode/Kubota-rental-platform"
+  ],
+
+  // ============================================
+  // Terminal Intelligence (Maximize AI Power)
+  // ============================================
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.fastScrollSensitivity": 5,
+  "terminal.integrated.mouseWheelScrollSensitivity": 3,
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.lineHeight": 1.2,
+
+  // ============================================
+  // Debugging Intelligence (Maximize AI Power)
+  // ============================================
+  "debug.allowBreakpointsEverywhere": true,
+  "debug.showBreakpointsInOverviewRuler": true,
+  "debug.showInlineBreakpointCandidates": true,
+  "debug.inlineValues": true,
+  "debug.toolBarLocation": "floating",
+  "debug.console.fontSize": 14,
+  "debug.console.lineHeight": 1.2,
+
+  // ============================================
+  // Explorer Intelligence (Maximize AI Power)
+  // ============================================
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "explorer.compactFolders": false,
+  "explorer.decorations.colors": true,
+  "explorer.decorations.badges": true,
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.js",
+    "*.js": "${capture}.js.map, ${capture}.min.js, ${capture}.d.ts",
+    "*.tsx": "${capture}.ts",
+    "tsconfig.json": "tsconfig.*.json",
+    "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml"
+  },
+
+  // ============================================
+  // Breadcrumbs Intelligence (Maximize AI Power)
+  // ============================================
+  "breadcrumbs.enabled": true,
+  "breadcrumbs.filePath": "on",
+  "breadcrumbs.symbolPath": "on",
+  "breadcrumbs.symbolSortOrder": "position",
+  "breadcrumbs.showArrays": true,
+  "breadcrumbs.showBooleans": true,
+  "breadcrumbs.showClasses": true,
+  "breadcrumbs.showColors": true,
+  "breadcrumbs.showConstants": true,
+  "breadcrumbs.showConstructors": true,
+  "breadcrumbs.showEnums": true,
+  "breadcrumbs.showEnumMembers": true,
+  "breadcrumbs.showEvents": true,
+  "breadcrumbs.showFields": true,
+  "breadcrumbs.showFiles": true,
+  "breadcrumbs.showFunctions": true,
+  "breadcrumbs.showInterfaces": true,
+  "breadcrumbs.showKeys": true,
+  "breadcrumbs.showMethods": true,
+  "breadcrumbs.showModules": true,
+  "breadcrumbs.showNamespaces": true,
+  "breadcrumbs.showNull": true,
+  "breadcrumbs.showNumbers": true,
+  "breadcrumbs.showObjects": true,
+  "breadcrumbs.showOperators": true,
+  "breadcrumbs.showPackages": true,
+  "breadcrumbs.showProperties": true,
+  "breadcrumbs.showStrings": true,
+  "breadcrumbs.showStructs": true,
+  "breadcrumbs.showTypeParameters": true,
+  "breadcrumbs.showVariables": true
+}

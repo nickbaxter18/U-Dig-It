@@ -1,0 +1,73 @@
+{
+  "$schema": "https://cursor.sh/schemas/performance-budgets.json",
+  "name": "Performance Budgets",
+  "description": "Define and enforce performance budgets",
+  
+  "enabled": true,
+  "autoCheck": true,
+  "failOnExceed": true,
+  
+  "budgets": {
+    "bundleSize": {
+      "initial": {
+        "max": 100000,
+        "unit": "bytes",
+        "warning": 80000
+      },
+      "chunk": {
+        "max": 50000,
+        "unit": "bytes",
+        "warning": 40000
+      },
+      "total": {
+        "max": 500000,
+        "unit": "bytes",
+        "warning": 400000
+      }
+    },
+    "queryTime": {
+      "max": 100,
+      "unit": "milliseconds",
+      "warning": 80
+    },
+    "renderTime": {
+      "max": 16,
+      "unit": "milliseconds",
+      "warning": 12
+    },
+    "apiResponseTime": {
+      "max": 500,
+      "unit": "milliseconds",
+      "warning": 400
+    },
+    "timeToInteractive": {
+      "max": 2000,
+      "unit": "milliseconds",
+      "warning": 1500
+    },
+    "firstContentfulPaint": {
+      "max": 500,
+      "unit": "milliseconds",
+      "warning": 400
+    }
+  },
+  
+  "checks": {
+    "onSave": false,
+    "onBuild": true,
+    "onCommit": true,
+    "inCI": true
+  },
+  
+  "suggestions": {
+    "enabled": true,
+    "suggestOptimizations": true,
+    "showImpact": true
+  },
+  
+  "reporting": {
+    "format": "markdown",
+    "includeDetails": true,
+    "showTrends": true
+  }
+}

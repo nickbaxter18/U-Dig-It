@@ -1,0 +1,411 @@
+---
+description: "Core security standards, input validation, authentication, authorization, and threat protection"
+alwaysApply: false
+globs: ["**/auth/**/*", "**/security/**/*", "**/guards/**/*", "**/api/**/*"]
+contextFiles:
+  - "frontend/src/lib/supabase/server.ts"
+  - "frontend/src/lib/rate-limiter.ts"
+  - "frontend/src/lib/input-sanitizer.ts"
+  - ".cursor/rules/SECURITY.mdc"
+autoReview: true
+---
+
+# Security Standards
+
+## 🎯 Purpose
+Core security protocols, input validation, authentication, authorization, and threat protection for the Kubota Rental Platform.
+
+---
+
+## Security-First Development
+
+### Core Security Principles
+1. **Zero Trust**: Verify everything, trust nothing
+2. **Defense in Depth**: Multiple layers of security
+3. **Least Privilege**: Minimum necessary access
+4. **Input Validation**: Never trust user input
+5. **Secure by Default**: Security built-in, not bolted-on
+
+---
+
+## Input Validation & Sanitization
+
+### Server-Side Validation (MANDATORY)
+```typescript
+// ✅ CORRECT - Multi-layer validation
+import { z } from 'zod';
+import { sanitizeBookingFormData, detectMaliciousInput } from '@/lib/input-sanitizer';
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  // Layer 1: Sanitize
+  const sanitized = sanitizeBookingFormData(body);
+
+  // Layer 2: Validate schema
+  const bookingSchema = z.object({
+    equipmentId: z.string().uuid(),
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+    deliveryAddress: z.string().min(10).max(200),
+    notes: z.string().max(2000).optional()
+  });
+
+  const validated = bookingSchema.parse(sanitized);
+
+  // Layer 3: Check for attacks
+  if (validated.notes) {
+    const check = detectMaliciousInput(validated.notes);
+    if (check.isMalicious) {
+      logger.error('Malicious input detected', {
+        reason: check.reason,
+        ip: request.ip
+      });
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+  }
+
+  // Layer 4: Business validation
+  const availability = await checkAvailability(
+    validated.equipmentId,
+    validated.startDate,
+    validated.endDate
+  );
+
+  if (!availability.available) {
+    return NextResponse.json(
+      { error: 'Equipment not available' },
+      { status: 409 }
+    );
+  }
+
+  // Now safe to use
+  const result = await createBooking(validated);
+  return NextResponse.json(result);
+}
+
+// ❌ WRONG - No validation
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  await supabase.from('bookings').insert(body); // UNSAFE!
+}
+```
+
+### XSS Prevention
+```typescript
+// ✅ CORRECT - Escape user content
+import DOMPurify from 'isomorphic-dompurify';
+
+export function SafeUserContent({ content }: { content: string }) {
+  const clean = DOMPurify.sanitize(content, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br'],
+    ALLOWED_ATTR: []
+  });
+
+  return <div dangerouslySetInnerHTML={{ __html: clean }} />;
+}
+
+// ❌ WRONG - Raw HTML injection
+export function UnsafeContent({ content }: { content: string }) {
+  return <div dangerouslySetInnerHTML={{ __html: content }} />; // XSS!
+}
+```
+
+### SQL Injection Prevention
+```typescript
+// ✅ CORRECT - Parameterized queries (Supabase does this automatically)
+const { data } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('customerId', userId); // Safe - parameterized
+
+// ❌ WRONG - String concatenation (if using raw SQL)
+const query = `SELECT * FROM bookings WHERE customer_id = '${userId}'`; // SQL injection!
+```
+
+---
+
+## Authentication & Authorization
+
+### Session Security
+```typescript
+// ✅ CORRECT - Secure session handling
+// Supabase handles this, but verify:
+// - HTTPOnly cookies
+// - Secure flag (HTTPS)
+// - SameSite=Lax
+// - Short expiry (1 hour)
+// - Refresh token rotation
+
+// Server-side auth check
+const { data: { user }, error } = await supabase.auth.getUser();
+if (error || !user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+
+### Role-Based Access Control (RBAC)
+```typescript
+// ✅ CORRECT - Verify roles
+export async function requireRole(
+  request: NextRequest,
+  allowedRoles: string[]
+): Promise<{ user: User; role: string } | NextResponse> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!userData || !allowedRoles.includes(userData.role)) {
+    logger.warn('Unauthorized role access attempt', {
+      userId: user.id,
+      requiredRoles: allowedRoles,
+      actualRole: userData?.role
+    });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return { user, role: userData.role };
+}
+
+// Usage
+export async function DELETE(request: NextRequest) {
+  const authResult = await requireRole(request, ['admin', 'super_admin']);
+  if (authResult instanceof NextResponse) return authResult;
+
+  // Admin-only operation
+}
+```
+
+---
+
+## Rate Limiting & DoS Protection
+
+### Rate Limiting
+```typescript
+// ✅ CORRECT - Apply rate limits
+import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
+
+export async function POST(request: NextRequest) {
+  // Apply strict rate limiting for sensitive operations
+  const result = await rateLimit(request, RateLimitPresets.VERY_STRICT);
+
+  if (!result.success) {
+    logger.warn('Rate limit exceeded', {
+      ip: request.ip,
+      path: request.url
+    });
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: result.headers }
+    );
+  }
+
+  // Continue with request
+}
+```
+
+### Request Size Limits
+```typescript
+// ✅ CORRECT - Validate request size
+import { validateRequest, REQUEST_LIMITS } from '@/lib/request-validator';
+
+export async function POST(request: NextRequest) {
+  const validation = await validateRequest(request, {
+    maxSize: REQUEST_LIMITS.MAX_JSON_SIZE, // 1MB
+    allowedContentTypes: ['application/json']
+  });
+
+  if (!validation.valid) {
+    return validation.error!;
+  }
+
+  // Process request
+}
+```
+
+---
+
+## Secure API Design
+
+### API Security Headers
+```typescript
+// ✅ CORRECT - Security headers in middleware
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+
+  // Security headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'geolocation=(), microphone=()');
+
+  // CSP
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+  );
+
+  return response;
+}
+```
+
+### CORS Configuration
+```typescript
+// ✅ CORRECT - Strict CORS
+const allowedOrigins = [
+  'https://kubotarental.ca',
+  'https://www.kubotarental.ca'
+];
+
+export function corsMiddleware(request: NextRequest) {
+  const origin = request.headers.get('origin');
+
+  if (!origin || !allowedOrigins.includes(origin)) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { status: 403 }
+    );
+  }
+
+  const response = NextResponse.next();
+  response.headers.set('Access-Control-Allow-Origin', origin);
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  return response;
+}
+```
+
+---
+
+## Data Protection & Privacy
+
+### PII Handling
+```typescript
+// ✅ CORRECT - Encrypt sensitive data
+import { encrypt, decrypt } from '@/lib/encryption';
+
+// Store
+const encrypted = await encrypt(sensitiveData);
+await supabase.from('sensitive_table').insert({ data: encrypted });
+
+// Retrieve
+const { data } = await supabase.from('sensitive_table').select('data');
+const decrypted = await decrypt(data.data);
+```
+
+### Audit Logging
+```typescript
+// ✅ CORRECT - Log sensitive operations
+export async function logAuditEvent(event: {
+  userId: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  metadata?: any;
+}) {
+  const supabase = createClient({
+    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!
+  });
+
+  await supabase.from('audit_logs').insert({
+    user_id: event.userId,
+    action: event.action,
+    table_name: event.resourceType,
+    record_id: event.resourceId,
+    metadata: event.metadata,
+    ip_address: getCurrentIp(),
+    user_agent: getCurrentUserAgent(),
+    timestamp: new Date().toISOString()
+  });
+}
+
+// Usage
+await logAuditEvent({
+  userId: user.id,
+  action: 'payment_processed',
+  resourceType: 'payments',
+  resourceId: paymentId,
+  metadata: { amount: 500, method: 'stripe' }
+});
+```
+
+---
+
+## Secret Management
+
+### Environment Variables
+```bash
+# ✅ CORRECT - Never commit secrets
+# Use .env.local (gitignored)
+
+# Public (frontend)
+NEXT_PUBLIC_SUPABASE_URL=https://...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ... # Safe to expose
+
+# Private (server-side only)
+SUPABASE_SERVICE_ROLE_KEY=eyJ... # NEVER expose
+STRIPE_SECRET_KEY=sk_live_...
+SENDGRID_API_KEY=SG.xxx...
+
+# ❌ WRONG - Committing .env to git
+# ❌ WRONG - Exposing service_role_key to client
+```
+
+---
+
+## Dependency Security
+
+### Regular Audits
+```bash
+# ✅ Run security audits regularly
+pnpm audit
+snyk test
+
+# ✅ Keep dependencies updated
+pnpm update
+
+# ✅ Check for critical vulnerabilities
+snyk_sca_scan({ path: "/absolute/path/to/project" })
+```
+
+---
+
+## ✅ Security Standards Checklist
+
+Code Changes:
+- [ ] Input validation implemented
+- [ ] XSS prevention applied
+- [ ] SQL injection prevented
+- [ ] Authentication verified
+- [ ] Authorization checked
+- [ ] Rate limiting applied
+- [ ] Audit logging added
+
+API Routes:
+- [ ] Request size validated
+- [ ] Content-Type validated
+- [ ] Rate limiting applied
+- [ ] Authentication required
+- [ ] RBAC enforced
+- [ ] Input sanitized
+- [ ] Errors logged
+- [ ] Security headers set
+
+---
+
+**Remember**:
+- 🔒 **Security is NOT optional**
+- 🛡️ **Defense in depth**
+- ✅ **Validate EVERYTHING**
+- 📊 **Audit EVERYTHING**

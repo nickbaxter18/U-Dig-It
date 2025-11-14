@@ -1,0 +1,205 @@
+{
+  "name": "Kubota Rental Platform",
+  "dockerComposeFile": "../docker-compose.dev.yml",
+  "service": "frontend",
+  "workspaceFolder": "/home/vscode/Kubota-rental-platform",
+
+  // Features to install
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      // Extensions that actually improve AI capabilities
+      "extensions": [
+        // CRITICAL - ESLint & TypeScript diagnostics (AI can read these via read_lints)
+        "dbaeumer.vscode-eslint",
+        "ms-vscode.vscode-typescript-next",
+
+        // Security & Code Quality diagnostics
+        "snyk-security.snyk-vulnerability-scanner",
+        "SonarSource.sonarlint-vscode",
+
+        // Framework-specific diagnostics
+        "bradlc.vscode-tailwindcss",
+
+        // CSS/Style linting
+        "stylelint.vscode-stylelint",
+
+        // Markdown linting
+        "davidanson.vscode-markdownlint",
+
+        // Testing - test failure diagnostics
+        "Orta.vscode-jest",
+        "ms-playwright.playwright",
+
+        // Database/SQL validation
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+
+        // Note: Supabase MCP tools are available via MCP, no extension needed
+
+        // Code Quality Extensions
+        "usernamehw.errorlens",
+        "streetsidesoftware.code-spell-checker",
+        "gruntfuggly.todo-tree",
+        "aaron-bond.better-comments",
+        "christian-kohler.path-intellisense",
+        "wix.vscode-import-cost",
+
+        // Zero-Config Extensions (Work Immediately)
+        "ryanluker.vscode-coverage-gutters",
+        "pmneo.tsimporter",
+        "vincaslt.highlight-matching-tag",
+        "IBM.output-colorizer",
+        "naumovs.color-highlight",
+
+        // Git & Version Control
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+
+        // API Testing
+        "rangav.vscode-thunder-client",
+
+        // Formatting
+        "esbenp.prettier-vscode",
+        "formulahendry.auto-rename-tag",
+
+        // Docker support
+        "ms-azuretools.vscode-docker"
+      ],
+
+      // Settings that help both AI and humans
+      "settings": {
+        // TypeScript settings - helps AI read diagnostics
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "typescript.preferences.importModuleSpecifier": "relative",
+
+        // ESLint settings - helps AI read diagnostics
+        "eslint.validate": [
+          "javascript",
+          "javascriptreact",
+          "typescript",
+          "typescriptreact"
+        ],
+        "eslint.run": "onType",
+        "eslint.lintTask.enable": true,
+
+        // Tailwind settings - helps AI catch invalid classes
+        "tailwindCSS.validate": true,
+        "tailwindCSS.experimental.classRegex": [
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+
+        // Editor settings
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit",
+          "source.organizeImports": "explicit"
+        },
+
+        // Jest settings - helps AI read test failures
+        "jest.autoRun": "off",
+        "jest.showCoverageOnLoad": true,
+
+        // Files settings
+        "files.exclude": {
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/node_modules": true,
+          "**/.next": true,
+          "**/dist": true,
+          "**/.turbo": true
+        },
+
+        // Search settings
+        "search.exclude": {
+          "**/node_modules": true,
+          "**/dist": true,
+          "**/.next": true,
+          "**/coverage": true,
+          "**/.turbo": true
+        },
+
+        // Terminal settings for dev container
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": ["--login", "-c", "cd /home/vscode/Kubota-rental-platform && source .cursor/startup.sh && exec bash"],
+            "icon": "terminal-bash"
+          }
+        }
+      }
+    }
+  },
+
+  // Forward ports for development
+  "forwardPorts": [
+    3000,  // Next.js frontend
+    3001,  // NestJS backend
+    5432,  // PostgreSQL
+    9222   // Chrome DevTools Protocol (CDP) for browser automation
+  ],
+
+  // Port attributes
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "9222": {
+      "label": "Chrome CDP",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Post-create command - install dependencies and fix file watching
+  "postCreateCommand": "cd /home/vscode/Kubota-rental-platform && npm install && chmod +x .cursor/terminal-config.sh && chmod +x .cursor/ai-assistant.sh && chmod +x .cursor/startup.sh && chmod +x .cursor/activate.sh && chmod +x .cursor/verify.sh",
+
+  // Environment variables
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    // Disable polling for better performance (only use if inotify limit is fixed)
+    "WATCHPACK_POLLING": "false",
+    "CHOKIDAR_USEPOLLING": "false"
+  },
+
+  // Terminal configuration - runs every time container starts
+  "postStartCommand": "echo '🚀 Enhanced Terminal Available! Run: source /home/vscode/Kubota-rental-platform/.cursor/activate.sh' > /tmp/enhanced-terminal-info.txt && echo '💡 Quick activation: source /home/vscode/Kubota-rental-platform/.cursor/activate.sh' >> /tmp/enhanced-terminal-info.txt",
+
+  // Mount settings - improves file watching performance
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  // Device passthrough for camera access (works with Cursor dev containers)
+  "runArgs": [
+    "--device=/dev/video0",
+    "--device=/dev/video1",
+    "--device=/dev/video2"
+  ],
+
+  // User settings
+  "remoteUser": "node",
+
+  // Lifecycle scripts
+  "onCreateCommand": "echo '📦 Container created. Frontend will auto-start on port 3000 when opening terminal.'"
+}

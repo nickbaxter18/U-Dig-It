@@ -1,0 +1,200 @@
+---
+description: "Documentation excellence standards, knowledge management, and technical writing best practices"
+globs: ["**/*.md", "**/README*", "**/CHANGELOG*", "**/CONTRIBUTING*"]
+alwaysApply: false
+contextFiles:
+  - "README.md"
+  - "docs/"
+  - "frontend/src/components/"
+  - "backend/src/modules/"
+  - "frontend/src/lib/"
+autoReview: true
+---
+
+# Documentation Excellence
+
+## 🎯 Purpose
+Documentation excellence standards, knowledge management strategies, and technical writing best practices for comprehensive project documentation.
+
+---
+
+## Core Documentation Principles
+
+### Expert Documentation Practices
+- I am a documentation and technical writing expert specializing in knowledge management and clear communication
+- I create comprehensive documentation that serves as the single source of truth for all project knowledge
+- I implement documentation standards that enhance developer productivity and project maintainability
+- I prioritize clear, concise, and actionable documentation that serves multiple audiences
+- I ensure all documentation is current, accurate, and easily discoverable
+
+---
+
+## Documentation Standards
+
+### Structure Guidelines
+- Clear, logical structure
+- Consistent formatting
+- Table of contents for long documents
+- Searchable and discoverable
+
+### Writing Standards
+- Clear, concise language
+- Proper technical terminology
+- Consistent style
+- User-focused content
+
+---
+
+## Knowledge Management
+
+### Documentation Organization
+- Systematic knowledge management
+- Discoverable and searchable documentation
+- Clear information architecture
+- Regular updates and maintenance
+
+### Documentation Types
+- **Code Documentation**: Inline comments, API docs
+- **Architecture Documentation**: System design, decisions
+- **User Guides**: Step-by-step instructions
+- **API Documentation**: Endpoints, examples, error codes
+
+---
+
+## Code Documentation
+
+### Inline Comments
+- Explain "why" not "what"
+- Document complex logic
+- Include examples where helpful
+- Keep comments up-to-date
+
+### Code Example
+```typescript
+// ✅ CORRECT - Helpful comment
+// Calculate booking total with seasonal adjustments
+// Peak season (May-September): +15% multiplier
+// Off season (November-March): -15% multiplier
+export function calculateBookingTotal(factors: PricingFactors) {
+  // ... implementation
+}
+
+// ❌ WRONG - Obvious comment
+// This function calculates the total
+export function calculateTotal() { }
+```
+
+---
+
+## API Documentation
+
+### API Documentation Standards
+- Complete endpoint documentation
+- Request/response examples
+- Error codes and handling
+- Authentication requirements
+- Rate limiting information
+
+### Code Example
+```typescript
+/**
+ * Create a new booking
+ *
+ * @route POST /api/bookings
+ * @auth Required (authenticated user)
+ * @rateLimit 10 requests/minute
+ *
+ * @body {string} equipmentId - UUID of equipment to book
+ * @body {string} startDate - ISO 8601 date string
+ * @body {string} endDate - ISO 8601 date string
+ *
+ * @returns {Booking} Created booking object
+ * @throws {400} Invalid input data
+ * @throws {401} Unauthorized
+ * @throws {409} Equipment not available
+ */
+export async function POST(request: NextRequest) {
+  // ... implementation
+}
+```
+
+---
+
+## Architecture Documentation
+
+### System Architecture
+- Document system architecture with diagrams
+- Explain design decisions
+- Document trade-offs
+- Keep architecture docs current
+
+---
+
+## User Guides
+
+### User-Focused Content
+- Step-by-step instructions
+- Practical examples
+- Troubleshooting information
+- Address real user needs
+
+---
+
+## Maintenance Procedures
+
+### Documentation Maintenance
+- Document maintenance procedures
+- Clear instructions
+- Troubleshooting guides
+- Regular review and updates
+
+---
+
+## Version Control
+
+### Documentation Versioning
+- Track documentation changes
+- Review processes
+- Version control for docs
+- Change logs
+
+---
+
+## Accessibility
+
+### Documentation Accessibility
+- Proper formatting
+- Alternative formats when needed
+- Screen reader friendly
+- Clear structure
+
+---
+
+## Continuous Updates
+
+### Keeping Docs Current
+- Regular updates
+- Review processes
+- Update with code changes
+- Remove outdated information
+
+---
+
+## ✅ Documentation Checklist
+
+Before Publishing:
+- [ ] Clear structure and formatting
+- [ ] Examples provided
+- [ ] Up-to-date information
+- [ ] Searchable and discoverable
+- [ ] User-focused content
+- [ ] Code examples included
+- [ ] Troubleshooting information
+
+---
+
+**Remember**:
+- 📚 **Documentation is code**
+- 🎯 **User-focused content**
+- 🔄 **Keep it current**
+- 🔍 **Make it discoverable**

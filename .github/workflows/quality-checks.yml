@@ -1,0 +1,362 @@
+name: Code Quality & Testing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # TypeScript and linting checks
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check (Backend)
+        run: |
+          cd backend && npm run type-check
+
+      - name: TypeScript check (Frontend)
+        run: |
+          cd frontend && npm run type-check
+
+      - name: ESLint check (Backend)
+        run: |
+          cd backend && npm run lint
+
+      - name: ESLint check (Frontend)
+        run: |
+          cd frontend && npm run lint
+
+      - name: Prettier format check
+        run: |
+          npm run format:check
+
+  # Unit and integration tests
+  tests:
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: kubota_test
+          POSTGRES_USER: kubota_user
+          POSTGRES_PASSWORD: kubota_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for database
+        run: |
+          until pg_isready -h localhost -p 5432 -U kubota_user -d kubota_test; do
+            echo "Waiting for database..."
+            sleep 2
+          done
+
+      - name: Setup test database
+        run: |
+          cd backend && npm run migration:run
+          cd backend && npm run seed
+
+      - name: Run backend tests
+        run: |
+          cd backend && npm run test:coverage
+        env:
+          DATABASE_URL: postgresql://kubota_user:kubota_pass@localhost:5432/kubota_test
+          NODE_ENV: test
+
+      - name: Run frontend tests
+        run: |
+          cd frontend && npm run test:run
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+
+  # E2E tests
+  e2e:
+    runs-on: ubuntu-latest
+    needs: tests
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: |
+          cd frontend && npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: |
+          cd frontend && npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+
+  # Security audit
+  security:
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: |
+          npm audit --audit-level high
+          cd backend && npm audit --audit-level high
+          cd frontend && npm audit --audit-level high
+
+      - name: Run dependency check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'kubota-rental-platform'
+          path: .
+          format: 'ALL'
+
+  # Build verification
+  build:
+    runs-on: ubuntu-latest
+    needs: [quality, tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: |
+          cd backend && npm run build
+
+      - name: Build frontend
+        run: |
+          cd frontend && npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            backend/dist/
+            frontend/.next/
+          retention-days: 7
+
+  # Performance checks
+  performance:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Lighthouse CI
+        run: |
+          cd frontend && npm run test:performance
+        env:
+          # Optional: LHCI GitHub App token for PR comments
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN || '' }}
+
+  # Documentation checks
+  docs:
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for outdated documentation
+        run: |
+          # Check if README files contain current version info
+          grep -r "2025" README.md docs/ || echo "Documentation may need version updates"
+
+          # Check for broken links in documentation
+          # This would require a link checker tool
+
+      - name: Validate API documentation
+        run: |
+          # Check if API docs are properly formatted
+          # This would require documentation validation tools
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,1220 @@
+---
+description: Comprehensive Supabase best practices for Next.js 16 frontend with database design, RLS, auth, realtime, and performance optimization
+alwaysApply: false
+---
+# Supabase Excellence Framework
+## Kubota Rental Platform - Next.js 16 + Supabase Best Practices
+
+**Applies to**: All Supabase database operations, migrations, RLS policies, auth flows, and API routes.
+
+---
+
+## 🎯 Core Principles
+
+### Always Apply These Rules:
+1. **Database operations MUST use Supabase MCP tools** (`mcp_supabase_*`)
+2. **Never modify schema manually** - Always use migrations
+3. **RLS enabled on ALL user-facing tables** - No exceptions
+4. **Use server-side Supabase client for privileged operations** - Never expose service_role key
+5. **Validate all inputs server-side** - Never trust client data
+6. **Index ALL foreign keys and RLS predicate columns** - Performance is critical
+7. **Use structured logging** - Never use console.log
+
+---
+
+## 📐 1) Database Design & Migrations
+
+### Naming Conventions (STRICT)
+```sql
+-- ✅ CORRECT - snake_case for everything
+CREATE TABLE equipment_maintenance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  equipment_id UUID NOT NULL REFERENCES equipment(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- ❌ WRONG - camelCase or PascalCase
+CREATE TABLE EquipmentMaintenance (
+  equipmentId UUID...
+);
+```
+
+### Primary Keys & Defaults
+```sql
+-- ✅ CORRECT - UUID with gen_random_uuid()
+id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+
+-- ✅ CORRECT - Timestamps with timezone
+created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+
+-- ❌ WRONG - No default for UUID
+id UUID PRIMARY KEY
+
+-- ❌ WRONG - Timestamp without timezone
+created_at TIMESTAMP DEFAULT now()
+```
+
+### Foreign Keys & Constraints
+```sql
+-- ✅ CORRECT - Explicit ON DELETE behavior
+customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE RESTRICT,
+
+-- ✅ CORRECT - CHECK constraints for enums
+status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (
+  status IN ('pending', 'confirmed', 'cancelled', 'completed')
+),
+
+-- ❌ WRONG - No ON DELETE specified
+customer_id UUID REFERENCES users(id),
+```
+
+### Migration Best Practices
+```sql
+-- ✅ CORRECT - Use Supabase MCP apply_migration
+-- Name: add_booking_indexes
+-- Tool: mcp_supabase_apply_migration
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_customer_id
+ON bookings(customer_id);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_equipment_id
+ON bookings(equipment_id);
+
+-- ✅ CORRECT - Updated_at trigger
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_updated_at
+BEFORE UPDATE ON bookings
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+```
+
+### Indexing Strategy
+```sql
+-- ✅ ALWAYS index these:
+-- 1. Foreign keys
+CREATE INDEX CONCURRENTLY idx_bookings_customer_id ON bookings(customer_id);
+
+-- 2. Columns used in WHERE clauses
+CREATE INDEX CONCURRENTLY idx_bookings_status ON bookings(status);
+
+-- 3. Columns used in RLS policies
+CREATE INDEX CONCURRENTLY idx_bookings_customer_id_status ON bookings(customer_id, status);
+
+-- 4. Full-text search columns
+CREATE INDEX idx_equipment_search ON equipment USING GIN(search_vector);
+
+-- 5. Frequently sorted columns
+CREATE INDEX CONCURRENTLY idx_bookings_created_at_desc ON bookings(created_at DESC);
+```
+
+---
+
+## 🔒 2) Row-Level Security (RLS)
+
+### RLS Golden Rules
+1. **ENABLE RLS on EVERY user-facing table**
+2. **Write separate policies for each operation** (SELECT/INSERT/UPDATE/DELETE)
+3. **Use `(SELECT auth.uid())` instead of `auth.uid()` directly** - Better plan caching
+4. **Prefer EXISTS/IN subqueries over joins in USING/WITH CHECK**
+5. **Index ALL columns referenced in policies**
+
+### Standard RLS Patterns for Kubota Platform
+
+#### Pattern 1: Customer Ownership (Bookings, Contracts, Payments)
+```sql
+-- Enable RLS
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+
+-- SELECT - Users can see their own bookings OR admins can see all
+CREATE POLICY "bookings_select_policy" ON bookings
+FOR SELECT TO authenticated
+USING (
+  "customerId" = (SELECT auth.uid())
+  OR
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+
+-- INSERT - Users can create bookings for themselves OR admins can create for anyone
+CREATE POLICY "bookings_insert_policy" ON bookings
+FOR INSERT TO authenticated
+WITH CHECK (
+  "customerId" = (SELECT auth.uid())
+  OR
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+
+-- UPDATE - Users can update their own bookings OR admins can update any
+CREATE POLICY "bookings_update_policy" ON bookings
+FOR UPDATE TO authenticated
+USING (
+  "customerId" = (SELECT auth.uid())
+  OR
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+)
+WITH CHECK (
+  "customerId" = (SELECT auth.uid())
+  OR
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+
+-- ⚠️ IMPORTANT: Index the columns used in policies!
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_customer_id
+ON bookings("customerId");
+```
+
+#### Pattern 2: Public Read, Admin Write (Equipment, Seasonal Pricing)
+```sql
+-- Enable RLS
+ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
+
+-- Public can read all equipment
+CREATE POLICY "equipment_public_read" ON equipment
+FOR SELECT TO public
+USING (true);
+
+-- Only admins can modify equipment
+CREATE POLICY "equipment_admin_write" ON equipment
+FOR ALL TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+```
+
+#### Pattern 3: Admin Only (Analytics, System Config)
+```sql
+-- Enable RLS
+ALTER TABLE analytics_data ENABLE ROW LEVEL SECURITY;
+
+-- Only admins can access analytics
+CREATE POLICY "analytics_admin_only" ON analytics_data
+FOR ALL TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+```
+
+#### Pattern 4: Service Role Only (Audit Logs, System Metrics)
+```sql
+-- Enable RLS
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own audit logs
+CREATE POLICY "audit_logs_user_read" ON audit_logs
+FOR SELECT TO authenticated
+USING (
+  user_id = (SELECT auth.uid())
+  OR
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role IN ('admin', 'super_admin')
+  )
+);
+
+-- Service role can insert audit logs
+CREATE POLICY "audit_logs_system_insert" ON audit_logs
+FOR INSERT TO public
+WITH CHECK (true);
+```
+
+### RLS Performance Optimization
+```sql
+-- ✅ CORRECT - Optimized with SELECT wrapper
+USING ((SELECT auth.uid()) = customer_id)
+
+-- ✅ CORRECT - Use EXISTS for complex checks
+USING (
+  EXISTS (
+    SELECT 1 FROM users
+    WHERE id = (SELECT auth.uid())
+    AND role = 'admin'
+  )
+)
+
+-- ❌ WRONG - Direct auth.uid() call
+USING (auth.uid() = customer_id)
+
+-- ❌ WRONG - Using JOIN in policy
+USING (
+  customer_id IN (
+    SELECT u.id FROM users u WHERE u.id = auth.uid()
+  )
+)
+```
+
+---
+
+## 🔐 3) Auth & JWT Claims
+
+### Client-Side Auth (Frontend)
+```typescript
+// ✅ CORRECT - Use SSR client in components
+import { createClient } from '@/lib/supabase/client';
+
+export default function MyComponent() {
+  const supabase = createClient();
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+}
+```
+
+### Server-Side Auth (API Routes)
+```typescript
+// ✅ CORRECT - Use server client for privileged ops
+import { createClient } from '@/lib/supabase/server';
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+
+  // Verify authentication
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Fetch user role from database
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (userData?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Perform privileged operation...
+}
+```
+
+### Environment Variables
+```bash
+# ✅ Public (frontend) - anon key only
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+
+# ✅ Private (server-side only) - service role key
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
+
+# ❌ NEVER expose service_role_key to client!
+```
+
+### Custom JWT Claims
+```sql
+-- ✅ Set custom claims server-side only
+-- In Edge Function or server route:
+const { data: userData } = await supabase
+  .from('users')
+  .select('role, tenant_id')
+  .eq('id', user.id)
+  .single();
+
+// Then reference in RLS policy:
+CREATE POLICY "tenant_access" ON bookings
+FOR SELECT TO authenticated
+USING (
+  tenant_id = (
+    SELECT tenant_id FROM users WHERE id = (SELECT auth.uid())
+  )
+);
+```
+
+---
+
+## 4) Realtime Strategy
+
+### Broadcast Pattern (Preferred)
+```typescript
+// ✅ CORRECT - Use broadcast for custom events
+const channel = supabase.channel('booking_updates')
+  .on('broadcast', { event: 'booking_created' }, (payload) => {
+    console.log('New booking:', payload);
+  })
+  .subscribe();
+
+// Send event from server
+await supabase.channel('booking_updates').send({
+  type: 'broadcast',
+  event: 'booking_created',
+  payload: { bookingId, customerId }
+});
+
+// ✅ ALWAYS cleanup
+return () => {
+  supabase.removeChannel(channel);
+};
+```
+
+### Postgres Changes Pattern (Database-Driven)
+```typescript
+// ✅ CORRECT - Subscribe to specific table changes
+const channel = supabase
+  .channel('bookings_changes')
+  .on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'bookings',
+      filter: `customerId=eq.${userId}`
+    },
+    (payload) => {
+      console.log('New booking:', payload.new);
+    }
+  )
+  .subscribe();
+
+// ✅ ALWAYS cleanup
+useEffect(() => {
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
+```
+
+### Realtime RLS (Private Channels)
+```sql
+-- Enable RLS on realtime.messages
+ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+
+-- Users can only receive messages on their channels
+CREATE POLICY "user_channel_receive" ON realtime.messages
+FOR SELECT TO authenticated
+USING (
+  -- Channel naming: user:<user_id>:*
+  topic LIKE 'user:%'
+  AND SPLIT_PART(topic, ':', 2)::uuid = (SELECT auth.uid())
+);
+
+-- Users can only send to their channels
+CREATE POLICY "user_channel_send" ON realtime.messages
+FOR INSERT TO authenticated
+WITH CHECK (
+  topic LIKE 'user:%'
+  AND SPLIT_PART(topic, ':', 2)::uuid = (SELECT auth.uid())
+);
+```
+
+---
+
+## 💾 5) Storage Best Practices
+
+### Bucket Configuration
+```sql
+-- ✅ CORRECT - Private bucket with RLS
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('contracts', 'contracts', false);
+
+-- RLS on storage.objects
+CREATE POLICY "users_can_upload_own_contracts" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'contracts'
+  AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+);
+
+CREATE POLICY "users_can_read_own_contracts" ON storage.objects
+FOR SELECT TO authenticated
+USING (
+  bucket_id = 'contracts'
+  AND (
+    (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    OR
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE id = (SELECT auth.uid())
+      AND role IN ('admin', 'super_admin')
+    )
+  )
+);
+```
+
+### Storage Operations (Frontend)
+```typescript
+// ✅ CORRECT - Upload with path scoping
+const uploadContract = async (file: File, bookingId: string) => {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) throw new Error('Not authenticated');
+
+  // Scope files to user folder
+  const filePath = `${user.id}/${bookingId}/${file.name}`;
+
+  const { data, error } = await supabase.storage
+    .from('contracts')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (error) throw error;
+
+  // Generate signed URL for private access
+  const { data: signedUrl } = await supabase.storage
+    .from('contracts')
+    .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+  return signedUrl;
+};
+```
+
+---
+
+## 🚀 6) Edge Functions (Not currently used - Future)
+
+### Deno Function Template
+```typescript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+serve(async (req: Request) => {
+  // CORS headers
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // ✅ Use built-in env vars
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // ✅ Validate input
+    const body = await req.json()
+    if (!body.bookingId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing bookingId' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ✅ Use service role for privileged operations
+    const { data, error } = await supabaseClient
+      .from('bookings')
+      .select('*')
+      .eq('id', body.bookingId)
+      .single()
+
+    if (error) throw error
+
+    return new Response(
+      JSON.stringify({ data }),
+      { headers: { 'Content-Type': 'application/json' }, status: 200 }
+    )
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { headers: { 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
+})
+```
+
+---
+
+## 💻 7) Frontend Integration (Next.js 16)
+
+### Type Safety
+```typescript
+// ✅ CORRECT - Generate and use types
+// Run: pnpm supabase gen types typescript --local > supabase/types.ts
+
+import { Database } from '@/../../supabase/types';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient<Database>();
+
+// TypeScript will autocomplete table names and columns!
+const { data } = await supabase
+  .from('bookings') // ✅ Autocompleted
+  .select('id, bookingNumber, customer:customerId(firstName, lastName)') // ✅ Type-safe
+  .eq('status', 'confirmed'); // ✅ Status values validated
+```
+
+### Client vs Server Usage
+```typescript
+// ✅ CORRECT - Client component (browser)
+'use client';
+import { createClient } from '@/lib/supabase/client';
+
+export default function ClientComponent() {
+  const supabase = createClient(); // Uses anon key
+  // Can read public data or user's own data (via RLS)
+}
+
+// ✅ CORRECT - Server component/route (Node.js)
+import { createClient } from '@/lib/supabase/server';
+
+export async function ServerRoute() {
+  const supabase = await createClient(); // Uses cookies for session
+  // Can access authenticated user data (via RLS)
+}
+
+// ✅ CORRECT - Server route with service role (privileged)
+export async function POST(request: NextRequest) {
+  const supabase = createClient({
+    supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY!
+  });
+  // Can bypass RLS for admin operations
+}
+```
+
+### Query Optimization
+```typescript
+// ✅ CORRECT - Specific columns, pagination, filtering
+const { data, error, count } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status, totalAmount, customer:customerId(firstName, lastName)', { count: 'exact' })
+  .eq('status', 'confirmed')
+  .gte('startDate', new Date().toISOString())
+  .order('startDate', { ascending: true })
+  .range(0, 19) // Limit 20 results
+  .limit(20);
+
+// ❌ WRONG - No SELECT *, no pagination
+const { data } = await supabase
+  .from('bookings')
+  .select('*'); // Returns ALL columns and ALL rows!
+```
+
+### Input Validation (Server-Side)
+```typescript
+// ✅ CORRECT - Validate + sanitize server-side
+import { z } from 'zod';
+import { sanitizeBookingFormData, detectMaliciousInput } from '@/lib/input-sanitizer';
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  // 1. Sanitize inputs first
+  const sanitized = sanitizeBookingFormData(body);
+
+  // 2. Validate with Zod
+  const bookingSchema = z.object({
+    equipmentId: z.string().uuid(),
+    startDate: z.string().datetime(),
+    endDate: z.string().datetime(),
+    deliveryAddress: z.string().min(10).max(200),
+    notes: z.string().max(2000).optional()
+  });
+
+  const validated = bookingSchema.parse(sanitized);
+
+  // 3. Check for malicious content
+  if (validated.notes) {
+    const check = detectMaliciousInput(validated.notes);
+    if (check.isMalicious) {
+      logger.error('Malicious input detected', { reason: check.reason });
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+  }
+
+  // 4. Now safe to use
+  const { data, error } = await supabase
+    .from('bookings')
+    .insert(validated);
+}
+```
+
+---
+
+## ⚡ 8) Performance & Observability
+
+### Query Performance
+```typescript
+// ✅ CORRECT - Use specific columns
+const { data } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status')
+  .limit(20);
+
+// ✅ CORRECT - Use indexes for filters
+const { data } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('customerId', userId) // Uses idx_bookings_customer_id
+  .eq('status', 'confirmed'); // Uses idx_bookings_status
+
+// ❌ WRONG - No SELECT *
+const { data } = await supabase
+  .from('bookings')
+  .select('*'); // Returns everything!
+
+// ❌ WRONG - Unindexed filter
+const { data } = await supabase
+  .from('bookings')
+  .select('*')
+  .ilike('specialInstructions', '%keyword%'); // Full table scan!
+```
+
+### Pagination Pattern
+```typescript
+// ✅ CORRECT - Always paginate list queries
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await supabase
+    .from('bookings')
+    .select('*', { count: 'exact' })
+    .range(from, to)
+    .limit(limit);
+
+  return NextResponse.json({
+    data,
+    pagination: {
+      page,
+      limit,
+      total: count,
+      totalPages: Math.ceil((count || 0) / limit)
+    }
+  });
+}
+```
+
+### Monitoring with Supabase MCP
+```typescript
+// ✅ Use Supabase advisors regularly
+// Tool: mcp_supabase_get_advisors
+
+// Check for security issues
+const securityAdvisors = await mcp_supabase_get_advisors({ type: 'security' });
+// Check for performance issues
+const perfAdvisors = await mcp_supabase_get_advisors({ type: 'performance' });
+
+// Check logs for errors
+const logs = await mcp_supabase_get_logs({ service: 'api' });
+```
+
+---
+
+## 🛡️ 9) Safety & Change Management
+
+### Migration Safety
+```sql
+-- ✅ CORRECT - Use CONCURRENTLY for indexes (no table locks)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_customer_id
+ON bookings(customer_id);
+
+-- ✅ CORRECT - Add column with default (safe)
+ALTER TABLE bookings
+ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal';
+
+-- ✅ CORRECT - Use IF NOT EXISTS/IF EXISTS
+CREATE TABLE IF NOT EXISTS new_table (...);
+DROP TABLE IF EXISTS old_table;
+
+-- ⚠️ DANGER - Requires explicit approval
+DROP TABLE important_table; -- BACKUP FIRST!
+DELETE FROM bookings; -- ALWAYS use WHERE!
+ALTER TABLE bookings DROP COLUMN critical_field; -- Data loss!
+```
+
+### Testing Migrations
+```bash
+# ✅ CORRECT - Test in development branch first
+# 1. Create branch
+mcp_supabase_create_branch({ name: 'test-migration' })
+
+# 2. Apply migration to branch
+mcp_supabase_apply_migration({
+  name: 'add_new_index',
+  query: 'CREATE INDEX CONCURRENTLY...'
+})
+
+# 3. Test thoroughly in branch
+
+# 4. Merge to production
+mcp_supabase_merge_branch({ branch_id: 'xxx' })
+```
+
+---
+
+## 📋 10) Kubota Platform-Specific Patterns
+
+### Booking Flow with RLS
+```typescript
+// ✅ CORRECT - Create booking with proper RLS
+export async function createBooking(formData: BookingFormData) {
+  const supabase = createClient();
+
+  // 1. Verify auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // 2. Sanitize inputs
+  const sanitized = sanitizeBookingFormData(formData);
+
+  // 3. Create booking (RLS ensures customerId = auth.uid())
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .insert({
+      customerId: user.id, // ✅ Explicitly set
+      equipmentId: sanitized.equipmentId,
+      startDate: sanitized.startDate,
+      endDate: sanitized.endDate,
+      deliveryAddress: sanitized.deliveryAddress,
+      status: 'pending',
+      totalAmount: calculateTotal(sanitized)
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // 4. Create audit log
+  await supabase.from('audit_logs').insert({
+    table_name: 'bookings',
+    record_id: booking.id,
+    action: 'create',
+    user_id: user.id,
+    new_values: booking
+  });
+
+  return booking;
+}
+```
+
+### Payment Processing with Security
+```typescript
+// ✅ CORRECT - Secure payment creation
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+
+  // 1. Request validation
+  const validation = await validateRequest(request, {
+    maxSize: REQUEST_LIMITS.MAX_JSON_SIZE,
+    allowedContentTypes: ['application/json']
+  });
+  if (!validation.valid) return validation.error!;
+
+  // 2. Rate limiting (VERY_STRICT for payments)
+  const rateLimit = await rateLimit(request, {
+    ...RateLimitPresets.VERY_STRICT,
+    skipAdmins: false // Even admins rate limited
+  });
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: rateLimit.headers }
+    );
+  }
+
+  // 3. Auth verification
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // 4. Verify booking ownership (RLS + explicit check)
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('customerId, totalAmount')
+    .eq('id', bookingId)
+    .single();
+
+  if (!booking || booking.customerId !== user.id) {
+    logger.warn('Unauthorized payment attempt', {
+      userId: user.id,
+      bookingId
+    });
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // 5. Create Stripe payment intent (server-side only!)
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(booking.totalAmount * 100),
+    currency: 'cad',
+    metadata: { bookingId, userId: user.id }
+  });
+
+  // 6. Save to database
+  await supabase.from('payments').insert({
+    bookingId,
+    amount: booking.totalAmount,
+    type: 'payment',
+    status: 'pending',
+    stripePaymentIntentId: paymentIntent.id
+  });
+
+  return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+}
+```
+
+### Equipment Availability Checker
+```typescript
+// ✅ CORRECT - Check availability with overlap query
+export async function checkAvailability(
+  equipmentId: string,
+  startDate: string,
+  endDate: string
+) {
+  const supabase = createClient();
+
+  // Query availability blocks (includes bookings, maintenance, blackouts)
+  const { data: blocks, error } = await supabase
+    .from('availability_blocks')
+    .select('id, start_at_utc, end_at_utc, reason')
+    .eq('equipment_id', equipmentId)
+    .or(`and(start_at_utc.lte.${endDate},end_at_utc.gte.${startDate})`)
+    .order('start_at_utc');
+
+  if (error) throw error;
+
+  // Equipment is available if no blocks found
+  return {
+    available: blocks.length === 0,
+    conflicts: blocks
+  };
+}
+```
+
+---
+
+## 🔍 11) Code Review Checklist
+
+### Before Committing ANY Supabase-Related Code:
+
+#### Schema Changes ✅
+- [ ] Migration file created with Supabase MCP
+- [ ] Uses snake_case naming
+- [ ] Has NOT NULL constraints where appropriate
+- [ ] Has explicit ON DELETE behavior for foreign keys
+- [ ] Includes indexes for foreign keys
+- [ ] Includes updated_at trigger if needed
+- [ ] Tested in development branch first
+
+#### RLS Policies ✅
+- [ ] RLS enabled on table
+- [ ] Separate policy for each operation (SELECT/INSERT/UPDATE/DELETE)
+- [ ] Uses `(SELECT auth.uid())` wrapper
+- [ ] Uses EXISTS/IN for complex checks (not joins)
+- [ ] All columns in predicates are indexed
+- [ ] Tested with different user roles
+- [ ] Admin bypass implemented where needed
+
+#### API Routes ✅
+- [ ] Uses `createClient` from `@/lib/supabase/server` (not client)
+- [ ] Verifies authentication with `getUser()`
+- [ ] Validates inputs with Zod + sanitization
+- [ ] Checks for malicious content
+- [ ] Implements rate limiting
+- [ ] Validates request size
+- [ ] Uses structured logging (not console.log)
+- [ ] Returns appropriate HTTP status codes
+- [ ] Includes error handling
+
+#### Frontend Queries ✅
+- [ ] Uses typed Supabase client (`Database` type)
+- [ ] Selects specific columns (not SELECT *)
+- [ ] Includes pagination (.range() + .limit())
+- [ ] Filters with indexed columns
+- [ ] Orders by indexed columns if possible
+- [ ] Handles errors gracefully
+- [ ] Shows loading states
+- [ ] Uses SWR or React Query for caching
+
+#### Realtime ✅
+- [ ] Uses private channels or broadcast
+- [ ] Implements cleanup (removeChannel)
+- [ ] RLS policies on realtime.messages
+- [ ] Topic naming follows convention (scope:entity:id)
+- [ ] Event naming follows convention (entity_action)
+
+#### Storage ✅
+- [ ] Uses private buckets unless public needed
+- [ ] RLS policies on storage.objects
+- [ ] Path scoping by user/tenant
+- [ ] Signed URLs for private files
+- [ ] File size validation
+- [ ] MIME type validation
+
+---
+
+## 🚨 Common Mistakes to Avoid
+
+### Database
+```sql
+-- ❌ WRONG - Manual schema changes in Supabase dashboard
+-- Use mcp_supabase_apply_migration instead!
+
+-- ❌ WRONG - No indexes on foreign keys
+CREATE TABLE bookings (
+  customer_id UUID REFERENCES users(id) -- Missing index!
+);
+
+-- ❌ WRONG - Using auth.uid() directly
+USING (auth.uid() = customer_id) -- Poor plan caching
+
+-- ❌ WRONG - No RLS on user table
+CREATE TABLE sensitive_data (...); -- Must enable RLS!
+```
+
+### Frontend
+```typescript
+// ❌ WRONG - Service role key in client code
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // NEVER in client!
+);
+
+// ❌ WRONG - No input validation
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  // Directly using user input without validation!
+  await supabase.from('bookings').insert(body);
+}
+
+// ❌ WRONG - SELECT * without pagination
+const { data } = await supabase
+  .from('bookings')
+  .select('*'); // Could return 10,000 rows!
+
+// ❌ WRONG - Using console.log instead of logger
+console.log('User logged in:', user.email); // Use logger.info!
+```
+
+---
+
+## 📚 Quick Reference
+
+### Supabase MCP Tools
+```typescript
+// List tables
+mcp_supabase_list_tables({ schemas: ['public'] })
+
+// Execute SQL query
+mcp_supabase_execute_sql({ query: 'SELECT ...' })
+
+// Apply migration
+mcp_supabase_apply_migration({
+  name: 'migration_name',
+  query: 'CREATE INDEX...'
+})
+
+// Check advisors (security & performance)
+mcp_supabase_get_advisors({ type: 'security' })
+mcp_supabase_get_advisors({ type: 'performance' })
+
+// Get logs
+mcp_supabase_get_logs({ service: 'api' })
+mcp_supabase_get_logs({ service: 'auth' })
+
+// Generate TypeScript types
+mcp_supabase_generate_typescript_types()
+```
+
+### Essential File Paths
+- **Supabase Client (Browser)**: `frontend/src/lib/supabase/client.ts`
+- **Supabase Server**: `frontend/src/lib/supabase/server.ts`
+- **Types**: `supabase/types.ts`
+- **Migrations**: `supabase/migrations/`
+- **Seed Data**: `supabase/seed.sql`
+- **Config**: `supabase/config.toml`
+
+### Rate Limiting
+```typescript
+import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
+
+// Apply rate limiting
+const result = await rateLimit(request, RateLimitPresets.STRICT);
+if (!result.success) {
+  return NextResponse.json(
+    { error: 'Too many requests' },
+    { status: 429, headers: result.headers }
+  );
+}
+```
+
+### Input Sanitization
+```typescript
+import {
+  sanitizeBookingFormData,
+  sanitizeContactFormData,
+  detectMaliciousInput
+} from '@/lib/input-sanitizer';
+
+// Sanitize booking data
+const clean = sanitizeBookingFormData(rawData);
+
+// Check for attacks
+const check = detectMaliciousInput(userInput);
+if (check.isMalicious) {
+  // Reject request
+}
+```
+
+### Logging
+```typescript
+import { logger } from '@/lib/logger';
+
+// ✅ Use structured logging
+logger.info('Booking created', {
+  component: 'booking-api',
+  action: 'create',
+  metadata: { bookingId, customerId }
+});
+
+logger.error('Payment failed', {
+  component: 'payment-api',
+  action: 'payment_error',
+  metadata: { reason, bookingId }
+}, error);
+
+// ❌ NEVER use console.log
+console.log('Booking created'); // NO!
+```
+
+---
+
+## 🎯 Performance Targets
+
+### Page Performance
+- **Page Load**: < 1 second
+- **Time to Interactive**: < 2 seconds
+- **First Contentful Paint**: < 500ms
+- **Transfer Size**: < 100KB initial load
+
+### Database Performance
+- **Query Time**: < 100ms for simple queries
+- **Query Time**: < 500ms for complex joins
+- **Index Coverage**: 100% of foreign keys
+- **RLS Overhead**: < 10% query time increase
+
+### API Performance
+- **Response Time**: < 200ms for cached data
+- **Response Time**: < 1s for database queries
+- **Rate Limit**: Appropriate per endpoint
+- **Timeout**: 30s default, 2min max
+
+---
+
+## 🔄 Workflow Integration
+
+### When Creating a New Table
+1. ✅ Write migration with mcp_supabase_apply_migration
+2. ✅ Include all constraints, defaults, indexes
+3. ✅ Enable RLS on the table
+4. ✅ Create policies for each operation
+5. ✅ Index foreign keys and RLS columns
+6. ✅ Add updated_at trigger
+7. ✅ Generate TypeScript types
+8. ✅ Test with different user roles
+9. ✅ Verify with mcp_supabase_list_tables
+
+### When Creating an API Route
+1. ✅ Import server Supabase client
+2. ✅ Add rate limiting
+3. ✅ Add request validation
+4. ✅ Verify authentication
+5. ✅ Sanitize inputs
+6. ✅ Check for malicious content
+7. ✅ Use structured logging
+8. ✅ Handle errors gracefully
+9. ✅ Return safe responses
+10. ✅ Test with browser automation
+
+### When Modifying RLS Policies
+1. ✅ Test in development branch
+2. ✅ Verify indexes exist for policy columns
+3. ✅ Run EXPLAIN ANALYZE on affected queries
+4. ✅ Test with anon, authenticated, and service roles
+5. ✅ Check advisor recommendations
+6. ✅ Monitor logs after deployment
+
+---
+
+## 🎓 Learning Resources
+
+### Official Docs
+- [Supabase RLS Guide](https://supabase.com/docs/guides/auth/row-level-security)
+- [Supabase Performance](https://supabase.com/docs/guides/platform/performance)
+- [Next.js with Supabase](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
+
+### Internal Docs
+- `DATABASE_VERIFICATION_SUITE.md` - Verification queries
+- `DATABASE_FUNCTION_SECURITY_ANALYSIS.md` - Security patterns
+- `.cursor/rules/supabase-backend-priority.mdc` - Backend priority rule
+
+---
+
+## ✅ Final Checklist
+
+Before ANY Supabase work, verify:
+- [ ] Using Supabase MCP tools (not direct psql)
+- [ ] Migration file ready (for schema changes)
+- [ ] RLS policies written and tested
+- [ ] Indexes created for foreign keys
+- [ ] TypeScript types generated
+- [ ] Input validation implemented
+- [ ] Rate limiting applied
+- [ ] Logging integrated
+- [ ] Browser automation test planned
+- [ ] Database verification queries ready
+
+---
+
+**Remember**:
+- 🎯 **Supabase MCP tools are your primary interface**
+- 🔒 **RLS is NOT optional**
+- ⚡ **Index ALL foreign keys**
+- 🛡️ **Validate ALL inputs**
+- 📊 **Log ALL operations**
+- 🧪 **Test with browser automation**
+
+**This rule ensures the Kubota Rental Platform maintains enterprise-grade quality and security!** 🚀

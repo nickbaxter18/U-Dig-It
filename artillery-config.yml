@@ -1,0 +1,71 @@
+config:
+  target: 'http://localhost:3001'
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    - duration: 120
+      arrivalRate: 10
+      name: "Ramp up load"
+    - duration: 300
+      arrivalRate: 20
+      name: "Sustained load"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  - name: "Equipment List"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/equipment"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+
+  - name: "Booking Availability"
+    weight: 25
+    flow:
+      - post:
+          url: "/api/bookings/availability"
+          json:
+            equipmentId: "test-equipment-id"
+            startDate: "2024-01-01"
+            endDate: "2024-01-07"
+          expect:
+            - statusCode: 200
+
+  - name: "User Authentication"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test@example.com"
+            password: "testpassword"
+          expect:
+            - statusCode: 200
+
+  - name: "Payment Processing"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/payments/process"
+          json:
+            amount: 10000
+            currency: "usd"
+            paymentMethodId: "pm_test_card"
+          expect:
+            - statusCode: 200

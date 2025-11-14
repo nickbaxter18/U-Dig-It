@@ -1,0 +1,1703 @@
+[
+  {
+    "schemaname": "cron",
+    "tablename": "job",
+    "policyname": "cron_job_policy",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(username = CURRENT_USER)",
+    "with_check": null
+  },
+  {
+    "schemaname": "cron",
+    "tablename": "job_run_details",
+    "policyname": "cron_job_run_details_policy",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(username = CURRENT_USER)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "_manual_fixes_required",
+    "policyname": "manual_fixes_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "ab_tests",
+    "policyname": "Admins can manage ab_tests",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alert_incidents",
+    "policyname": "Admins can manage alert incidents",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "alert_rules",
+    "policyname": "Admins can manage alert rules",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "analytics_data",
+    "policyname": "Admins can manage analytics",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_analytics",
+    "policyname": "Admins can manage API analytics",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_quotas",
+    "policyname": "api_quotas_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_usage",
+    "policyname": "API usage access",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "api_usage",
+    "policyname": "System can create API usage logs",
+    "roles": "{public}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "policyname": "admins_can_view_audit_logs",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "audit_logs",
+    "policyname": "audit_logs_insert_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((user_id = ( SELECT auth.uid() AS uid)) OR is_admin(( SELECT auth.uid() AS uid)) OR true)"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "availability_blocks",
+    "policyname": "availability_blocks_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "backup_jobs",
+    "policyname": "Admins can manage backup jobs",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "booking_attachments",
+    "policyname": "booking_attachments_create",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = booking_attachments.booking_id) AND (b.\"customerId\" = ( SELECT auth.uid() AS uid)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "booking_attachments",
+    "policyname": "booking_attachments_owner",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = booking_attachments.booking_id) AND ((b.\"customerId\" = ( SELECT auth.uid() AS uid)) OR is_admin(( SELECT auth.uid() AS uid))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "booking_payments",
+    "policyname": "booking_payments_insert_service_only",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "booking_payments",
+    "policyname": "booking_payments_select_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = booking_payments.booking_id) AND ((b.\"customerId\" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n           FROM users u\n          WHERE ((u.id = ( SELECT auth.uid() AS uid)) AND (u.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "bookings",
+    "policyname": "bookings_insert_policy",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((\"customerId\" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "bookings",
+    "policyname": "bookings_select_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((\"customerId\" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "bookings",
+    "policyname": "bookings_update_policy",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((\"customerId\" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((\"customerId\" = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "compliance_requirements",
+    "policyname": "Admins can manage compliance requirements",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_audit_logs",
+    "policyname": "Admins can view audit logs",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_entrants",
+    "policyname": "contest_entrants_select",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_events",
+    "policyname": "contest_events_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_events",
+    "policyname": "contest_events_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((entrant_id IS NULL) OR (entrant_id IN ( SELECT contest_entrants.id\n   FROM contest_entrants\n  WHERE (contest_entrants.email = ( SELECT auth.email() AS email)))) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_events",
+    "policyname": "contest_events_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_referral_codes",
+    "policyname": "Users can view own referral code",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(entrant_id = ( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_referrals",
+    "policyname": "contest_referrals_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_referrals",
+    "policyname": "contest_referrals_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((referrer_id IN ( SELECT contest_entrants.id\n   FROM contest_entrants\n  WHERE (contest_entrants.email = ( SELECT auth.email() AS email)))) OR (referee_id IN ( SELECT contest_entrants.id\n   FROM contest_entrants\n  WHERE (contest_entrants.email = ( SELECT auth.email() AS email)))) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contest_winners",
+    "policyname": "contest_winners_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contract_templates",
+    "policyname": "contract_templates_delete_admin",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contract_templates",
+    "policyname": "contract_templates_insert_admin",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contract_templates",
+    "policyname": "contract_templates_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((is_active = true) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contract_templates",
+    "policyname": "contract_templates_update_admin",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contracts",
+    "policyname": "contracts_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = contracts.\"bookingId\") AND (b.\"customerId\" = ( SELECT auth.uid() AS uid)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contracts",
+    "policyname": "contracts_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "contracts",
+    "policyname": "contracts_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = contracts.\"bookingId\") AND (b.\"customerId\" = ( SELECT auth.uid() AS uid)))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = contracts.\"bookingId\") AND (b.\"customerId\" = ( SELECT auth.uid() AS uid)))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "conversion_funnels",
+    "policyname": "Admins can manage conversion funnels",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "credit_applications",
+    "policyname": "credit_applications_admin_manage",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "credit_applications",
+    "policyname": "credit_applications_create",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(customer_id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "credit_applications",
+    "policyname": "credit_applications_owner",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((customer_id = ( SELECT auth.uid() AS uid)) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customer_behavior_analytics",
+    "policyname": "Admins can manage customer behavior analytics",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customer_communications",
+    "policyname": "customer_communications_policy",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR (created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customer_journeys",
+    "policyname": "Admins can manage customer journeys",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "customer_segments",
+    "policyname": "Admins can manage customer segments - optimized",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "damage_reports",
+    "policyname": "damage_reports_admin_manage",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "damage_reports",
+    "policyname": "damage_reports_create",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(reported_by = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "damage_reports",
+    "policyname": "damage_reports_customer_read",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((reported_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = damage_reports.booking_id) AND (b.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "database_performance_metrics",
+    "policyname": "Admins can manage database performance metrics",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "delivery_assignments",
+    "policyname": "delivery_assignments_delete_admin",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "delivery_assignments",
+    "policyname": "delivery_assignments_insert_admin",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "delivery_assignments",
+    "policyname": "delivery_assignments_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((driver_id IN ( SELECT drivers.id\n   FROM drivers\n  WHERE (drivers.user_id = ( SELECT auth.uid() AS uid)))) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "delivery_assignments",
+    "policyname": "delivery_assignments_update_admin",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "discount_codes",
+    "policyname": "discount_codes_select_policy",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "((is_active = true) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "document_relations",
+    "policyname": "document_relations_service_policy",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "document_relations",
+    "policyname": "document_relations_user_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM documents d\n  WHERE ((d.id = document_relations.document_id) AND (d.uploaded_by = ( SELECT auth.uid() AS uid)))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "documents",
+    "policyname": "documents_policy",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "((uploaded_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((uploaded_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "policyname": "drivers_delete_admin",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "policyname": "drivers_insert_admin",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "policyname": "drivers_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "drivers",
+    "policyname": "drivers_update_admin",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "dynamic_pricing_rules",
+    "policyname": "Admins can manage dynamic pricing rules",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_brand_assets",
+    "policyname": "public_select_email_brand_assets",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_campaigns",
+    "policyname": "admins_can_manage_campaigns",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_logs",
+    "policyname": "admins_can_insert_email_logs",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_logs",
+    "policyname": "admins_can_view_email_logs",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "email_templates_delete_admin",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "email_templates_insert_admin",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "email_templates_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((is_active = true) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "email_templates",
+    "policyname": "email_templates_update_admin",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment",
+    "policyname": "equipment_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_attachments",
+    "policyname": "attachments_admin_all",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_attachments",
+    "policyname": "attachments_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_categories",
+    "policyname": "equipment_categories_admin_write",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_categories",
+    "policyname": "equipment_categories_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_lifecycle",
+    "policyname": "Admins can manage equipment lifecycle",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_maintenance",
+    "policyname": "Admins can manage equipment maintenance",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_riders",
+    "policyname": "equipment_riders_delete",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(( SELECT COALESCE((users.raw_user_meta_data ->> 'role'::text), 'customer'::text) AS \"coalesce\"\n   FROM auth.users\n  WHERE (users.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['admin'::text, 'super_admin'::text]))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_riders",
+    "policyname": "equipment_riders_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(( SELECT COALESCE((users.raw_user_meta_data ->> 'role'::text), 'customer'::text) AS \"coalesce\"\n   FROM auth.users\n  WHERE (users.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['admin'::text, 'super_admin'::text]))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_riders",
+    "policyname": "equipment_riders_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_riders",
+    "policyname": "equipment_riders_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(( SELECT COALESCE((users.raw_user_meta_data ->> 'role'::text), 'customer'::text) AS \"coalesce\"\n   FROM auth.users\n  WHERE (users.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['admin'::text, 'super_admin'::text]))",
+    "with_check": "(( SELECT COALESCE((users.raw_user_meta_data ->> 'role'::text), 'customer'::text) AS \"coalesce\"\n   FROM auth.users\n  WHERE (users.id = ( SELECT auth.uid() AS uid))) = ANY (ARRAY['admin'::text, 'super_admin'::text]))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "equipment_utilization",
+    "policyname": "Equipment utilization access",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "error_logs",
+    "policyname": "error_logs_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "external_integrations",
+    "policyname": "Admins can manage external integrations",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "feature_usage_analytics",
+    "policyname": "feature_usage_analytics_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "financial_transactions",
+    "policyname": "financial_transactions_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((recorded_by = ( SELECT auth.uid() AS uid)) OR (approved_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "fleet_tracking",
+    "policyname": "Admins can manage fleet tracking",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "insurance_documents",
+    "policyname": "insurance_documents_delete_policy",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = insurance_documents.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "insurance_documents",
+    "policyname": "insurance_documents_insert_policy",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((\"bookingId\" IN ( SELECT bookings.id\n   FROM bookings\n  WHERE (bookings.\"customerId\" = ( SELECT auth.uid() AS uid)))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "insurance_documents",
+    "policyname": "insurance_documents_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = insurance_documents.\"bookingId\") AND (b.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "insurance_documents",
+    "policyname": "insurance_documents_update_policy",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = insurance_documents.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = insurance_documents.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "locations",
+    "policyname": "locations_admin_all",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "locations",
+    "policyname": "locations_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notification_templates",
+    "policyname": "Admins can manage notification templates",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "Admins can manage notifications",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users u\n  WHERE ((u.id = auth.uid()) AND (u.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "Users can view their notifications",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(user_id = auth.uid())",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "notifications_service_policy",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "notifications",
+    "policyname": "notifications_user_policy",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "(user_id = ( SELECT auth.uid() AS uid))",
+    "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "operator_certifications",
+    "policyname": "certifications_admin_verify",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "operator_certifications",
+    "policyname": "certifications_create_own",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(customer_id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "operator_certifications",
+    "policyname": "certifications_owner",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((customer_id = ( SELECT auth.uid() AS uid)) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payment_schedules",
+    "policyname": "payment_schedules_owner",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = payment_schedules.booking_id) AND (b.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR is_admin(( SELECT auth.uid() AS uid)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payments",
+    "policyname": "payments_delete_policy",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payments",
+    "policyname": "payments_insert_policy",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = payments.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payments",
+    "policyname": "payments_select_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings b\n  WHERE ((b.id = payments.\"bookingId\") AND (b.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "payments",
+    "policyname": "payments_update_policy",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = payments.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = payments.\"bookingId\") AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "predictive_models",
+    "policyname": "Admins can manage predictive models",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "rental_contracts",
+    "policyname": "admins_can_create_contracts",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "rental_contracts",
+    "policyname": "admins_can_update_contracts",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "rental_contracts",
+    "policyname": "customers_can_view_own_contracts",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((\"bookingId\" IN ( SELECT bookings.id\n   FROM bookings\n  WHERE (bookings.\"customerId\" = ( SELECT auth.uid() AS uid)))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "report_templates",
+    "policyname": "Admins can manage report templates",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "risk_assessments",
+    "policyname": "Admins can manage risk assessments",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "schedules",
+    "policyname": "schedules_select_optimized",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((EXISTS ( SELECT 1\n   FROM bookings\n  WHERE ((bookings.id = schedules.booking_id) AND (bookings.\"customerId\" = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "schedules",
+    "policyname": "schedules_write_service_only",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "search_index",
+    "policyname": "search_index_select_policy",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "seasonal_pricing",
+    "policyname": "seasonal_pricing_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "true",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_prizes",
+    "policyname": "public_can_read_prizes",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(is_active = true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "anonymous_can_create_sessions",
+    "roles": "{anon}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((user_id IS NULL) AND (session_token IS NOT NULL))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "anonymous_can_update_own_sessions",
+    "roles": "{anon}",
+    "cmd": "UPDATE",
+    "qual": "((user_id IS NULL) AND (session_token IS NOT NULL))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "anonymous_can_view_own_sessions",
+    "roles": "{anon}",
+    "cmd": "SELECT",
+    "qual": "((user_id IS NULL) AND (session_token IS NOT NULL))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "users_can_create_sessions",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(user_id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "users_can_update_own_sessions",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR ((user_id IS NULL) AND (session_token IS NOT NULL)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "spin_sessions",
+    "policyname": "users_can_view_own_sessions",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((user_id = ( SELECT auth.uid() AS uid)) OR ((user_id IS NULL) AND (session_token IS NOT NULL)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "support_tickets",
+    "policyname": "support_tickets_policy",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "((customer_id = ( SELECT auth.uid() AS uid)) OR (assigned_to = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": "((customer_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_config",
+    "policyname": "system_config_delete_policy",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_config",
+    "policyname": "system_config_insert_policy",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_config",
+    "policyname": "system_config_select_policy",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "((is_public = true) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_config",
+    "policyname": "system_config_update_policy",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_metrics",
+    "policyname": "Admins can manage system metrics",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_settings",
+    "policyname": "system_settings_select_consolidated",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "system_settings",
+    "policyname": "system_settings_update_admin",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "is_admin(( SELECT auth.uid() AS uid))",
+    "with_check": "is_admin(( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "usage_costs",
+    "policyname": "Admins can manage usage costs",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "Service role access - optimized",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "users_insert_own_record",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "users_select_for_rls",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((id = ( SELECT auth.uid() AS uid)) OR true)",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "users_service_insert_policy",
+    "roles": "{service_role}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "users_update_admin_service",
+    "roles": "{service_role}",
+    "cmd": "UPDATE",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "users",
+    "policyname": "users_update_own_record",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "(id = ( SELECT auth.uid() AS uid))",
+    "with_check": "(id = ( SELECT auth.uid() AS uid))"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "webhook_events",
+    "policyname": "webhook_events_admin_policy",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "public",
+    "tablename": "webhook_events",
+    "policyname": "webhook_events_service_policy",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "true",
+    "with_check": "true"
+  },
+  {
+    "schemaname": "public",
+    "tablename": "workflow_templates",
+    "policyname": "Admins can manage workflow templates",
+    "roles": "{public}",
+    "cmd": "ALL",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))"
+  },
+  {
+    "schemaname": "realtime",
+    "tablename": "messages",
+    "policyname": "user_scoped_receive",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((private = true) AND ((topic ~~ 'booking:%:changes'::text) OR (topic ~~ 'ticket:%:changes'::text) OR (topic ~~ 'user:%:notifications'::text)))",
+    "with_check": null
+  },
+  {
+    "schemaname": "realtime",
+    "tablename": "messages",
+    "policyname": "user_scoped_send",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((private = true) AND (topic = (('user:'::text || (( SELECT auth.uid() AS uid))::text) || ':notifications'::text)))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Admins can delete equipment images",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'equipment-images'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Admins can manage equipment images",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'equipment-images'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Admins can read all storage",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Admins can upload equipment images",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'equipment-images'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Public can view equipment images",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(bucket_id = 'equipment-images'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can delete own contracts",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can delete own insurance",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'insurance'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can delete own license",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can manage own contracts",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can manage own insurance",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'insurance'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can manage own license",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can read own contracts",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'contracts'::text) AND (((storage.foldername(name))[1] = (auth.uid())::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can read own insurance",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'insurance'::text) AND (((storage.foldername(name))[1] = (auth.uid())::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can read own license",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND (((storage.foldername(name))[1] = (auth.uid())::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = auth.uid()) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can upload own contracts",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can upload own insurance",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'insurance'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "Users can upload own license",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "avatars_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(bucket_id = 'avatars'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "contracts_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "contracts_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "contracts_service_role",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "(bucket_id = 'contracts'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "contracts_system_write",
+    "roles": "{service_role}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(bucket_id = 'contracts'::text)"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "contracts_user_read",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'contracts'::text) AND (((storage.foldername(name))[1] = ( SELECT (auth.uid())::text AS uid)) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "driver_licenses_delete",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND (((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "driver_licenses_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "driver_licenses_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND (((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "driver_licenses_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))",
+    "with_check": "((bucket_id = 'driver-licenses'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "equipment_images_admin_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'equipment-images'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "equipment_images_admin_write",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'equipment-images'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "equipment_images_public_read",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(bucket_id = 'equipment-images'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "insurance_docs_delete",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'insurance-documents'::text) AND (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum]))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "insurance_docs_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'insurance-documents'::text) AND (name ~~ 'bookings/%'::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "insurance_docs_select",
+    "roles": "{authenticated}",
+    "cmd": "SELECT",
+    "qual": "((bucket_id = 'insurance-documents'::text) AND ((name ~~ 'bookings/%'::text) OR (EXISTS ( SELECT 1\n   FROM users\n  WHERE ((users.id = ( SELECT auth.uid() AS uid)) AND (users.role = ANY (ARRAY['admin'::users_role_enum, 'super_admin'::users_role_enum])))))))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "insurance_docs_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'insurance-documents'::text) AND (name ~~ 'bookings/%'::text))",
+    "with_check": "((bucket_id = 'insurance-documents'::text) AND (name ~~ 'bookings/%'::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "public_read_email_photos",
+    "roles": "{public}",
+    "cmd": "SELECT",
+    "qual": "(bucket_id = 'Email Photos'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "signed_contracts_delete",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'signed-contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "signed_contracts_insert",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'signed-contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "signed_contracts_select",
+    "roles": "{anon,authenticated}",
+    "cmd": "SELECT",
+    "qual": "(bucket_id = 'signed-contracts'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "signed_contracts_service_role",
+    "roles": "{service_role}",
+    "cmd": "ALL",
+    "qual": "(bucket_id = 'signed-contracts'::text)",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "signed_contracts_update",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'signed-contracts'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "user_uploads_policy",
+    "roles": "{authenticated}",
+    "cmd": "ALL",
+    "qual": "((bucket_id = 'user-uploads'::text) AND ((storage.foldername(name))[1] = ( SELECT (auth.uid())::text AS uid)))",
+    "with_check": "((bucket_id = 'user-uploads'::text) AND ((storage.foldername(name))[1] = ( SELECT (auth.uid())::text AS uid)))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "users_delete_own_avatar",
+    "roles": "{authenticated}",
+    "cmd": "DELETE",
+    "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))",
+    "with_check": null
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "users_update_own_avatar",
+    "roles": "{authenticated}",
+    "cmd": "UPDATE",
+    "qual": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))",
+    "with_check": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))"
+  },
+  {
+    "schemaname": "storage",
+    "tablename": "objects",
+    "policyname": "users_upload_own_avatar",
+    "roles": "{authenticated}",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((bucket_id = 'avatars'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text))"
+  }
+]

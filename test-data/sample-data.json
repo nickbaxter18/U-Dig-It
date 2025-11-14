@@ -1,0 +1,140 @@
+{
+  "equipment": [
+    {
+      "id": "equipment-001",
+      "name": "Kubota SVL-75 Skid Steer Loader",
+      "category": "skid-steer",
+      "description": "Compact track loader with 74.3 HP engine, ideal for construction and landscaping projects.",
+      "specifications": {
+        "engine": "Kubota V3800-CR-TI4",
+        "horsepower": "74.3 HP",
+        "operatingWeight": "8,929 lbs",
+        "bucketCapacity": "1.25 yd³",
+        "liftHeight": "114.2 in",
+        "fuelCapacity": "24.3 gal"
+      },
+      "rentalRate": 25000,
+      "location": "Saint John, NB",
+      "availability": "available",
+      "images": [
+        "/images/kubota-svl-75-hero.png"
+      ]
+    },
+    {
+      "id": "equipment-002",
+      "name": "Kubota BX23S Tractor",
+      "category": "compact-tractor",
+      "description": "Sub-compact tractor with backhoe and front loader, perfect for residential projects.",
+      "specifications": {
+        "engine": "Kubota D902-B",
+        "horsepower": "21.6 HP",
+        "operatingWeight": "1,740 lbs",
+        "loaderCapacity": "680 lbs",
+        "backhoeDepth": "6 ft 2 in",
+        "fuelCapacity": "6.6 gal"
+      },
+      "rentalRate": 15000,
+      "location": "Saint John, NB",
+      "availability": "available",
+      "images": [
+        "/images/kubota-bx23s.png"
+      ]
+    },
+    {
+      "id": "equipment-003",
+      "name": "Kubota Z700 Zero-Turn Mower",
+      "category": "mower",
+      "description": "Commercial zero-turn mower with 72-inch cutting deck, ideal for large properties.",
+      "specifications": {
+        "engine": "Kubota D1105",
+        "horsepower": "24.8 HP",
+        "cuttingWidth": "72 in",
+        "fuelCapacity": "12 gal",
+        "groundSpeed": "0-8.5 mph",
+        "weight": "1,334 lbs"
+      },
+      "rentalRate": 8000,
+      "location": "Saint John, NB",
+      "availability": "rented",
+      "images": [
+        "/images/kubota-z700.png"
+      ]
+    }
+  ],
+  "customers": [
+    {
+      "id": "customer-001",
+      "firstName": "John",
+      "lastName": "Smith",
+      "email": "john.smith@email.com",
+      "phone": "+1-506-555-0101",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Saint John",
+        "province": "NB",
+        "postalCode": "E2L 4X5"
+      },
+      "role": "customer",
+      "createdAt": "2024-10-01T00:00:00Z"
+    },
+    {
+      "id": "customer-002",
+      "firstName": "Sarah",
+      "lastName": "Johnson",
+      "email": "sarah.johnson@email.com",
+      "phone": "+1-506-555-0102",
+      "address": {
+        "street": "456 Oak Avenue",
+        "city": "Saint John",
+        "province": "NB",
+        "postalCode": "E2L 4X6"
+      },
+      "role": "customer",
+      "createdAt": "2024-10-02T00:00:00Z"
+    }
+  ],
+  "bookings": [
+    {
+      "id": "booking-001",
+      "customerId": "customer-001",
+      "equipmentId": "equipment-001",
+      "startDate": "2024-10-15T08:00:00Z",
+      "endDate": "2024-10-17T17:00:00Z",
+      "status": "confirmed",
+      "totalAmount": 50000,
+      "paymentStatus": "paid",
+      "notes": "Weekend construction project",
+      "createdAt": "2024-10-07T00:00:00Z"
+    },
+    {
+      "id": "booking-002",
+      "customerId": "customer-002",
+      "equipmentId": "equipment-002",
+      "startDate": "2024-10-20T09:00:00Z",
+      "endDate": "2024-10-22T16:00:00Z",
+      "status": "pending",
+      "totalAmount": 30000,
+      "paymentStatus": "pending",
+      "notes": "Residential landscaping project",
+      "createdAt": "2024-10-07T00:00:00Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-001",
+      "email": "admin@kubotarentals.ca",
+      "firstName": "Admin",
+      "lastName": "User",
+      "role": "admin",
+      "createdAt": "2024-10-01T00:00:00Z"
+    },
+    {
+      "id": "user-002",
+      "email": "staff@kubotarentals.ca",
+      "firstName": "Staff",
+      "lastName": "User",
+      "role": "staff",
+      "createdAt": "2024-10-01T00:00:00Z"
+    }
+  ]
+}

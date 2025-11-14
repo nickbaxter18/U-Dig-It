@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-10-16T21:13:53.508Z",
+  "metrics": {
+    "averageActivationLatency": 0.29,
+    "totalActivations": 1,
+    "predictionCacheSize": 1,
+    "networkEfficiency": 0
+  },
+  "recommendations": [
+    {
+      "type": "efficiency",
+      "message": "Network efficiency (0.0%) below target (70%). Review neighbor relationships.",
+      "priority": "medium"
+    }
+  ]
+}

@@ -1,0 +1,368 @@
+---
+description: "Core development standards, reasoning patterns, and AI coding assistance for Kubota Rental Platform"
+alwaysApply: true
+---
+
+# Core Development Standards & AI Assistance
+
+## 🎯 Purpose
+Provides foundational development standards, reasoning patterns, and AI coding optimization for the Kubota Rental Platform.
+
+---
+
+## 1) AI Coding Assistance Optimization
+
+### Quick Reference First
+**ALWAYS check these files before starting work:**
+- `docs/reference/AI_CODING_REFERENCE.md` - Main coding patterns
+- `docs/reference/COMPONENT_INDEX.md` - Existing components
+- `docs/reference/API_ROUTES_INDEX.md` - API endpoints
+- `docs/reference/QUICK_COMMANDS.md` - Command reference
+
+### Pattern Reuse Strategy
+```typescript
+// ✅ CORRECT - Check existing patterns first
+// 1. Search docs/reference/COMPONENT_INDEX.md for similar components
+// 2. Review docs/reference/AI_CODING_REFERENCE.md for established patterns
+// 3. Reuse existing components when possible
+// 4. Follow import and structure patterns
+
+// Authentication Pattern
+import { createClient } from '@/lib/supabase/server';
+const supabase = await createClient();
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+```
+
+---
+
+## 2) TypeScript & Code Quality Standards
+
+### Type Safety First
+```typescript
+// ✅ CORRECT - Strict typing
+import { Database } from '@/../../supabase/types';
+
+interface BookingData {
+  equipmentId: string;
+  startDate: string;
+  endDate: string;
+  customerId: string;
+}
+
+// ❌ WRONG - Using 'any'
+const data: any = ...;
+```
+
+### Component Architecture
+```typescript
+// ✅ CORRECT - Single responsibility, clear purpose
+'use client';
+import { useState } from 'react';
+
+export default function BookingForm() {
+  // Component logic focused on ONE thing
+  return <form>...</form>;
+}
+
+// ❌ WRONG - Component doing too much
+export default function BookingFormAndListAndStats() { ... }
+```
+
+### Error Handling
+```typescript
+// ✅ CORRECT - Comprehensive error handling
+try {
+  const result = await operation();
+  if (!result.success) {
+    logger.error('Operation failed', { metadata });
+    return { error: 'User-friendly message' };
+  }
+} catch (error) {
+  logger.error('Unexpected error', { error }, error);
+  return { error: 'Something went wrong' };
+}
+
+// ❌ WRONG - Silent failures
+try { await operation(); } catch {}
+```
+
+---
+
+## 3) Extension Integration
+
+### Error Detection
+```bash
+# ✅ Use read_lints to check Error Lens diagnostics
+# Shows errors inline in code
+```
+
+### Code Quality Checks
+- **Error Lens**: Check via `read_lints` before committing
+- **Code Spell Checker**: Verify no typos in code/comments
+- **Todo Tree**: Address TODO/FIXME comments
+- **Prettier**: Auto-format on save (enabled)
+- **Import Cost**: Monitor bundle size impact
+
+### Pre-Commit Checklist
+- [ ] No errors in `read_lints` output
+- [ ] No spelling issues flagged
+- [ ] TODOs addressed or documented
+- [ ] Code formatted with Prettier
+- [ ] Imports optimized
+
+---
+
+## 4) Performance Optimization
+
+### Code Splitting & Lazy Loading
+```typescript
+// ✅ CORRECT - Dynamic imports for large components
+import dynamic from 'next/dynamic';
+
+const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
+  loading: () => <Spinner />,
+  ssr: false
+});
+```
+
+### Memoization
+```typescript
+// ✅ CORRECT - Memoize expensive calculations
+const expensiveValue = useMemo(() => {
+  return complexCalculation(data);
+}, [data]);
+
+// ✅ CORRECT - Memoize callbacks
+const handleClick = useCallback(() => {
+  performAction(id);
+}, [id]);
+```
+
+---
+
+## 5) Reasoning & Problem-Solving
+
+### Chain-of-Thought Approach
+When solving complex problems:
+1. **Decompose** - Break into atomic steps
+2. **Analyze** - Consider constraints and requirements
+3. **Pattern Match** - Identify similar solved problems
+4. **Validate** - Verify solution against requirements
+5. **Optimize** - Refine for performance and clarity
+
+### Multi-Perspective Analysis
+Consider problems from:
+- **Technical**: Implementation feasibility
+- **Business**: Value and requirements
+- **User**: Experience and usability
+- **System**: Performance and scalability
+
+---
+
+## 6) Security & Input Validation
+
+### Server-Side Validation (ALWAYS)
+```typescript
+// ✅ CORRECT - Validate on server
+import { z } from 'zod';
+import { sanitizeBookingFormData } from '@/lib/input-sanitizer';
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  // 1. Sanitize
+  const sanitized = sanitizeBookingFormData(body);
+
+  // 2. Validate
+  const schema = z.object({
+    equipmentId: z.string().uuid(),
+    startDate: z.string().datetime()
+  });
+
+  const validated = schema.parse(sanitized);
+
+  // 3. Use safely
+  await supabase.from('bookings').insert(validated);
+}
+
+// ❌ WRONG - Trust client data
+await supabase.from('bookings').insert(request.body);
+```
+
+---
+
+## 7) Logging Standards
+
+### Structured Logging
+```typescript
+// ✅ CORRECT - Use logger
+import { logger } from '@/lib/logger';
+
+logger.info('Booking created', {
+  component: 'booking-api',
+  action: 'create',
+  metadata: { bookingId, customerId }
+});
+
+logger.error('Payment failed', {
+  component: 'payment-api',
+  action: 'payment_error',
+  metadata: { reason }
+}, error);
+
+// ❌ WRONG - Console.log
+console.log('Booking created'); // NEVER
+```
+
+---
+
+## 8) Frontend Startup Protocol
+
+### Server Startup (MANDATORY)
+```bash
+# ✅ ONLY ACCEPTABLE METHOD - Always use this script
+bash start-frontend-clean.sh
+
+# ❌ FORBIDDEN - Never use these
+pnpm run dev
+pnpm dev
+npm run dev
+next dev
+```
+
+**Why**: The script ensures:
+- Port cleanup (kills processes on 3000/3001)
+- Process cleanup (terminates existing Next.js)
+- Cache cleanup (removes `.next` directory)
+- Guaranteed clean start every time
+
+---
+
+## 9) Testing Standards
+
+### Unit Testing
+```typescript
+// ✅ CORRECT - Test business logic
+import { calculateBookingTotal } from '@/lib/booking';
+
+describe('calculateBookingTotal', () => {
+  it('calculates daily rate correctly', () => {
+    const result = calculateBookingTotal({
+      dailyRate: 100,
+      days: 5,
+      deliveryFee: 50
+    });
+    expect(result).toBe(550);
+  });
+});
+```
+
+### Browser Testing
+```typescript
+// ✅ Use test account for automation
+const testCredentials = {
+  email: 'aitest2@udigit.ca',
+  password: 'TestAI2024!@#$'
+};
+
+// ✅ Standard login flow
+await browser_navigate('http://localhost:3000/auth/signin');
+await browser_click('Sign in with email', ref);
+await browser_fill_form([
+  { name: 'Email Address', value: testCredentials.email },
+  { name: 'Password', value: testCredentials.password }
+]);
+await browser_click('Sign In', ref);
+await browser_wait_for('Welcome back');
+```
+
+---
+
+## 10) Accessibility Standards
+
+### WCAG AA Compliance
+```tsx
+// ✅ CORRECT - Semantic HTML + ARIA
+<button
+  aria-label="Book equipment"
+  aria-describedby="booking-help"
+  onClick={handleBook}
+>
+  Book Now
+</button>
+
+// ✅ CORRECT - Form labels
+<label htmlFor="equipment">Equipment</label>
+<select id="equipment" name="equipment">
+  <option>Select...</option>
+</select>
+
+// ❌ WRONG - No accessibility
+<div onClick={handleBook}>Book</div>
+```
+
+### Keyboard Navigation
+- All interactive elements focusable
+- Logical tab order
+- Visible focus indicators
+- Escape to close modals
+
+---
+
+## 🔄 Quick Reference Workflow
+
+### Starting Any Task
+1. Check `docs/reference/AI_CODING_REFERENCE.md` for patterns
+2. Search `docs/reference/COMPONENT_INDEX.md` for existing components
+3. Review `docs/reference/API_ROUTES_INDEX.md` for similar endpoints
+4. Use `docs/reference/QUICK_COMMANDS.md` for command reference
+
+### Before Committing
+1. Run `read_lints` - Check errors
+2. Verify spelling - Code Spell Checker
+3. Address TODOs - Todo Tree
+4. Format code - Prettier (auto)
+5. Test changes - Browser automation or unit tests
+
+### Creating New Components
+1. Search existing components first
+2. Follow established patterns
+3. Use TypeScript strictly
+4. Implement error handling
+5. Add accessibility features
+6. Write tests
+
+---
+
+## 📊 Performance Targets
+
+- **Page Load**: < 1s
+- **Time to Interactive**: < 2s
+- **First Contentful Paint**: < 500ms
+- **Transfer Size**: < 100KB initial
+
+---
+
+## ✅ Final Checklist
+
+Every code change must:
+- [ ] Follow TypeScript strict mode
+- [ ] Include error handling
+- [ ] Use structured logging
+- [ ] Validate inputs server-side
+- [ ] Pass `read_lints` checks
+- [ ] Be accessible (WCAG AA)
+- [ ] Include tests where appropriate
+- [ ] Follow established patterns
+- [ ] Use existing components when possible
+- [ ] Document complex logic
+
+---
+
+**Remember**:
+- 📚 **Check reference files first**
+- 🔍 **Reuse existing patterns**
+- 🛡️ **Security is mandatory**
+- ⚡ **Performance matters**
+- ♿ **Accessibility is built-in**

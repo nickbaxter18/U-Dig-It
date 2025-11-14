@@ -1,0 +1,109 @@
+---
+description: "Business operations, reporting, analytics, and local market considerations"
+alwaysApply: false
+globs: ["**/analytics/**/*", "**/reporting/**/*", "**/admin/**/*"]
+---
+
+# Business Operations & Analytics
+
+## 🎯 Purpose
+Reporting, analytics, and operational considerations for the Kubota Rental Platform.
+
+---
+
+## Reporting & Analytics
+
+### Key Metrics
+```typescript
+// ✅ Business KPIs
+interface RentalMetrics {
+  totalBookings: number;
+  revenue: number;
+  utilizationRate: number;  // % of time equipment is rented
+  averageRentalDuration: number; // days
+  customerRetentionRate: number;
+  topEquipment: {
+    id: string;
+    name: string;
+    bookings: number;
+    revenue: number;
+  }[];
+}
+
+// Calculate equipment utilization
+export async function calculateUtilizationRate(
+  equipmentId: string,
+  period: { start: Date; end: Date }
+): Promise<number> {
+  const supabase = createClient();
+
+  const totalDays = differenceInDays(period.end, period.start);
+
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('startDate, endDate')
+    .eq('equipmentId', equipmentId)
+    .gte('startDate', period.start.toISOString())
+    .lte('endDate', period.end.toISOString())
+    .eq('status', 'completed');
+
+  const rentedDays = bookings?.reduce((total, booking) => {
+    return total + differenceInDays(
+      new Date(booking.endDate),
+      new Date(booking.startDate)
+    );
+  }, 0) || 0;
+
+  return (rentedDays / totalDays) * 100;
+}
+```
+
+---
+
+## Local Market Considerations
+
+### New Brunswick Regulations
+- **HST**: 15% (Harmonized Sales Tax)
+- **Insurance**: Minimum liability coverage required
+- **Operator Licensing**: Heavy equipment requires certification
+- **Environmental**: Fuel spill protocols, emission standards
+- **Seasonal**: Winter operation guidelines (Nov-March)
+
+### Service Area
+- **Primary**: Saint John metropolitan area
+- **Extended**: Within 50km radius
+- **Delivery**: Available for additional fee
+- **Pickup**: Available at rental yard
+
+---
+
+## Customer Experience
+
+### Customer Experience Principles
+- [ ] Clear communication
+- [ ] Transparent pricing
+- [ ] Proactive notifications
+- [ ] Support available
+- [ ] Feedback collected
+
+---
+
+## ✅ Business Operations Checklist
+
+Reporting:
+- [ ] Utilization rates calculated
+- [ ] Revenue tracked
+- [ ] Customer retention measured
+- [ ] Top equipment identified
+
+Operations:
+- [ ] Local regulations followed
+- [ ] Service area defined
+- [ ] Customer experience optimized
+
+---
+
+**Remember**:
+- 📊 **Monitor KPIs regularly**
+- 📍 **Local market: Saint John, NB**
+- 🎯 **Customer experience matters**

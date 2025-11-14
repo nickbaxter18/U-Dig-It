@@ -1,0 +1,41 @@
+{
+  "priorities": {
+    "high": [
+      "frontend/src/**/*.{ts,tsx}",
+      "supabase/**/*.sql",
+      ".cursor/rules/**/*.mdc",
+      "frontend/src/lib/**/*.{ts,tsx}",
+      "frontend/src/app/**/*.{ts,tsx}"
+    ],
+    "medium": [
+      "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
+      "docs/**/*.md",
+      "**/*.config.{ts,js}",
+      "scripts/**/*.{ts,js}"
+    ],
+    "low": [
+      "**/*.md",
+      "**/README*",
+      "**/CHANGELOG*"
+    ],
+    "exclude": [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.next/**",
+      "**/coverage/**",
+      "**/.git/**",
+      "**/build/**",
+      "**/*.log",
+      "**/*.cache"
+    ]
+  },
+  "incremental": true,
+  "maxFileSize": 100000,
+  "excludePatterns": [
+    "**/*.min.js",
+    "**/*.min.css",
+    "**/vendor/**",
+    "**/third-party/**"
+  ]
+}

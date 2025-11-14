@@ -1,0 +1,376 @@
+{
+  "$schema": "https://cursor.sh/schemas/voice-commands.json",
+  "name": "Voice Commands Configuration",
+  "description": "Optimized voice input for hands-free coding and maximum productivity",
+
+  "activation": {
+    "method": "push-to-talk",
+    "hotkey": "Ctrl+Shift+V",
+    "continuousMode": {
+      "enabled": false,
+      "wakeWord": "Hey Cursor",
+      "timeout": 30
+    },
+    "feedback": {
+      "visual": true,
+      "audio": true,
+      "transcription": true
+    }
+  },
+
+  "recognition": {
+    "provider": "native",
+    "language": "en-US",
+    "accuracy": "high",
+    "features": {
+      "noiseReduction": true,
+      "punctuationAuto": true,
+      "numbersAuto": true,
+      "codeKeywords": true,
+      "techTerms": true
+    }
+  },
+
+  "customVocabulary": {
+    "framework": [
+      "Next.js",
+      "React",
+      "TypeScript",
+      "Supabase",
+      "PostgreSQL",
+      "Tailwind",
+      "Playwright"
+    ],
+    "project": [
+      "Kubota",
+      "rental platform",
+      "booking system",
+      "admin dashboard",
+      "RLS policies",
+      "spin wheel",
+      "equipment rider"
+    ],
+    "technical": [
+      "async await",
+      "useState",
+      "useEffect",
+      "useCallback",
+      "useMemo",
+      "middleware",
+      "API route",
+      "server component",
+      "client component"
+    ]
+  },
+
+  "commands": {
+    "navigation": [
+      {
+        "phrase": "open file {filename}",
+        "action": "file.open",
+        "parameters": ["filename"],
+        "example": "open file navigation.tsx"
+      },
+      {
+        "phrase": "go to line {number}",
+        "action": "editor.gotoLine",
+        "parameters": ["number"],
+        "example": "go to line 42"
+      },
+      {
+        "phrase": "go to {function|class|component} {name}",
+        "action": "editor.gotoSymbol",
+        "parameters": ["type", "name"],
+        "example": "go to component BookingFlow"
+      },
+      {
+        "phrase": "find {text}",
+        "action": "editor.find",
+        "parameters": ["text"],
+        "example": "find useAuth"
+      },
+      {
+        "phrase": "find and replace {old} with {new}",
+        "action": "editor.findAndReplace",
+        "parameters": ["old", "new"],
+        "example": "find and replace console.log with logger.info"
+      }
+    ],
+
+    "editing": [
+      {
+        "phrase": "create {type} {name}",
+        "action": "composer.create",
+        "parameters": ["type", "name"],
+        "example": "create component PaymentForm",
+        "types": ["component", "function", "class", "hook", "interface", "type"]
+      },
+      {
+        "phrase": "add {feature} to {target}",
+        "action": "composer.modify",
+        "parameters": ["feature", "target"],
+        "example": "add loading state to BookingForm"
+      },
+      {
+        "phrase": "refactor {target} to {pattern}",
+        "action": "composer.refactor",
+        "parameters": ["target", "pattern"],
+        "example": "refactor UserDashboard to use custom hooks"
+      },
+      {
+        "phrase": "extract {selection} to {type} {name}",
+        "action": "composer.extract",
+        "parameters": ["selection", "type", "name"],
+        "example": "extract selected code to function validateBooking"
+      },
+      {
+        "phrase": "optimize {target}",
+        "action": "composer.optimize",
+        "parameters": ["target"],
+        "example": "optimize database queries"
+      },
+      {
+        "phrase": "fix {issue}",
+        "action": "composer.fix",
+        "parameters": ["issue"],
+        "example": "fix TypeScript errors"
+      }
+    ],
+
+    "generation": [
+      {
+        "phrase": "generate tests for {target}",
+        "action": "composer.generateTests",
+        "parameters": ["target"],
+        "example": "generate tests for BookingService"
+      },
+      {
+        "phrase": "generate documentation for {target}",
+        "action": "composer.generateDocs",
+        "parameters": ["target"],
+        "example": "generate documentation for API routes"
+      },
+      {
+        "phrase": "generate {type} for {target}",
+        "action": "composer.generate",
+        "parameters": ["type", "target"],
+        "example": "generate interface for User",
+        "types": ["interface", "type", "schema", "migration"]
+      },
+      {
+        "phrase": "implement {interface|type|spec}",
+        "action": "composer.implement",
+        "parameters": ["type"],
+        "example": "implement BookingService interface"
+      }
+    ],
+
+    "database": [
+      {
+        "phrase": "create migration {name}",
+        "action": "database.createMigration",
+        "parameters": ["name"],
+        "example": "create migration add user roles"
+      },
+      {
+        "phrase": "add RLS policy for {table}",
+        "action": "database.addRLSPolicy",
+        "parameters": ["table"],
+        "example": "add RLS policy for bookings"
+      },
+      {
+        "phrase": "optimize query for {operation}",
+        "action": "database.optimizeQuery",
+        "parameters": ["operation"],
+        "example": "optimize query for user search"
+      },
+      {
+        "phrase": "add index on {column} in {table}",
+        "action": "database.addIndex",
+        "parameters": ["column", "table"],
+        "example": "add index on customer_id in bookings"
+      }
+    ],
+
+    "parallelAgents": [
+      {
+        "phrase": "start parallel workflow {workflow}",
+        "action": "parallel.startWorkflow",
+        "parameters": ["workflow"],
+        "example": "start parallel workflow fullStackFeature"
+      },
+      {
+        "phrase": "create agent for {task}",
+        "action": "parallel.createAgent",
+        "parameters": ["task"],
+        "example": "create agent for frontend development"
+      },
+      {
+        "phrase": "merge all agents",
+        "action": "parallel.mergeAll",
+        "example": "merge all agents"
+      },
+      {
+        "phrase": "show agent status",
+        "action": "parallel.showStatus",
+        "example": "show agent status"
+      }
+    ],
+
+    "composer": [
+      {
+        "phrase": "explain {code|selection|file}",
+        "action": "composer.explain",
+        "parameters": ["target"],
+        "example": "explain selected code"
+      },
+      {
+        "phrase": "review {code|file|changes}",
+        "action": "composer.review",
+        "parameters": ["target"],
+        "example": "review current file"
+      },
+      {
+        "phrase": "suggest improvements for {target}",
+        "action": "composer.suggestImprovements",
+        "parameters": ["target"],
+        "example": "suggest improvements for this component"
+      },
+      {
+        "phrase": "convert {source} to {target}",
+        "action": "composer.convert",
+        "parameters": ["source", "target"],
+        "example": "convert class component to functional component"
+      }
+    ],
+
+    "git": [
+      {
+        "phrase": "commit changes with message {message}",
+        "action": "git.commit",
+        "parameters": ["message"],
+        "example": "commit changes with message fix booking validation"
+      },
+      {
+        "phrase": "create branch {name}",
+        "action": "git.createBranch",
+        "parameters": ["name"],
+        "example": "create branch feature/payment-integration"
+      },
+      {
+        "phrase": "push changes",
+        "action": "git.push",
+        "example": "push changes"
+      }
+    ],
+
+    "testing": [
+      {
+        "phrase": "run tests",
+        "action": "test.run",
+        "example": "run tests"
+      },
+      {
+        "phrase": "run tests for {file|component}",
+        "action": "test.runSpecific",
+        "parameters": ["target"],
+        "example": "run tests for BookingForm"
+      },
+      {
+        "phrase": "debug test {name}",
+        "action": "test.debug",
+        "parameters": ["name"],
+        "example": "debug test payment processing"
+      }
+    ],
+
+    "terminal": [
+      {
+        "phrase": "run command {command}",
+        "action": "terminal.run",
+        "parameters": ["command"],
+        "example": "run command npm run dev"
+      },
+      {
+        "phrase": "explain error",
+        "action": "terminal.explainError",
+        "example": "explain error"
+      }
+    ]
+  },
+
+  "dictation": {
+    "enabled": true,
+    "mode": "smart",
+    "features": {
+      "codeCompletion": true,
+      "syntaxAware": true,
+      "autoIndent": true,
+      "autoBrackets": true,
+      "smartQuotes": true
+    },
+    "keywords": {
+      "code": {
+        "function": "function",
+        "const": "const",
+        "let": "let",
+        "var": "var",
+        "if": "if",
+        "else": "else",
+        "for": "for",
+        "while": "while",
+        "return": "return",
+        "async": "async",
+        "await": "await",
+        "import": "import",
+        "export": "export"
+      },
+      "symbols": {
+        "open brace": "{",
+        "close brace": "}",
+        "open paren": "(",
+        "close paren": ")",
+        "open bracket": "[",
+        "close bracket": "]",
+        "semicolon": ";",
+        "colon": ":",
+        "comma": ",",
+        "dot": ".",
+        "arrow": "=>",
+        "equals": "=",
+        "double equals": "==",
+        "triple equals": "===",
+        "not equals": "!==",
+        "and": "&&",
+        "or": "||",
+        "not": "!"
+      }
+    }
+  },
+
+  "contextual": {
+    "enabled": true,
+    "smartDefaults": true,
+    "fileTypeAware": true,
+    "projectAware": true,
+    "recentContext": true
+  },
+
+  "accessibility": {
+    "screenReader": true,
+    "visualFeedback": "high-contrast",
+    "audioFeedback": {
+      "success": true,
+      "error": true,
+      "recognition": true
+    }
+  },
+
+  "performance": {
+    "latency": "low",
+    "streamingRecognition": true,
+    "localProcessing": true,
+    "offlineMode": false
+  }
+}
+

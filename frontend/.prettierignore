@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+dist/
+build/
+out/
+
+# Cache
+.cache/
+.turbo/
+
+# Test output
+coverage/
+.nyc_output/
+test-results/
+
+# Misc
+*.log
+.DS_Store
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated files
+*.tsbuildinfo

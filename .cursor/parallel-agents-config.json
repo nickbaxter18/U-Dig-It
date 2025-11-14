@@ -1,0 +1,305 @@
+{
+  "$schema": "https://cursor.sh/schemas/parallel-agents-config.json",
+  "name": "Parallel Agent Workflows - Maximum Productivity",
+  "description": "Optimized parallel agent execution for complex multi-file and multi-task operations",
+
+  "workflows": {
+    "fullStackFeature": {
+      "description": "Develop complete full-stack features in parallel",
+      "agents": [
+        {
+          "id": "frontend-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "frontend-development",
+          "scope": ["frontend/src/app/**", "frontend/src/components/**"],
+          "tasks": ["component-creation", "page-development", "ui-logic"],
+          "priority": "high"
+        },
+        {
+          "id": "backend-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "backend-development",
+          "scope": ["frontend/src/app/api/**", "supabase/**"],
+          "tasks": ["api-routes", "database-queries", "server-logic"],
+          "priority": "high"
+        },
+        {
+          "id": "testing-agent",
+          "model": "gpt-4-turbo",
+          "role": "test-development",
+          "scope": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
+          "tasks": ["unit-tests", "integration-tests", "e2e-tests"],
+          "priority": "medium"
+        },
+        {
+          "id": "documentation-agent",
+          "model": "gpt-4-turbo",
+          "role": "documentation",
+          "scope": ["**/*.md", "**/*.mdx"],
+          "tasks": ["api-docs", "component-docs", "user-guides"],
+          "priority": "low"
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "sequential",
+        "conflictResolution": "manual-review",
+        "dependencyOrder": ["backend", "frontend", "testing", "documentation"]
+      }
+    },
+
+    "bugFixing": {
+      "description": "Fix bugs across multiple files simultaneously",
+      "agents": [
+        {
+          "id": "analysis-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "bug-analysis",
+          "tasks": ["root-cause-analysis", "dependency-tracing", "impact-assessment"]
+        },
+        {
+          "id": "fix-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "bug-fixing",
+          "tasks": ["code-correction", "refactoring", "optimization"]
+        },
+        {
+          "id": "test-agent",
+          "model": "gpt-4-turbo",
+          "role": "regression-testing",
+          "tasks": ["test-updates", "new-test-cases", "edge-case-coverage"]
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "parallel-with-review",
+        "conflictResolution": "ai-assisted"
+      }
+    },
+
+    "codebaseRefactor": {
+      "description": "Large-scale refactoring across multiple modules",
+      "agents": [
+        {
+          "id": "pattern-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "pattern-detection",
+          "tasks": ["anti-pattern-detection", "code-smell-identification", "architecture-analysis"]
+        },
+        {
+          "id": "refactor-agent-1",
+          "model": "claude-sonnet-4.5",
+          "role": "component-refactoring",
+          "scope": ["frontend/src/components/**"],
+          "tasks": ["component-extraction", "props-optimization", "hook-creation"]
+        },
+        {
+          "id": "refactor-agent-2",
+          "model": "claude-sonnet-4.5",
+          "role": "api-refactoring",
+          "scope": ["frontend/src/app/api/**"],
+          "tasks": ["endpoint-optimization", "middleware-extraction", "error-handling-improvement"]
+        },
+        {
+          "id": "refactor-agent-3",
+          "model": "claude-sonnet-4.5",
+          "role": "database-refactoring",
+          "scope": ["supabase/**"],
+          "tasks": ["query-optimization", "schema-improvements", "index-creation"]
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "staged",
+        "stages": ["pattern-detection", "parallel-refactor", "integration", "testing"],
+        "conflictResolution": "intelligent-merge"
+      }
+    },
+
+    "performanceOptimization": {
+      "description": "Optimize performance across the entire stack",
+      "agents": [
+        {
+          "id": "profiling-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "performance-profiling",
+          "tasks": ["bottleneck-detection", "metric-analysis", "optimization-planning"]
+        },
+        {
+          "id": "frontend-perf-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "frontend-optimization",
+          "tasks": ["bundle-size-reduction", "lazy-loading", "code-splitting", "memoization"]
+        },
+        {
+          "id": "backend-perf-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "backend-optimization",
+          "tasks": ["query-optimization", "caching-strategy", "api-response-time"]
+        },
+        {
+          "id": "database-perf-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "database-optimization",
+          "tasks": ["index-optimization", "query-planning", "connection-pooling"]
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "cumulative",
+        "benchmarking": true,
+        "rollbackOnRegression": true
+      }
+    },
+
+    "securityAudit": {
+      "description": "Comprehensive security audit and hardening",
+      "agents": [
+        {
+          "id": "vulnerability-scanner",
+          "model": "claude-sonnet-4.5",
+          "role": "vulnerability-detection",
+          "tasks": ["security-scan", "dependency-audit", "code-analysis"]
+        },
+        {
+          "id": "auth-security-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "authentication-security",
+          "scope": ["**/auth/**", "**/api/auth/**"],
+          "tasks": ["auth-hardening", "session-management", "token-validation"]
+        },
+        {
+          "id": "api-security-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "api-security",
+          "scope": ["**/api/**"],
+          "tasks": ["rate-limiting", "input-validation", "output-sanitization"]
+        },
+        {
+          "id": "database-security-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "database-security",
+          "scope": ["supabase/**"],
+          "tasks": ["rls-policies", "sql-injection-prevention", "access-control"]
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "security-first",
+        "requiresApproval": true,
+        "securityChecks": true
+      }
+    },
+
+    "rapidPrototyping": {
+      "description": "Quickly build and iterate on new features",
+      "agents": [
+        {
+          "id": "architect-agent",
+          "model": "claude-sonnet-4.5",
+          "role": "architecture-design",
+          "tasks": ["system-design", "data-modeling", "api-design"]
+        },
+        {
+          "id": "rapid-dev-agent-1",
+          "model": "claude-sonnet-4.5",
+          "role": "ui-prototyping",
+          "tasks": ["component-scaffolding", "basic-styling", "mock-data"]
+        },
+        {
+          "id": "rapid-dev-agent-2",
+          "model": "claude-sonnet-4.5",
+          "role": "api-prototyping",
+          "tasks": ["endpoint-creation", "basic-validation", "mock-responses"]
+        }
+      ],
+      "coordination": {
+        "mergeStrategy": "fast-iteration",
+        "qualityThreshold": "prototype",
+        "refinementCycles": 3
+      }
+    }
+  },
+
+  "taskDistribution": {
+    "automatic": true,
+    "intelligentScheduling": true,
+    "loadBalancing": {
+      "enabled": true,
+      "strategy": "complexity-weighted",
+      "maxConcurrentPerAgent": 3
+    },
+    "priorityQueue": {
+      "enabled": true,
+      "levels": ["critical", "high", "medium", "low"],
+      "dynamicReordering": true
+    }
+  },
+
+  "worktrees": {
+    "autoCreate": true,
+    "namingConvention": "agent-{role}-{timestamp}",
+    "baseDirectory": ".cursor/worktrees",
+    "cleanup": {
+      "automatic": true,
+      "afterMerge": true,
+      "staleTimeout": 3600
+    },
+    "isolation": {
+      "gitBranches": true,
+      "dependencies": "shared",
+      "configuration": "shared"
+    }
+  },
+
+  "coordination": {
+    "communication": {
+      "inter-agent": true,
+      "sharedContext": true,
+      "conflictNotification": true
+    },
+    "merging": {
+      "strategies": {
+        "sequential": {
+          "description": "Merge agents one at a time in dependency order",
+          "bestFor": ["complex-changes", "database-migrations"]
+        },
+        "parallel-with-review": {
+          "description": "Merge all agents in parallel, then review conflicts",
+          "bestFor": ["independent-features", "bug-fixes"]
+        },
+        "staged": {
+          "description": "Merge in predefined stages",
+          "bestFor": ["large-refactors", "architecture-changes"]
+        },
+        "intelligent-merge": {
+          "description": "AI-assisted conflict resolution",
+          "bestFor": ["complex-refactors", "multi-file-changes"]
+        }
+      },
+      "defaultStrategy": "intelligent-merge",
+      "conflictResolution": {
+        "automatic": true,
+        "aiAssisted": true,
+        "manualReview": "on-complex-conflicts"
+      }
+    }
+  },
+
+  "monitoring": {
+    "agentStatus": true,
+    "progressTracking": true,
+    "performanceMetrics": true,
+    "resourceUsage": true,
+    "costTracking": true
+  },
+
+  "optimization": {
+    "caching": {
+      "sharedContext": true,
+      "incrementalResults": true,
+      "crossAgent": true
+    },
+    "resourceAllocation": {
+      "dynamic": true,
+      "priorityBased": true,
+      "costOptimized": true
+    }
+  }
+}
+

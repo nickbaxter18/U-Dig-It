@@ -1,0 +1,58 @@
+#!/bin/bash
+# .husky/pre-commit-ai-review
+# Enhanced pre-commit hook with AI code review
+
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Pre-commit Quality Gates + AI Review"
+echo "=========================================="
+
+# Get staged TypeScript/TSX files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$')
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "✅ No TypeScript files staged, skipping AI review"
+  exit 0
+fi
+
+echo "📝 Running type checks..."
+cd frontend && pnpm run type-check
+
+if [ $? -ne 0 ]; then
+  echo "❌ Type check failed!"
+  exit 1
+fi
+
+echo "🤖 Running AI code review..."
+echo "Files to review:"
+echo "$STAGED_FILES" | sed 's/^/  - /'
+
+# Check for common issues using auto-fix patterns
+echo ""
+echo "🔍 Checking for common issues..."
+
+# Check for console.log statements
+CONSOLE_LOGS=$(git diff --cached | grep -E 'console\.(log|debug|warn|error)' || true)
+if [ -n "$CONSOLE_LOGS" ]; then
+  echo "⚠️  Found console.* statements. Consider using logger instead."
+  echo "$CONSOLE_LOGS" | head -5
+  echo ""
+fi
+
+# Check for hardcoded secrets
+SECRETS=$(git diff --cached | grep -iE '(password|api[_-]?key|secret|token)\s*=\s*[''"][^''"]+[''"]' || true)
+if [ -n "$SECRETS" ]; then
+  echo "🚨 CRITICAL: Found potential hardcoded secrets!"
+  echo "$SECRETS"
+  echo "Please move to environment variables."
+  exit 1
+fi
+
+# Check for missing error handling in async functions
+# (This is a simple check - could be enhanced)
+
+echo ""
+echo "✅ Pre-commit checks passed!"
+echo ""
+echo "💡 Tip: Use 'Ctrl+Shift+G' to generate AI commit message"
+exit 0

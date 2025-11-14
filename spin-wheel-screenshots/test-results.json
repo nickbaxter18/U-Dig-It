@@ -1,0 +1,40 @@
+{
+  "spin1": {
+    "rotation": 1890,
+    "normalized": 90,
+    "sliceIndex": 9,
+    "landedLabel": "Try Again",
+    "landedColor": "gray",
+    "expectedOutcome": "try_again",
+    "actualOutcome": "try_again",
+    "messageCorrect": true,
+    "success": true
+  },
+  "spin2": {
+    "rotation": 3960,
+    "normalized": 0,
+    "sliceIndex": 0,
+    "landedLabel": "Try Again",
+    "landedColor": "gray",
+    "expectedOutcome": "try_again",
+    "actualOutcome": "try_again",
+    "messageCorrect": true,
+    "success": true
+  },
+  "spin3": {
+    "rotation": 5910,
+    "normalized": 150,
+    "sliceIndex": 7,
+    "landedLabel": "10%",
+    "landedColor": "orange",
+    "expectedOutcome": "prize (5%, 10%, or 15%)",
+    "actualOutcome": "10%",
+    "messageCorrect": true,
+    "redirected": true,
+    "finalUrl": "http://localhost:3000/book?promo=UDIG-SPIN10-FD6F19",
+    "success": true,
+    "promoCode": "UDIG-SPIN10-FD6F19"
+  },
+  "overall": "PASSED",
+  "errors": []
+}

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://cursor.sh/schemas/git-commit-generator.json",
+  "name": "AI Git Commit Message Generator",
+  "description": "Generate intelligent commit messages from staged changes",
+  
+  "enabled": true,
+  "model": "gpt-4-turbo",
+  "format": "conventional",
+  
+  "conventionalTypes": [
+    "feat",
+    "fix",
+    "docs",
+    "style",
+    "refactor",
+    "perf",
+    "test",
+    "chore",
+    "build",
+    "ci"
+  ],
+  
+  "settings": {
+    "includeContext": true,
+    "includeFileCount": true,
+    "includeLineCount": true,
+    "suggestBreaking": true,
+    "suggestScope": true,
+    "maxLength": 72,
+    "bodyLength": 0,
+    "footerLength": 0
+  },
+  
+  "keyboardShortcut": "Ctrl+Shift+G",
+  
+  "prompts": {
+    "system": "You are a git commit message expert. Generate clear, concise commit messages following Conventional Commits specification.",
+    "user": "Analyze these staged changes and generate a commit message:\n\n{stagedDiff}\n\nRules:\n- Use conventional commit format\n- Be specific and descriptive\n- Include scope if relevant\n- Suggest breaking changes if any\n- Keep subject line under 72 characters"
+  },
+  
+  "examples": [
+    {
+      "changes": "Added authentication middleware to API routes",
+      "message": "feat(api): add authentication middleware to routes"
+    },
+    {
+      "changes": "Fixed booking price calculation bug",
+      "message": "fix(booking): correct price calculation logic"
+    },
+    {
+      "changes": "Refactored component to use custom hooks",
+      "message": "refactor(components): extract logic to custom hooks"
+    }
+  ],
+  
+  "scopes": {
+    "autoDetect": true,
+    "common": [
+      "api",
+      "components",
+      "auth",
+      "booking",
+      "admin",
+      "database",
+      "security",
+      "performance",
+      "tests"
+    ]
+  },
+  
+  "validation": {
+    "checkFormat": true,
+    "checkLength": true,
+    "suggestImprovements": true
+  }
+}

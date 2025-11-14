@@ -1,0 +1,6 @@
+# Simplest possible Chrome start for Cursor browser automation
+# Run this on HOST:
+
+google-chrome --remote-debugging-port=9222 --headless http://localhost:3000 &
+
+# That's it. Cursor should be able to connect to this.

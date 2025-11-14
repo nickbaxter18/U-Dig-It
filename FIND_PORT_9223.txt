@@ -1,0 +1,33 @@
+# ============================================
+# Run these commands on HOST to find what's using port 9223
+# ============================================
+
+# Method 1: Using lsof (most reliable)
+lsof -i :9223
+
+# Method 2: Using netstat
+sudo netstat -tulpn | grep 9223
+
+# Method 3: Using ss
+sudo ss -tulpn | grep 9223
+
+# Method 4: Using fuser
+sudo fuser 9223/tcp
+
+# ============================================
+# Once you find the PID, kill it:
+# kill -9 <PID>
+# ============================================
+
+# Or try this aggressive kill-all approach:
+sudo killall -9 chrome 2>/dev/null
+sudo killall -9 chromium 2>/dev/null
+sudo killall -9 chromium-browser 2>/dev/null
+sleep 3
+
+# Then verify port is free:
+lsof -i :9223
+# Should return nothing
+
+# Then start Chrome:
+google-chrome --headless --remote-debugging-port=9223 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=/tmp/chrome-debug-9223 http://localhost:3000 > /tmp/chrome-9223.log 2>&1 &

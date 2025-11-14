@@ -1,0 +1,76 @@
+---
+alwaysApply: false
+---
+
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor/main/cursor.schema.json",
+  "name": "Supabase Backend Priority Rule",
+  "description": "Ensures all database operations use Supabase as the backend with MCP tools for the Kubota Rental Platform",
+  "prePrompt": [
+    "I am working with the Supabase-based Kubota Rental Platform backend exclusively.",
+    "All database operations must use Supabase MCP tools (mcp_supabase_*) for queries, migrations, and schema management.",
+    "The NestJS backend in /backend is legacy/inactive - do not modify or reference it for new work.",
+    "The live rental platform data and schema exists in the Supabase project accessible via MCP tools.",
+    "Always verify current schema and data using Supabase MCP tools before making changes."
+  ],
+  "metaAffirmations": [
+    "I exclusively use Supabase MCP tools for all database operations in the Kubota Rental Platform.",
+    "I understand that the NestJS backend is not the active system and should not be modified.",
+    "I verify schema and data using Supabase tools before implementing any changes.",
+    "I leverage Supabase migrations, SQL execution, and schema inspection through MCP tools.",
+    "I maintain data integrity by using proper Supabase patterns and best practices."
+  ],
+  "metaRules": [
+    "Supabase Priority: Always use Supabase MCP tools (mcp_supabase_*) for all database operations.",
+    "Schema Verification: Use mcp_supabase_list_tables and mcp_supabase_execute_sql to verify current schema before changes.",
+    "Migration Management: Use mcp_supabase_apply_migration for schema changes, never modify files directly.",
+    "Data Operations: Use mcp_supabase_execute_sql for data queries, inserts, updates, and deletes.",
+    "Feature Flag Management: Use Supabase database for feature flags, not environment variables.",
+    "Configuration Storage: Store app configuration in Supabase tables, accessible via MCP tools.",
+    "Legacy Avoidance: Never modify NestJS backend files in /backend for active rental platform features.",
+    "Live Data Access: Always work with live Supabase data through MCP tools for accurate results.",
+    "Migration Safety: Use mcp_supabase_create_branch for development work to avoid affecting production.",
+    "Query Optimization: Use mcp_supabase_get_advisors for performance insights and optimization suggestions.",
+    "Error Investigation: Use mcp_supabase_get_logs for debugging and issue investigation.",
+    "Documentation Sync: Keep schema documentation aligned with actual Supabase schema via MCP tools."
+  ],
+  "performanceSubsystems": {
+    "supabaseOperations": {
+      "schemaInspection": "Use mcp_supabase_list_tables and mcp_supabase_execute_sql for schema verification",
+      "dataManagement": "Use mcp_supabase_execute_sql for all CRUD operations",
+      "migrationControl": "Use mcp_supabase_apply_migration for schema changes"
+    },
+    "developmentWorkflow": {
+      "branchManagement": "Use mcp_supabase_create_branch for safe development",
+      "testingStrategy": "Test changes in branches before production deployment",
+      "rollbackCapability": "Maintain branch reset and merge capabilities"
+    },
+    "monitoringAndOptimization": {
+      "performanceMonitoring": "Use mcp_supabase_get_advisors for performance insights",
+      "errorTracking": "Use mcp_supabase_get_logs for issue investigation",
+      "securityAuditing": "Regular security advisor checks and compliance monitoring"
+    }
+  },
+  "outputProtocol": {
+    "supabaseFirst": "All database operations must use Supabase MCP tools with clear explanation",
+    "schemaValidation": "Verify current schema before implementing changes",
+    "migrationStrategy": "Use proper migration patterns for schema changes",
+    "dataIntegrity": "Maintain data consistency and referential integrity",
+    "performanceConsiderations": "Consider query performance and optimization recommendations"
+  },
+  "selfLearningLoop": {
+    "schemaEvolution": "Track schema changes and maintain documentation alignment",
+    "performanceOptimization": "Continuously optimize based on advisor recommendations",
+    "errorPatternRecognition": "Learn from logs and optimize query patterns"
+  },
+  "contextFiles": [
+    "supabase/migrations/",
+    "supabase/seed.sql",
+    "supabase/config.toml",
+    "supabase/types.ts",
+    "AI_CODING_REFERENCE.md",
+    "API_ROUTES_INDEX.md"
+  ],
+  "autoReview": true,
+  "priority": "highest"
+}

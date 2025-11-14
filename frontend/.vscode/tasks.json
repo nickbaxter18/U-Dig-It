@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test: Current File",
+      "type": "shell",
+      "command": "pnpm vitest ${file} --run",
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test: Current File (Watch)",
+      "type": "shell",
+      "command": "pnpm vitest ${file}",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: All Tests",
+      "type": "shell",
+      "command": "bash scripts/test-ci.sh",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Validation",
+      "type": "shell",
+      "command": "pnpm vitest src/lib/__tests__/validation.test.ts --run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Cache",
+      "type": "shell",
+      "command": "pnpm vitest src/lib/__tests__/cache.test.ts --run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Lib Directory",
+      "type": "shell",
+      "command": "pnpm vitest src/lib/__tests__ --run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Components",
+      "type": "shell",
+      "command": "pnpm vitest src/components/__tests__ --run",
+      "problemMatcher": []
+    }
+  ]
+}
+

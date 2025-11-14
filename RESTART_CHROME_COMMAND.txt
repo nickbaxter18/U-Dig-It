@@ -1,0 +1,11 @@
+# ============================================
+# COMMAND TO RUN ON HOST MACHINE
+# ============================================
+# Copy and paste this command on your HOST machine (not in container):
+
+pkill -f "chrome.*9223" 2>/dev/null; google-chrome --headless --remote-debugging-port=9223 --remote-debugging-address=0.0.0.0 --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=/tmp/chrome-debug-9223 http://localhost:3000 > /tmp/chrome-9223.log 2>&1 &
+
+# ============================================
+# Then verify from container with:
+# curl http://10.0.0.108:9223/json/version
+# ============================================

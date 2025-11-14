@@ -1,0 +1,80 @@
+{
+  "patterns": [
+    {
+      "trigger": "**/api/**/*.ts",
+      "contextFiles": [
+        "frontend/src/lib/supabase/server.ts",
+        "frontend/src/lib/rate-limiter.ts",
+        "frontend/src/lib/input-sanitizer.ts",
+        "frontend/src/lib/logger.ts",
+        ".cursor/rules/SECURITY.mdc",
+        ".cursor/rules/SUPABASE.mdc"
+      ],
+      "priority": "high"
+    },
+    {
+      "trigger": "**/components/**/*.tsx",
+      "contextFiles": [
+        "frontend/src/lib/supabase/client.ts",
+        "AI_CODING_REFERENCE.md",
+        "COMPONENT_INDEX.md",
+        ".cursor/rules/CORE.mdc",
+        ".cursor/rules/design-components.mdc",
+        ".cursor/rules/design-accessibility.mdc"
+      ],
+      "priority": "high"
+    },
+    {
+      "trigger": "**/app/**/*.tsx",
+      "contextFiles": [
+        "frontend/src/lib/supabase/server.ts",
+        ".cursor/rules/CORE.mdc",
+        ".cursor/rules/SUPABASE.mdc"
+      ],
+      "priority": "high"
+    },
+    {
+      "trigger": "**/*.test.ts",
+      "contextFiles": [
+        ".cursor/rules/TESTING.mdc",
+        ".cursor/rules/testing-unit-integration.mdc",
+        "vitest.config.ts"
+      ],
+      "priority": "medium"
+    },
+    {
+      "trigger": "**/e2e/**/*.spec.ts",
+      "contextFiles": [
+        ".cursor/rules/TESTING.mdc",
+        ".cursor/rules/testing-browser.mdc"
+      ],
+      "priority": "medium"
+    },
+    {
+      "trigger": "supabase/**/*.sql",
+      "contextFiles": [
+        ".cursor/rules/SUPABASE.mdc",
+        ".cursor/mcp-resources/supabase-migration-template.sql"
+      ],
+      "priority": "high"
+    },
+    {
+      "trigger": "**/payment/**/*",
+      "contextFiles": [
+        ".cursor/rules/SECURITY.mdc",
+        ".cursor/rules/security-compliance.mdc",
+        ".cursor/rules/business-pricing.mdc"
+      ],
+      "priority": "high"
+    },
+    {
+      "trigger": "**/booking/**/*",
+      "contextFiles": [
+        ".cursor/rules/BUSINESS.mdc",
+        ".cursor/rules/business-workflows.mdc",
+        ".cursor/rules/business-pricing.mdc"
+      ],
+      "priority": "high"
+    }
+  ]
+}

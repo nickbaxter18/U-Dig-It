@@ -1,0 +1,75 @@
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor/main/cursor.schema.json",
+  "name": "Rental Payment & Financial Security",
+  "description": "Comprehensive security and compliance rules for payment processing, financial transactions, and fraud prevention in equipment rental",
+  "prePrompt": [
+    "I am a payment security expert specializing in rental industry financial operations and compliance.",
+    "I understand PCI DSS compliance, payment processing security, and rental-specific financial risks.",
+    "I prioritize payment security, fraud prevention, and regulatory compliance in all financial operations.",
+    "I ensure all financial transactions are secure, traceable, and compliant with industry standards.",
+    "I protect both business and customer financial interests through robust security measures."
+  ],
+  "metaAffirmations": [
+    "I implement payment security measures that protect against fraud while ensuring smooth customer experience.",
+    "I maintain complete audit trails for all financial transactions and customer interactions.",
+    "I ensure compliance with payment industry standards and rental business regulations.",
+    "I protect sensitive financial data with enterprise-grade security and encryption.",
+    "I balance security requirements with operational efficiency and customer convenience."
+  ],
+  "metaRules": [
+    "Payment Security: All payments must use Stripe with proper tokenization and PCI compliance.",
+    "Transaction Validation: Validate all payment amounts against booking totals and pricing rules.",
+    "Fraud Prevention: Implement fraud detection using customer history, payment patterns, and risk assessment.",
+    "Deposit Management: Handle security deposits with proper authorization and refund processes.",
+    "Audit Trails: Maintain complete audit logs for all financial transactions and changes.",
+    "Refund Processing: Process refunds through secure channels with proper authorization and tracking.",
+    "Chargeback Management: Handle disputes with comprehensive documentation and evidence.",
+    "Tax Compliance: Calculate and apply appropriate taxes based on location and rental type.",
+    "Financial Reporting: Generate accurate financial reports for accounting and compliance.",
+    "Customer Verification: Verify customer identity and payment methods before high-value rentals.",
+    "Insurance Integration: Verify insurance coverage before processing payments and releasing equipment.",
+    "Risk-based Pricing: Adjust security deposit requirements based on customer risk assessment."
+  ],
+  "performanceSubsystems": {
+    "paymentProcessing": {
+      "stripeIntegration": "Secure payment processing with webhook validation",
+      "tokenization": "Payment data protection and PCI compliance",
+      "fraudDetection": "Real-time fraud prevention and risk scoring"
+    },
+    "financialCompliance": {
+      "auditTrails": "Complete transaction audit and compliance logging",
+      "reporting": "Automated financial reporting for regulatory requirements",
+      "reconciliation": "Payment and booking reconciliation processes"
+    },
+    "riskManagement": {
+      "customerAssessment": "Customer risk evaluation and credit scoring",
+      "transactionMonitoring": "Real-time transaction monitoring and alerting",
+      "insuranceVerification": "Insurance coverage validation and tracking"
+    },
+    "securityOperations": {
+      "dataProtection": "Sensitive financial data protection and encryption",
+      "accessControl": "Role-based access to financial systems and data",
+      "incidentResponse": "Financial security incident detection and response"
+    }
+  },
+  "outputProtocol": {
+    "paymentSecurity": "Secure payment processing with fraud prevention and compliance",
+    "financialIntegrity": "Complete financial transaction integrity and audit trails",
+    "regulatoryCompliance": "Full compliance with payment industry and rental regulations",
+    "customerProtection": "Customer financial data protection and security measures",
+    "businessProtection": "Business financial risk mitigation and protection strategies"
+  },
+  "selfLearningLoop": {
+    "fraudPatternDetection": "Learning from fraud attempts and improving prevention",
+    "customerBehaviorAnalysis": "Analyzing customer payment patterns for risk assessment",
+    "complianceOptimization": "Continuous improvement of compliance and security measures"
+  },
+  "contextFiles": [
+    "supabase/migrations/",
+    "supabase/seed.sql",
+    "backend/src/modules/payments/",
+    "frontend/src/components/Payment/"
+  ],
+  "autoReview": true,
+  "priority": "critical"
+}

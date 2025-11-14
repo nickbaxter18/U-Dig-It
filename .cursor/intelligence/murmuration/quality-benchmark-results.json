@@ -1,0 +1,354 @@
+{
+  "timestamp": 1760650396819,
+  "summary": {
+    "totalTasks": 5,
+    "baselineAverage": {
+      "responseTime": 12.071094563564662,
+      "relevantRulesFound": 1.8,
+      "insightsGenerated": 0.8,
+      "recommendationsGenerated": 1,
+      "confidence": 0.49994608649364125,
+      "domainsCovered": 1.2,
+      "qualityScore": 57.29154270598457
+    },
+    "murmurationAverage": {
+      "responseTime": 30.739668799999993,
+      "relevantRulesFound": 0,
+      "insightsGenerated": 3.6,
+      "recommendationsGenerated": 0,
+      "confidence": 0,
+      "domainsCovered": 0,
+      "qualityScore": 36.92603312
+    },
+    "improvementAverage": {
+      "responseTimeImprovement": -156.5894249344888,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 2.8,
+      "domainsImprovement": -1.2,
+      "qualityScoreImprovement": -20.36550958598456,
+      "overallImprovement": -66.91788498689775
+    },
+    "overallImprovement": -66.91788498689775
+  },
+  "taskResults": [
+    {
+      "taskId": "component-creation",
+      "taskName": "Component Creation",
+      "responseTimeImprovement": -281.03005632379967,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 3,
+      "domainsImprovement": -1,
+      "qualityScoreImprovement": -19.44273855072825,
+      "overallImprovement": -91.20601126475994
+    },
+    {
+      "taskId": "api-development",
+      "taskName": "API Development",
+      "responseTimeImprovement": -140.4212513818962,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 3,
+      "domainsImprovement": -1,
+      "qualityScoreImprovement": -26.296120770349354,
+      "overallImprovement": -63.08425027637924
+    },
+    {
+      "taskId": "performance-fix",
+      "taskName": "Performance Fix",
+      "responseTimeImprovement": -139.51545856404857,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 3,
+      "domainsImprovement": -1,
+      "qualityScoreImprovement": -17.077294292074853,
+      "overallImprovement": -62.90309171280971
+    },
+    {
+      "taskId": "bug-investigation",
+      "taskName": "Bug Investigation",
+      "responseTimeImprovement": -112.48836496778982,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 3,
+      "domainsImprovement": -2,
+      "qualityScoreImprovement": -19.416996278592684,
+      "overallImprovement": -58.49767299355797
+    },
+    {
+      "taskId": "architecture-decision",
+      "taskName": "Architecture Decision",
+      "responseTimeImprovement": -109.49199343490963,
+      "confidenceImprovement": -100,
+      "rulesImprovement": -100,
+      "insightsImprovement": 2,
+      "domainsImprovement": -1,
+      "qualityScoreImprovement": -19.594398038177673,
+      "overallImprovement": -58.89839868698193
+    }
+  ],
+  "detailedResults": {
+    "baseline": [
+      {
+        "taskId": "component-creation",
+        "taskName": "Component Creation",
+        "responseTime": 11.10637370927967,
+        "relevantRulesFound": 3,
+        "insightsGenerated": 0,
+        "recommendationsGenerated": 1,
+        "confidence": 0.45286054886624877,
+        "domainsCovered": 1,
+        "qualityScore": 55.21087635072825
+      },
+      {
+        "taskId": "api-development",
+        "taskName": "API Development",
+        "responseTime": 12.962344560172546,
+        "relevantRulesFound": 3,
+        "insightsGenerated": 1,
+        "recommendationsGenerated": 1,
+        "confidence": 0.4790372850546645,
+        "domainsCovered": 1,
+        "qualityScore": 63.179697670349356
+      },
+      {
+        "taskId": "performance-fix",
+        "taskName": "Performance Fix",
+        "responseTime": 12.689750040443588,
+        "relevantRulesFound": 1,
+        "insightsGenerated": 1,
+        "recommendationsGenerated": 1,
+        "confidence": 0.5122751198447685,
+        "domainsCovered": 1,
+        "qualityScore": 54.037902992074855
+      },
+      {
+        "taskId": "bug-investigation",
+        "taskName": "Bug Investigation",
+        "responseTime": 12.940413468835398,
+        "relevantRulesFound": 1,
+        "insightsGenerated": 1,
+        "recommendationsGenerated": 1,
+        "confidence": 0.4184540130190491,
+        "domainsCovered": 2,
+        "qualityScore": 56.667308978592686
+      },
+      {
+        "taskId": "architecture-decision",
+        "taskName": "Architecture Decision",
+        "responseTime": 10.656591039092103,
+        "relevantRulesFound": 1,
+        "insightsGenerated": 1,
+        "recommendationsGenerated": 1,
+        "confidence": 0.6371034656834755,
+        "domainsCovered": 1,
+        "qualityScore": 57.361927538177675
+      }
+    ],
+    "murmuration": [
+      {
+        "taskId": "component-creation",
+        "taskName": "Component Creation",
+        "responseTime": 42.318622000000005,
+        "relevantRulesFound": 0,
+        "insightsGenerated": 3,
+        "recommendationsGenerated": 0,
+        "confidence": 0,
+        "domainsCovered": 0,
+        "qualityScore": 35.7681378,
+        "insights": [
+          {
+            "type": "domain-insight",
+            "title": "testing Domain Optimization",
+            "description": "Strong clustering around testing domain suggests focused expertise activation.",
+            "confidence": 1
+          },
+          {
+            "type": "cascade-insight",
+            "title": "Activation Cascade: e2e-testing-quality-assurance → testing-scenarios",
+            "description": "Strong activation cascade from e2e-testing-quality-assurance to testing-scenarios.",
+            "confidence": 0.6147722246793456
+          },
+          {
+            "type": "meta-insight",
+            "title": "High Pattern Coherence",
+            "description": "Strong pattern coherence (74.3%) indicates optimal rule coordination.",
+            "confidence": 0.7429117729431414
+          }
+        ],
+        "recommendations": []
+      },
+      {
+        "taskId": "api-development",
+        "taskName": "API Development",
+        "responseTime": 31.164230999999987,
+        "relevantRulesFound": 0,
+        "insightsGenerated": 4,
+        "recommendationsGenerated": 0,
+        "confidence": 0,
+        "domainsCovered": 0,
+        "qualityScore": 36.8835769,
+        "insights": [
+          {
+            "type": "domain-insight",
+            "title": "backend Domain Optimization",
+            "description": "Strong clustering around backend domain suggests focused expertise activation.",
+            "confidence": 1
+          },
+          {
+            "type": "synergy-insight",
+            "title": "Capability Synergy: backend-development + api-database-standards",
+            "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+            "confidence": 0.3333333333333333
+          },
+          {
+            "type": "cascade-insight",
+            "title": "Activation Cascade: backend-development → api-database-standards",
+            "description": "Strong activation cascade from backend-development to api-database-standards.",
+            "confidence": 0.6903508771929825
+          },
+          {
+            "type": "meta-insight",
+            "title": "Multi-Pattern Optimization Opportunity",
+            "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+            "confidence": 0.8
+          }
+        ],
+        "recommendations": []
+      },
+      {
+        "taskId": "performance-fix",
+        "taskName": "Performance Fix",
+        "responseTime": 30.393912999999998,
+        "relevantRulesFound": 0,
+        "insightsGenerated": 4,
+        "recommendationsGenerated": 0,
+        "confidence": 0,
+        "domainsCovered": 0,
+        "qualityScore": 36.9606087,
+        "insights": [
+          {
+            "type": "domain-insight",
+            "title": "backend Domain Optimization",
+            "description": "Strong clustering around backend domain suggests focused expertise activation.",
+            "confidence": 1
+          },
+          {
+            "type": "synergy-insight",
+            "title": "Capability Synergy: backend-development + api-database-standards",
+            "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+            "confidence": 0.3333333333333333
+          },
+          {
+            "type": "cascade-insight",
+            "title": "Activation Cascade: backend-development → api-database-standards",
+            "description": "Strong activation cascade from backend-development to api-database-standards.",
+            "confidence": 0.6903508771929825
+          },
+          {
+            "type": "meta-insight",
+            "title": "Multi-Pattern Optimization Opportunity",
+            "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+            "confidence": 0.8
+          }
+        ],
+        "recommendations": []
+      },
+      {
+        "taskId": "bug-investigation",
+        "taskName": "Bug Investigation",
+        "responseTime": 27.496872999999994,
+        "relevantRulesFound": 0,
+        "insightsGenerated": 4,
+        "recommendationsGenerated": 0,
+        "confidence": 0,
+        "domainsCovered": 0,
+        "qualityScore": 37.2503127,
+        "insights": [
+          {
+            "type": "domain-insight",
+            "title": "backend Domain Optimization",
+            "description": "Strong clustering around backend domain suggests focused expertise activation.",
+            "confidence": 1
+          },
+          {
+            "type": "synergy-insight",
+            "title": "Capability Synergy: backend-development + api-database-standards",
+            "description": "Rules backend-development and api-database-standards create synergistic capabilities.",
+            "confidence": 0.3333333333333333
+          },
+          {
+            "type": "cascade-insight",
+            "title": "Activation Cascade: backend-development → api-database-standards",
+            "description": "Strong activation cascade from backend-development to api-database-standards.",
+            "confidence": 0.6903508771929825
+          },
+          {
+            "type": "meta-insight",
+            "title": "Multi-Pattern Optimization Opportunity",
+            "description": "Multiple patterns detected (3), suggesting complex problem domain.",
+            "confidence": 0.8
+          }
+        ],
+        "recommendations": []
+      },
+      {
+        "taskId": "architecture-decision",
+        "taskName": "Architecture Decision",
+        "responseTime": 22.324704999999994,
+        "relevantRulesFound": 0,
+        "insightsGenerated": 3,
+        "recommendationsGenerated": 0,
+        "confidence": 0,
+        "domainsCovered": 0,
+        "qualityScore": 37.7675295,
+        "insights": [
+          {
+            "type": "domain-insight",
+            "title": "frontend Domain Optimization",
+            "description": "Strong clustering around frontend domain suggests focused expertise activation.",
+            "confidence": 1
+          },
+          {
+            "type": "cascade-insight",
+            "title": "Activation Cascade: performance-optimization → performance-critical-optimization",
+            "description": "Strong activation cascade from performance-optimization to performance-critical-optimization.",
+            "confidence": 0.6446023818670765
+          },
+          {
+            "type": "meta-insight",
+            "title": "High Pattern Coherence",
+            "description": "Strong pattern coherence (74.4%) indicates optimal rule coordination.",
+            "confidence": 0.7443318905631446
+          }
+        ],
+        "recommendations": []
+      }
+    ]
+  },
+  "insights": [
+    {
+      "type": "performance",
+      "message": "No significant improvement detected - system needs optimization",
+      "impact": "negative"
+    },
+    {
+      "type": "insights",
+      "message": "Emergent insights working: 2.8 additional insights per task",
+      "impact": "high"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "performance",
+      "priority": "high",
+      "message": "Average response time (30.74ms) could be optimized further"
+    },
+    {
+      "type": "confidence",
+      "priority": "medium",
+      "message": "Average confidence (0.0%) could be improved"
+    }
+  ]
+}

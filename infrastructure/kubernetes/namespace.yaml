@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubota-rental
+  labels:
+    name: kubota-rental
+    environment: production
+    app: rental-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubota-rental-staging
+  labels:
+    name: kubota-rental-staging
+    environment: staging
+    app: rental-platform

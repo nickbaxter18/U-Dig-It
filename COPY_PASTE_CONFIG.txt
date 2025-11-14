@@ -1,0 +1,239 @@
+================================================================================
+KUBOTA RENTAL PLATFORM - COPY-PASTE CONFIGURATION
+================================================================================
+
+YOUR EXACT WEBHOOK URLS AND CREDENTIALS
+Use these exact values - just copy and paste!
+
+================================================================================
+1. STRIPE WEBHOOK CONFIGURATION
+================================================================================
+
+Go to: https://dashboard.stripe.com/webhooks
+Click: "Add endpoint" button
+
+COPY THIS URL (Webhook Endpoint):
+https://bnimazxnqligusckahab.supabase.co/functions/v1/stripe-webhook
+
+SELECT THESE EVENTS:
+☑ payment_intent.succeeded
+☑ payment_intent.payment_failed
+☑ charge.refunded
+☑ checkout.session.completed
+
+After saving, you'll get a signing secret (whsec_...)
+Copy it and run ONE of these:
+
+OPTION A - Supabase Dashboard:
+https://supabase.com/dashboard/project/bnimazxnqligusckahab/settings/vault
+Click "Add new secret"
+Name: STRIPE_WEBHOOK_SECRET
+Value: whsec_[paste your secret]
+
+OPTION B - Terminal:
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_[paste your secret]
+
+================================================================================
+2. SENDGRID SENDER VERIFICATION
+================================================================================
+
+Go to: https://app.sendgrid.com/settings/sender_auth/senders
+
+Check if this email is verified: NickBaxter@udigit.ca
+
+IF NOT VERIFIED:
+1. Click "Create New Sender"
+2. Fill in:
+   From Email: NickBaxter@udigit.ca
+   From Name: U-Dig It Rentals
+   Reply To: support@udigit.ca
+   Company: U-Dig It Rentals
+   Address: [Your business address]
+   City: Saint John
+   State: New Brunswick
+   Postal: [Your postal code]
+   Country: Canada
+
+3. Click "Create"
+4. Check email at NickBaxter@udigit.ca
+5. Click verification link
+6. Confirm shows "Verified" ✅
+
+================================================================================
+3. ENABLE PASSWORD PROTECTION (OPTIONAL)
+================================================================================
+
+Go to: https://supabase.com/dashboard/project/bnimazxnqligusckahab/auth/policies
+
+Scroll to "Password" section
+Toggle ON: "Leaked Password Protection"
+Click: "Save"
+
+================================================================================
+4. TEST EMAIL (COPY-PASTE THIS ENTIRE COMMAND)
+================================================================================
+
+curl -X POST https://bnimazxnqligusckahab.supabase.co/functions/v1/send-email \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "YOUR_EMAIL_HERE@example.com",
+    "subject": "Test Email from Kubota Platform",
+    "html": "<h1>Success!</h1><p>Your SendGrid integration is working!</p><p>From: NickBaxter@udigit.ca</p>"
+  }'
+
+EXPECTED RESPONSE:
+{
+  "success": true,
+  "message": "Email sent successfully",
+  "provider": "SendGrid"
+}
+
+Check your email inbox - you should receive it in 5-30 seconds!
+
+================================================================================
+5. YOUR PROJECT INFORMATION
+================================================================================
+
+Supabase Project URL:
+https://bnimazxnqligusckahab.supabase.co
+
+Supabase Anon Key:
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc
+
+Stripe Public Key (for frontend):
+pk_live_51S2N0TFYCEvui16JpFsdVfAqSpUqa7KxozcDzvYNzpuBlQO5Gc5kUrWTbSOK71RGCNn7002jQlTzn9zqIlWtoFM300tRvL2XZK
+
+SendGrid From Address:
+NickBaxter@udigit.ca
+
+================================================================================
+6. EDGE FUNCTIONS DEPLOYED
+================================================================================
+
+✅ send-email (v2) - SendGrid integration ACTIVE
+   URL: https://bnimazxnqligusckahab.supabase.co/functions/v1/send-email
+
+✅ stripe-webhook (v2) - Stripe LIVE integration ACTIVE
+   URL: https://bnimazxnqligusckahab.supabase.co/functions/v1/stripe-webhook
+
+✅ docusign-webhook (v1) - Contract automation ACTIVE
+   URL: https://bnimazxnqligusckahab.supabase.co/functions/v1/docusign-webhook
+
+✅ process-notifications (v1) - Background email processing ACTIVE
+   URL: https://bnimazxnqligusckahab.supabase.co/functions/v1/process-notifications
+
+================================================================================
+7. STORAGE BUCKETS READY
+================================================================================
+
+✅ equipment-images (PUBLIC)
+   - Upload equipment photos here
+   - Auto-optimized to AVIF/WebP
+   - Max size: 5MB
+   - Types: JPG, PNG, WebP, GIF
+
+✅ contracts (PRIVATE)
+   - User-scoped folders
+   - PDF only
+   - Max size: 10MB
+
+✅ insurance-documents (PRIVATE)
+   - User-scoped folders
+   - PDF + images
+   - Max size: 10MB
+
+✅ user-uploads (PRIVATE)
+   - Temporary files
+   - Auto-cleanup after 7 days
+   - Max size: 10MB
+
+================================================================================
+8. QUICK START COMMANDS
+================================================================================
+
+# Test SendGrid email (replace YOUR_EMAIL):
+curl -X POST https://bnimazxnqligusckahab.supabase.co/functions/v1/send-email \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc" \
+  -H "Content-Type: application/json" \
+  -d '{"to":"YOUR_EMAIL@example.com","subject":"Test","html":"<h1>It works!</h1>"}'
+
+# Search equipment:
+curl -X POST https://bnimazxnqligusckahab.supabase.co/rest/v1/rpc/search_equipment \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc" \
+  -H "Content-Type: application/json" \
+  -d '{"search_query":"loader"}'
+
+# Get live availability:
+curl -X POST https://bnimazxnqligusckahab.supabase.co/rest/v1/rpc/get_live_availability_count \
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc" \
+  -H "Content-Type: application/json"
+
+================================================================================
+✅ ALL AUTOMATED - JUST CONFIGURE THE WEBHOOKS!
+================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

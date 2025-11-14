@@ -1,0 +1,100 @@
+{
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "/bin/bash",
+      "args": ["--login", "-c", "if [ -f '${workspaceFolder}/.cursor/startup.sh' ]; then source '${workspaceFolder}/.cursor/startup.sh'; else source /home/vscode/Kubota-rental-platform/.cursor/startup.sh; fi && exec bash"]
+    },
+    "enhanced-bash": {
+      "path": "/bin/bash",
+      "args": ["--login", "-c", "if [ -f '${workspaceFolder}/.cursor/startup.sh' ]; then source '${workspaceFolder}/.cursor/startup.sh'; else source /home/vscode/Kubota-rental-platform/.cursor/startup.sh; fi && exec bash"],
+      "icon": "terminal-bash"
+    }
+  },
+  "terminal.integrated.cwd": "${workspaceFolder}",
+  "terminal.integrated.fontSize": 14,
+  "terminal.integrated.fontFamily": "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace",
+  "terminal.integrated.fontLigatures": true,
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.scrollback": 10000,
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.shellIntegration.history": true,
+  "terminal.integrated.shellIntegration.suggestEnabled": true,
+  "terminal.integrated.tabs.enabled": true,
+  "terminal.integrated.tabs.showActions": "always",
+  "terminal.integrated.tabs.showActiveTerminal": "always",
+  "terminal.integrated.rightClickBehavior": "selectWord",
+  "terminal.integrated.copyOnSelection": true,
+  "terminal.integrated.confirmOnExit": "never",
+  "terminal.integrated.confirmOnKill": "never",
+  "terminal.integrated.enableMultiLinePasteWarning": false,
+  "terminal.integrated.enablePersistentSessions": true,
+  "terminal.integrated.persistentSessionReviveProcess": "onExitAndWindowClose",
+  "terminal.integrated.allowChords": false,
+  "terminal.integrated.allowMnemonics": true,
+  "terminal.integrated.altClickMovesCursor": true,
+  "terminal.integrated.commandsToSkipShell": [
+    "workbench.action.terminal.clear",
+    "workbench.action.terminal.new",
+    "workbench.action.terminal.split",
+    "workbench.action.terminal.toggle"
+  ],
+  "terminal.integrated.detectLocale": "auto",
+  "terminal.integrated.enableBell": false,
+  "terminal.integrated.enableFileLinks": true,
+  "terminal.integrated.enableImages": true,
+  "terminal.integrated.gpuAcceleration": "auto",
+  "terminal.integrated.hideOnStartup": false,
+  "terminal.integrated.inheritEnv": true,
+  "terminal.integrated.localEchoEnabled": "auto",
+  "terminal.integrated.macOptionIsMeta": false,
+  "terminal.integrated.macOptionClickFocusesTerminal": true,
+  "terminal.integrated.mouseWheelScrollSensitivity": 1,
+  "terminal.integrated.persistentSessionScrollback": 1000,
+  "terminal.integrated.scrollToBottomOnInput": true,
+  "terminal.integrated.sendKeybindingsToShell": false,
+  "terminal.integrated.shellIntegration.decorationsEnabled": true,
+  "terminal.integrated.shellIntegration.showWelcome": true,
+  "terminal.integrated.smoothScrolling": true,
+  "terminal.integrated.splitCwd": "workspaceRoot",
+  "terminal.integrated.tabs.hideCondition": "never",
+  "terminal.integrated.tabs.location": "right",
+  "terminal.integrated.tabs.showCloseButton": "singleTabOrNarrow",
+  "terminal.integrated.useWslProfiles": false,
+  "terminal.integrated.windowsEnableConpty": true,
+  "terminal.integrated.wordSeparators": " ()[]{}'\"`─",
+  "terminal.integrated.workingDir": {
+    "perOs": {
+      "linux": "${workspaceFolder}"
+    }
+  },
+  "workbench.colorCustomizations": {
+    "terminal.background": "#1e1e1e",
+    "terminal.foreground": "#d4d4d4",
+    "terminal.ansiBlack": "#000000",
+    "terminal.ansiRed": "#cd3131",
+    "terminal.ansiGreen": "#0dbc79",
+    "terminal.ansiYellow": "#e5e510",
+    "terminal.ansiBlue": "#2472c8",
+    "terminal.ansiMagenta": "#bc3fbc",
+    "terminal.ansiCyan": "#11a8cd",
+    "terminal.ansiWhite": "#e5e5e5",
+    "terminal.ansiBrightBlack": "#666666",
+    "terminal.ansiBrightRed": "#f14c4c",
+    "terminal.ansiBrightGreen": "#23d18b",
+    "terminal.ansiBrightYellow": "#f5f543",
+    "terminal.ansiBrightBlue": "#3b8eea",
+    "terminal.ansiBrightMagenta": "#d670d6",
+    "terminal.ansiBrightCyan": "#29b8db",
+    "terminal.ansiBrightWhite": "#e5e5e5"
+  },
+  "terminal.integrated.tabs.title": "${process}",
+  "terminal.integrated.tabs.description": "${workspaceFolder}",
+  "terminal.integrated.automationShell.linux": "/bin/bash",
+  "terminal.integrated.env.linux": {
+    "NODE_ENV": "development",
+    "TERM": "xterm-256color",
+    "CLICOLOR": "1"
+  }
+}

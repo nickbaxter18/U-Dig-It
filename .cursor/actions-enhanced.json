@@ -1,0 +1,70 @@
+{
+  "$schema": "https://cursor.sh/schemas/cursor-actions-enhanced.json",
+  "name": "Enhanced Cursor Actions",
+  "description": "Additional project-specific actions",
+  
+  "actions": [
+    {
+      "id": "fix-console-logs",
+      "name": "Fix Console Logs",
+      "description": "Automatically convert console.* statements to logger",
+      "command": "node scripts/cursor-actions/fix-console-logs.js",
+      "keyboardShortcut": "Ctrl+Shift+L",
+      "category": "code-quality"
+    },
+    {
+      "id": "generate-commit-message",
+      "name": "Generate Commit Message",
+      "description": "Generate commit message from staged changes",
+      "command": "node scripts/cursor-actions/generate-commit-message.js",
+      "keyboardShortcut": "Ctrl+Shift+G",
+      "category": "git"
+    },
+    {
+      "id": "run-security-scan",
+      "name": "Run Security Scan",
+      "description": "Run Snyk security scan on codebase",
+      "command": "snyk_code_scan",
+      "keyboardShortcut": "Ctrl+Shift+S",
+      "category": "security"
+    },
+    {
+      "id": "check-performance-budgets",
+      "name": "Check Performance Budgets",
+      "description": "Check if code meets performance budgets",
+      "command": "node scripts/cursor-actions/check-performance-budgets.js",
+      "category": "performance"
+    },
+    {
+      "id": "analyze-test-coverage",
+      "name": "Analyze Test Coverage",
+      "description": "Find untested code paths",
+      "command": "pnpm test:coverage && node scripts/cursor-actions/analyze-coverage-gaps.js",
+      "category": "testing"
+    }
+  ],
+  
+  "workflows": [
+    {
+      "id": "pre-commit-checks",
+      "name": "Pre-Commit Checks",
+      "description": "Run all pre-commit checks",
+      "steps": [
+        "fix-console-logs",
+        "run-security-scan",
+        "check-performance-budgets"
+      ]
+    },
+    {
+      "id": "new-feature-setup",
+      "name": "New Feature Setup",
+      "description": "Complete setup for a new feature",
+      "steps": [
+        "generate-supabase-migration",
+        "create-api-route",
+        "generate-component",
+        "analyze-test-coverage"
+      ]
+    }
+  ]
+}

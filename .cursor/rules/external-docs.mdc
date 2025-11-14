@@ -1,0 +1,43 @@
+---
+description: "External documentation usage guidelines for Supabase, Next.js, Stripe, SendGrid, and other tools"
+alwaysApply: false
+---
+
+# External Documentation Usage
+
+## Purpose
+
+Guarantee that every coding task, feature design, or troubleshooting session references the most relevant external documentation before and during implementation. Ensures consistency with Supabase, Next.js, Stripe, SendGrid, and associated tooling best practices.
+
+## Rules
+
+1. **Documentation First**
+   Before writing or modifying code, consult the appropriate external doc for the feature area. Use the indexed sources in `docs/external/EXTERNAL_DOCS_INDEX.md` and the Cursor Docs panel.
+
+2. **Topic Alignment**
+   Match work items to documentation categories:
+   - Supabase (auth, RLS, storage, functions, CLI) for any backend/database changes.
+   - Next.js & React docs for routing, server components, middleware, state, and performance.
+   - Stripe docs for anything payment-related (PaymentIntents, Checkout, webhooks, disputes, Radar).
+   - SendGrid docs for email flows, templates, and deliverability.
+   - Radix UI & Tailwind for component structure, accessibility, styling.
+   - Playwright, Vitest, Testing Library for testing additions or updates.
+   - Zod for schema validation patterns.
+   - Lighthouse/Core Web Vitals for performance improvements or regression checks.
+   - Vercel docs for deployment, Edge runtime, secrets, logging.
+
+3. **Citation Requirement**
+   When referencing patterns or behavior from docs in a discussion or code comment, mention the doc/source briefly (e.g., “Per Supabase RLS docs…”).
+
+4. **Decision Support**
+   Include doc-backed rationale in solution discussions (design docs, PR descriptions, significant comments). Highlight any deviations from official guidance and explain why.
+
+5. **Troubleshooting Protocol**
+   Treat external docs as the first stop for debugging. Reference relevant guides before escalating to the team or raising an incident.
+
+6. **Documentation Currency**
+   If a doc is outdated or missing, capture the gap in `docs/external/EXTERNAL_DOCS_INDEX.md` and flag in the PR or issue so the process can be adjusted.
+
+## Gratitude
+
+Consistently using authoritative documentation minimizes divergence from proven patterns, reduces regressions, and keeps our Supabase-first platform aligned with partner ecosystems.\*\*\*

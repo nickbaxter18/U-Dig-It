@@ -1,0 +1,497 @@
+'use client';
+
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import { logger } from '@/lib/logger';
+import { useEffect, useMemo, useState } from 'react';
+import { Calendar, CheckCircle, Clock, Loader2, X } from 'lucide-react';
+
+const maintenanceTypeOptions = [
+  { value: 'preventive', label: 'Preventive' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'repair', label: 'Repair' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'inspection', label: 'Inspection' },
+];
+
+const priorityOptions = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
+type MaintenanceStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
+
+interface MaintenanceRecord {
+  id: string;
+  title: string;
+  maintenanceType: string;
+  priority: string;
+  status: MaintenanceStatus;
+  scheduledDate: string;
+  performedBy?: string | null;
+  cost?: number | null;
+  nextDueDate?: string | null;
+}
+
+interface MaintenanceScheduleModalProps {
+  equipment: {
+    id: string;
+    name: string;
+    unitId: string;
+    maintenanceDue?: Date;
+    lastMaintenance?: Date;
+  };
+  onClose: () => void;
+  onScheduled?: () => Promise<void> | void;
+}
+
+const statusStyles: Record<MaintenanceStatus, string> = {
+  scheduled: 'bg-blue-100 text-blue-800',
+  in_progress: 'bg-yellow-100 text-yellow-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-gray-100 text-gray-700',
+  overdue: 'bg-red-100 text-red-800',
+};
+
+function toDateInputValue(date: Date | undefined, includeTime = false) {
+  if (!date) return '';
+  if (Number.isNaN(date.getTime())) return '';
+  if (includeTime) {
+    return `${date.toISOString().slice(0, 16)}`;
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function parseDate(value: string | undefined | null) {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+export function MaintenanceScheduleModal({
+  equipment,
+  onClose,
+  onScheduled,
+}: MaintenanceScheduleModalProps) {
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 1);
+    defaultDate.setHours(9, 0, 0, 0);
+    return toDateInputValue(defaultDate, true);
+  });
+  const [maintenanceType, setMaintenanceType] = useState('preventive');
+  const [priority, setPriority] = useState('medium');
+  const [title, setTitle] = useState(() => `${equipment.name} maintenance`);
+  const [description, setDescription] = useState('');
+  const [performedBy, setPerformedBy] = useState('');
+  const [cost, setCost] = useState('');
+  const [nextDueDate, setNextDueDate] = useState(() =>
+    toDateInputValue(equipment.maintenanceDue)
+  );
+  const [nextDueHours, setNextDueHours] = useState('');
+  const [notes, setNotes] = useState('');
+  const [existingRecords, setExistingRecords] = useState<MaintenanceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTitle(`${equipment.name} maintenance`);
+    setNextDueDate(toDateInputValue(equipment.maintenanceDue));
+  }, [equipment]);
+
+  const fetchMaintenanceRecords = async () => {
+    try {
+      setLoadingRecords(true);
+      setError(null);
+      const response = await fetchWithAuth(
+        `/api/admin/equipment/${equipment.id}/maintenance?limit=5`
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to load maintenance history');
+      }
+
+      const payload = (await response.json()) as { data: MaintenanceRecord[] };
+      setExistingRecords(payload.data ?? []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load maintenance history';
+      setError(message);
+      if (process.env.NODE_ENV === 'development') {
+        logger.error(
+          'Failed to load maintenance history',
+          { component: 'MaintenanceScheduleModal', action: 'load_records_error' },
+          err instanceof Error ? err : new Error(String(err))
+        );
+      }
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaintenanceRecords();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipment.id]);
+
+  const upcomingRecords = useMemo(
+    () =>
+      existingRecords
+        .slice()
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()),
+    [existingRecords]
+  );
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const scheduledDateIso = parseDate(scheduledDate)?.toISOString();
+      if (!scheduledDateIso) {
+        throw new Error('Please provide a valid scheduled date and time');
+      }
+
+      const payload = {
+        title: title.trim() || `${equipment.name} maintenance`,
+        maintenanceType,
+        priority,
+        scheduledDate: scheduledDateIso,
+        description: description.trim() || undefined,
+        performedBy: performedBy.trim() || undefined,
+        cost: cost ? parseFloat(cost) : undefined,
+        nextDueDate: parseDate(nextDueDate)?.toISOString(),
+        nextDueHours: nextDueHours ? parseInt(nextDueHours, 10) : undefined,
+        notes: notes.trim() || undefined,
+      };
+
+      const scheduleResponse = await fetchWithAuth(
+        `/api/admin/equipment/${equipment.id}/maintenance`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!scheduleResponse.ok) {
+        const responseBody = await scheduleResponse.json().catch(() => ({}));
+        throw new Error(responseBody.error || 'Failed to schedule maintenance');
+      }
+
+      if (onScheduled) {
+        await onScheduled();
+      }
+
+      await fetchMaintenanceRecords();
+      onClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to schedule maintenance';
+      setError(message);
+      if (process.env.NODE_ENV === 'development') {
+        logger.error(
+          'Failed to schedule maintenance',
+          { component: 'MaintenanceScheduleModal', action: 'schedule_error' },
+          err instanceof Error ? err : new Error(String(err))
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="maintenance-modal-title"
+    >
+      <div className="w-full max-w-3xl rounded-lg bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-gray-200 p-6">
+          <div>
+            <h2 id="maintenance-modal-title" className="text-xl font-semibold text-gray-900">
+              Schedule Maintenance
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {equipment.unitId} · {equipment.name}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+            aria-label="Close maintenance scheduling modal"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        <div className="grid gap-6 p-6 md:grid-cols-[1.4fr_1fr]">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-title">
+                Maintenance Title
+              </label>
+              <input
+                id="maintenance-title"
+                type="text"
+                value={title}
+                onChange={event => setTitle(event.target.value)}
+                className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                placeholder="e.g., 250-hour preventive maintenance"
+                required
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-type">
+                  Maintenance Type
+                </label>
+                <select
+                  id="maintenance-type"
+                  value={maintenanceType}
+                  onChange={event => setMaintenanceType(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                >
+                  {maintenanceTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-priority">
+                  Priority
+                </label>
+                <select
+                  id="maintenance-priority"
+                  value={priority}
+                  onChange={event => setPriority(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                >
+                  {priorityOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="scheduled-date">
+                  Scheduled Date &amp; Time
+                </label>
+                <input
+                  id="scheduled-date"
+                  type="datetime-local"
+                  value={scheduledDate}
+                  onChange={event => setScheduledDate(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="performed-by">
+                  Assigned To
+                </label>
+                <input
+                  id="performed-by"
+                  type="text"
+                  value={performedBy}
+                  onChange={event => setPerformedBy(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  placeholder="e.g., Kyle Thompson"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-cost">
+                  Estimated Cost (CAD)
+                </label>
+                <input
+                  id="maintenance-cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cost}
+                  onChange={event => setCost(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="next-due-hours">
+                  Next Due (Engine Hours)
+                </label>
+                <input
+                  id="next-due-hours"
+                  type="number"
+                  min="0"
+                  value={nextDueHours}
+                  onChange={event => setNextDueHours(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="next-due-date">
+                  Next Maintenance Due (Date)
+                </label>
+                <input
+                  id="next-due-date"
+                  type="date"
+                  value={nextDueDate}
+                  onChange={event => setNextDueDate(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-notes">
+                  Internal Notes
+                </label>
+                <textarea
+                  id="maintenance-notes"
+                  value={notes}
+                  onChange={event => setNotes(event.target.value)}
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                  placeholder="Optional notes for the maintenance team"
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="maintenance-description">
+                Description &amp; Tasks
+              </label>
+              <textarea
+                id="maintenance-description"
+                value={description}
+                onChange={event => setDescription(event.target.value)}
+                className="focus:ring-kubota-orange h-28 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                placeholder="Add details: oil change, filter replacement, inspection notes..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
+              <button
+                type="button"
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                onClick={onClose}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-kubota-orange flex items-center rounded-md px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Schedule Maintenance
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">
+                Upcoming Maintenance
+              </h3>
+              {loadingRecords && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+            </div>
+
+            {upcomingRecords.length === 0 && !loadingRecords ? (
+              <p className="text-sm text-gray-500">
+                No maintenance scheduled yet. Schedule the first maintenance task for this unit.
+              </p>
+            ) : (
+              <ul className="space-y-3 text-sm">
+                {upcomingRecords.map(record => (
+                  <li
+                    key={record.id}
+                    className="rounded-md border border-gray-200 bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">{record.title}</p>
+                        <p className="mt-1 flex items-center text-xs text-gray-500">
+                          <Calendar className="mr-1 h-3 w-3" />
+                          {new Date(record.scheduledDate).toLocaleString()}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusStyles[record.status] ?? 'bg-gray-100 text-gray-700'}`}
+                      >
+                        {record.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">
+                        {record.maintenanceType}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 font-medium text-orange-700">
+                        Priority: {record.priority}
+                      </span>
+                      {record.performedBy && <span>Assigned to {record.performedBy}</span>}
+                      {record.cost != null && <span>Est. Cost ${record.cost.toFixed(2)}</span>}
+                      {record.nextDueDate && (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 font-medium text-green-700">
+                          Next due {new Date(record.nextDueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+              <div className="flex items-start">
+                <Clock className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0" />
+                <p>
+                  Maintenance events automatically update equipment status and next due dates.
+                  Stay proactive by scheduling preventive maintenance ahead of time.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+

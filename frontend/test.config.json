@@ -1,0 +1,93 @@
+{
+  "testUser": {
+    "email": "aitest2@udigit.ca",
+    "password": "TestAI2024!@#$",
+    "firstName": "AI",
+    "lastName": "Tester",
+    "phone": "(506) 555-0199",
+    "company": "AI Testing Co"
+  },
+  "testUrls": {
+    "baseUrl": "http://localhost:3000",
+    "signIn": "http://localhost:3000/auth/signin",
+    "signUp": "http://localhost:3000/auth/signup",
+    "dashboard": "http://localhost:3000/dashboard",
+    "profile": "http://localhost:3000/profile",
+    "book": "http://localhost:3000/book"
+  },
+  "notes": [
+    "This test account was created via the sign-up flow, not admin API",
+    "Email confirmation was handled via direct SQL to avoid email verification loops",
+    "Google OAuth cannot be used in automated browsers due to security restrictions",
+    "Always use email/password authentication for automated testing"
+  ]
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

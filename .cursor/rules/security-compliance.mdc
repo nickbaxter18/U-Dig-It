@@ -1,0 +1,176 @@
+---
+description: "Security compliance requirements, incident response, payment security, and Snyk integration"
+alwaysApply: false
+globs: ["**/payment/**/*", "**/stripe/**/*", "**/security/**/*"]
+contextFiles:
+  - "frontend/src/app/api/payment/**/*"
+  - ".cursor/rules/SECURITY.mdc"
+autoReview: true
+---
+
+# Security Compliance & Operations
+
+## 🎯 Purpose
+Security compliance requirements, incident response protocols, payment security, and vulnerability management.
+
+---
+
+## Snyk Security Integration
+
+### Mandatory Scanning
+```bash
+# ✅ ALWAYS run Snyk scan for new code
+snyk_code_scan({ path: "/absolute/path/to/new/code" })
+
+# ✅ Scan after dependencies added
+snyk_sca_scan({ path: "/absolute/path/to/project" })
+
+# ✅ Container security (if applicable)
+snyk_container_scan({ image: "my-image:v1" })
+```
+
+### Scan Workflow
+1. **Code changes**: Run `snyk_code_scan`
+2. **Fix issues**: Address vulnerabilities found
+3. **Re-scan**: Verify fixes worked
+4. **Repeat**: Until no new issues
+
+### Security Issue Handling
+```typescript
+// ✅ If Snyk finds issues:
+// 1. Review severity (critical, high, medium, low)
+// 2. Fix critical/high immediately
+// 3. Plan medium/low fixes
+// 4. Re-scan to verify
+// 5. Document any accepted risks
+```
+
+---
+
+## Data Retention
+
+### Data Retention Policies
+```sql
+-- ✅ CORRECT - Implement data retention policies
+-- Delete old sessions after 90 days
+DELETE FROM auth.sessions
+WHERE created_at < NOW() - INTERVAL '90 days';
+
+-- Archive old bookings after 2 years
+INSERT INTO bookings_archive
+SELECT * FROM bookings
+WHERE created_at < NOW() - INTERVAL '2 years';
+
+DELETE FROM bookings
+WHERE created_at < NOW() - INTERVAL '2 years';
+```
+
+---
+
+## Incident Response
+
+### Security Incident Protocol
+1. **Detect**: Monitor logs, alerts, Snyk scans
+2. **Contain**: Isolate affected systems
+3. **Investigate**: Analyze attack vector
+4. **Remediate**: Fix vulnerability
+5. **Document**: Record incident details
+6. **Review**: Post-mortem analysis
+
+### Breach Notification
+```typescript
+// ✅ If breach detected
+// 1. Notify affected users within 72 hours
+// 2. Report to authorities if PII compromised
+// 3. Document incident thoroughly
+// 4. Implement additional controls
+// 5. Conduct security audit
+```
+
+---
+
+## Compliance Requirements
+
+### PIPEDA (Canada)
+- Obtain consent for data collection
+- Limit data collection to necessary
+- Protect personal information
+- Provide access to data on request
+- Delete data when no longer needed
+
+### PCI-DSS (Payment Card Industry)
+- Never store credit card data directly
+- Use Stripe for payment processing
+- Maintain secure network
+- Implement access controls
+- Monitor and test regularly
+
+---
+
+## Secure Payment Processing
+
+### Stripe Integration
+```typescript
+// ✅ CORRECT - Server-side only
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16'
+});
+
+export async function POST(request: NextRequest) {
+  // Verify auth
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Verify booking ownership
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('customerId, totalAmount')
+    .eq('id', bookingId)
+    .single();
+
+  if (booking.customerId !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Create payment intent (server-side only!)
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: Math.round(booking.totalAmount * 100),
+    currency: 'cad',
+    metadata: { bookingId, userId: user.id }
+  });
+
+  return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+}
+
+// ❌ WRONG - Client-side Stripe secret
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // In browser code!
+```
+
+---
+
+## ✅ Security Compliance Checklist
+
+Code Changes:
+- [ ] Snyk scan passed (`snyk_code_scan`)
+- [ ] No secrets in code
+- [ ] Audit trail created
+
+Data Handling:
+- [ ] PII encrypted
+- [ ] Secrets in environment variables
+- [ ] Data retention policy applied
+
+Dependencies:
+- [ ] `pnpm audit` clean
+- [ ] Snyk SCA scan passed
+- [ ] No critical vulnerabilities
+- [ ] Dependencies up to date
+
+---
+
+**Remember**:
+- 🔍 **Snyk scan ALWAYS**
+- 🚨 **Monitor CONTINUOUSLY**
+- 📋 **Compliance is mandatory**

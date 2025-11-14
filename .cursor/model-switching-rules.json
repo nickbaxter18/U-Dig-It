@@ -1,0 +1,296 @@
+{
+  "$schema": "https://cursor.sh/schemas/model-switching.json",
+  "name": "Intelligent Model Selection & Switching",
+  "description": "Context-aware model selection for maximum effectiveness across different tasks",
+
+  "models": {
+    "claude-sonnet-4.5": {
+      "name": "Claude Sonnet 4.5",
+      "provider": "anthropic",
+      "contextWindow": 200000,
+      "strengths": [
+        "complex-reasoning",
+        "multi-file-refactoring",
+        "architecture-design",
+        "database-operations",
+        "security-analysis",
+        "type-system-understanding",
+        "comprehensive-context"
+      ],
+      "costTier": "high",
+      "speed": "medium"
+    },
+    "gpt-4-turbo": {
+      "name": "GPT-4 Turbo",
+      "provider": "openai",
+      "contextWindow": 128000,
+      "strengths": [
+        "test-generation",
+        "documentation-writing",
+        "code-explanation",
+        "pattern-recognition",
+        "quick-iterations",
+        "creative-solutions"
+      ],
+      "costTier": "medium",
+      "speed": "fast"
+    },
+    "claude-opus-3.5": {
+      "name": "Claude Opus 3.5",
+      "provider": "anthropic",
+      "contextWindow": 200000,
+      "strengths": [
+        "extreme-complexity",
+        "novel-solutions",
+        "architecture-design",
+        "comprehensive-analysis"
+      ],
+      "costTier": "very-high",
+      "speed": "slow",
+      "useCase": "critical-tasks-only"
+    }
+  },
+
+  "switchingRules": [
+    {
+      "name": "Complex TypeScript Refactoring",
+      "condition": {
+        "fileType": ["typescript", "tsx"],
+        "task": ["refactor", "restructure"],
+        "complexity": "high",
+        "fileCount": ">= 3"
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Complex TypeScript refactoring requires deep type system understanding and multi-file context",
+      "confidence": 0.95
+    },
+    {
+      "name": "Database Operations",
+      "condition": {
+        "path": ["**/supabase/**", "**/migrations/**"],
+        "operation": ["create", "modify", "optimize"],
+        "OR": {
+          "keywords": ["SQL", "PostgreSQL", "RLS", "migration"]
+        }
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Database operations require careful analysis and understanding of data integrity",
+      "confidence": 0.98
+    },
+    {
+      "name": "Security-Critical Code",
+      "condition": {
+        "path": ["**/auth/**", "**/api/auth/**", "**/security/**"],
+        "OR": {
+          "keywords": ["authentication", "authorization", "security", "encryption", "validation"]
+        }
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Security code requires maximum attention and comprehensive analysis",
+      "confidence": 0.99
+    },
+    {
+      "name": "Test Generation",
+      "condition": {
+        "fileType": ["test.ts", "spec.ts", "test.tsx"],
+        "task": ["create", "update"],
+        "OR": {
+          "task": "generate-tests"
+        }
+      },
+      "model": "gpt-4-turbo",
+      "reason": "GPT-4 Turbo excels at generating comprehensive test cases quickly",
+      "confidence": 0.85
+    },
+    {
+      "name": "Documentation Writing",
+      "condition": {
+        "fileType": ["md", "mdx"],
+        "task": ["document", "explain", "describe"],
+        "NOT": {
+          "critical": true
+        }
+      },
+      "model": "gpt-4-turbo",
+      "reason": "Documentation writing benefits from GPT-4's natural language generation",
+      "confidence": 0.80
+    },
+    {
+      "name": "React Component Development",
+      "condition": {
+        "fileType": ["tsx", "jsx"],
+        "path": ["**/components/**"],
+        "complexity": "medium-to-high"
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "React components with hooks and state require careful type handling",
+      "confidence": 0.90
+    },
+    {
+      "name": "API Route Development",
+      "condition": {
+        "path": ["**/api/**", "**/app/api/**"],
+        "task": ["create", "modify", "debug"]
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "API routes require comprehensive error handling, validation, and security",
+      "confidence": 0.92
+    },
+    {
+      "name": "Quick Bug Fixes",
+      "condition": {
+        "task": "bug-fix",
+        "complexity": "low-to-medium",
+        "urgency": "high",
+        "fileCount": "1"
+      },
+      "model": "gpt-4-turbo",
+      "reason": "Quick bug fixes benefit from GPT-4's speed while maintaining quality",
+      "confidence": 0.75
+    },
+    {
+      "name": "Performance Optimization",
+      "condition": {
+        "task": ["optimize", "performance"],
+        "OR": {
+          "keywords": ["slow", "bottleneck", "cache", "memoize", "lazy"]
+        }
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Performance optimization requires deep understanding of execution flow",
+      "confidence": 0.88
+    },
+    {
+      "name": "Schema Design & Migrations",
+      "condition": {
+        "path": ["**/migrations/**", "**/schema/**"],
+        "fileType": "sql",
+        "task": ["create", "modify"]
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Schema changes require careful consideration of data integrity and relationships",
+      "confidence": 0.96
+    },
+    {
+      "name": "Supabase RLS Policies",
+      "condition": {
+        "keywords": ["RLS", "row level security", "policy"],
+        "path": ["**/supabase/**"]
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "RLS policies are security-critical and require precise PostgreSQL understanding",
+      "confidence": 0.97
+    },
+    {
+      "name": "Frontend Styling",
+      "condition": {
+        "fileType": ["css", "scss", "tailwind"],
+        "task": ["style", "design", "layout"]
+      },
+      "model": "gpt-4-turbo",
+      "reason": "Styling tasks benefit from quick iteration and visual understanding",
+      "confidence": 0.70
+    },
+    {
+      "name": "Code Explanation",
+      "condition": {
+        "task": ["explain", "document", "understand"],
+        "complexity": "low-to-medium"
+      },
+      "model": "gpt-4-turbo",
+      "reason": "Code explanations benefit from GPT-4's natural language capabilities",
+      "confidence": 0.78
+    },
+    {
+      "name": "Critical Architecture Decisions",
+      "condition": {
+        "task": ["architecture", "design-decision"],
+        "impact": "high",
+        "complexity": "very-high"
+      },
+      "model": "claude-opus-3.5",
+      "reason": "Critical architectural decisions warrant the most powerful model",
+      "confidence": 0.99,
+      "requiresApproval": true
+    },
+    {
+      "name": "Multi-Module Integration",
+      "condition": {
+        "task": "integration",
+        "moduleCount": ">= 3",
+        "complexity": "high"
+      },
+      "model": "claude-sonnet-4.5",
+      "reason": "Multi-module integration requires comprehensive context understanding",
+      "confidence": 0.93
+    }
+  ],
+
+  "fallbackStrategy": {
+    "enabled": true,
+    "order": ["claude-sonnet-4.5", "gpt-4-turbo", "claude-opus-3.5"],
+    "retryAttempts": 2,
+    "escalateOnFailure": true,
+    "trackFailures": true
+  },
+
+  "costOptimization": {
+    "enabled": true,
+    "budget": {
+      "daily": null,
+      "monthly": null,
+      "alertThreshold": 0.8
+    },
+    "rules": [
+      {
+        "condition": "simple-task && urgency < high",
+        "action": "prefer-cheaper-model"
+      },
+      {
+        "condition": "documentation && !critical",
+        "action": "use-gpt-4-turbo"
+      },
+      {
+        "condition": "test-generation",
+        "action": "use-gpt-4-turbo"
+      }
+    ]
+  },
+
+  "performanceTracking": {
+    "enabled": true,
+    "metrics": [
+      "response-time",
+      "accuracy",
+      "user-satisfaction",
+      "cost-per-task",
+      "success-rate"
+    ],
+    "adjustmentStrategy": "learning",
+    "confidenceThreshold": 0.7
+  },
+
+  "contextOptimization": {
+    "smartSelection": true,
+    "prioritize": {
+      "recentEdits": true,
+      "openFiles": true,
+      "relatedFiles": true,
+      "projectRules": true,
+      "typeDefinitions": true
+    },
+    "maxContextTokens": {
+      "claude-sonnet-4.5": 100000,
+      "gpt-4-turbo": 50000,
+      "claude-opus-3.5": 150000
+    }
+  },
+
+  "userOverrides": {
+    "enabled": true,
+    "sticky": true,
+    "duration": "session",
+    "trackPreferences": true
+  }
+}
+

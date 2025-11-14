@@ -1,0 +1,297 @@
+---
+description: "Accessibility standards, WCAG compliance, and inclusive design principles"
+globs: ["frontend/**/*.tsx", "frontend/**/*.css", "frontend/**/*.ts"]
+alwaysApply: false
+contextFiles:
+  - "frontend/src/components/"
+  - "frontend/src/styles/"
+  - "frontend/src/lib/"
+  - "frontend/e2e/accessibility-*.spec.ts"
+autoReview: true
+---
+
+# Design Accessibility Standards
+
+## 🎯 Purpose
+Comprehensive accessibility standards, WCAG compliance guidelines, and inclusive design principles for universal usability.
+
+---
+
+## Core Accessibility Principles
+
+### Expert Accessibility Practices
+- I am an accessibility expert specializing in WCAG compliance, inclusive design, and universal usability
+- I ensure all designs are accessible to users with disabilities and assistive technologies
+- I implement inclusive design principles that benefit all users, not just those with disabilities
+- I prioritize keyboard navigation, screen reader compatibility, and visual accessibility
+- I create designs that meet and exceed WCAG AA standards while striving for AAA compliance
+
+---
+
+## WCAG AA Compliance
+
+### Contrast Requirements
+- **Normal text**: Minimum 4.5:1 contrast ratio
+- **Large text**: Minimum 3:1 contrast ratio
+- **Preferred**: 7:1 for better accessibility
+- Automatic contrast checking
+- Test all color combinations
+
+### Text Alternatives
+- Provide text alternatives for all images
+- Descriptive alt text for informative images
+- Empty alt (`alt=""`) for decorative images
+- Text alternatives for icons
+
+### Keyboard Accessibility
+- All interactive elements accessible via keyboard
+- Visible focus indicators
+- Logical tab order
+- No keyboard traps
+
+---
+
+## Keyboard Navigation
+
+### Navigation Standards
+- All interactive elements accessible via keyboard
+- Visible focus indicators (2px outline minimum)
+- Logical tab order (left-to-right, top-to-bottom)
+- Escape key closes modals and dropdowns
+- Arrow keys navigate within components (tabs, menus)
+
+### Focus Management
+- Clear focus indicators
+- Logical focus flow
+- Focus trapping in modals
+- Focus restoration after modal close
+
+### Code Example
+```tsx
+// ✅ CORRECT - Keyboard accessible
+<button
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleClick();
+    }
+  }}
+  className="focus:outline-2 focus:outline-offset-2 focus:outline-blue-500"
+>
+  Submit
+</button>
+```
+
+---
+
+## Screen Reader Support
+
+### Semantic HTML
+- Use semantic HTML elements (`<nav>`, `<main>`, `<article>`, `<section>`)
+- Proper heading hierarchy (h1 → h2 → h3)
+- Lists for list content (`<ul>`, `<ol>`)
+- Tables for tabular data
+
+### ARIA Labels
+- Use ARIA labels when semantic HTML isn't sufficient
+- `aria-label` for descriptive labels
+- `aria-labelledby` to reference existing labels
+- `aria-describedby` for additional descriptions
+
+### Code Example
+```tsx
+// ✅ CORRECT - Screen reader accessible
+<button
+  aria-label="Close dialog"
+  aria-describedby="dialog-description"
+>
+  <span aria-hidden="true">×</span>
+</button>
+<p id="dialog-description" className="sr-only">
+  This dialog contains booking confirmation details
+</p>
+```
+
+---
+
+## Color Accessibility
+
+### Color Usage Rules
+- Never rely on color alone to convey information
+- Provide text labels or icons
+- Test with colorblind simulators
+- Ensure sufficient contrast ratios
+- Test with high contrast mode
+
+### Code Example
+```tsx
+// ✅ CORRECT - Not color-only
+<div className="flex items-center">
+  <span className="text-red-600 font-semibold">Error:</span>
+  <span>{errorMessage}</span>
+</div>
+
+// ❌ WRONG - Color-only
+<div className="text-red-600">{errorMessage}</div>
+```
+
+---
+
+## Touch Targets
+
+### Size Requirements
+- Minimum 44px x 44px for all interactive elements
+- Adequate spacing between targets (minimum 8px)
+- Larger targets on mobile devices
+- Consider thumb reach zones
+
+---
+
+## Focus Management
+
+### Focus Indicators
+- Clear, visible focus indicators
+- Minimum 2px outline
+- High contrast (meets WCAG AA)
+- Consistent across all components
+
+### Focus Flow
+- Logical focus order
+- Focus trapping in modals
+- Focus restoration after interactions
+- Skip links for main content
+
+---
+
+## Alternative Text
+
+### Image Alt Text
+- Descriptive alt text for informative images
+- Empty alt (`alt=""`) for decorative images
+- Context-appropriate descriptions
+- Don't start with "image of" or "picture of"
+
+### Code Example
+```tsx
+// ✅ CORRECT - Descriptive alt text
+<img
+  src="/equipment/kubota-svl-75.jpg"
+  alt="Kubota SVL-75 compact track loader with orange paint and black tracks"
+/>
+
+// ✅ CORRECT - Decorative image
+<img src="/decorative-pattern.svg" alt="" aria-hidden="true" />
+```
+
+---
+
+## Form Accessibility
+
+### Form Standards
+- Labels associated with inputs (`htmlFor` + `id`)
+- Error messages linked to fields (`aria-describedby`)
+- Clear instructions
+- Required fields indicated
+- Error prevention and recovery
+
+### Code Example
+```tsx
+// ✅ CORRECT - Accessible form
+<div>
+  <label htmlFor="email">
+    Email Address <span aria-label="required">*</span>
+  </label>
+  <input
+    id="email"
+    type="email"
+    required
+    aria-required="true"
+    aria-describedby="email-error email-help"
+    aria-invalid={hasError}
+  />
+  <p id="email-help" className="text-sm text-gray-600">
+    We'll never share your email
+  </p>
+  {hasError && (
+    <p id="email-error" className="text-red-600" role="alert">
+      Please enter a valid email address
+    </p>
+  )}
+</div>
+```
+
+---
+
+## Motion Sensitivity
+
+### Reduced Motion
+- Respect `prefers-reduced-motion` media query
+- Provide motion alternatives
+- Avoid seizure triggers (flashing content)
+- Smooth animations (not jarring)
+
+### Code Example
+```css
+/* ✅ CORRECT - Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+---
+
+## Language Support
+
+### Language Attributes
+- Proper `lang` attributes (`<html lang="en">`)
+- Text direction support (`dir="rtl"` for right-to-left)
+- Cultural sensitivity
+- Proper character encoding
+
+---
+
+## Error Prevention
+
+### Error Handling
+- Clear instructions before actions
+- Validation messages
+- Confirmation for destructive actions
+- Helpful error recovery suggestions
+
+---
+
+## Assistive Technology Testing
+
+### Testing Requirements
+- Test with screen readers (NVDA, JAWS, VoiceOver)
+- Test with voice control
+- Test with switch navigation
+- Test with magnification software
+- Test with keyboard only
+
+---
+
+## ✅ Accessibility Checklist
+
+Before Implementing:
+- [ ] WCAG AA compliance verified (4.5:1 contrast minimum)
+- [ ] Keyboard navigation works correctly
+- [ ] Screen reader tested
+- [ ] Focus indicators visible
+- [ ] Color not used alone
+- [ ] Touch targets minimum 44px
+- [ ] Alt text provided for images
+- [ ] Form labels associated
+- [ ] Reduced motion respected
+- [ ] Language attributes set
+
+---
+
+**Remember**:
+- ♿ **Accessibility is not optional**
+- 🎯 **WCAG AA minimum**
+- 🔍 **Test with assistive technologies**
+- 🌍 **Design for everyone**

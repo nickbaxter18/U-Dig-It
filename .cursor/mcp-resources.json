@@ -1,0 +1,32 @@
+{
+  "resources": [
+    {
+      "uri": "template://supabase-migration",
+      "name": "Supabase Migration Template",
+      "description": "Standard migration template with RLS policies, indexes, and triggers",
+      "mimeType": "text/x-sql",
+      "file": ".cursor/mcp-resources/supabase-migration-template.sql"
+    },
+    {
+      "uri": "template://api-route",
+      "name": "Secure API Route Template",
+      "description": "API route with auth, validation, rate limiting, and error handling",
+      "mimeType": "text/typescript",
+      "file": ".cursor/mcp-resources/api-route-template.ts"
+    },
+    {
+      "uri": "template://component",
+      "name": "React Component Template",
+      "description": "React component with state management, error handling, and accessibility",
+      "mimeType": "text/typescript",
+      "file": ".cursor/mcp-resources/component-template.tsx"
+    },
+    {
+      "uri": "template://test",
+      "name": "Test Template",
+      "description": "Test file with setup, teardown, and AAA pattern",
+      "mimeType": "text/typescript",
+      "file": ".cursor/mcp-resources/test-template.ts"
+    }
+  ]
+}

@@ -1,0 +1,302 @@
+---
+description: "Unit and integration testing standards, test structure, mocking, and database testing"
+alwaysApply: false
+globs: ["**/*.test.ts", "**/__tests__/**/*", "**/test/**/*"]
+contextFiles:
+  - "frontend/src/**/*.test.ts"
+  - "backend/src/**/*.spec.ts"
+  - ".cursor/rules/TESTING.mdc"
+autoReview: true
+---
+
+# Unit & Integration Testing Standards
+
+## 🎯 Purpose
+
+Unit testing standards, integration testing patterns, and test data management for the Kubota Rental Platform.
+
+---
+
+## Unit Testing Standards
+
+### Test Structure
+
+```typescript
+// ✅ CORRECT - Descriptive, focused tests
+import { calculateBookingTotal } from "@/lib/booking";
+
+describe("calculateBookingTotal", () => {
+  describe("when duration is 7+ days", () => {
+    it("applies 10% weekly discount", () => {
+      const result = calculateBookingTotal({
+        baseDailyRate: 100,
+        duration: 7,
+        season: "regular",
+        deliveryDistance: 10,
+        insurance: false,
+        operator: false,
+      });
+
+      // Expected: (100 * 7) - (700 * 0.10) + delivery + taxes
+      expect(result.total).toBeCloseTo(771.75);
+    });
+  });
+
+  describe("when duration is 30+ days", () => {
+    it("applies 20% monthly discount", () => {
+      const result = calculateBookingTotal({
+        baseDailyRate: 100,
+        duration: 30,
+        season: "regular",
+        deliveryDistance: 10,
+        insurance: false,
+        operator: false,
+      });
+
+      expect(result.total).toBeCloseTo(2817.5);
+    });
+  });
+});
+```
+
+### Mocking
+
+```typescript
+// ✅ CORRECT - Mock external dependencies
+import { vi } from "vitest";
+
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => ({
+            data: { id: "123", name: "Test Equipment" },
+            error: null,
+          })),
+        })),
+      })),
+    })),
+  })),
+}));
+
+it("fetches equipment data", async () => {
+  const equipment = await getEquipmentById("123");
+  expect(equipment.name).toBe("Test Equipment");
+});
+```
+
+---
+
+## Integration Testing
+
+### API Route Testing
+
+```typescript
+// ✅ CORRECT - Test full API flow
+import { createMocks } from "node-mocks-http";
+import { POST } from "@/app/api/bookings/route";
+
+describe("POST /api/bookings", () => {
+  it("creates booking with valid data", async () => {
+    const { req } = createMocks({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: {
+        equipmentId: "valid-uuid",
+        startDate: "2025-11-10T00:00:00Z",
+        endDate: "2025-11-15T00:00:00Z",
+        deliveryAddress: "123 Test St, Saint John, NB",
+      },
+    });
+
+    const response = await POST(req as any);
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.booking).toBeDefined();
+    expect(data.booking.status).toBe("pending");
+  });
+
+  it("rejects invalid equipment ID", async () => {
+    const { req } = createMocks({
+      method: "POST",
+      body: { equipmentId: "invalid" },
+    });
+
+    const response = await POST(req as any);
+    expect(response.status).toBe(400);
+  });
+
+  it("requires authentication", async () => {
+    const { req } = createMocks({
+      method: "POST",
+      headers: {}, // No auth
+    });
+
+    const response = await POST(req as any);
+    expect(response.status).toBe(401);
+  });
+});
+```
+
+### Database Integration Tests
+
+```typescript
+// ✅ CORRECT - Test with real Supabase
+import { createClient } from "@/lib/supabase/client";
+
+describe("Booking operations", () => {
+  const supabase = createClient();
+  let testBookingId: string;
+
+  afterEach(async () => {
+    // Cleanup test data
+    if (testBookingId) {
+      await supabase.from("bookings").delete().eq("id", testBookingId);
+    }
+  });
+
+  it("creates and retrieves booking", async () => {
+    const { data: booking } = await supabase
+      .from("bookings")
+      .insert({
+        customerId: TEST_USER_ID,
+        equipmentId: TEST_EQUIPMENT_ID,
+        startDate: "2025-11-10",
+        endDate: "2025-11-15",
+        status: "draft",
+        totalAmount: 500,
+      })
+      .select()
+      .single();
+
+    testBookingId = booking.id;
+
+    const { data: retrieved } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("id", booking.id)
+      .single();
+
+    expect(retrieved.customerId).toBe(TEST_USER_ID);
+    expect(retrieved.status).toBe("draft");
+  });
+});
+```
+
+---
+
+## Test Data Management
+
+### Seed Data
+
+```sql
+-- ✅ CORRECT - Test data in seed.sql
+-- Test equipment
+INSERT INTO equipment (id, name, category, daily_rate, status)
+VALUES
+  ('test-equipment-1', 'Test Kubota SVL-75', 'compact-track-loader', 250, 'available'),
+  ('test-equipment-2', 'Test Kubota M7', 'tractor', 350, 'available');
+
+-- Test user (created separately via Supabase auth)
+-- Email: aitest2@udigit.ca
+```
+
+### Test Database Cleanup
+
+```typescript
+// ✅ CORRECT - Cleanup after tests
+afterEach(async () => {
+  // Delete test bookings
+  await supabase
+    .from("bookings")
+    .delete()
+    .eq("customerId", TEST_USER_ID)
+    .gte("created_at", testStartTime);
+
+  // Reset equipment status
+  await supabase.from("equipment").update({ status: "available" }).in("id", testEquipmentIds);
+});
+```
+
+---
+
+## Testing Best Practices
+
+### AAA Pattern (Arrange-Act-Assert)
+
+```typescript
+// ✅ CORRECT - Clear test structure
+it("calculates total with discount", () => {
+  // Arrange
+  const pricing = {
+    baseDailyRate: 100,
+    duration: 7,
+    season: "regular",
+  };
+
+  // Act
+  const result = calculateBookingTotal(pricing);
+
+  // Assert
+  expect(result.total).toBe(expectedTotal);
+});
+```
+
+### Test Isolation
+
+```typescript
+// ✅ CORRECT - Tests don't depend on each other
+describe("Booking operations", () => {
+  beforeEach(() => {
+    // Fresh state for each test
+    resetTestDatabase();
+  });
+
+  it("test 1", () => {
+    /* ... */
+  });
+  it("test 2", () => {
+    /* ... */
+  }); // Doesn't depend on test 1
+});
+```
+
+### Descriptive Test Names
+
+```typescript
+// ✅ CORRECT - Descriptive names
+it("applies 10% discount when duration is 7+ days", () => {
+  /* ... */
+});
+
+// ❌ WRONG - Vague names
+it("works", () => {
+  /* ... */
+});
+it("test discount", () => {
+  /* ... */
+});
+```
+
+---
+
+## ✅ Unit & Integration Testing Checklist
+
+- [ ] Unit tests written for new business logic
+- [ ] Integration tests for new API routes
+- [ ] Test happy path
+- [ ] Test error cases
+- [ ] Test authentication
+- [ ] Test authorization
+- [ ] Test rate limiting
+- [ ] Test input validation
+
+---
+
+**Remember**:
+
+- 🧪 **Test FIRST, code SECOND**
+- ✅ **80% coverage minimum**
+- 🔍 **Test isolation is critical**

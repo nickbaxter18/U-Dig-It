@@ -1,0 +1,146 @@
+---
+description: "Comprehensive testing scenarios, edge case handling, and quality assurance strategies for robust software development"
+globs: ["frontend/e2e/**/*.spec.ts", "**/test/**/*", "**/__tests__/**/*"]
+alwaysApply: false
+---
+
+# Testing Scenarios & Quality Assurance
+
+## 🎯 Purpose
+Comprehensive testing scenarios, edge case handling, and quality assurance strategies for robust software development and deployment.
+
+---
+
+## Core Testing Principles
+
+### Expert Testing Practices
+- I am an expert in comprehensive testing strategies, quality assurance, and robust software development practices
+- I implement thorough testing methodologies that ensure software reliability, performance, and maintainability
+- I prioritize edge case handling, boundary testing, and comprehensive scenario coverage
+- I design testing frameworks that catch issues early and prevent regressions
+- I ensure all testing practices align with industry best practices and project requirements
+
+---
+
+## Testing Strategies
+
+### Test Coverage
+- Implement comprehensive test coverage including unit, integration, and end-to-end tests
+- Create comprehensive test suites that cover all critical paths and edge cases
+- Implement testing strategies that prevent bugs from reaching production
+
+### Edge Case Handling
+- Design tests that cover boundary conditions, error states, and unusual inputs
+- Test with realistic, diverse test data that represents real-world scenarios
+- Consider edge cases in all test scenarios
+
+### Test Automation
+- Automate repetitive tests while maintaining manual testing for complex scenarios
+- Implement automated regression tests to prevent feature breaks
+- Integrate testing into CI/CD pipelines for continuous quality assurance
+
+### Performance Testing
+- Include load testing, stress testing, and performance benchmarking
+- Test system behavior under various load conditions
+- Identify performance bottlenecks and optimization opportunities
+
+### Security Testing
+- Implement security-focused tests including vulnerability scanning and penetration testing
+- Test authentication and authorization mechanisms
+- Validate input sanitization and XSS prevention
+
+### Accessibility Testing
+- Ensure all interfaces meet WCAG guidelines and accessibility standards
+- Test keyboard navigation and screen reader compatibility
+- Validate color contrast and semantic HTML usage
+
+### Cross-Browser Testing
+- Verify functionality across different browsers and devices
+- Test responsive design on various screen sizes
+- Ensure consistent behavior across platforms
+
+---
+
+## Test Management
+
+### Test Data Management
+- Create realistic, diverse test data that represents real-world scenarios
+- Maintain consistent, reliable test environments
+- Use factories and fixtures for test data generation
+
+### Test Reporting
+- Provide comprehensive test reports with clear metrics and actionable insights
+- Track test coverage trends over time
+- Identify areas needing additional test coverage
+
+### Test Maintenance
+- Maintain test suite and optimize strategies
+- Remove obsolete tests
+- Refactor tests for clarity and maintainability
+
+---
+
+## Implementation Guidelines
+
+### When Writing Tests
+1. **Coverage**: Ensure critical paths are tested
+2. **Edge Cases**: Test boundary conditions and error states
+3. **Isolation**: Tests should be independent and isolated
+4. **Clarity**: Tests should be readable and self-documenting
+5. **Maintainability**: Keep tests maintainable and up-to-date
+
+### Code Examples
+
+```typescript
+// ✅ CORRECT - Comprehensive edge case testing
+describe('calculateBookingTotal', () => {
+  it('handles zero duration gracefully', () => {
+    const result = calculateBookingTotal({
+      baseDailyRate: 100,
+      duration: 0,
+      season: 'regular'
+    });
+    expect(result.total).toBe(0);
+  });
+
+  it('handles very long durations', () => {
+    const result = calculateBookingTotal({
+      baseDailyRate: 100,
+      duration: 365,
+      season: 'regular'
+    });
+    expect(result.total).toBeGreaterThan(0);
+  });
+
+  it('handles invalid season gracefully', () => {
+    expect(() => {
+      calculateBookingTotal({
+        baseDailyRate: 100,
+        duration: 5,
+        season: 'invalid' as any
+      });
+    }).toThrow();
+  });
+});
+```
+
+---
+
+## ✅ Testing Scenarios Checklist
+
+When Writing Tests:
+- [ ] Critical paths covered
+- [ ] Edge cases tested
+- [ ] Error states handled
+- [ ] Boundary conditions tested
+- [ ] Performance considered
+- [ ] Security validated
+- [ ] Accessibility verified
+
+---
+
+**Remember**:
+- 🧪 **Test comprehensively**
+- 🔍 **Cover edge cases**
+- 🚀 **Automate where possible**
+- 📊 **Track coverage**

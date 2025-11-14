@@ -1,0 +1,19 @@
+/* Signature Fonts for Typed Signatures */
+
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Allura&family=Pacifico&display=swap');
+
+.font-dancing {
+  font-family: 'Dancing Script', cursive;
+}
+
+.font-great-vibes {
+  font-family: 'Great Vibes', cursive;
+}
+
+.font-allura {
+  font-family: 'Allura', cursive;
+}
+
+.font-pacifico {
+  font-family: 'Pacifico', cursive;
+}
