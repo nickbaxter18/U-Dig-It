@@ -258,6 +258,7 @@ export async function handleBookingReschedule(
         },
       });
 
+      const stripe = await getStripeInstance();
       await stripe.paymentIntents.cancel(booking.security_hold_intent_id);
 
       // Clear hold intent ID

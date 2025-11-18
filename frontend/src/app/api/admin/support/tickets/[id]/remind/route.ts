@@ -10,8 +10,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportReminderSchema.parse(await request.json());
 
@@ -35,7 +52,7 @@ export async function POST(
     logger.info('Support reminder triggered', {
       component: 'admin-support-remind',
       action: 'sla_reminder_triggered',
-      metadata: { ticketId: params.id, adminId: user.id, type: payload.type ?? 'response' },
+      metadata: { ticketId: params.id, adminId: user?.id || 'unknown', type: payload.type ?? 'response' },
     });
 
     return NextResponse.json({ success: true });

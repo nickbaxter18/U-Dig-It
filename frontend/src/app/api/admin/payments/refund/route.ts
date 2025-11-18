@@ -11,8 +11,25 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const stripe = createStripeClient(await getStripeSecretKey());
 
@@ -74,7 +91,7 @@ export async function POST(request: NextRequest) {
           amount: Math.round(refundAmount * 100),
           reason: 'requested_by_customer',
           metadata: {
-            admin_user_id: user.id,
+            admin_user_id: user?.id || 'unknown',
             refund_reason: reason,
             booking_id: payment.bookingId,
           },
@@ -142,7 +159,7 @@ export async function POST(request: NextRequest) {
       table_name: 'payments',
       record_id: paymentId,
       action: 'update',
-      user_id: user.id,
+      user_id: user?.id || 'unknown',
       old_values: {
         status: payment.status,
         amountRefunded: alreadyRefunded,

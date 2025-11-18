@@ -4,9 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
 
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
@@ -35,7 +42,7 @@ export async function GET(request: NextRequest) {
     const transformedLogs = (logs || []).map((log: any) => {
       const user = log.user_id ? usersMap.get(log.user_id) : null;
       const userName = user
-        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+        ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'unknown'
         : 'System';
 
       // Determine severity

@@ -25,17 +25,19 @@ describe('AdminDashboard', () => {
     it('should render loading state initially', () => {
       render(<AdminDashboard />);
 
-      // Should show loading spinner
-      expect(screen.getByText(/loading/i)).toBeInTheDocument();
+      // Should show loading skeleton (animate-pulse class)
+      const loadingContainer = document.querySelector('.animate-pulse');
+      expect(loadingContainer).toBeInTheDocument();
     });
 
     it('should render dashboard after loading', async () => {
       render(<AdminDashboard />);
 
-      // Wait for loading to complete
+      // Wait for loading to complete (animate-pulse should disappear)
       await waitFor(() => {
-        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-      });
+        const loadingContainer = document.querySelector('.animate-pulse');
+        expect(loadingContainer).not.toBeInTheDocument();
+      }, { timeout: 3000 });
 
       // Should show dashboard heading
       expect(screen.getByText(/admin dashboard/i)).toBeInTheDocument();
@@ -462,8 +464,9 @@ describe('AdminDashboard', () => {
         expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       });
 
-      // Should match UDR-YYYY-NNN format
-      expect(screen.getByText(/UDR-2025-\d{3}/)).toBeInTheDocument();
+      // Should match UDR-YYYY-NNN format (multiple bookings may exist)
+      const bookingNumbers = screen.getAllByText(/UDR-2025-\d{3}/);
+      expect(bookingNumbers.length).toBeGreaterThan(0);
     });
   });
 

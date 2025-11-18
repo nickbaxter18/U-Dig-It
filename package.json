@@ -95,6 +95,6 @@
     "prettier": "^3.4.2",
     "snyk": "^1.1300.2",
     "ts-jest": "^29.4.4",
-    "typescript": "^5.7.2"
+    "typescript": "^5.9.3"
   }
 }

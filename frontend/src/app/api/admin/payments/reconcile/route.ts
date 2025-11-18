@@ -13,8 +13,19 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const { supabase, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
 
   const searchParams = Object.fromEntries(new URL(request.url).searchParams);
   const parsed = reconciliationQuerySchema.safeParse({
@@ -59,8 +70,25 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { supabase, user, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
+
+
+
+  // Get user for logging
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   let body: unknown = {};
   try {
@@ -138,7 +166,7 @@ export async function POST(request: NextRequest) {
           failureMessage: payout.failure_message,
           method: payout.method,
           metadata: payout.metadata ?? {},
-          summary: payout.summary ?? null,
+          summary: (payout as any).summary ?? null,
         },
         updated_at: nowIso,
       };
@@ -170,7 +198,7 @@ export async function POST(request: NextRequest) {
     logger.info('Stripe payout reconciliation sync complete', {
       component: 'admin-reconciliation',
       action: 'sync_success',
-      metadata: { processedCount: processedIds.length, adminId: user.id },
+      metadata: { processedCount: processedIds.length, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({

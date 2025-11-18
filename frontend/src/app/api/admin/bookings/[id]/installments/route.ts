@@ -8,8 +8,13 @@ import { installmentCreateSchema } from '@/lib/validators/admin/payments';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
+
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
 
     const { data, error: fetchError } = await supabase
       .from('installment_schedules')
@@ -24,9 +29,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           {
             component: 'admin-installments',
             action: 'table_missing',
-            metadata: { bookingId: params.id },
-          },
-          fetchError
+            metadata: { bookingId: params.id, error: fetchError?.message },
+          }
         );
         return NextResponse.json({ installments: [] });
       }
@@ -59,8 +63,25 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = installmentCreateSchema.parse(await request.json());
 
@@ -99,9 +120,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           {
             component: 'admin-installments',
             action: 'table_missing_delete',
-            metadata: { bookingId: params.id },
-          },
-          deleteError
+            metadata: { bookingId: params.id, error: deleteError?.message },
+          }
         );
         return NextResponse.json({ installments: [] });
       }
@@ -137,9 +157,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           {
             component: 'admin-installments',
             action: 'table_missing_insert',
-            metadata: { bookingId: params.id },
-          },
-          insertError
+            metadata: { bookingId: params.id, error: insertError?.message },
+          }
         );
         return NextResponse.json({ installments: [] });
       }
@@ -158,7 +177,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     logger.info('Installment schedule created', {
       component: 'admin-installments',
       action: 'schedule_created',
-      metadata: { bookingId: params.id, adminId: user.id },
+      metadata: { bookingId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ installments: data ?? [] });

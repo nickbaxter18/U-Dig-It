@@ -34,7 +34,7 @@ async function ensureBucket(
 function buildCsv(headers: string[], rows: (string | number | null | undefined)[][]) {
   const escapedRows = rows.map(row =>
     row
-      .map(value => {
+      .map((value: any) => {
         if (value === null || value === undefined) return '';
         const cell = String(value);
         return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
@@ -46,8 +46,19 @@ function buildCsv(headers: string[], rows: (string | number | null | undefined)[
 }
 
 export async function GET(request: NextRequest) {
-  const { supabase, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
 
   const searchParams = Object.fromEntries(new URL(request.url).searchParams);
   const parsed = exportQuerySchema.safeParse({
@@ -70,9 +81,7 @@ export async function GET(request: NextRequest) {
   if (fetchError) {
     logger.error(
       'Failed to fetch financial exports',
-      { component: 'admin-finance-exports', action: 'fetch_failed' },
-      fetchError
-    );
+      { component: 'admin-finance-exports', action: 'fetch_failed' });
     return NextResponse.json(
       { error: 'Unable to load financial exports' },
       { status: 500 }
@@ -83,8 +92,25 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { supabase, user, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
+
+
+
+  // Get user for logging
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   let body: unknown = {};
   try {
@@ -133,18 +159,23 @@ export async function POST(request: NextRequest) {
 
       if (paymentsError) throw paymentsError;
 
-      const rows = (data ?? []).map(payment => [
-        payment.id,
-        payment.booking?.bookingNumber ?? 'N/A',
-        `${payment.booking?.customer?.firstName ?? ''} ${payment.booking?.customer?.lastName ?? ''}`.trim(),
-        Number(payment.amount ?? 0),
-        payment.status,
-        payment.method,
-        payment.createdAt,
-        payment.processedAt ?? '',
-        payment.refundedAt ?? '',
-        Number(payment.amountRefunded ?? 0),
-      ]);
+      const rows = (data ?? []).map((payment: any) => {
+        const booking = (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
+        const customer = (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
+
+        return [
+          payment.id,
+          booking.bookingNumber ?? 'N/A',
+          `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim(),
+          Number(payment.amount ?? 0),
+          payment.status,
+          payment.method,
+          payment.createdAt,
+          payment.processedAt ?? '',
+          payment.refundedAt ?? '',
+          Number(payment.amountRefunded ?? 0),
+        ];
+      });
 
       csvContent = buildCsv(
         [
@@ -184,17 +215,21 @@ export async function POST(request: NextRequest) {
 
       if (manualError) throw manualError;
 
-      const rows = (data ?? []).map(payment => [
-        payment.id,
-        payment.booking?.bookingNumber ?? payment.booking_id,
-        Number(payment.amount ?? 0),
-        payment.currency ?? 'CAD',
-        payment.status,
-        payment.method,
-        payment.received_at ?? '',
-        payment.created_at,
-        payment.recorded_by ?? '',
-      ]);
+      const rows = (data ?? []).map((payment: any) => {
+        const booking = (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
+
+        return [
+          payment.id,
+          booking.bookingNumber ?? payment.booking_id,
+          Number(payment.amount ?? 0),
+          payment.currency ?? 'CAD',
+          payment.status,
+          payment.method,
+          payment.received_at ?? '',
+          payment.created_at,
+          payment.recorded_by ?? '',
+        ];
+      });
 
       csvContent = buildCsv(
         [
@@ -236,7 +271,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const rows = (data ?? []).map(booking => {
+      const rows = (data ?? []).map((booking: any) => {
         const customer = booking.customerId
           ? customerMap.get(booking.customerId as string)
           : undefined;
@@ -301,7 +336,7 @@ export async function POST(request: NextRequest) {
     await ensureBucket(serviceClient);
 
     const fileName = `${exportType}-${Date.now()}.csv`;
-    const filePath = `${user.id}/${fileName}`;
+    const filePath = `${user?.id || 'unknown'}/${fileName}`;
     const csvBuffer = Buffer.from(csvContent, 'utf-8');
 
     const uploadResult = await serviceClient.storage
@@ -325,7 +360,7 @@ export async function POST(request: NextRequest) {
     const { data: exportRecord, error: insertError } = await supabase
       .from('financial_exports')
       .insert({
-        admin_id: user.id,
+        admin_id: user?.id || 'unknown',
         export_type: exportType,
         parameters: filters ?? {},
         file_path: filePath,
@@ -341,7 +376,7 @@ export async function POST(request: NextRequest) {
     logger.info('Financial export generated', {
       component: 'admin-finance-exports',
       action: 'export_success',
-      metadata: { exportType, adminId: user.id, exportId: exportRecord.id },
+      metadata: { exportType, adminId: user?.id || 'unknown', exportId: exportRecord.id },
     });
 
     return NextResponse.json({

@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Client Bundle (First Load JS)",
+    "path": ".next/static/**/*.js",
+    "limit": "150 KB",
+    "ignore": ["node_modules/**"]
+  },
+  {
+    "name": "Main CSS",
+    "path": ".next/static/css/*.css",
+    "limit": "30 KB"
+  },
+  {
+    "name": "Booking Flow Bundle",
+    "path": ".next/static/chunks/pages/book*.js",
+    "limit": "80 KB"
+  },
+  {
+    "name": "Admin Dashboard Bundle",
+    "path": ".next/static/chunks/pages/admin*.js",
+    "limit": "100 KB"
+  }
+]
+

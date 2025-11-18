@@ -80,6 +80,7 @@ export default function AdminContractsPage() {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const searchParams = useSearchParams();
   const bookingIdParam = useMemo(() => searchParams?.get('booking') ?? null, [searchParams]);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchContracts(bookingIdParam ?? undefined);
@@ -233,6 +234,50 @@ export default function AdminContractsPage() {
     }
   };
 
+  const handleExportContracts = async () => {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+      if (typeFilter !== 'all') {
+        params.set('type', typeFilter);
+      }
+      if (searchTerm.trim()) {
+        params.set('search', searchTerm.trim());
+      }
+      if (bookingIdParam) {
+        params.set('bookingId', bookingIdParam);
+      }
+
+      const queryString = params.toString();
+      const response = await fetchWithAuth(`/api/admin/contracts/export${queryString ? `?${queryString}` : ''}`);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Failed to export contracts');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `contracts-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+    } catch (err) {
+      logger.error(
+        'Contracts export failed',
+        { component: 'ContractsPage', action: 'export_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to export contracts');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -253,6 +298,14 @@ export default function AdminContractsPage() {
             Manage rental agreements and contract documents
           </p>
         </div>
+        <button
+          onClick={handleExportContracts}
+          disabled={exporting}
+          className="mt-4 inline-flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 md:mt-0"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+        </button>
       </div>
 
       {/* Filters */}

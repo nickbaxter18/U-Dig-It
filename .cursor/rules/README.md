@@ -1,350 +1,297 @@
-# Cursor Rules - Condensed & Optimized
+# 🎯 Cursor Rules for Development Power Tools
 
-## 🎯 Overview
-
-This directory contains a **streamlined set of 6 core rules** designed for optimal AI model performance. The previous 54+ rule files have been consolidated to eliminate redundancy and reduce context overhead.
+This directory contains **6 focused Cursor rules** that guide the AI to consistently use all the development tools we've set up correctly.
 
 ---
 
-## 📋 Core Rules (Always Applied)
+## 📋 Rules Overview
 
-### 1. **CORE.mdc** - Development Standards & AI Assistance
-**Size**: ~400 lines
-**Scope**: Core development patterns, TypeScript standards, reasoning frameworks
-
-**What it covers**:
-- AI coding assistance optimization
-- Quick reference file usage (AI_CODING_REFERENCE.md, COMPONENT_INDEX.md)
-- TypeScript & code quality standards
-- Extension integration (Error Lens, Code Spell Checker, Todo Tree)
-- Performance optimization patterns
-- Reasoning & problem-solving frameworks
-- Security & input validation basics
-- Logging standards
-- Frontend startup protocol
-- Testing basics
-- Accessibility standards
-
-**When to apply**: Always (foundational)
+| Rule File | Type | Purpose | When Applied |
+|-----------|------|---------|--------------|
+| `testing-with-msw.mdc` | File-scoped | MSW API mocking standards | `**/*.test.ts`, `**/*.spec.tsx` |
+| `storybook-development.mdc` | File-scoped | Storybook component dev | `**/*.stories.tsx` |
+| `bundle-performance.mdc` | Manual | Bundle size optimization | When mentioned or optimizing |
+| `security-scanning.mdc` | Always | Snyk security standards | Every chat session |
+| `code-cleanup.mdc` | Manual | Knip unused code removal | When cleaning up code |
+| `development-workflow.mdc` | Always | Complete dev workflow | Every chat session |
 
 ---
 
-### 2. **SUPABASE.mdc** - Backend & Database Operations
-**Size**: ~450 lines
-**Scope**: All Supabase operations, RLS, migrations, database design
+## 🎯 Rule Details
 
-**What it covers**:
-- Supabase MCP tool usage (HIGHEST PRIORITY)
-- Database design standards (naming, indexing, constraints)
-- Row-Level Security (RLS) policies and patterns
-- Authentication & authorization
-- Type safety with generated types
-- Query optimization
-- Migration safety protocols
-- Storage best practices
-- Monitoring & debugging
+### 1. testing-with-msw.mdc
+**Applied to:** All test files automatically
 
-**When to apply**: Always (backend operations)
+**What it does:**
+- Ensures AI uses MSW for API mocking (never manual mocks)
+- Shows how to override handlers for specific tests
+- Guides adding new mock handlers
+- Prevents common testing mistakes
 
----
+**Example usage:**
+```typescript
+// AI will automatically suggest MSW patterns
+test('fetches data', async () => {
+  render(<Component />);
+  // MSW handles the API call automatically
+});
+```
 
-### 3. **BUSINESS.mdc** - Domain Logic & Rental Operations
-**Size**: ~400 lines
-**Scope**: Equipment rental business logic, workflows, pricing
+### 2. storybook-development.mdc
+**Applied to:** Story files automatically
 
-**What it covers**:
-- Equipment management & status tracking
-- Booking workflow (multi-step process)
-- Dynamic pricing strategy (seasonal, duration, delivery)
-- Payment processing & schedules
-- Customer communication & notifications
-- Safety & compliance (operator certification, inspections)
-- Inventory & location tracking
-- Reporting & analytics
-- Local market considerations (New Brunswick regulations)
+**What it does:**
+- Enforces "Storybook first" development workflow
+- Shows proper story structure
+- Ensures all component states are covered
+- Includes accessibility testing guidance
 
-**When to apply**: Always (business features)
+**Example usage:**
+```typescript
+// AI suggests complete story structure
+export const Loading: Story = {
+  args: { disabled: true, children: 'Loading...' },
+};
+```
 
----
+### 3. bundle-performance.mdc
+**Applied to:** When @-mentioned or optimizing
 
-### 4. **SECURITY.mdc** - Security & Compliance
-**Size**: ~450 lines
-**Scope**: Security protocols, threat protection, compliance
+**What it does:**
+- Reminds to check bundle size before PRs
+- Suggests dynamic imports for large components
+- Shows how to analyze bundle contents
+- Provides optimization strategies
 
-**What it covers**:
-- Snyk security integration (mandatory scanning)
-- Input validation & sanitization (multi-layer)
-- XSS, SQL injection prevention
-- Authentication & authorization patterns
-- Rate limiting & DoS protection
-- Data protection & privacy (PII handling, audit logging)
-- Secure API design (headers, CORS)
-- Secret management
-- Dependency security
-- Incident response protocols
-- Compliance requirements (PIPEDA, PCI-DSS)
-- Secure payment processing (Stripe)
+**Trigger:** Say "check bundle size" or "@bundle-performance"
 
-**When to apply**: Always (security critical)
+### 4. security-scanning.mdc
+**Applied to:** Always active (every session)
 
----
+**What it does:**
+- Reminds about automatic Snyk scanning on commit
+- Shows common security vulnerabilities to avoid
+- Guides fixing security issues
+- Enforces input validation and sanitization
 
-### 5. **TESTING.mdc** - Testing & Quality Assurance
-**Size**: ~400 lines
-**Scope**: Testing standards, browser automation, QA protocols
+**Impact:** AI will proactively suggest security best practices
 
-**What it covers**:
-- Testing philosophy & pyramid
-- Browser testing & automation (test account, login procedures)
-- Unit testing standards
-- Integration testing (API routes, database)
-- E2E testing scenarios
-- Test data management
-- Performance testing
-- Accessibility testing
-- Visual regression testing
-- Test coverage requirements (80% minimum)
-- CI/CD integration
-- Testing best practices (AAA pattern, isolation, descriptive names)
+### 5. code-cleanup.mdc
+**Applied to:** When @-mentioned or cleaning code
 
-**When to apply**: Always (quality assurance)
+**What it does:**
+- Shows how to use Knip to find unused code
+- Guides removing unused dependencies
+- Explains cleanup workflow
+- Helps identify false positives
 
----
+**Trigger:** Say "clean up code" or "@code-cleanup"
 
-### 6. **ai-workflow-optimization.mdc** - Workflow Optimization & Quality Gates
-**Size**: ~400 lines
-**Scope**: Systematic development workflows, proactive quality checks, documentation integration
+### 6. development-workflow.mdc
+**Applied to:** Always active (every session)
 
-**What it covers**:
-- Pre-implementation workflow (codebase search, index checks, doc consultation)
-- Implementation best practices (pattern reuse, incremental development)
-- Post-implementation verification (linter checks, advisors, browser verification)
-- Quality gate checklist (mandatory checks before committing)
-- Tool integration workflows (Supabase + Testing, Browser + Docs)
-- Proactive error prevention (common mistakes checklist)
-- Documentation integration (when/how to consult external docs)
-- Testing integration (test-first mindset)
-- Performance monitoring (regular checks)
-- Workflow execution order (standard development flow)
+**What it does:**
+- Provides complete daily workflow
+- Reminds about weekly maintenance tasks
+- Shows which tool to use when
+- Includes feature development checklist
 
-**When to apply**: Always (workflow optimization)
+**Impact:** AI guides you through proper development process
 
 ---
 
-## 📁 Specialized Rules (Agent-Requested Only)
+## 🚀 How to Use These Rules
 
-These rules are **NOT always loaded**. The AI can choose to load them when relevant based on the task context.
+### Automatic Application
+Some rules apply automatically based on file type:
 
-### Design & UX
-- `design-accessibility.mdc` - WCAG compliance, inclusive design
-- `design-colors-typography.mdc` - Color theory, brand guidelines
-- `design-components.mdc` - Component design standards
-- `design-layout-spacing.mdc` - Layout systems, spacing guidelines
+```bash
+# Open a test file
+vim frontend/src/components/__tests__/Button.test.tsx
+# → testing-with-msw.mdc automatically applies
 
-**When to use**: When working on UI/UX design tasks
+# Open a story file
+vim frontend/src/components/Button.stories.tsx
+# → storybook-development.mdc automatically applies
+```
 
----
+### Manual Invocation
+Mention rules in chat to invoke them:
 
-### Advanced Problem-Solving
-- `advanced-problem-solving.mdc` - Complex problem decomposition
-- `advanced-prompting-techniques.mdc` - Creative problem-solving
-- `complex-problem-solving.mdc` - Multi-step reasoning
+```
+"@bundle-performance help me optimize this component"
+"@code-cleanup find unused code"
+```
 
-**When to use**: When facing complex architectural decisions or challenging technical problems
-
----
-
-### Performance & Optimization
-- `performance-critical-optimization.mdc` - Critical performance issues
-- `performance-optimization.mdc` - General performance patterns
-
-**When to use**: When dealing with performance bottlenecks or optimization tasks
-
----
-
-### System Architecture & Operations
-- `distributed-systems-operations.mdc` - Distributed systems patterns
-- `system-architecture.mdc` - Architecture patterns, microservices
-- `emergency-response.mdc` - Crisis management, rapid deployment
-
-**When to use**: When working on system architecture or handling emergencies
+### Always Active
+These rules are always present:
+- `security-scanning.mdc` - Security best practices
+- `development-workflow.mdc` - Complete workflow guidance
 
 ---
 
-### Documentation & Testing (Specialized)
-- `documentation-excellence.mdc` - Technical writing best practices
-- `e2e-testing-quality-assurance.mdc` - Advanced E2E testing
-- `test-management-framework.mdc` - Test data management
-- `testing-scenarios.mdc` - Edge case handling
+## 📚 Rule Structure
 
-**When to use**: When writing documentation or advanced testing scenarios
+Each rule follows [Cursor MDC format](https://cursor.com/docs/context/rules):
+
+```markdown
+---
+description: What the rule does
+globs: ['**/*.test.ts']  # File patterns (optional)
+alwaysApply: false        # Apply to every session (optional)
+---
+
+# Rule Content
+
+Clear, actionable guidance with:
+- ✅ CORRECT examples
+- ❌ WRONG examples
+- Reference files using @filename.ts
+- Concrete code snippets
+```
 
 ---
 
-### Privacy & Compliance
-- `privacy-human-centered-design.mdc` - Privacy protection, human-centered design
-- `security-compliance.mdc` - Comprehensive security protocols
+## 🎯 Best Practices Followed
 
-**When to use**: When dealing with privacy-sensitive features or compliance requirements
+According to [Cursor documentation](https://cursor.com/docs/context/rules):
 
----
-
-## 🗑️ Deprecated Rules (Archived)
-
-The following rules are **DEPRECATED** and should **NOT** be used:
-
-- ❌ `api-database-standards.mdc` - Replaced by SUPABASE.mdc
-- ❌ `backend-development.mdc` - NestJS backend is inactive
-- ❌ `murmuration-coordinator.mdc` - Redundant coordination logic
-- ❌ `rental-platform-coordinator.mdc` - Redundant coordination logic
-- ❌ `rule-design-excellence-framework.mdc` - Meta-rule, not needed
-- ❌ `cognitive-architecture.mdc` - Consolidated into CORE.mdc
-- ❌ `ai-coding-assistance.mdc` - Consolidated into CORE.mdc
-- ❌ `browser-testing-login.mdc` - Consolidated into TESTING.mdc
-- ❌ `ethical-ai-responsibility.mdc` - Moved to agent-requested
-- ❌ `extension-integration.mdc` - Consolidated into CORE.mdc
-- ❌ `frontend-startup-protocol.mdc` - Consolidated into CORE.mdc
-- ❌ `kubota-business-logic.mdc` - Consolidated into BUSINESS.mdc
-- ❌ `rental-business-logic.mdc` - Consolidated into BUSINESS.mdc
-- ❌ `rental-payment-security.mdc` - Consolidated into SECURITY.mdc
-- ❌ `rental-performance-optimization.mdc` - Consolidated into CORE.mdc
-- ❌ `rental-testing-quality-assurance.mdc` - Consolidated into TESTING.mdc
-- ❌ `supabase-backend-priority.mdc` - Consolidated into SUPABASE.mdc
-- ❌ `supabase-excellence.mdc` - Consolidated into SUPABASE.mdc
-
-These files have been moved to `.cursor/rules/archive/`.
+✅ **Focused** - Each rule under 500 lines
+✅ **Scoped** - Applied to relevant files only
+✅ **Actionable** - Concrete examples, not vague guidance
+✅ **Referenced** - Links to actual project files
+✅ **Composable** - Rules work together
 
 ---
 
-## 📊 Benefits of Condensed Structure
+## 🔄 When Rules Apply
 
-### Before (Problems)
-- ❌ 54+ rule files
-- ❌ 15+ always-applied rules
-- ❌ Massive context overhead (~100K+ tokens)
-- ❌ Overlapping guidance causing confusion
-- ❌ Models struggling with too much context
+### File-Based (Automatic)
+- Open test file → `testing-with-msw.mdc`
+- Open story file → `storybook-development.mdc`
 
-### After (Solutions)
-- ✅ **6 core rules** (always applied)
-- ✅ **~2,500 lines total** (vs. 10,000+ before)
-- ✅ **Minimal context overhead** (~55K tokens)
-- ✅ **Clear, non-overlapping guidance**
-- ✅ **Models working optimally**
+### Session-Based (Always)
+- Start any chat → `security-scanning.mdc`
+- Start any chat → `development-workflow.mdc`
+
+### On-Demand (Manual)
+- Mention `@bundle-performance`
+- Mention `@code-cleanup`
 
 ---
 
-## 🎯 Rule Selection Guide
+## 📖 Referenced Files
 
-### Starting a Task
-**Ask yourself**: What am I working on?
+Rules reference these key documentation files:
 
-#### Frontend Component
-**Load**: CORE.mdc (always) + design-components.mdc (if needed)
-
-#### API Route
-**Load**: CORE.mdc + SUPABASE.mdc + SECURITY.mdc (always)
-
-#### Business Logic
-**Load**: CORE.mdc + BUSINESS.mdc + SUPABASE.mdc (always)
-
-#### Testing
-**Load**: CORE.mdc + TESTING.mdc (always)
-
-#### Performance Issue
-**Load**: CORE.mdc + SUPABASE.mdc + performance-critical-optimization.mdc
-
-#### Security Incident
-**Load**: SECURITY.mdc + emergency-response.mdc
+```
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+@frontend/docs/QUICK_COMMANDS_CHEATSHEET.md
+@GODLIKE_SETUP_COMPLETE.md
+@frontend/src/test/mocks/handlers.ts
+@frontend/src/components/Button.stories.tsx
+@frontend/.size-limit.json
+@frontend/knip.json
+@.husky/pre-commit
+```
 
 ---
 
-## 🔄 Migration from Old Rules
+## 🎓 Learning Path
 
-If you have bookmarks or references to old rules, here's the mapping:
+### Week 1: Get Familiar
+- Open test files and see MSW rule apply
+- Create story files and see Storybook rule apply
+- Chat with AI and observe workflow guidance
 
-| Old Rule | New Location |
-|-----|---|
-| `ai-coding-assistance.mdc` | CORE.mdc (Section 1) |
-| `browser-testing-login.mdc` | TESTING.mdc (Section 2) |
-| `development-standards.mdc` | CORE.mdc (Sections 2-10) |
-| `supabase-backend-priority.mdc` | SUPABASE.mdc (Section 1) |
-| `supabase-excellence.mdc` | SUPABASE.mdc (Sections 2-10) |
-| `kubota-business-logic.mdc` | BUSINESS.mdc (Sections 1-10) |
-| `rental-business-logic.mdc` | BUSINESS.mdc (Sections 2-9) |
-| `security-compliance.mdc` | SECURITY.mdc (Sections 1-12) |
-| `rental-payment-security.mdc` | SECURITY.mdc (Section 12) |
-| `testing-quality-assurance.mdc` | TESTING.mdc (Sections 1-12) |
-| `rental-testing-quality-assurance.mdc` | TESTING.mdc (Sections 3-4) |
+### Week 2: Use Actively
+- Mention `@bundle-performance` when optimizing
+- Mention `@code-cleanup` when refactoring
+- Notice security suggestions appear automatically
 
----
-
-## 📝 Quick Reference Files
-
-**Don't forget to use these** (they're faster than rules):
-
-- `docs/reference/AI_CODING_REFERENCE.md` - Main coding patterns & examples
-- `docs/reference/COMPONENT_INDEX.md` - Existing components catalog
-- `docs/reference/API_ROUTES_INDEX.md` - API endpoints catalog
-- `docs/reference/QUICK_COMMANDS.md` - Command reference
-
-**Always check these BEFORE creating new components or APIs!**
+### Week 3: Internalize
+- Rules become second nature
+- Workflow is automatic
+- Quality is consistent
 
 ---
 
-## ✅ Validation Checklist
+## 🔧 Customization
 
-When working with the new rule structure:
+### Add New Rules
+```bash
+# Create new rule
+touch .cursor/rules/my-custom-rule.mdc
 
-- [ ] Only 6 core rules are "always applied"
-- [ ] Specialized rules loaded only when needed
-- [ ] No deprecated rules referenced
-- [ ] Quick reference files checked first
-- [ ] Rule guidance is clear and actionable
-- [ ] No overlapping or contradictory guidance
+# Use MDC format
+# Set globs or alwaysApply
+# Add concrete examples
+```
 
----
+### Modify Existing Rules
+Edit the `.mdc` files directly. Changes take effect immediately.
 
-## 🚀 Performance Impact
-
-### Context Window Usage
-- **Before**: ~100K tokens (rules) + ~50K tokens (code) = **150K total**
-- **After**: ~55K tokens (rules) + ~50K tokens (code) = **105K total**
-- **Savings**: **30% reduction** in context usage
-
-### Model Performance
-- **Response Quality**: ✅ Improved (less confusion from overlap)
-- **Response Speed**: ✅ Faster (less context to process)
-- **Accuracy**: ✅ Better (clearer guidance)
-- **Hallucinations**: ✅ Reduced (less contradiction)
+### Disable a Rule
+Rename the file extension:
+```bash
+mv testing-with-msw.mdc testing-with-msw.mdc.disabled
+```
 
 ---
 
-## 📚 Additional Resources
+## 📊 Impact
+
+With these rules, the AI will:
+
+✅ **Always suggest MSW** instead of manual API mocks
+✅ **Remind you to check bundle size** before PRs
+✅ **Guide Storybook development** for components
+✅ **Enforce security best practices** automatically
+✅ **Suggest proper workflows** for common tasks
+✅ **Help clean up unused code** systematically
+
+---
+
+## 🆘 Troubleshooting
+
+**Rule not applying?**
+- Check file matches glob pattern
+- Ensure rule type is correct
+- Try @-mentioning the rule manually
+
+**Rule conflicts?**
+- Rules are merged, not replaced
+- More specific rules take precedence
+- Check `.cursor/rules/` for nested rules
+
+**Need to disable all rules?**
+```bash
+# Temporarily rename directory
+mv .cursor/rules .cursor/rules.disabled
+```
+
+---
+
+## 📚 Resources
 
 - [Cursor Rules Documentation](https://cursor.com/docs/context/rules)
-- [AI_CODING_REFERENCE.md](../../AI_CODING_REFERENCE.md)
-- [COMPONENT_INDEX.md](../../COMPONENT_INDEX.md)
-- [API_ROUTES_INDEX.md](../../API_ROUTES_INDEX.md)
+- Project documentation: `frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md`
+- Quick reference: `frontend/docs/QUICK_COMMANDS_CHEATSHEET.md`
 
 ---
 
-## 🔧 Maintenance
+## ✅ Checklist
 
-### Adding New Rules
-1. **Check if it fits** in one of the 6 core rules first
-2. **If specialized**, create as agent-requested rule
-3. **Keep under 500 lines**
-4. **Avoid duplication** with existing rules
+Verify rules are working:
 
-### Updating Rules
-1. **Update the specific section** in the relevant core rule
-2. **Keep changes minimal** and focused
-3. **Test with AI** to ensure guidance is clear
-4. **Document changes** in this README
+- [ ] Open test file → AI suggests MSW patterns
+- [ ] Open story file → AI suggests Storybook structure
+- [ ] Ask about optimization → AI mentions bundle size
+- [ ] Ask about security → AI enforces validation
+- [ ] Ask about workflow → AI guides complete process
 
 ---
 
-**Last Updated**: November 7, 2025
-**Version**: 2.1 (Audited & Optimized)
-**Status**: ✅ Production Ready - Fully Optimized
+**Your AI assistant now has godlike consistency! 🚀**
+
+These rules ensure every interaction follows best practices and uses all the tools correctly.

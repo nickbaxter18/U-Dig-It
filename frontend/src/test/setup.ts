@@ -1,11 +1,38 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { config } from 'dotenv';
 import path from 'path';
 
+// Import MSW server for API mocking
+import { server } from './mocks/server';
+
 // Load environment variables from .env.local
 config({ path: path.resolve(__dirname, '../../.env.local') });
+
+// Set fallback test environment variables if not already set
+// These are used by integration tests that need real Supabase connections
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_URL || 'https://test.supabase.co';
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0NTc5ODAwMCwiZXhwIjoxOTYxMzc0MDAwfQ.test';
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ1Nzk4MDAwLCJleHAiOjE5NjEzNzQwMDB9.test';
+}
+if (!process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_TEST_KEY) {
+  process.env.STRIPE_SECRET_TEST_KEY = 'sk_test_placeholder_key_for_testing';
+}
+if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && !process.env.STRIPE_PUBLIC_TEST_KEY) {
+  process.env.STRIPE_PUBLIC_TEST_KEY = 'pk_test_placeholder_key_for_testing';
+}
+if (!process.env.STRIPE_WEBHOOK_SECRET) {
+  process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_placeholder_secret';
+}
+if (!process.env.SENDGRID_API_KEY) {
+  process.env.SENDGRID_API_KEY = 'SG.test_placeholder_key';
+}
 
 // Setup custom matchers
 import { setupCustomMatchers } from '../test-utils/test-utils';
@@ -205,4 +232,32 @@ afterEach(() => {
 // Increase test timeout for animation-related tests
 vi.setConfig({
   testTimeout: 10000,
+});
+
+// ============================================
+// MSW (Mock Service Worker) Setup
+// ============================================
+
+/**
+ * Start MSW server before all tests
+ * Intercepts network requests and returns mock responses
+ */
+beforeAll(() => {
+  server.listen({
+    onUnhandledRequest: 'warn', // Warn if a request isn't mocked
+  });
+});
+
+/**
+ * Reset handlers after each test to ensure test isolation
+ */
+afterEach(() => {
+  server.resetHandlers();
+});
+
+/**
+ * Clean up MSW server after all tests
+ */
+afterAll(() => {
+  server.close();
 });

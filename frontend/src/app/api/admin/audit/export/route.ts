@@ -2,117 +2,151 @@ import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * GET /api/admin/audit/export
- * Export audit logs to CSV
- *
- * Admin-only endpoint
- */
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
 
-    // 3. Get query parameters
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '1000');
+    const format = searchParams.get('format') || 'csv';
+    const actionFilter = searchParams.get('action') || null;
+    const severityFilter = searchParams.get('severity') || null;
+    const startDate = searchParams.get('startDate') || null;
+    const endDate = searchParams.get('endDate') || null;
 
-    // 4. Fetch audit logs
-    const { data: logs, error: logsError } = await supabase
+    // Build query
+    let query = supabase
       .from('audit_logs')
-      .select('id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at')
+      .select(
+        `
+        id,
+        table_name,
+        record_id,
+        action,
+        user_id,
+        old_values,
+        new_values,
+        metadata,
+        created_at,
+        users:user_id (
+          firstName,
+          lastName,
+          email
+        )
+      `
+      )
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(10000); // Large limit for export
 
-    if (logsError) throw logsError;
+    // Apply filters
+    if (actionFilter && actionFilter !== 'all') {
+      query = query.eq('action', actionFilter);
+    }
 
-    // 5. Fetch user data
-    const userIds = [...new Set((logs || []).map(log => log.user_id).filter(Boolean))];
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, firstName, lastName, email')
-      .in('id', userIds);
+    if (severityFilter && severityFilter !== 'all') {
+      query = query.eq('metadata->>severity', severityFilter);
+    }
 
-    const usersMap = new Map((users || []).map(u => [u.id, u]));
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
 
-    // 6. Generate CSV
-    const csvHeaders = [
-      'Timestamp',
-      'Admin Name',
-      'Admin Email',
-      'Action',
-      'Resource Type',
-      'Resource ID',
-      'IP Address',
-      'User Agent',
-      'Changes Summary',
-    ];
+    if (endDate) {
+      query = query.lte('created_at', endDate);
+    }
 
-    const csvRows = (logs || []).map((log: any) => {
-      const user = log.user_id ? usersMap.get(log.user_id) : null;
-      const userName = user
-        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
-        : 'System';
-      const userEmail = user?.email || 'system@kubota.com';
+    const { data: auditLogs, error: fetchError } = await query;
 
-      // Create changes summary
-      let changesSummary = '';
-      if (log.old_values && log.new_values) {
-        const changed = Object.keys(log.new_values).filter(
-          key => JSON.stringify(log.old_values[key]) !== JSON.stringify(log.new_values[key])
-        );
-        changesSummary = changed.join(', ');
-      } else if (log.action === 'create') {
-        changesSummary = 'New record created';
-      } else if (log.action === 'delete') {
-        changesSummary = 'Record deleted';
-      }
+    if (fetchError) {
+      throw fetchError;
+    }
 
-      return [
-        new Date(log.created_at).toLocaleString(),
-        userName,
-        userEmail,
-        log.action.toUpperCase(),
-        log.table_name,
-        log.record_id,
-        log.ip_address || 'Unknown',
-        (log.user_agent || 'Unknown').substring(0, 50), // Truncate user agent
-        changesSummary,
+    if (!auditLogs || auditLogs.length === 0) {
+      return NextResponse.json({ error: 'No audit logs found' }, { status: 404 });
+    }
+
+    if (format === 'csv') {
+      // Generate CSV
+      const headers = [
+        'ID',
+        'Timestamp',
+        'Admin User',
+        'Admin Email',
+        'Action',
+        'Table',
+        'Record ID',
+        'Severity',
+        'Description',
+        'IP Address',
+        'User Agent',
+        'Changes Before',
+        'Changes After',
       ];
-    });
 
-    const csvContent = [
-      csvHeaders.map(h => `"${h}"`).join(','),
-      ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
-    ].join('\n');
+      const rows = auditLogs.map((log: any) => {
+        const adminName = log.users
+          ? `${log.users.firstName || ''} ${log.users.lastName || ''}`.trim() || 'Unknown'
+          : 'Unknown';
+        const adminEmail = log.users?.email || '';
+        const severity = log.metadata?.severity || 'low';
+        const description = log.metadata?.description || log.action || '';
+        const ipAddress = log.metadata?.ip_address || '';
+        const userAgent = log.metadata?.user_agent || '';
 
-    logger.info('Audit logs exported', {
-      component: 'audit-export-api',
-      action: 'export_success',
-      metadata: {
-        count: csvRows.length,
-        adminId: supabase.auth.getUser().data.user?.id,
-      },
-    });
+        return [
+          log.id || '',
+          log.created_at ? new Date(log.created_at).toISOString() : '',
+          adminName,
+          adminEmail,
+          log.action || '',
+          log.table_name || '',
+          log.record_id || '',
+          severity,
+          description,
+          ipAddress,
+          userAgent,
+          log.old_values ? JSON.stringify(log.old_values) : '',
+          log.new_values ? JSON.stringify(log.new_values) : '',
+        ];
+      });
 
-    // 7. Return CSV file
-    return new NextResponse(csvContent, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="audit-logs-export-${new Date().toISOString().split('T')[0]}.csv"`,
-      },
-    });
-  } catch (error: any) {
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+      logger.info('Audit log export completed', {
+        component: 'admin-audit-export',
+        action: 'export_csv',
+        metadata: { adminId: user?.id || 'unknown', logCount: auditLogs.length, format },
+      });
+
+      return new NextResponse(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="audit-logs-export-${new Date().toISOString().split('T')[0]}.csv"`,
+        },
+      });
+    } else {
+      return NextResponse.json(
+        { error: 'PDF export not yet implemented. Please use CSV format.' },
+        { status: 501 }
+      );
+    }
+  } catch (err) {
     logger.error(
-      'Audit export error',
-      {
-        component: 'audit-export-api',
-        action: 'error',
-      },
-      error
+      'Failed to export audit logs',
+      { component: 'admin-audit-export', action: 'error' },
+      err instanceof Error ? err : new Error(String(err))
     );
 
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to export audit logs' }, { status: 500 });
   }
 }
-

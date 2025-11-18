@@ -10,8 +10,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = logisticsTaskStatusSchema.parse(await request.json());
 
@@ -40,7 +57,7 @@ export async function PATCH(
         {
           component: 'admin-logistics-tasks',
           action: 'status_update_failed',
-          metadata: { taskId: params.id, adminId: user.id },
+          metadata: { taskId: params.id, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -53,7 +70,7 @@ export async function PATCH(
     logger.info('Logistics task status updated', {
       component: 'admin-logistics-tasks',
       action: 'status_updated',
-      metadata: { taskId: params.id, adminId: user.id, status: payload.status },
+      metadata: { taskId: params.id, adminId: user?.id || 'unknown', status: payload.status },
     });
 
     return NextResponse.json({ task: data });

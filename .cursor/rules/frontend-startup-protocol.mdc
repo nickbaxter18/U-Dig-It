@@ -1,0 +1,105 @@
+---
+description: Frontend startup protocol - ALWAYS follow when starting/restarting the dev server
+globs: []
+alwaysApply: true
+---
+
+# Frontend Startup Protocol
+
+## 🎯 Critical Rule - ALWAYS Follow
+
+### Starting the Development Server
+
+**ONLY use these approved methods:**
+
+1. **Automatic (Preferred)** - Cursor auto-starts on folder open ✅
+2. **VS Code Task** - Run "Start Frontend Port 3000" task ✅
+3. **Terminal** - `bash start-frontend-clean.sh` ✅
+4. **pnpm** - `cd frontend && pnpm dev` ✅
+
+**NEVER do this:**
+- ❌ `cd frontend && pnpm next dev` (bypasses optimizations)
+- ❌ `cd frontend && next dev` (bypasses optimizations)
+- ❌ Manually clearing `.next` before start (defeats caching)
+- ❌ Running without port cleanup (causes conflicts)
+
+## Why This Matters
+
+**Our setup is optimized with:**
+- ⚡ **Turbopack filesystem caching** - 70% faster restarts (3-5s vs 15-20s)
+- 🧹 **Automatic port cleanup** - No manual intervention needed
+- 🔒 **Lock file handling** - Prevents stale lock errors
+- 🔄 **Process cleanup** - No zombie processes
+
+**Using raw `next dev` bypasses ALL of this!**
+
+## Quick Reference
+
+```bash
+# ✅ CORRECT - Use the optimized script
+bash start-frontend-clean.sh
+
+# ✅ CORRECT - Or use pnpm dev (configured to use script)
+cd frontend && pnpm dev
+
+# ❌ WRONG - Bypasses optimizations
+cd frontend && pnpm next dev
+```
+
+## Emergency Deep Clean
+
+**Only use when experiencing cache corruption:**
+```bash
+bash start-frontend-deep-clean.sh
+```
+
+**Symptoms requiring deep clean:**
+- Build errors persist after fixing code
+- Strange behavior after multiple restarts
+- Turbopack cache corruption errors
+
+## Configuration Files
+
+**These are already configured correctly - don't change them:**
+
+### package.json
+```json
+{
+  "scripts": {
+    "dev": "bash ../start-frontend-clean.sh"  // ✅ Uses optimized script
+  }
+}
+```
+
+### next.config.js
+```javascript
+{
+  experimental: {
+    turbopackFileSystemCacheForDev: true  // ✅ Enables fast restarts
+  }
+}
+```
+
+### .vscode/tasks.json
+```json
+{
+  "label": "Start Frontend Port 3000",
+  "command": "cd frontend && pnpm dev",  // ✅ Uses optimized script
+  "runOptions": {
+    "runOn": "folderOpen"  // ✅ Auto-starts on Cursor open
+  }
+}
+```
+
+## Documentation
+
+Full details: `@STARTUP_OPTIMIZATION.md`
+
+## Related Rules
+
+- `@nextjs-startup-optimization.mdc` - Detailed optimization guide
+- `@development-workflow.mdc` - Daily workflow including startup
+
+---
+
+**Remember: The startup script is not just a convenience - it's a performance optimization that saves 10-15 seconds on every restart!**

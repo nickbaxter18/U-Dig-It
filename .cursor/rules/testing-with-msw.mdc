@@ -1,0 +1,101 @@
+---
+description: Testing standards with MSW (Mock Service Worker) for API mocking
+globs: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx']
+alwaysApply: false
+---
+
+# Testing with MSW (Mock Service Worker)
+
+## When Writing Tests
+
+### ALWAYS Use MSW for API Calls
+MSW is already configured and running automatically. Never mock fetch/axios manually.
+
+```typescript
+// ✅ CORRECT - MSW handles this automatically
+test('fetches equipment', async () => {
+  render(<EquipmentList />);
+
+  // MSW intercepts and returns mock data
+  await waitFor(() => {
+    expect(screen.getByText('Kubota SVL-75')).toBeInTheDocument();
+  });
+});
+
+// ❌ WRONG - Don't manually mock fetch
+vi.mock('node-fetch');
+```
+
+### Override Handlers for Specific Tests
+Use `server.use()` to override default handlers:
+
+```typescript
+import { server } from '@/test/mocks/server';
+import { http, HttpResponse } from 'msw';
+
+test('handles API errors', async () => {
+  // Override handler for this test only
+  server.use(
+    http.get('*/rest/v1/equipment', () => {
+      return HttpResponse.json(
+        { error: 'Server error' },
+        { status: 500 }
+      );
+    })
+  );
+
+  render(<EquipmentList />);
+
+  await waitFor(() => {
+    expect(screen.getByText(/Error/)).toBeInTheDocument();
+  });
+});
+```
+
+## Adding New Mock Handlers
+
+Edit `frontend/src/test/mocks/handlers.ts`:
+
+```typescript
+export const handlers = [
+  // Add your handler
+  http.post('/api/bookings', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json({
+      id: 'new-id',
+      status: 'confirmed',
+    });
+  }),
+];
+```
+
+## Testing API Routes
+
+API routes automatically use MSW:
+
+```typescript
+test('POST /api/bookings creates booking', async () => {
+  const response = await fetch('/api/bookings', {
+    method: 'POST',
+    body: JSON.stringify({ equipmentId: '123' }),
+  });
+
+  // MSW returns mock response
+  const data = await response.json();
+  expect(data.status).toBe('confirmed');
+});
+```
+
+## Reference Files
+
+@frontend/src/test/mocks/handlers.ts
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+@frontend/src/components/__tests__/equipment-api-msw.test.tsx
+
+## Key Rules
+
+1. **Never mock fetch/axios manually** - Use MSW handlers
+2. **Override per-test** - Use `server.use()` for specific scenarios
+3. **Reset automatic** - Handlers reset between tests automatically
+4. **Check console** - Warns about unhandled requests
+5. **Test errors** - Override handlers to test error states

@@ -2,10 +2,12 @@
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   CheckCircle,
   Copy,
   DollarSign,
+  Download,
   Edit,
   Percent,
   Plus,
@@ -50,6 +52,7 @@ export default function PromotionsPage() {
     validUntil: '',
     isActive: true,
   });
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchDiscounts();
@@ -219,6 +222,36 @@ export default function PromotionsPage() {
     }
   };
 
+  const handleExportPromotions = async () => {
+    try {
+      setExporting(true);
+      const response = await fetchWithAuth('/api/admin/promotions/export');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Failed to export promotions');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `promotions-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+    } catch (err) {
+      logger.error(
+        'Promotions export failed',
+        { component: 'PromotionsPage', action: 'export_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to export promotions');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const activeDiscounts = discounts.filter(d => d.isActive).length;
   const totalUses = discounts.reduce((sum: any, d: any) => sum + d.usedCount, 0);
   const totalSavings = discounts.reduce((sum: any, d: any) => {
@@ -247,17 +280,27 @@ export default function PromotionsPage() {
             Manage discount codes, promotional offers, and marketing campaigns.
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setEditingDiscount(null);
-            setShowAddModal(true);
-          }}
-          className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create Discount</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleExportPromotions}
+            disabled={exporting}
+            className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setEditingDiscount(null);
+              setShowAddModal(true);
+            }}
+            className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create Discount</span>
+          </button>
+        </div>
       </div>
 
       {/* Error */}
@@ -621,4 +664,3 @@ export default function PromotionsPage() {
     </div>
   );
 }
-

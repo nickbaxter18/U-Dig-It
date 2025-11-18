@@ -34,6 +34,9 @@ export async function generatePaymentReceiptHtml(
 ): Promise<{ html: string; filename: string }> {
   const allowStripeLookup = options.allowStripeLookup ?? DEFAULT_ALLOWED_STRIPE_LOOKUP;
   const serviceSupabase = createServiceClient();
+  if (!serviceSupabase) {
+    throw new Error('Failed to create service client');
+  }
 
   const { data: payment, error: paymentError } = await serviceSupabase
     .from('payments')
@@ -164,11 +167,11 @@ export async function generatePaymentReceiptHtml(
         null,
     },
     {
-      email: customer.email ?? 'customer@udigit.ca',
-      firstName: customer.firstName ?? '',
-      lastName: customer.lastName ?? '',
-      company: customer.companyName ?? '',
-      phone: customer.phone ?? '',
+      email: (customer as any).email ?? 'customer@udigit.ca',
+      firstName: (customer as any).firstName ?? '',
+      lastName: (customer as any).lastName ?? '',
+      company: (customer as any).companyName ?? '',
+      phone: (customer as any).phone ?? '',
     }
   );
 
@@ -193,7 +196,7 @@ export async function generatePaymentReceiptHtml(
           expand: ['charges.data'],
         });
 
-        const charge = paymentIntent.charges?.data?.[0];
+        const charge = (paymentIntent as any).charges?.data?.[0];
         if (charge?.receipt_url) {
           const receiptResponse = await fetch(charge.receipt_url, {
             method: 'GET',
@@ -214,15 +217,14 @@ export async function generatePaymentReceiptHtml(
         }
       }
     } catch (stripeError) {
-      logger.warn(
-        'Stripe receipt lookup failed, using generated HTML instead',
-        {
-          component: 'receipt-generator',
-          action: 'stripe_receipt_fetch_failed',
-          metadata: { paymentId },
+      logger.warn('Stripe receipt lookup failed, using generated HTML instead', {
+        component: 'receipt-generator',
+        action: 'stripe_receipt_fetch_failed',
+        metadata: {
+          paymentId,
+          error: stripeError instanceof Error ? stripeError.message : String(stripeError),
         },
-        stripeError instanceof Error ? stripeError : new Error(String(stripeError))
-      );
+      });
     }
   }
 

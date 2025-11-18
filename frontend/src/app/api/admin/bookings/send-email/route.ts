@@ -5,8 +5,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     // ✅ Parse request body
     const body = await request.json();
@@ -43,8 +60,8 @@ export async function POST(request: NextRequest) {
           bookingId,
           bookingNumber: booking.bookingNumber,
           templateId,
-          sentBy: user.id,
-          sentByEmail: user.email,
+          sentBy: user?.id || 'unknown',
+          sentByEmail: user?.email || 'unknown',
         },
       })
       .select()

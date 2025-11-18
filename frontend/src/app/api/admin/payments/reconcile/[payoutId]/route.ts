@@ -11,8 +11,19 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { payoutId: string } }
 ) {
-  const { supabase, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+  
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
 
   const { data, error: fetchError } = await supabase
     .from('payout_reconciliations')
@@ -50,8 +61,25 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { payoutId: string } }
 ) {
-  const { supabase, user, error } = await requireAdmin(request);
-  if (error) return error;
+  const adminResult = await requireAdmin(request);
+
+  if (adminResult.error) return adminResult.error;
+
+  const supabase = adminResult.supabase;
+
+  
+
+  if (!supabase) {
+
+    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+  }
+
+  
+
+  // Get user for logging
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   let body: unknown = {};
   try {
@@ -100,7 +128,7 @@ export async function PATCH(
 
   if (parsed.data.status === 'reconciled') {
     updates.reconciled_at = new Date().toISOString();
-    updates.reconciled_by = user.id;
+    updates.reconciled_by = user?.id || 'unknown';
   }
 
   const { data, error: updateError } = await supabase
@@ -116,7 +144,7 @@ export async function PATCH(
       {
         component: 'admin-reconciliation',
         action: 'detail_update_failed',
-        metadata: { payoutId: params.payoutId, adminId: user.id },
+        metadata: { payoutId: params.payoutId, adminId: user?.id || 'unknown' },
       },
       updateError
     );
@@ -129,7 +157,7 @@ export async function PATCH(
   logger.info('Payout reconciliation updated', {
     component: 'admin-reconciliation',
     action: 'detail_update_success',
-    metadata: { payoutId: params.payoutId, adminId: user.id, status: parsed.data.status },
+    metadata: { payoutId: params.payoutId, adminId: user?.id || 'unknown', status: parsed.data.status },
   });
 
   return NextResponse.json({ payout: data });

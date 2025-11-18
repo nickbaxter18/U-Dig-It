@@ -3,6 +3,7 @@
 import { DisputesSection } from '@/components/admin/DisputesSection';
 import { FinancialReportsSection } from '@/components/admin/FinancialReportsSection';
 import { RefundModal } from '@/components/admin/RefundModal';
+import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
 import {
   listManualPayments,
   updateManualPayment,
@@ -126,6 +127,11 @@ export default function PaymentManagement() {
   const [exportSubmitting, setExportSubmitting] = useState(false);
   const [upcomingInstallments, setUpcomingInstallments] = useState<UpcomingInstallment[]>([]);
   const [installmentsLoading, setInstallmentsLoading] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<{
+    dateRange?: DateRange;
+    operators?: any[];
+    multiSelects?: Record<string, string[]>;
+  }>({});
 
   useEffect(() => {
     fetchPayments();
@@ -737,6 +743,57 @@ export default function PaymentManagement() {
 
       {/* Disputes Section (if any) */}
       <DisputesSection />
+
+      {/* Advanced Filters */}
+      <div className="rounded-lg bg-white p-4 shadow-sm">
+        <AdvancedFilters
+          filters={advancedFilters}
+          onFiltersChange={setAdvancedFilters}
+          availableFields={[
+            { label: 'Payment ID', value: 'id', type: 'text' },
+            { label: 'Booking Number', value: 'bookingNumber', type: 'text' },
+            { label: 'Customer Name', value: 'customerName', type: 'text' },
+            { label: 'Amount', value: 'amount', type: 'number' },
+            { label: 'Created Date', value: 'createdAt', type: 'date' },
+            { label: 'Status', value: 'status', type: 'select', options: [
+              { label: 'Succeeded', value: 'succeeded' },
+              { label: 'Pending', value: 'pending' },
+              { label: 'Failed', value: 'failed' },
+              { label: 'Refunded', value: 'refunded' },
+              { label: 'Partially Refunded', value: 'partially_refunded' },
+            ]},
+            { label: 'Payment Method', value: 'paymentMethod', type: 'select', options: [
+              { label: 'Card', value: 'card' },
+              { label: 'Bank Transfer', value: 'bank_transfer' },
+              { label: 'Cash', value: 'cash' },
+              { label: 'Check', value: 'check' },
+            ]},
+          ]}
+          multiSelectFields={[
+            {
+              label: 'Payment Status',
+              value: 'status',
+              options: [
+                { label: 'Succeeded', value: 'succeeded' },
+                { label: 'Pending', value: 'pending' },
+                { label: 'Failed', value: 'failed' },
+                { label: 'Refunded', value: 'refunded' },
+                { label: 'Partially Refunded', value: 'partially_refunded' },
+              ],
+            },
+            {
+              label: 'Payment Method',
+              value: 'paymentMethod',
+              options: [
+                { label: 'Card', value: 'card' },
+                { label: 'Bank Transfer', value: 'bank_transfer' },
+                { label: 'Cash', value: 'cash' },
+                { label: 'Check', value: 'check' },
+              ],
+            },
+          ]}
+        />
+      </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">

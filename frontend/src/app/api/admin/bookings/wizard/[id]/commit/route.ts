@@ -42,8 +42,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const commitData = bookingWizardCommitSchema.parse(body);
@@ -125,7 +142,7 @@ export async function POST(
       depositAmount,
       balanceDue,
       source: 'admin',
-      lastModifiedBy: user.id,
+      lastModifiedBy: user?.id || 'unknown',
     };
 
     const { data: bookingRecord, error: insertError } = await supabase
@@ -150,7 +167,7 @@ export async function POST(
     if (notes.length > 0) {
       const noteRows = notes.map(note => ({
         booking_id: bookingRecord.id,
-        admin_id: user.id,
+        admin_id: user?.id || 'unknown',
         note: note.note,
         visibility: note.visibility,
       }));
@@ -159,15 +176,14 @@ export async function POST(
       if (notesError) {
         logger.warn(
           'Failed to insert booking notes during wizard commit',
-          { component: 'admin-bookings-wizard-commit', action: 'notes_insert_failed', metadata: { bookingId: bookingRecord.id } },
-          notesError
+          { component: 'admin-bookings-wizard-commit', action: 'notes_insert_failed', metadata: { bookingId: bookingRecord.id, error: notesError?.message } }
         );
       }
     }
 
     const logisticsTasks = commitData.logisticsTasks ?? [];
     if (logisticsTasks.length > 0) {
-      const taskRows = logisticsTasks.map(task => {
+      const taskRows = logisticsTasks.map((task: any) => {
         const parsed = logisticsTaskInputSchema.parse(task);
         return {
           booking_id: bookingRecord.id,
@@ -190,8 +206,7 @@ export async function POST(
       if (logisticsError) {
         logger.warn(
           'Failed to create logistics tasks during wizard commit',
-          { component: 'admin-bookings-wizard-commit', action: 'logistics_insert_failed', metadata: { bookingId: bookingRecord.id } },
-          logisticsError
+          { component: 'admin-bookings-wizard-commit', action: 'logistics_insert_failed', metadata: { bookingId: bookingRecord.id, error: logisticsError?.message } }
         );
       }
     }
@@ -204,7 +219,7 @@ export async function POST(
     logger.info('Booking wizard session committed', {
       component: 'admin-bookings-wizard-commit',
       action: 'booking_created',
-      metadata: { sessionId: params.id, bookingId: bookingRecord.id, adminId: user.id },
+      metadata: { sessionId: params.id, bookingId: bookingRecord.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({

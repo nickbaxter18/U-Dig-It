@@ -122,8 +122,6 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     // 5. BUSINESS RULE: CHECK FOR EXISTING ACTIVE SESSION
     // ========================================================================
-    // TODO: Re-enable for production - disabled for testing
-    /*
     const { data: existingSessions, error: checkError } = await supabase
       .from('spin_sessions')
       .select('*')
@@ -133,7 +131,7 @@ export async function POST(request: NextRequest) {
           ? `user_id.eq.${user.id}`
           : `email.eq.${email}`
       )
-      .single();
+      .maybeSingle();
 
     if (existingSessions && !checkError) {
       logger.info('[Spin API] Returning existing session', {
@@ -148,18 +146,10 @@ export async function POST(request: NextRequest) {
         message: 'You already have an active spin session',
       });
     }
-    */
-
-    logger.info('[Spin API] Existing session check disabled for testing', {
-      component: 'spin-start-api',
-      action: 'session_check_disabled',
-    });
 
     // ========================================================================
     // 6. RATE LIMITING: CHECK 14-DAY WINDOW
     // ========================================================================
-    // TODO: Re-enable for production - disabled for testing
-    /*
     const rateLimitChecks = [
       { type: 'email', value: email },
       { type: 'phone', value: phone },
@@ -169,12 +159,22 @@ export async function POST(request: NextRequest) {
     ].filter(check => check.value);
 
     for (const check of rateLimitChecks) {
-      const { data: isLimited } = await supabase.rpc('is_spin_rate_limited', {
+      const { data: isLimited, error: rpcError } = await supabase.rpc('is_spin_rate_limited', {
         p_identifier_type: check.type,
         p_identifier_value: check.value,
         p_max_attempts: 1,
         p_window_hours: 336, // 14 days
       });
+
+      if (rpcError) {
+        logger.warn('[Spin API] Rate limit check failed (non-fatal)', {
+          component: 'spin-start-api',
+          action: 'rate_limit_check_error',
+          metadata: { type: check.type, error: rpcError.message },
+        });
+        // Continue if RPC function doesn't exist yet
+        continue;
+      }
 
       if (isLimited) {
         logger.warn('[Spin API] Rate limit exceeded (14-day window)', {
@@ -193,12 +193,6 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    */
-
-    logger.info('[Spin API] Rate limiting disabled for testing', {
-      component: 'spin-start-api',
-      action: 'rate_limit_disabled',
-    });
 
     // ========================================================================
     // 7. FRAUD DETECTION: CHECK FOR SUSPICIOUS PATTERNS (OPTIMIZED - NON-BLOCKING)
@@ -277,18 +271,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ========================================================================
-    // 9. RECORD RATE LIMIT ATTEMPTS
+    // 9. RECORD RATE LIMIT ATTEMPTS (NON-BLOCKING)
     // ========================================================================
-    // TODO: Re-enable for production - disabled for testing
-    /*
+    // Record attempts in background - don't block session creation
     for (const check of rateLimitChecks) {
-      await supabase.rpc('record_spin_attempt', {
+      supabase.rpc('record_spin_attempt', {
         p_identifier_type: check.type,
         p_identifier_value: check.value,
         p_window_hours: 336, // 14 days
+      }).then(({ error }) => {
+        if (error) {
+          logger.warn('[Spin API] Failed to record rate limit attempt (non-fatal)', {
+            component: 'spin-start-api',
+            action: 'record_attempt_error',
+            metadata: { type: check.type, error: error.message },
+          });
+        }
       });
     }
-    */
 
     // ========================================================================
     // 10. CREATE AUDIT LOG (NON-BLOCKING - OPTIMIZED)

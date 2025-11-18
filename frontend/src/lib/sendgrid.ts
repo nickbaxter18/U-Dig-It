@@ -31,7 +31,7 @@ export async function sendAdminEmail(payload: SendAdminEmailPayload) {
   ensureApiKeyConfigured();
 
   try {
-    await sgMail.send(payload);
+    await sgMail.send(payload as any);
   } catch (error) {
     logger.error(
       'Failed to send admin email via SendGrid',

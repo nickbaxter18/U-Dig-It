@@ -2,17 +2,21 @@
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   AlertCircle,
+  Download,
   CheckCircle,
   Clock,
   Filter,
   MessageSquare,
   Search,
   User,
+  UserPlus,
+  X,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface SupportTicket {
   id: string;
@@ -47,10 +51,33 @@ export default function SupportPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [assignToMe, setAssignToMe] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
+  const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
+  const [bulkAssignTo, setBulkAssignTo] = useState<string>('');
+  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string }>>([]);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchTickets();
+    fetchAdminUsers();
   }, [statusFilter, priorityFilter, assignToMe]);
+
+  const fetchAdminUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, firstName, lastName, email')
+        .in('role', ['admin', 'super_admin'])
+        .eq('status', 'active')
+        .order('firstName', { ascending: true });
+
+      if (error) throw error;
+      setAdminUsers((data || []) as any);
+    } catch (err) {
+      logger.error('Failed to fetch admin users', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+    }
+  };
 
   const fetchTickets = async () => {
     try {
@@ -232,6 +259,139 @@ export default function SupportPage() {
     }
   };
 
+  const handleExportTickets = async () => {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+      if (priorityFilter !== 'all') {
+        params.set('priority', priorityFilter);
+      }
+      if (assignToMe) {
+        params.set('assignedTo', 'me');
+      }
+      if (searchTerm.trim()) {
+        params.set('search', searchTerm.trim());
+      }
+
+      const queryString = params.toString();
+      const response = await fetchWithAuth(`/api/admin/support/export${queryString ? `?${queryString}` : ''}`);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Failed to export support tickets');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `support-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+    } catch (err) {
+      logger.error(
+        'Support export failed',
+        { component: 'SupportPage', action: 'export_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to export support tickets');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleToggleTicketSelection = (ticketId: string) => {
+    const newSelected = new Set(selectedTicketIds);
+    if (newSelected.has(ticketId)) {
+      newSelected.delete(ticketId);
+    } else {
+      newSelected.add(ticketId);
+    }
+    setSelectedTicketIds(newSelected);
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedTicketIds.size === filteredTickets.length) {
+      setSelectedTicketIds(new Set());
+    } else {
+      setSelectedTicketIds(new Set(filteredTickets.map(t => t.id)));
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (selectedTicketIds.size === 0 || !bulkAssignTo) return;
+
+    const confirmed = window.confirm(
+      `Assign ${selectedTicketIds.size} ticket(s) to selected admin?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetchWithAuth('/api/admin/support/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketIds: Array.from(selectedTicketIds),
+          action: 'assign',
+          assignedTo: bulkAssignTo,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to assign tickets');
+      }
+
+      const result = await response.json();
+      alert(result.message || 'Tickets assigned successfully!');
+      setSelectedTicketIds(new Set());
+      setBulkAssignTo('');
+      fetchTickets();
+    } catch (err) {
+      logger.error('Failed to bulk assign tickets', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      alert(err instanceof Error ? err.message : 'Failed to assign tickets');
+    }
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (selectedTicketIds.size === 0 || !bulkActionStatus) return;
+
+    const confirmed = window.confirm(
+      `Update ${selectedTicketIds.size} ticket(s) to ${bulkActionStatus}?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const response = await fetchWithAuth('/api/admin/support/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketIds: Array.from(selectedTicketIds),
+          action: 'update_status',
+          status: bulkActionStatus,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update ticket status');
+      }
+
+      const result = await response.json();
+      alert(result.message || 'Ticket status updated successfully!');
+      setSelectedTicketIds(new Set());
+      setBulkActionStatus('');
+      fetchTickets();
+    } catch (err) {
+      logger.error('Failed to bulk update ticket status', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      alert(err instanceof Error ? err.message : 'Failed to update ticket status');
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
@@ -315,6 +475,14 @@ export default function SupportPage() {
             Manage customer support requests, technical issues, and inquiries.
           </p>
         </div>
+        <button
+          onClick={handleExportTickets}
+          disabled={exporting}
+          className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+        </button>
       </div>
 
       {/* Error message */}
@@ -416,12 +584,88 @@ export default function SupportPage() {
         </label>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedTicketIds.size > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-kubota-orange bg-orange-50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-900">
+              {selectedTicketIds.size} ticket(s) selected
+            </span>
+            <button
+              onClick={() => {
+                setSelectedTicketIds(new Set());
+                setBulkActionStatus('');
+                setBulkAssignTo('');
+              }}
+              className="text-sm text-gray-600 hover:text-gray-900"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-2">
+              <UserPlus className="h-4 w-4 text-gray-500" />
+              <select
+                value={bulkAssignTo}
+                onChange={e => setBulkAssignTo(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+              >
+                <option value="">Select admin...</option>
+                {adminUsers.map(admin => (
+                  <option key={admin.id} value={admin.id}>
+                    {admin.firstName} {admin.lastName} ({admin.email})
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkAssign}
+                disabled={!bulkAssignTo}
+                className="rounded-md bg-kubota-orange px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Assign
+              </button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <select
+                value={bulkActionStatus}
+                onChange={e => setBulkActionStatus(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+              >
+                <option value="">Select status...</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="waiting_customer">Waiting Customer</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+              <button
+                onClick={handleBulkStatusUpdate}
+                disabled={!bulkActionStatus}
+                className="rounded-md bg-kubota-orange px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Update Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tickets Table */}
       <div className="overflow-hidden rounded-lg bg-white shadow">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                    aria-label="Select all tickets"
+                    checked={selectedTicketIds.size === filteredTickets.length && filteredTickets.length > 0}
+                    onChange={handleToggleSelectAll}
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Ticket
                 </th>
@@ -449,8 +693,20 @@ export default function SupportPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredTickets.map(ticket => (
-                <tr key={ticket.id} className="hover:bg-gray-50">
+              {filteredTickets.map(ticket => {
+                const isSelected = selectedTicketIds.has(ticket.id);
+                return (
+                <tr key={ticket.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                      checked={isSelected}
+                      onChange={() => handleToggleTicketSelection(ticket.id)}
+                      aria-label={`Select ticket ${ticket.ticketNumber}`}
+                      onClick={e => e.stopPropagation()}
+                    />
+                  </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{ticket.ticketNumber}</div>
                     {ticket.bookingNumber && (
@@ -517,7 +773,8 @@ export default function SupportPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -704,4 +961,3 @@ export default function SupportPage() {
     </div>
   );
 }
-

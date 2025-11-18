@@ -10,8 +10,19 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('customer_tags')
@@ -21,9 +32,7 @@ export async function GET(request: NextRequest) {
     if (fetchError) {
       logger.error(
         'Failed to fetch customer tags',
-        { component: 'admin-customer-tags', action: 'fetch_failed' },
-        fetchError
-      );
+        { component: 'admin-customer-tags', action: 'fetch_failed' });
       return NextResponse.json(
         { error: 'Unable to fetch customer tags' },
         { status: 500 }
@@ -43,8 +52,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = customerTagCreateSchema.parse(await request.json());
 
@@ -54,7 +80,7 @@ export async function POST(request: NextRequest) {
         name: payload.name,
         color: payload.color ?? null,
         description: payload.description ?? null,
-        created_by: user.id,
+        created_by: user?.id || 'unknown',
       })
       .select()
       .single();
@@ -65,7 +91,7 @@ export async function POST(request: NextRequest) {
         {
           component: 'admin-customer-tags',
           action: 'create_failed',
-          metadata: { name: payload.name, adminId: user.id },
+          metadata: { name: payload.name, adminId: user?.id || 'unknown' },
         },
         insertError
       );
@@ -78,7 +104,7 @@ export async function POST(request: NextRequest) {
     logger.info('Customer tag created', {
       component: 'admin-customer-tags',
       action: 'tag_created',
-      metadata: { tagId: data?.id, adminId: user.id },
+      metadata: { tagId: data?.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ tag: data });

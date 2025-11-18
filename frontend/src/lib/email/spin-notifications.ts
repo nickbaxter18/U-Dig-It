@@ -5,11 +5,21 @@
  * Supports multiple email providers (SendGrid, Resend, AWS SES).
  */
 
+import SpinReminder24h from '@/emails/spin-reminder-24h';
+import SpinReminder4h from '@/emails/spin-reminder-4h';
+import SpinWinnerEmail from '@/emails/spin-winner';
 import { logger } from '@/lib/logger';
-// TODO: Create email templates: SpinReminder24h, SpinReminder4h, SpinWinnerEmail
-// import SpinReminder24h from '@/emails/spin-reminder-24h';
-// import SpinReminder4h from '@/emails/spin-reminder-4h';
-// import SpinWinnerEmail from '@/emails/spin-winner';
+import { render } from '@react-email/render';
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL ||
+  'https://udigit.ca';
+const DEFAULT_FROM =
+  process.env.SPIN_EMAIL_FROM ||
+  process.env.SENDGRID_FROM_EMAIL ||
+  'U-Dig It Rentals <noreply@udigit.ca>';
+const DEFAULT_REPLY_TO = process.env.SPIN_EMAIL_REPLY || 'info@udigit.ca';
 
 interface SendSpinWinnerEmailParams {
   email: string;
@@ -17,7 +27,7 @@ interface SendSpinWinnerEmailParams {
   couponCode: string;
   discountPercent: number;
   expiresAt: string;
-  sessionId: string;
+  sessionId?: string;
 }
 
 interface SendReminderEmailParams {
@@ -26,37 +36,21 @@ interface SendReminderEmailParams {
   couponCode: string;
   discountPercent: number;
   expiresAt: string;
-  sessionId: string;
+  sessionId?: string;
   reminderType: '24h' | '4h';
 }
 
 /**
  * Send winner email immediately after winning
- * TODO: Re-enable when @react-email/render is installed
  */
 export async function sendSpinWinnerEmail(params: SendSpinWinnerEmailParams): Promise<{
   success: boolean;
   error?: string;
 }> {
-  // Temporarily disabled - pending @react-email/render installation
-  logger.info('[Email] Winner email would be sent (disabled)', {
-    component: 'spin-notifications',
-    action: 'winner_email_disabled',
-    metadata: {
-      email: params.email,
-      sessionId: params.sessionId,
-      discountPercent: params.discountPercent,
-    },
-  });
-
-  return { success: true };
-
-  /* // TODO: Uncomment when packages are installed
   try {
-    const bookingUrl = `https://udigit.ca/book?coupon=${params.couponCode}&session=${params.sessionId}&utm_source=spin_win&utm_medium=email`;
+    const bookingUrl = buildBookingUrl(params.couponCode, params.sessionId);
 
-    // Render React Email template to HTML
-    const html = render(
+    const html = await render(
       SpinWinnerEmail({
         firstName: params.firstName,
         email: params.email,
@@ -67,17 +61,16 @@ export async function sendSpinWinnerEmail(params: SendSpinWinnerEmailParams): Pr
       })
     );
 
-    // Send via email provider (configure based on env)
     const result = await sendEmail({
       to: params.email,
       subject: `🎉 You Won ${params.discountPercent}% Off - Use Within 48 Hours!`,
       html,
-      from: 'U-Dig It Rentals <noreply@udigit.ca>',
-      replyTo: 'info@udigit.ca',
+      from: DEFAULT_FROM,
+      replyTo: DEFAULT_REPLY_TO,
       tags: {
         type: 'spin_winner',
         discount_percent: params.discountPercent.toString(),
-        session_id: params.sessionId,
+        session_id: params.sessionId ?? 'unknown',
       },
     });
 
@@ -91,43 +84,125 @@ export async function sendSpinWinnerEmail(params: SendSpinWinnerEmailParams): Pr
           discountPercent: params.discountPercent,
         },
       });
+    } else {
+      logger.warn('[Email] Spin winner email failed to send', {
+        component: 'spin-notifications',
+        action: 'winner_email_failed',
+        metadata: {
+          email: params.email,
+          sessionId: params.sessionId,
+          discountPercent: params.discountPercent,
+          error: result.error,
+        },
+      });
     }
 
     return result;
   } catch (error) {
-    logger.error('[Email] Failed to send winner email', {
-      component: 'spin-notifications',
-      action: 'email_error',
-    }, error as Error);
+    logger.error(
+      '[Email] Failed to send winner email',
+      {
+        component: 'spin-notifications',
+        action: 'email_error',
+        metadata: {
+          email: params.email,
+          sessionId: params.sessionId,
+          discountPercent: params.discountPercent,
+        },
+      },
+      error as Error
+    );
 
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send email',
     };
   }
-  */
 }
 
 /**
  * Send reminder email (24h or 4h before expiry)
- * TODO: Re-enable when @react-email/render is installed
  */
 export async function sendSpinReminderEmail(params: SendReminderEmailParams): Promise<{
   success: boolean;
   error?: string;
 }> {
-  // Temporarily disabled - pending @react-email/render installation
-  logger.info('[Email] Reminder email would be sent (disabled)', {
-    component: 'spin-notifications',
-    action: 'reminder_email_disabled',
-    metadata: {
-      email: params.email,
-      sessionId: params.sessionId,
-      reminderType: params.reminderType,
-    },
-  });
+  try {
+    const bookingUrl = buildBookingUrl(params.couponCode, params.sessionId);
+    const Template =
+      params.reminderType === '4h' ? SpinReminder4h : SpinReminder24h;
 
-  return { success: true };
+    const html = await render(
+      Template({
+        firstName: params.firstName,
+        email: params.email,
+        couponCode: params.couponCode,
+        discountPercent: params.discountPercent,
+        expiresAt: params.expiresAt,
+        bookingUrl,
+      })
+    );
+
+    const result = await sendEmail({
+      to: params.email,
+      subject:
+        params.reminderType === '4h'
+          ? `⏰ Final 4 Hours! ${params.discountPercent}% Savings Expire Soon`
+          : `⏰ 24h Reminder - ${params.discountPercent}% Discount Ending Soon`,
+      html,
+      from: DEFAULT_FROM,
+      replyTo: DEFAULT_REPLY_TO,
+      tags: {
+        type: 'spin_reminder',
+        reminder_type: params.reminderType,
+        session_id: params.sessionId ?? 'unknown',
+      },
+    });
+
+    if (result.success) {
+      logger.info('[Email] Spin reminder email sent', {
+        component: 'spin-notifications',
+        action: 'reminder_email_sent',
+        metadata: {
+          email: params.email,
+          sessionId: params.sessionId,
+          reminderType: params.reminderType,
+        },
+      });
+    } else {
+      logger.warn('[Email] Spin reminder email failed to send', {
+        component: 'spin-notifications',
+        action: 'reminder_email_failed',
+        metadata: {
+          email: params.email,
+          sessionId: params.sessionId,
+          reminderType: params.reminderType,
+          error: result.error,
+        },
+      });
+    }
+
+    return result;
+  } catch (error) {
+    logger.error(
+      '[Email] Failed to send reminder email',
+      {
+        component: 'spin-notifications',
+        action: 'email_error',
+        metadata: {
+          email: params.email,
+          sessionId: params.sessionId,
+          reminderType: params.reminderType,
+        },
+      },
+      error as Error
+    );
+
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to send email',
+    };
+  }
 }
 
 /**
@@ -142,7 +217,7 @@ async function sendEmail(params: {
   replyTo?: string;
   tags?: Record<string, string>;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const provider = process.env.EMAIL_PROVIDER || 'resend';
+  const provider = process.env.EMAIL_PROVIDER || 'sendgrid';
 
   try {
     switch (provider) {
@@ -162,10 +237,14 @@ async function sendEmail(params: {
         return { success: true, messageId: 'dev-mode' };
     }
   } catch (error) {
-    logger.error('[Email] Send failed', {
-      component: 'email-sender',
-      action: 'send_error',
-    }, error as Error);
+    logger.error(
+      '[Email] Send failed',
+      {
+        component: 'email-sender',
+        action: 'send_error',
+      },
+      error as Error
+    );
 
     return {
       success: false,
@@ -184,9 +263,6 @@ async function sendViaResend(params: {
   from: string;
   tags?: Record<string, string>;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Resend integration
-  // Install: pnpm add resend
-
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY not configured');
   }
@@ -211,7 +287,6 @@ async function sendViaResend(params: {
   return { success: true, messageId: data?.id };
   */
 
-  // Temporary: log instead
   logger.info('[Resend] Would send (pending implementation)', {
     component: 'email-sender',
     action: 'resend_pending',
@@ -229,18 +304,31 @@ async function sendViaSendGrid(params: {
   html: string;
   from: string;
   replyTo?: string;
+  tags?: Record<string, string>;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!process.env.SENDGRID_API_KEY) {
     throw new Error('SENDGRID_API_KEY not configured');
   }
 
-  // TODO: Implement SendGrid integration
-  logger.info('[SendGrid] Would send (pending implementation)', {
-    component: 'email-sender',
-    action: 'sendgrid_pending',
-    metadata: { to: params.to },
-  });
-  return { success: true, messageId: 'sendgrid-pending' };
+  const { default: sgMail } = await import('@sendgrid/mail');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+  const msg = {
+    to: params.to,
+    from: params.from,
+    subject: params.subject,
+    html: params.html,
+    replyTo: params.replyTo,
+    customArgs: params.tags,
+  };
+
+  const [response] = await sgMail.send(msg);
+  const messageId =
+    response?.headers?.['x-message-id'] ||
+    response?.headers?.['X-Message-Id'] ||
+    response?.headers?.['x-message-id'.toLowerCase()];
+
+  return { success: true, messageId };
 }
 
 /**
@@ -263,4 +351,15 @@ async function sendViaAWSSES(params: {
     metadata: { to: params.to },
   });
   return { success: true, messageId: 'ses-pending' };
+}
+
+function buildBookingUrl(couponCode: string, sessionId?: string) {
+  const url = new URL('/book', SITE_URL);
+  url.searchParams.set('coupon', couponCode);
+  if (sessionId) {
+    url.searchParams.set('session', sessionId);
+  }
+  url.searchParams.set('utm_source', 'spin');
+  url.searchParams.set('utm_medium', 'email');
+  return url.toString();
 }

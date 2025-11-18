@@ -10,8 +10,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = installmentStatusUpdateSchema.parse(await request.json());
 
@@ -43,7 +60,7 @@ export async function PATCH(
         {
           component: 'admin-installments',
           action: 'status_update_failed',
-          metadata: { installmentId: params.id, adminId: user.id },
+          metadata: { installmentId: params.id, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -56,7 +73,7 @@ export async function PATCH(
     logger.info('Installment status updated', {
       component: 'admin-installments',
       action: 'status_updated',
-      metadata: { installmentId: params.id, adminId: user.id, status: payload.status },
+      metadata: { installmentId: params.id, adminId: user?.id || 'unknown', status: payload.status },
     });
 
     return NextResponse.json({ installment: data });

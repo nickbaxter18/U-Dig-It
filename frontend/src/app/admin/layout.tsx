@@ -3,7 +3,9 @@
 import { AdminBreadcrumb } from '@/components/admin/AdminBreadcrumb';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminToastProvider } from '@/components/admin/AdminToastProvider';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+import { AdminQueryClientProvider } from '@/lib/react-query/query-client';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 import { logger } from '@/lib/logger';
@@ -64,23 +66,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <AdminQueryClientProvider>
+      <AdminToastProvider>
+        <div className="flex h-screen bg-gray-50">
+        {/* Sidebar */}
+        <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+        {/* Main content */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {/* Header */}
+          <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* Breadcrumb */}
-        <AdminBreadcrumb />
+          {/* Breadcrumb */}
+          <AdminBreadcrumb />
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-7xl">{children}</div>
-        </main>
+          {/* Page content */}
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="mx-auto max-w-7xl">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+      </AdminToastProvider>
+    </AdminQueryClientProvider>
   );
 }

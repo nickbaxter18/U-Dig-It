@@ -2,14 +2,27 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { POST } from '../stripe/route';
 import { createMockRequest } from '@/test-utils';
 
-const mockStripe = {
-  webhooks: {
+const { mockStripe } = vi.hoisted(() => {
+  const webhooks = {
     constructEvent: vi.fn(),
-  },
-};
+  };
 
+  return {
+    mockStripe: {
+      webhooks,
+    },
+  };
+});
+
+// Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
-  default: vi.fn(() => mockStripe),
+  default: class MockStripe {
+    webhooks: any;
+
+    constructor() {
+      this.webhooks = mockStripe.webhooks;
+    }
+  },
 }));
 
 const mockSupabase = {
@@ -18,6 +31,22 @@ const mockSupabase = {
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
+}));
+
+// Mock stripe/config to return our mocked Stripe instance
+vi.mock('@/lib/stripe/config', () => ({
+  createStripeClient: vi.fn(() => {
+    // Return a new instance of our mocked Stripe class
+    const MockStripe = class {
+      webhooks: any;
+      constructor() {
+        this.webhooks = mockStripe.webhooks;
+      }
+    };
+    return new MockStripe();
+  }),
+  getStripeSecretKey: vi.fn().mockResolvedValue('sk_test_mock_key'),
+  getStripeWebhookSecret: vi.fn().mockReturnValue('whsec_test_mock_secret'),
 }));
 
 describe('POST /api/webhook/stripe', () => {

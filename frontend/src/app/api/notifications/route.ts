@@ -12,7 +12,7 @@ const markSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  const rate = await rateLimit(request, RateLimitPresets.STANDARD);
+  const rate = await rateLimit(request, RateLimitPresets.MODERATE);
   if (!rate.success) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: rate.headers });
   }

@@ -26,15 +26,27 @@ A comprehensive equipment rental platform specializing in Kubota SVL-75 Compact 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Next.js 15** - React framework with App Router and Server Components
+- **Next.js 16** - React framework with App Router, Server Components, and Turbopack
 - **TypeScript 5.9** - Type-safe development with strict configuration
 - **Tailwind CSS 3.4** - Utility-first styling with custom design system
 - **Radix UI** - Accessible component primitives and headless components
 - **React Hook Form** - Performant form handling with validation
-- **NextAuth.js** - Authentication with OAuth providers
-- **TanStack Query** - Server state management and caching
+- **TanStack Query 5.90** - Server state management with caching and optimistic updates
 - **Framer Motion** - Smooth animations and transitions
 - **React PDF** - PDF generation for contracts and invoices
+
+### Development Tools
+- **Storybook 10** - Component development and documentation in isolation
+- **MSW 2.12** - API mocking for tests and development (Mock Service Worker)
+- **Vitest** - Fast unit testing with instant feedback
+- **Playwright** - End-to-end browser testing for critical flows
+- **Size Limit** - Bundle size monitoring and performance budgets
+- **Knip** - Unused code detection (files, dependencies, exports)
+- **Lighthouse CI** - Automated performance and accessibility audits
+- **Chromatic** - Visual regression testing for UI components
+- **Husky** - Git hooks for pre-commit quality gates
+- **Snyk** - Security vulnerability scanning (code & dependencies)
+- **PostHog** - Product analytics and user behavior tracking
 
 ### Supabase Platform
 - **PostgreSQL (Supabase Database)** - Managed relational database with Row-Level Security
@@ -46,27 +58,42 @@ A comprehensive equipment rental platform specializing in Kubota SVL-75 Compact 
 - **SendGrid** - Transactional email delivery
 
 ### DevOps & Infrastructure
-- **Supabase CLI** - Local database emulation, migrations, and seeding
-- **GitHub Actions** - CI for linting, type-checking, and tests
-- **Vercel** - Frontend deployment with Edge Runtime support
+- **Supabase CLI & MCP** - Database migrations, type generation, and management
+- **GitHub Actions** - CI/CD for linting, testing, E2E tests, and Lighthouse audits
+- **Vercel** - Frontend deployment with Edge Runtime and automatic previews
+- **Turbopack** - Fast incremental bundler with filesystem caching (70% faster restarts)
+- **pnpm** - Fast, disk-space efficient package manager
 - **Sentry** - Optional error monitoring and performance tracking
-- **Lighthouse CI** - Performance and accessibility auditing
 
 ## 🏗️ Project Structure
 
 ```
-├── frontend/                 # Next.js 16 application
+├── frontend/                      # Next.js 16 application
+│   ├── .storybook/               # Storybook configuration
+│   ├── e2e/                      # Playwright E2E tests
 │   ├── src/
-│   │   ├── app/             # App Router pages
-│   │   ├── components/      # Reusable React components
-│   │   ├── lib/             # Utility functions and configurations
-│   │   └── styles/          # Global styles and CSS modules
-│   └── public/              # Static assets
-├── supabase/                # Database migrations, types, and config
-├── docs/                    # Documentation hub
-├── scripts/                 # Tooling and maintenance scripts
-├── start-frontend-clean.sh  # Clean startup helper (Cursor default)
-└── README.md                # This file
+│   │   ├── app/                  # App Router pages & API routes
+│   │   ├── components/           # React components with *.stories.tsx
+│   │   ├── hooks/                # Custom React hooks (TanStack Query)
+│   │   ├── lib/                  # Utilities, validators, integrations
+│   │   ├── test/                 # Test setup & MSW mocks
+│   │   └── stories/              # Storybook stories
+│   ├── docs/                     # Development guides & references
+│   ├── public/                   # Static assets & MSW service worker
+│   ├── knip.json                 # Unused code detection config
+│   ├── .size-limit.json          # Bundle size limits
+│   └── lighthouserc.js           # Lighthouse CI config
+├── supabase/                     # Database migrations & types
+├── .cursor/                      # Cursor AI rules & memories
+│   └── rules/                    # File-scoped development rules
+├── docs/                         # Project documentation
+│   ├── reference/                # Coding patterns & API docs
+│   ├── testing/                  # Test guides & reports
+│   └── audits/                   # Security & performance audits
+├── .github/workflows/            # CI/CD pipelines
+├── start-frontend-clean.sh       # Optimized startup script (required)
+├── start-frontend-deep-clean.sh  # Deep clean for cache issues
+└── README.md                     # This file
 ```
 
 ## 🚀 Getting Started
@@ -99,8 +126,15 @@ A comprehensive equipment rental platform specializing in Kubota SVL-75 Compact 
 
 3. **Start Development Environment**
    ```bash
-   # Always use the protected startup script
+   # ALWAYS use the optimized startup script (required for Turbopack caching)
    bash start-frontend-clean.sh
+   # Benefits: 70% faster restarts, automatic port cleanup, cache optimization
+
+   # Or use pnpm (configured to use the script)
+   cd frontend && pnpm dev
+
+   # Terminal 2: Component development (optional)
+   cd frontend && pnpm storybook
 
    # Optional: run Supabase locally if you need a local database
    pnpm supabase:start
@@ -108,45 +142,68 @@ A comprehensive equipment rental platform specializing in Kubota SVL-75 Compact 
 
 4. **Access the Application**
    - Frontend: http://localhost:3000
+   - Storybook: http://localhost:6006
    - Supabase Studio (if running locally): http://localhost:54323
+
+> ⚡ **Performance Note**: First start takes 10-15s. Restarts take only **3-5 seconds** thanks to Turbopack filesystem caching!
 
 ### Development Commands
 
 ```bash
-# Package Management
-pnpm install              # Install all dependencies
-cd frontend && pnpm clean # Clean Next.js build artifacts
+# 🏃 Development
+bash start-frontend-clean.sh       # Optimized startup (REQUIRED - uses Turbopack cache)
+cd frontend && pnpm dev             # Alternative (calls startup script)
+cd frontend && pnpm storybook       # Component development (port 6006)
 
-# Development
-bash start-frontend-clean.sh   # Clean frontend start (Cursor default)
-pnpm supabase:start            # Optional: start local Supabase stack
-pnpm supabase:stop             # Stop local Supabase services
+# 🧪 Testing
+cd frontend && pnpm test            # Unit tests (MSW handles API mocking)
+cd frontend && pnpm test:watch      # Watch mode
+cd frontend && pnpm test:coverage   # Coverage report (80%+ target)
+cd frontend && pnpm test:e2e        # E2E tests (Playwright)
+cd frontend && pnpm test:e2e:admin  # Admin E2E tests
+cd frontend && pnpm test:accessibility  # A11y tests
 
-# Building
-cd frontend && pnpm build
-cd frontend && pnpm build:check
+# ✅ Code Quality
+cd frontend && pnpm lint            # ESLint
+cd frontend && pnpm lint:fix        # Auto-fix issues
+cd frontend && pnpm type-check      # TypeScript compilation
+cd frontend && pnpm format          # Prettier format
+cd frontend && pnpm quality:fast    # Lint + Type Check (quick)
+cd frontend && pnpm quality:all     # Full quality check
+cd frontend && pnpm ci              # Full CI pipeline
 
-# Testing
-cd frontend && pnpm test
-cd frontend && pnpm test:watch
-cd frontend && pnpm test:coverage
-cd frontend && pnpm test:e2e
-cd frontend && pnpm test:accessibility
+# 🔒 Security
+cd frontend && pnpm security:scan   # Snyk code scan
+cd frontend && pnpm security:deps   # Snyk dependency audit
+cd frontend && pnpm security:all    # Both scans
+pnpm audit                          # npm/pnpm audit
 
-# Code Quality
-pnpm lint                 # Lint all workspaces
-pnpm lint:fix             # Auto-fix lint issues
-cd frontend && pnpm type-check
-pnpm format               # Format with Prettier
+# 📦 Bundle & Performance
+cd frontend && pnpm size            # Check bundle sizes vs limits
+cd frontend && pnpm size:why        # Analyze what's in bundles
+cd frontend && pnpm analyze         # Full Next.js bundle analyzer
+cd frontend && pnpm test:performance  # Lighthouse CI audit
+cd frontend && pnpm knip            # Find unused code
 
-# Database
-pnpm supabase db push     # Apply migrations
-pnpm supabase:reset       # Reset local DB with seed data (destructive)
+# 🏗️ Building
+cd frontend && pnpm build           # Production build
+cd frontend && pnpm build:check     # Build with type checking
+cd frontend && pnpm start           # Start production server
+cd frontend && pnpm clean           # Clean cache/build artifacts
 
-# Tooling
-pnpm supabase:start       # Start local Supabase stack
-pnpm supabase:stop        # Stop local Supabase stack
+# 🗄️ Database (Supabase)
+pnpm supabase:start                 # Start local Supabase stack
+pnpm supabase:stop                  # Stop local Supabase services
+pnpm supabase db push               # Apply migrations
+pnpm supabase:reset                 # Reset local DB (destructive)
+pnpm supabase:status                # Check status
+
+# 📚 Storybook
+cd frontend && pnpm build-storybook # Build static Storybook
+npx chromatic                       # Visual regression testing
 ```
+
+> 💡 **Tip**: See `frontend/docs/QUICK_COMMANDS_CHEATSHEET.md` for the complete command reference!
 
 ## 📱 Key Features
 
@@ -307,28 +364,67 @@ curl "http://localhost:3001/bookings/availability/check?equipmentId=svl-75-001&s
 ## 🧪 Testing
 
 ### Test Coverage
-- **Unit Tests**: 85%+ coverage for business logic
-- **Integration Tests**: API endpoints and database interactions
+- **Unit Tests**: 80%+ coverage for business logic (Vitest + MSW)
+- **Integration Tests**: API endpoints with MSW-mocked Supabase calls
 - **E2E Tests**: Critical user journeys with Playwright
-- **Accessibility Tests**: WCAG 2.1 AA compliance
+- **Visual Tests**: Component variations in Storybook with Chromatic
+- **Accessibility Tests**: WCAG 2.1 AA compliance with axe-core
+- **Performance Tests**: Lighthouse CI audits for every deployment
+
+### Testing Tools
+```
+Unit/Integration (Vitest + MSW)
+├─ Business logic & utilities
+├─ React components (React Testing Library)
+├─ API routes (MSW auto-mocks Supabase)
+└─ Database interactions (mocked)
+
+E2E Tests (Playwright)
+├─ Booking flow (guest & authenticated)
+├─ Payment processing (Stripe test mode)
+├─ Admin dashboard operations
+└─ Critical user journeys
+
+Visual Tests (Storybook + Chromatic)
+├─ Component variations (all states)
+├─ Responsive layouts
+├─ Theme changes
+└─ Accessibility checks (axe addon)
+
+Performance (Lighthouse CI)
+├─ Core Web Vitals
+├─ Accessibility score (90%+)
+├─ Best practices (90%+)
+└─ SEO score (90%+)
+```
 
 ### Running Tests
 ```bash
-# Frontend unit & integration tests
+# Unit & Integration (MSW handles API mocking automatically)
 cd frontend && pnpm test
 
-# Watch mode
+# Watch mode for TDD
 cd frontend && pnpm test:watch
 
-# End-to-end (Playwright)
-cd frontend && pnpm test:e2e
+# Coverage report (HTML output in coverage/)
+cd frontend && pnpm test:coverage
 
-# Accessibility suite
+# End-to-end tests
+cd frontend && pnpm test:e2e
+cd frontend && pnpm test:e2e:admin  # Admin-specific flows
+
+# Component development & visual testing
+cd frontend && pnpm storybook
+
+# Accessibility tests
 cd frontend && pnpm test:accessibility
 
-# Coverage report
-cd frontend && pnpm test:coverage
+# Performance audits
+cd frontend && pnpm test:performance  # Lighthouse CI
+cd frontend && pnpm size              # Bundle size limits
 ```
+
+> **Note**: MSW (Mock Service Worker) is configured automatically. API calls in tests are intercepted without manual mocking!
 
 ## 📦 Deployment
 
@@ -379,11 +475,18 @@ cd frontend && pnpm test:coverage
 
 #### Development Environment
 ```bash
-# Port already in use
-lsof -ti:3000 | xargs kill -9  # Kill process on port 3000
+# Port conflicts - Use optimized script (handles this automatically)
+bash start-frontend-clean.sh  # Kills processes on 3000/3001, cleans Turbopack locks
 
-# Restart the protected startup script
-bash start-frontend-clean.sh
+# Deep clean for cache corruption (rare)
+bash start-frontend-deep-clean.sh  # Removes .next, node_modules/.cache, Turbopack cache
+
+# Storybook issues
+cd frontend && rm -rf node_modules/.cache storybook-static
+pnpm build-storybook
+
+# MSW not working
+cd frontend && npx msw init public/ --save
 
 # Supabase CLI issues (local stack)
 pnpm supabase:stop && pnpm supabase:start
@@ -462,6 +565,41 @@ NEXT_DEBUG=1 bash start-frontend-clean.sh
    - GitHub Issues: Bug reports and feature requests
    - Email: support@udigit.ca
    - Documentation: Check this README and API docs
+
+## 📖 Documentation
+
+Comprehensive documentation is available in the following locations:
+
+### Development Guides
+- **Quick Commands**: `frontend/docs/QUICK_COMMANDS_CHEATSHEET.md` - One-page command reference
+- **Development Tools**: `frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md` - Complete tooling guide
+- **AI Coding Reference**: `docs/reference/AI_CODING_REFERENCE.md` - Established patterns & components
+- **Coding Savant**: `docs/reference/CODING_SAVANT_CHEAT_SHEET.md` - Codebase-specific expertise
+
+### Architecture & Standards
+- **Cursor Rules**: `.cursor/rules/` - AI-assisted development rules
+  - `testing-with-msw.mdc` - MSW testing patterns (auto-applies to `*.test.ts`)
+  - `storybook-development.mdc` - Storybook workflow (auto-applies to `*.stories.tsx`)
+  - `nextjs-startup-optimization.mdc` - Turbopack optimization guide
+  - `CODING_SAVANT_PATTERNS.mdc` - Battle-tested patterns from this codebase
+
+### Reference Documentation
+- **Database Schema**: `docs/reference/DATABASE_SCHEMA.md`
+- **Environment Variables**: `docs/reference/ENVIRONMENT_VARIABLES.md`
+- **Business Logic Patterns**: `docs/reference/BUSINESS_LOGIC_PATTERNS.md`
+- **Type Definitions**: `docs/reference/TYPE_DEFINITIONS_INDEX.md`
+- **Error Codes**: `docs/reference/ERROR_CODES.md`
+
+### Testing & Quality
+- **Testing Guide**: `docs/testing/README.md`
+- **E2E Test Status**: `docs/testing/E2E_TEST_STATUS.md`
+- **Admin Tests**: `docs/testing/ADMIN_E2E_TESTS.md`
+
+### Audits & Reports
+- **Security Audits**: `docs/audits/`
+- **Performance Reports**: `docs/status/`
+
+> 💡 **Tip**: Cursor IDE automatically applies file-scoped rules when you open test or story files, guiding you with best practices!
 
 ## 🤝 Contributing
 

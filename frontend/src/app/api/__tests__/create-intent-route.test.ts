@@ -52,9 +52,18 @@ const { sharedMockPaymentIntentsCreate, sharedMockStripeInstance } = vi.hoisted(
   };
 });
 
+// Mock Stripe as a constructor class
 vi.mock('stripe', () => {
   return {
-    default: vi.fn().mockReturnValue(sharedMockStripeInstance),
+    default: class MockStripe {
+      paymentIntents: any;
+
+      constructor() {
+        this.paymentIntents = {
+          create: sharedMockPaymentIntentsCreate,
+        };
+      }
+    },
   };
 });
 
@@ -410,9 +419,10 @@ describe('API Route: /api/payments/create-intent', () => {
 
   it('should return 429 if rate limit exceeded', async () => {
     const { rateLimit } = await import('@/lib/rate-limiter');
+    const resetTime = Date.now() + 45000; // 45 seconds from now
     vi.mocked(rateLimit).mockResolvedValue({
       success: false,
-      resetMs: 45000,
+      reset: resetTime,
       headers: new Headers({ 'X-RateLimit-Remaining': '0' }),
     });
 
@@ -429,7 +439,9 @@ describe('API Route: /api/payments/create-intent', () => {
 
     expect(response.status).toBe(429);
     expect(data.error).toContain('Too many payment attempts');
-    expect(data.retryAfter).toBe(45);
+    // retryAfter should be approximately 45 seconds (allowing for small timing differences)
+    expect(data.retryAfter).toBeGreaterThanOrEqual(44);
+    expect(data.retryAfter).toBeLessThanOrEqual(46);
   });
 
   it('should handle Stripe errors gracefully', async () => {

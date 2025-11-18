@@ -18,7 +18,7 @@ import Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
-  
+
   try {
     // 1. Request validation
     const validation = await validateRequest(request, {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // 5. Get booking details
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('id, security_hold_intent_id, status')
+      .select('id, bookingNumber, customerId, security_hold_intent_id, status')
       .eq('id', bookingId)
       .single();
 
@@ -133,9 +133,39 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', bookingId);
 
-    // 11. Send notification to customer
-    // TODO: Implement email/SMS
-    // "Your $500 hold has been released. Thanks for renting with U-Dig It!"
+    // 11. Send notification email to customer
+    try {
+      const { sendSecurityHoldReleaseEmail } = await import('@/lib/email-service');
+
+      // Fetch customer info
+      const { data: customer } = await supabase
+        .from('users')
+        .select('email, firstName, lastName')
+        .eq('id', booking.customerId)
+        .single();
+
+      if (customer?.email) {
+        await sendSecurityHoldReleaseEmail({
+          email: customer.email,
+          firstName: customer.firstName || undefined,
+          bookingNumber: booking.bookingNumber,
+          amountReleased: canceledIntent.amount / 100, // Convert cents to dollars
+        });
+
+        logger.info('Security hold release email sent', {
+          component: 'release-hold-api',
+          action: 'email_sent',
+          metadata: { bookingId, email: customer.email },
+        });
+      }
+    } catch (emailError) {
+      // Don't fail the release if email fails
+      logger.warn('Failed to send hold release email (non-fatal)', {
+        component: 'release-hold-api',
+        action: 'email_error',
+        metadata: { bookingId, error: (emailError as Error)?.message || String(emailError) },
+      });
+    }
 
     logger.info('Security hold release completed', {
       component: 'release-hold-api',

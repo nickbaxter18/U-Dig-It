@@ -108,9 +108,12 @@ export async function GET(request: NextRequest) {
   const range: DateRangeKey = rangeParam ?? 'month';
 
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) {
-      return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
+
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
     const { currentStart, currentEnd, previousStart, previousEnd } = resolveDateRanges(range);
@@ -314,7 +317,7 @@ function buildChartsPayload(params: {
     revenue_generated: string | number | null;
   }>;
 }) {
-  const revenueSeries = params.revenueCurrent.map(row => {
+  const revenueSeries = params.revenueCurrent.map((row: any) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     return {
@@ -336,7 +339,7 @@ function buildChartsPayload(params: {
     { grossRevenue: 0, refundedAmount: 0, netRevenue: 0 }
   );
 
-  const revenueComparison = params.revenuePrevious.map(row => {
+  const revenueComparison = params.revenuePrevious.map((row: any) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     return {
@@ -379,7 +382,7 @@ function buildChartsPayload(params: {
     }
   }
 
-  const utilizationDetails = params.equipmentSummary.map(item => {
+  const utilizationDetails = params.equipmentSummary.map((item: any) => {
     const latestSnapshot = utilizationMap.get(item.id);
     const utilizationPct =
       latestSnapshot !== undefined

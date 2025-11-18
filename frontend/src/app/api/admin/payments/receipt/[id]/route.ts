@@ -16,7 +16,9 @@ export async function GET(
 ) {
   try {
     logger.debug?.('payments-receipt-api: incoming params', {
-      params: context?.params,
+      component: 'admin-payments-receipt',
+      action: 'request_received',
+      metadata: { id: context?.params?.id },
     });
 
     const idFromContext = context?.params?.id;

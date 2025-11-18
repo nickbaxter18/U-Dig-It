@@ -1,0 +1,157 @@
+---
+description: Bundle size monitoring and performance optimization with Size Limit
+globs: []
+alwaysApply: false
+---
+
+# Bundle Size & Performance Optimization
+
+## Before Every Deployment
+
+### ALWAYS Check Bundle Size
+Run size check before creating PRs:
+
+```bash
+pnpm size
+
+# If exceeded:
+pnpm size:why
+```
+
+## Bundle Size Limits
+
+From `.size-limit.json`:
+- **Client Bundle**: < 150 KB
+- **Main CSS**: < 30 KB
+- **Booking Flow**: < 80 KB
+- **Admin Dashboard**: < 100 KB
+
+## When Bundle Size Exceeds Limit
+
+### 1. Identify Culprit
+```bash
+pnpm size:why
+
+# Shows what's making bundles large
+```
+
+### 2. Common Solutions
+
+**Use Dynamic Imports for Large Components**
+```typescript
+// ✅ CORRECT - Lazy load heavy components
+import dynamic from 'next/dynamic';
+
+const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
+  loading: () => <Spinner />,
+  ssr: false,
+});
+
+// ❌ WRONG - Synchronous import of large component
+import { HeavyChart } from '@/components/HeavyChart';
+```
+
+**Remove Unused Dependencies**
+```bash
+pnpm knip
+# Shows unused dependencies
+
+pnpm remove unused-package
+```
+
+**Use Lighter Alternatives**
+```typescript
+// ✅ CORRECT - Use date-fns (lighter)
+import { format } from 'date-fns';
+
+// ❌ WRONG - moment.js (heavy)
+import moment from 'moment';
+```
+
+**Tree-shake Imports**
+```typescript
+// ✅ CORRECT - Import only what you need
+import { formatDate } from 'date-fns/formatDate';
+
+// ❌ WRONG - Import entire library
+import * as dateFns from 'date-fns';
+```
+
+## Performance Budget Rules
+
+### Image Optimization
+```typescript
+// ✅ CORRECT - Use Next.js Image
+import Image from 'next/image';
+
+<Image
+  src="/kubota.png"
+  alt="Kubota SVL-75"
+  width={800}
+  height={600}
+  loading="lazy"
+/>
+
+// ❌ WRONG - Regular img tag
+<img src="/kubota.png" alt="Kubota SVL-75" />
+```
+
+### Code Splitting by Route
+```typescript
+// Next.js does this automatically for pages/
+// But for large components within pages, use dynamic imports
+
+// ✅ CORRECT
+const AdminDashboard = dynamic(() => import('@/components/AdminDashboard'));
+
+// ❌ WRONG - Large component imported synchronously
+import { AdminDashboard } from '@/components/AdminDashboard';
+```
+
+### Memoization
+```typescript
+// ✅ CORRECT - Memoize expensive calculations
+import { useMemo } from 'react';
+
+const expensiveValue = useMemo(() => {
+  return calculateComplexValue(data);
+}, [data]);
+
+// ❌ WRONG - Calculate on every render
+const expensiveValue = calculateComplexValue(data);
+```
+
+## Monitoring Commands
+
+```bash
+# Check current sizes
+pnpm size
+
+# Analyze bundle contents
+pnpm size:why
+
+# Full Next.js bundle analyzer
+pnpm analyze
+
+# Lighthouse performance test
+pnpm test:performance
+```
+
+## CI/CD Integration
+
+Size Limit runs in CI and fails builds if limits exceeded.
+
+## Reference Files
+
+@frontend/.size-limit.json
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+
+## Key Rules
+
+1. **Check before PR** - Run `pnpm size`
+2. **Dynamic imports** - For components > 50 KB
+3. **Remove unused** - Run `pnpm knip` weekly
+4. **Lighter alternatives** - Choose small libraries
+5. **Memoize expensive** - Use `useMemo` for calculations
+6. **Optimize images** - Use Next.js Image component
+7. **Tree-shake imports** - Import only what you need

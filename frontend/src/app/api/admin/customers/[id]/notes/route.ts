@@ -10,8 +10,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('customer_notes')
@@ -66,8 +77,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = customerNoteCreateSchema.parse(await request.json());
 
@@ -75,7 +103,7 @@ export async function POST(
       .from('customer_notes')
       .insert({
         customer_id: params.id,
-        admin_id: user.id,
+        admin_id: user?.id || 'unknown',
         note: payload.note,
         type: payload.type ?? 'info',
         visibility: payload.visibility ?? 'internal',
@@ -89,7 +117,7 @@ export async function POST(
         {
           component: 'admin-customer-notes',
           action: 'create_failed',
-          metadata: { customerId: params.id, adminId: user.id },
+          metadata: { customerId: params.id, adminId: user?.id || 'unknown' },
         },
         insertError ?? new Error('Missing note data')
       );
@@ -107,14 +135,14 @@ export async function POST(
       occurred_at: new Date().toISOString(),
       metadata: {
         type: note.type,
-        createdBy: user.id,
+        createdBy: user?.id || 'unknown',
       },
     });
 
     logger.info('Customer note created', {
       component: 'admin-customer-notes',
       action: 'note_created',
-      metadata: { customerId: params.id, noteId: note.id, adminId: user.id },
+      metadata: { customerId: params.id, noteId: note.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ note });

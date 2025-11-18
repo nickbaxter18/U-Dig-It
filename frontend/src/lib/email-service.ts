@@ -460,71 +460,73 @@ export async function sendSpinWinnerEmail(
   email: string,
   prizeAmount: number,
   promoCode: string,
-  expiresAt: Date
+  expiresAt: Date,
+  sessionId?: string,
+  firstName?: string
 ) {
   const formattedAmount = `$${prizeAmount.toFixed(0)}`;
   const safeAmount = escapeHtml(formattedAmount);
   const safePromoCode = escapeHtml(promoCode);
   const expiresText = formatEmailDateTime(expiresAt);
   const safeExpiresText = escapeHtml(expiresText);
+  const greetingName = firstName ? escapeHtml(firstName) : 'there';
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-  const detailPath = `${appUrl}/dashboard/promotions/${promoCode.toLowerCase()}`;
   const bookingPath = `${appUrl}/book?code=${promoCode}`;
-  const safeDetailPath = escapeHtml(detailPath);
   const safeBookingPath = escapeHtml(bookingPath);
 
   const bodyHtml = `
     <div style="margin:0 0 24px; padding:22px 24px; border-radius:16px; background:#ecfdf5; border-left:4px solid #10b981;">
       <p style="margin:0 0 8px; font-size:15px; font-weight:600; color:#047857;">🎉 Congratulations!</p>
-      <p style="margin:0; font-size:18px; font-weight:700; color:#065f46;">You just unlocked ${safeAmount} off your next rental.</p>
+      <p style="margin:0; font-size:18px; font-weight:700; color:#065f46;">You won ${safeAmount} off your rental!</p>
     </div>
     <div style="margin:0 0 24px; padding:22px 24px; border-radius:16px; background:#eff6ff; border-left:4px solid #3b82f6;">
       <p style="margin:0 0 10px; font-size:12px; letter-spacing:0.24em; text-transform:uppercase; color:#1d4ed8;">Promo Code</p>
-      <p style="margin:0; font-size:32px; font-weight:800; letter-spacing:0.35em; color:#1e3a8a;">${safePromoCode}</p>
-      <p style="margin:12px 0 0; font-size:13px; color:#1e3a8a;">Expires on <strong>${safeExpiresText}</strong></p>
-      <p style="margin:12px 0 0; font-size:13px; color:#1e3a8a;">View your promotion to copy the code instantly and apply it at checkout.</p>
-      <div style="margin:18px 0 0;">
-        <a href="${safeDetailPath}" style="display:inline-block; padding:12px 28px; border-radius:999px; background:#3b82f6; color:#ffffff; font-weight:600; text-decoration:none;">🔐 View My Promo Code</a>
+      <p style="margin:0; font-size:30px; font-weight:800; letter-spacing:0.35em; color:#1e3a8a;">${safePromoCode}</p>
+      <p style="margin:10px 0 0; font-size:13px; color:#1e3a8a;">Expires <strong>${safeExpiresText}</strong></p>
+      <div style="margin:16px 0 0;">
+        <a href="${safeBookingPath}" style="display:inline-block; padding:11px 26px; border-radius:999px; background:#3b82f6; color:#ffffff; font-weight:600; text-decoration:none;">Book Now & Save ${safeAmount} →</a>
       </div>
     </div>
     <div style="margin:0 0 24px; padding:20px 22px; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff;">
-      <p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#047857;">Redeem in three easy steps</p>
+      <p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#047857;">How to use your discount</p>
       <ol style="margin:0; padding-left:20px; color:#1f2937; line-height:1.8; font-size:13px;">
-        <li>Visit our booking portal and choose the equipment you need.</li>
-        <li>Enter code <strong>${safePromoCode}</strong> during checkout.</li>
-        <li>Complete your reservation — the ${safeAmount} savings apply automatically.</li>
+        <li>Click "Book Now" above or visit our booking portal.</li>
+        <li>Select your equipment and rental dates.</li>
+        <li>Enter code <strong>${safePromoCode}</strong> at checkout.</li>
+        <li>Your ${safeAmount} discount will be applied automatically!</li>
       </ol>
     </div>
-    <div style="margin:0 0 24px; text-align:center;">
-      <a href="${safeBookingPath}" style="display:inline-block; padding:12px 28px; border-radius:999px; border:1px solid #047857; color:#047857; font-weight:600; text-decoration:none;">Start a booking now →</a>
-    </div>
-    <div style="margin:0 0 24px; padding:18px 22px; border-radius:14px; background:#fef3c7; border-left:4px solid #f59e0b; color:#92400e;">
-      <strong>Need a hand?</strong> Reply to this email or call <a href="tel:+15066431575" style="color:#92400e; text-decoration:underline;">(506) 643-1575</a> and we’ll take care of it.
+    <div style="margin:0 0 24px; padding:18px 22px; border-radius:14px; background:#ecfdf5; border-left:4px solid #10b981; color:#047857;">
+      <strong>Need assistance?</strong> Reply to this email or call <a href="tel:+15066431575" style="color:#047857; text-decoration:underline;">(506) 643-1575</a>. We're ready to help.
     </div>
   `;
 
   const html = renderEmailLayout({
-    headline: 'You Won a Discount!',
-    previewText: `Enjoy ${formattedAmount} off your next rental`,
-    accentColor: '#16a34a',
+    headline: '🎉 You Won!',
+    previewText: `Congratulations! You won ${formattedAmount} off your rental.`,
+    accentColor: '#10b981',
     bodyHtml,
-    tagLine: 'Professional Equipment Rentals • Promotional Offer',
+    tagLine: 'Professional Equipment Rentals • Spin-to-Win Winner',
   });
 
   const textLines = [
-    `🎉 You Won ${formattedAmount} OFF Your Next Rental!`,
+    `🎉 Congratulations! You Won ${formattedAmount} Off Your Rental!`,
+    '',
+    `Hi ${greetingName},`,
+    '',
+    `You've won ${formattedAmount} off your next equipment rental!`,
     '',
     `Promo Code: ${promoCode}`,
     `Expires: ${expiresText}`,
     '',
-    'Redeem in three easy steps:',
-    '1. Visit the booking portal and choose your equipment.',
-    `2. Enter code ${promoCode} during checkout.`,
-    `3. Complete your reservation to save ${formattedAmount}.`,
+    'How to use your discount:',
+    '1. Visit our booking portal',
+    `2. Select your equipment and dates`,
+    `3. Enter code ${promoCode} at checkout`,
+    `4. Your ${formattedAmount} discount will be applied automatically!`,
     '',
-    `View promo details: ${detailPath}`,
-    `Start a booking now: ${bookingPath}`,
+    `Book now: ${bookingPath}`,
     '',
     'Need help? Call (506) 643-1575 or reply to this email.',
   ];
@@ -535,7 +537,7 @@ export async function sendSpinWinnerEmail(
       email: FROM_EMAIL,
       name: FROM_NAME,
     },
-    subject: `🎉 You Won ${formattedAmount} OFF Your Next Rental!`,
+    subject: `🎉 You Won ${formattedAmount} Off - Use Within 48 Hours!`,
     html,
     text: textLines.join('\n'),
   };
@@ -544,22 +546,22 @@ export async function sendSpinWinnerEmail(
     await sgMail.send(msg);
     logger.info('Spin-to-Win winner email sent', {
       component: 'email-service',
-      action: 'spin_winner_sent',
-      metadata: { to: email, prizeAmount, promoCode },
+      action: 'spin_winner_email_sent',
+      metadata: { to: email, prizeAmount, promoCode, sessionId },
     });
     return { success: true };
   } catch (error) {
     logger.error(
-      'Failed to send winner notification',
+      'Failed to send spin winner email',
       {
         component: 'email-service',
-        action: 'spin_winner_error',
+        action: 'spin_winner_email_error',
       },
       error as Error
     );
 
     throw new Error(
-      `Failed to send winner notification: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to send spin winner email: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -1725,6 +1727,243 @@ export async function sendInvoicePaymentConfirmation(
 
     throw new Error(
       `Failed to send invoice payment confirmation: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Send security hold reminder email (48 hours before pickup)
+ */
+export async function sendSecurityHoldReminderEmail(params: {
+  email: string;
+  firstName?: string;
+  bookingNumber: string;
+  startDate: string;
+}): Promise<void> {
+  const greetingName = params.firstName ? escapeHtml(params.firstName) : 'there';
+  const startDateText = formatEmailDate(params.startDate);
+  const safeStartDate = escapeHtml(startDateText);
+  const safeBookingNumber = escapeHtml(params.bookingNumber);
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const manageUrl = `${appUrl}/booking/${params.bookingNumber}/manage`;
+  const safeManageUrl = escapeHtml(manageUrl);
+
+  const bodyHtml = `
+    <div style="margin:0 0 24px; padding:22px 24px; border-radius:16px; background:#fef3c7; border-left:4px solid #f59e0b;">
+      <p style="margin:0 0 8px; font-size:15px; font-weight:600; color:#b45309;">⏰ Important Reminder</p>
+      <p style="margin:0; font-size:18px; font-weight:700; color:#92400e;">$500 Security Hold Coming Soon</p>
+    </div>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#111827;">Hi ${greetingName},</p>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#111827;">
+      This is a friendly reminder that we'll place a <strong>$500 security hold</strong> on your payment method
+      <strong>48 hours before</strong> your equipment pickup on <strong>${safeStartDate}</strong>.
+    </p>
+    <div style="margin:0 0 24px; padding:20px 22px; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff;">
+      <p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#047857;">What to expect:</p>
+      <ul style="margin:0; padding-left:20px; color:#1f2937; line-height:1.8; font-size:13px;">
+        <li>The hold will be placed automatically 48 hours before pickup</li>
+        <li>This is an authorization hold, not a charge</li>
+        <li>The hold will be released when equipment is returned clean</li>
+        <li>If there's damage or fees, we'll only charge what's needed</li>
+      </ul>
+    </div>
+    <div style="margin:0 0 24px; padding:18px 22px; border-radius:14px; background:#eff6ff; border-left:4px solid #3b82f6; color:#1e3a8a;">
+      <p style="margin:0 0 8px; font-size:14px; font-weight:600;">📋 Booking Details</p>
+      <p style="margin:0; font-size:13px;">Booking Number: <strong>${safeBookingNumber}</strong></p>
+      <p style="margin:4px 0 0; font-size:13px;">Pickup Date: <strong>${safeStartDate}</strong></p>
+    </div>
+    <div style="text-align:center; margin:32px 0 24px;">
+      <a href="${safeManageUrl}" style="display:inline-block; padding:14px 36px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:9999px; font-weight:600; font-size:15px;">
+        View Booking Details
+      </a>
+    </div>
+    <div style="margin:0 0 24px; padding:18px 22px; border-radius:14px; background:#ecfdf5; border-left:4px solid #10b981; color:#047857;">
+      <strong>Questions?</strong> Reply to this email or call <a href="tel:+15066431575" style="color:#047857; text-decoration:underline;">(506) 643-1575</a>. We're here to help!
+    </div>
+    <p style="margin:0; font-size:14px; color:#111827;">Thank you for choosing U-Dig It Rentals!<br /><strong>The U-Dig It Rentals Team</strong></p>
+  `;
+
+  const html = renderEmailLayout({
+    headline: 'Security Hold Reminder',
+    previewText: `We'll place a $500 security hold 48 hours before your pickup on ${startDateText}.`,
+    accentColor: '#f59e0b',
+    bodyHtml,
+    tagLine: 'Professional Equipment Rentals • Security Hold Reminder',
+  });
+
+  const textLines = [
+    `Security Hold Reminder - Booking ${params.bookingNumber}`,
+    '',
+    `Hi ${params.firstName || 'there'},`,
+    '',
+    `This is a friendly reminder that we'll place a $500 security hold on your payment method 48 hours before your equipment pickup on ${startDateText}.`,
+    '',
+    'What to expect:',
+    '- The hold will be placed automatically 48 hours before pickup',
+    '- This is an authorization hold, not a charge',
+    '- The hold will be released when equipment is returned clean',
+    '- If there\'s damage or fees, we\'ll only charge what\'s needed',
+    '',
+    `Booking Number: ${params.bookingNumber}`,
+    `Pickup Date: ${startDateText}`,
+    '',
+    `View booking details: ${manageUrl}`,
+    '',
+    'Questions? Call (506) 643-1575 or reply to this email.',
+    '',
+    'Thank you for choosing U-Dig It Rentals!',
+    'The U-Dig It Rentals Team',
+  ];
+
+  const msg = {
+    to: params.email,
+    from: {
+      email: FROM_EMAIL,
+      name: FROM_NAME,
+    },
+    subject: `⏰ Reminder: $500 Security Hold Coming Soon - Booking ${params.bookingNumber}`,
+    html,
+    text: textLines.join('\n'),
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info('Security hold reminder email sent', {
+      component: 'email-service',
+      action: 'security_hold_reminder_sent',
+      metadata: {
+        bookingNumber: params.bookingNumber,
+        email: params.email,
+        startDate: params.startDate,
+      },
+    });
+  } catch (error) {
+    logger.error(
+      'Failed to send security hold reminder email',
+      {
+        component: 'email-service',
+        action: 'security_hold_reminder_error',
+      },
+      error as Error
+    );
+    throw new Error(
+      `Failed to send security hold reminder: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+}
+
+/**
+ * Send security hold release notification email
+ */
+export async function sendSecurityHoldReleaseEmail(params: {
+  email: string;
+  firstName?: string;
+  bookingNumber: string;
+  amountReleased: number;
+}): Promise<void> {
+  const greetingName = params.firstName ? escapeHtml(params.firstName) : 'there';
+  const formattedAmount = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(params.amountReleased);
+  const safeAmount = escapeHtml(formattedAmount);
+  const safeBookingNumber = escapeHtml(params.bookingNumber);
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const manageUrl = `${appUrl}/booking/${params.bookingNumber}/manage`;
+  const safeManageUrl = escapeHtml(manageUrl);
+
+  const bodyHtml = `
+    <div style="margin:0 0 24px; padding:22px 24px; border-radius:16px; background:#ecfdf5; border-left:4px solid #10b981;">
+      <p style="margin:0 0 8px; font-size:15px; font-weight:600; color:#047857;">✅ Security Hold Released</p>
+      <p style="margin:0; font-size:18px; font-weight:700; color:#065f46;">Your ${safeAmount} hold has been released!</p>
+    </div>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#111827;">Hi ${greetingName},</p>
+    <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#111827;">
+      Great news! We've released the ${safeAmount} security hold for booking <strong>${safeBookingNumber}</strong>.
+      The authorization hold has been canceled and the funds are now available in your account.
+    </p>
+    <div style="margin:0 0 24px; padding:20px 22px; border-radius:14px; border:1px solid #e2e8f0; background:#ffffff;">
+      <p style="margin:0 0 10px; font-size:14px; font-weight:600; color:#047857;">What this means:</p>
+      <ul style="margin:0; padding-left:20px; color:#1f2937; line-height:1.8; font-size:13px;">
+        <li>The authorization hold has been canceled</li>
+        <li>Funds are available in your account (may take 1-3 business days depending on your bank)</li>
+        <li>No charges were made - equipment was returned clean</li>
+      </ul>
+    </div>
+    <div style="text-align:center; margin:32px 0 24px;">
+      <a href="${safeManageUrl}" style="display:inline-block; padding:14px 36px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:9999px; font-weight:600; font-size:15px;">
+        View Booking Details
+      </a>
+    </div>
+    <div style="margin:0 0 24px; padding:18px 22px; border-radius:14px; background:#ecfdf5; border-left:4px solid #10b981; color:#047857;">
+      <strong>Thank you!</strong> We appreciate you taking great care of our equipment. We hope to serve you again soon!
+    </div>
+    <p style="margin:0; font-size:14px; color:#111827;">Questions? Reply to this email or call <a href="tel:+15066431575" style="color:#2563eb; text-decoration:none;">(506) 643-1575</a>.</p>
+    <p style="margin:16px 0 0; font-size:14px; color:#111827;">Thank you for choosing U-Dig It Rentals!<br /><strong>The U-Dig It Rentals Team</strong></p>
+  `;
+
+  const html = renderEmailLayout({
+    headline: 'Security Hold Released',
+    previewText: `Your ${formattedAmount} security hold has been released.`,
+    accentColor: '#10b981',
+    bodyHtml,
+    tagLine: 'Professional Equipment Rentals • Hold Release Confirmation',
+  });
+
+  const textLines = [
+    `Security Hold Released - Booking ${params.bookingNumber}`,
+    '',
+    `Hi ${params.firstName || 'there'},`,
+    '',
+    `Great news! We've released the ${formattedAmount} security hold for booking ${params.bookingNumber}.`,
+    '',
+    'What this means:',
+    '- The authorization hold has been canceled',
+    '- Funds are available in your account (may take 1-3 business days)',
+    '- No charges were made - equipment was returned clean',
+    '',
+    `View booking details: ${manageUrl}`,
+    '',
+    'Thank you! We appreciate you taking great care of our equipment.',
+    '',
+    'Questions? Call (506) 643-1575 or reply to this email.',
+    '',
+    'Thank you for choosing U-Dig It Rentals!',
+    'The U-Dig It Rentals Team',
+  ];
+
+  const msg = {
+    to: params.email,
+    from: {
+      email: FROM_EMAIL,
+      name: FROM_NAME,
+    },
+    subject: `✅ Security Hold Released - ${formattedAmount} Available - Booking ${params.bookingNumber}`,
+    html,
+    text: textLines.join('\n'),
+  };
+
+  try {
+    await sgMail.send(msg);
+    logger.info('Security hold release email sent', {
+      component: 'email-service',
+      action: 'security_hold_release_sent',
+      metadata: {
+        bookingNumber: params.bookingNumber,
+        email: params.email,
+        amountReleased: params.amountReleased,
+      },
+    });
+  } catch (error) {
+    logger.error(
+      'Failed to send security hold release email',
+      {
+        component: 'email-service',
+        action: 'security_hold_release_error',
+      },
+      error as Error
+    );
+    throw new Error(
+      `Failed to send security hold release email: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }

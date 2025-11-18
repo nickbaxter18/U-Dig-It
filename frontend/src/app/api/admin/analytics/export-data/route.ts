@@ -8,8 +8,20 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+
+    const { supabase } = adminResult;
+    if (!supabase) {
+      logger.error('Supabase client unavailable for analytics export', {
+        component: 'analytics-export-api',
+        action: 'missing_client',
+      });
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { searchParams } = new URL(request.url);
     const dataType = searchParams.get('type') || 'bookings';
@@ -39,31 +51,57 @@ export async function GET(request: NextRequest) {
     let filename = '';
 
     if (dataType === 'bookings') {
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('id, bookingNumber, totalAmount, status, createdAt, startDate, endDate')
         .gte('createdAt', startDate.toISOString())
         .order('createdAt', { ascending: false });
 
+      if (bookingsError) {
+        logger.error('Failed to fetch bookings for analytics export', {
+          component: 'analytics-export-api',
+          action: 'bookings_fetch_failed',
+        });
+        return NextResponse.json({ error: 'Unable to fetch bookings' }, { status: 500 });
+      }
+
       exportData = bookings || [];
       filename = `bookings-export-${Date.now()}`;
     } else if (dataType === 'payments') {
-      const { data: payments } = await supabase
+      const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('id, amount, status, method, createdAt, bookingId')
         .gte('createdAt', startDate.toISOString())
         .order('createdAt', { ascending: false });
 
+      if (paymentsError) {
+        logger.error('Failed to fetch payments for analytics export', {
+          component: 'analytics-export-api',
+          action: 'payments_fetch_failed',
+        });
+        return NextResponse.json({ error: 'Unable to fetch payments' }, { status: 500 });
+      }
+
       exportData = payments || [];
       filename = `payments-export-${Date.now()}`;
     } else if (dataType === 'equipment') {
-      const { data: equipment } = await supabase
+      const { data: equipment, error: equipmentError } = await supabase
         .from('equipment')
         .select('id, name, category, dailyRate, status')
         .order('name', { ascending: true });
 
+      if (equipmentError) {
+        logger.error('Failed to fetch equipment for analytics export', {
+          component: 'analytics-export-api',
+          action: 'equipment_fetch_failed',
+        });
+        return NextResponse.json({ error: 'Unable to fetch equipment' }, { status: 500 });
+      }
+
       exportData = equipment || [];
       filename = `equipment-export-${Date.now()}`;
+    } else {
+      return NextResponse.json({ error: 'Unsupported data type' }, { status: 400 });
     }
 
     if (format === 'csv') {
@@ -76,7 +114,7 @@ export async function GET(request: NextRequest) {
       const csvRows = [
         headers.join(','),
         ...exportData.map(row =>
-          headers.map(header => {
+          headers.map((header: any) => {
             const value = row[header];
             return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
           }).join(',')
@@ -88,7 +126,7 @@ export async function GET(request: NextRequest) {
       logger.info('Data exported successfully', {
         component: 'analytics-export-api',
         action: 'export_data',
-        metadata: { dataType, format, recordCount: exportData.length, userId: supabase.auth.getUser().data.user?.id }
+        metadata: { dataType, format, recordCount: exportData.length, userId: user?.id || 'unknown' }
       });
 
       return new NextResponse(csv, {
@@ -102,7 +140,7 @@ export async function GET(request: NextRequest) {
       logger.info('Data exported successfully', {
         component: 'analytics-export-api',
         action: 'export_data',
-        metadata: { dataType, format, recordCount: exportData.length, userId: supabase.auth.getUser().data.user?.id }
+        metadata: { dataType, format, recordCount: exportData.length, userId: user?.id || 'unknown' }
       });
 
       return NextResponse.json({
@@ -132,4 +170,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

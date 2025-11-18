@@ -56,6 +56,11 @@ const nextConfig = {
     ],
     // Enable optimized CSS loading
     optimizeCss: true,
+
+    // Enable Turbopack filesystem caching for faster compile times across restarts
+    // This is MUCH better than manually clearing .next on every start
+    // Reference: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackFileSystemCache
+    turbopackFileSystemCacheForDev: true,
   },
 
   // Enable experimental features for better Supabase integration

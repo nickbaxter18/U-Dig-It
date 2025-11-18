@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const requestValidation = await validateRequest(request.clone(), {
+    const requestValidation = await validateRequest(request, {
       maxSize: 128 * 1024, // 128KB for booking payloads
       allowedContentTypes: ['application/json'],
     });
@@ -101,13 +101,28 @@ export async function POST(request: NextRequest) {
       return requestValidation.error!;
     }
 
+    const rawBody = await request.json();
     const parsedBody = bookingSchema.parse(rawBody) as BookingPayload;
     const sanitized = sanitizeBookingPayload(parsedBody);
 
     const startDate = new Date(sanitized.startDate);
     const endDate = new Date(sanitized.endDate);
 
-    validateDates(startDate, endDate);
+    // Validate dates - catch validation errors and return 400
+    try {
+      validateDates(startDate, endDate);
+    } catch (error) {
+      if (error instanceof Error) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: error.message,
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
 
     const rentalDays = calculateRentalDays(startDate, endDate);
     if (rentalDays > MAX_RENTAL_DAYS) {
@@ -283,6 +298,94 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Sanitize booking payload
+ */
+function sanitizeBookingPayload(payload: BookingPayload): SanitizedBookingPayload {
+  return {
+    ...payload,
+    equipmentId: sanitizeBookingID(payload.equipmentId),
+    startDate: sanitizeTextInput(payload.startDate, 50),
+    endDate: sanitizeTextInput(payload.endDate, 50),
+    deliveryAddress: {
+      ...payload.deliveryAddress,
+      street: sanitizeAddress(payload.deliveryAddress.street),
+      city: sanitizeTextInput(payload.deliveryAddress.city, 100),
+      postalCode: sanitizePostalCode(payload.deliveryAddress.postalCode),
+      province: sanitizeTextInput(payload.deliveryAddress.province, 50),
+    },
+    customerInfo: payload.customerInfo ? {
+      ...payload.customerInfo,
+      firstName: sanitizeTextInput(payload.customerInfo.firstName, 100),
+      lastName: sanitizeTextInput(payload.customerInfo.lastName, 100),
+      email: sanitizeEmail(payload.customerInfo.email),
+      phone: sanitizePhone(payload.customerInfo.phone),
+      company: payload.customerInfo.company ? sanitizeTextInput(payload.customerInfo.company, 200) : undefined,
+    } : undefined,
+    notes: payload.notes ? sanitizeTextInput(payload.notes, MAX_NOTES_LENGTH) : undefined,
+  };
+}
+
+/**
+ * Validate booking dates
+ */
+function validateDates(startDate: Date, endDate: Date): void {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (startDate < today) {
+    throw new Error('Start date cannot be in the past');
+  }
+
+  if (endDate <= startDate) {
+    throw new Error('End date must be after start date');
+  }
+}
+
+/**
+ * Build booking insert payload
+ */
+function buildBookingInsert(params: {
+  sanitized: SanitizedBookingPayload;
+  pricing: ReturnType<typeof calculateBookingPricing>;
+  equipmentId: string;
+  userId: string;
+}): TablesInsert<'bookings'> {
+  const { sanitized, pricing, equipmentId, userId } = params;
+
+  // Generate booking number
+  const bookingNumber = `UDR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+
+  return {
+    bookingNumber,
+    dailyRate: 0,
+    weeklyRate: 0,
+    monthlyRate: 0,
+    securityDeposit: 0,
+    floatFee: 0,
+    equipmentId,
+    customerId: userId,
+    startDate: sanitized.startDate,
+    endDate: sanitized.endDate,
+    deliveryAddress: sanitized.deliveryAddress.street,
+    deliveryCity: sanitized.deliveryAddress.city,
+    deliveryProvince: sanitized.deliveryAddress.province,
+    deliveryPostalCode: sanitized.deliveryAddress.postalCode,
+    distanceKm: sanitized.deliveryAddress.distanceKm ?? null,
+    subtotal: pricing.subtotal,
+    taxes: pricing.taxes,
+    deliveryFee: pricing.deliveryFee,
+    totalAmount: pricing.total,
+    depositAmount: pricing.deposit,
+    status: 'pending',
+    type: 'delivery',
+    specialInstructions: sanitized.notes ?? null,
+    couponCode: sanitized.coupon?.code ?? null,
+    couponType: sanitized.coupon?.type ?? null,
+    couponValue: sanitized.coupon?.value ?? null,
+  } as TablesInsert<'bookings'>;
 }
 
 // Handle GET requests (for testing)

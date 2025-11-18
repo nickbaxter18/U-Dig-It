@@ -13,8 +13,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('customer_tag_members')
@@ -70,8 +81,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = customerTagAssignSchema.parse(await request.json());
 
@@ -80,7 +108,7 @@ export async function POST(
       .upsert({
         customer_id: params.id,
         tag_id: payload.tagId,
-        assigned_by: user.id,
+        assigned_by: user?.id || 'unknown',
         assigned_at: new Date().toISOString(),
       });
 
@@ -90,7 +118,7 @@ export async function POST(
         {
           component: 'admin-customer-tags',
           action: 'assign_failed',
-          metadata: { customerId: params.id, tagId: payload.tagId, adminId: user.id },
+          metadata: { customerId: params.id, tagId: payload.tagId, adminId: user?.id || 'unknown' },
         },
         insertError
       );
@@ -103,7 +131,7 @@ export async function POST(
     logger.info('Customer tag assigned', {
       component: 'admin-customer-tags',
       action: 'tag_assigned',
-      metadata: { customerId: params.id, tagId: payload.tagId, adminId: user.id },
+      metadata: { customerId: params.id, tagId: payload.tagId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ success: true });
@@ -133,8 +161,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = customerTagRemoveSchema.parse(await request.json());
 
@@ -150,7 +195,7 @@ export async function DELETE(
         {
           component: 'admin-customer-tags',
           action: 'remove_failed',
-          metadata: { customerId: params.id, tagId: payload.tagId, adminId: user.id },
+          metadata: { customerId: params.id, tagId: payload.tagId, adminId: user?.id || 'unknown' },
         },
         deleteError
       );
@@ -163,7 +208,7 @@ export async function DELETE(
     logger.info('Customer tag removed', {
       component: 'admin-customer-tags',
       action: 'tag_removed',
-      metadata: { customerId: params.id, tagId: payload.tagId, adminId: user.id },
+      metadata: { customerId: params.id, tagId: payload.tagId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ success: true });

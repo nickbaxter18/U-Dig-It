@@ -1,5 +1,5 @@
 ---
-description: "Security compliance requirements, incident response, payment security, and Snyk integration"
+description: "Security compliance requirements, incident response, payment security, and vulnerability management"
 alwaysApply: false
 globs: ["**/payment/**/*", "**/stripe/**/*", "**/security/**/*"]
 contextFiles:
@@ -15,33 +15,28 @@ Security compliance requirements, incident response protocols, payment security,
 
 ---
 
-## Snyk Security Integration
+## Security Review Process
 
-### Mandatory Scanning
-```bash
-# ✅ ALWAYS run Snyk scan for new code
-snyk_code_scan({ path: "/absolute/path/to/new/code" })
+### Manual Security Review
+Security issues should be identified through:
+- Code review
+- Static analysis (ESLint security plugins)
+- Dependency audits (`pnpm audit`)
+- Manual security testing
 
-# ✅ Scan after dependencies added
-snyk_sca_scan({ path: "/absolute/path/to/project" })
-
-# ✅ Container security (if applicable)
-snyk_container_scan({ image: "my-image:v1" })
-```
-
-### Scan Workflow
-1. **Code changes**: Run `snyk_code_scan`
+### Review Workflow
+1. **Code changes**: Review code for security patterns
 2. **Fix issues**: Address vulnerabilities found
-3. **Re-scan**: Verify fixes worked
+3. **Verify fixes**: Test security fixes
 4. **Repeat**: Until no new issues
 
 ### Security Issue Handling
 ```typescript
-// ✅ If Snyk finds issues:
-// 1. Review severity (critical, high, medium, low)
-// 2. Fix critical/high immediately
+// ✅ Security review process:
+// 1. Review code for common vulnerabilities
+// 2. Fix critical/high issues immediately
 // 3. Plan medium/low fixes
-// 4. Re-scan to verify
+// 4. Verify fixes work
 // 5. Document any accepted risks
 ```
 
@@ -70,7 +65,7 @@ WHERE created_at < NOW() - INTERVAL '2 years';
 ## Incident Response
 
 ### Security Incident Protocol
-1. **Detect**: Monitor logs, alerts, Snyk scans
+1. **Detect**: Monitor logs, alerts, security reviews
 2. **Contain**: Isolate affected systems
 3. **Investigate**: Analyze attack vector
 4. **Remediate**: Fix vulnerability
@@ -153,9 +148,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // In browser code!
 ## ✅ Security Compliance Checklist
 
 Code Changes:
-- [ ] Snyk scan passed (`snyk_code_scan`)
+- [ ] Security review completed
 - [ ] No secrets in code
 - [ ] Audit trail created
+- [ ] Input validation implemented
+- [ ] Authentication/authorization verified
 
 Data Handling:
 - [ ] PII encrypted
@@ -164,13 +161,13 @@ Data Handling:
 
 Dependencies:
 - [ ] `pnpm audit` clean
-- [ ] Snyk SCA scan passed
 - [ ] No critical vulnerabilities
 - [ ] Dependencies up to date
+- [ ] Known CVEs reviewed
 
 ---
 
 **Remember**:
-- 🔍 **Snyk scan ALWAYS**
+- 🔍 **Security review ALWAYS**
 - 🚨 **Monitor CONTINUOUSLY**
 - 📋 **Compliance is mandatory**

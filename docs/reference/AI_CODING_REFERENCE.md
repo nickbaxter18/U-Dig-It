@@ -332,6 +332,7 @@ pnpm supabase:reset
 
 ## 📚 Key Files to Reference
 
+### Core Utilities
 - **Supabase Types**: `supabase/types.ts` (auto-generated)
 - **Supabase Client**: `frontend/src/lib/supabase/client.ts`
 - **Supabase Server**: `frontend/src/lib/supabase/server.ts`
@@ -339,6 +340,12 @@ pnpm supabase:reset
 - **Rate Limiter**: `frontend/src/lib/rate-limiter.ts`
 - **Input Sanitizer**: `frontend/src/lib/input-sanitizer.ts`
 - **Utils**: `frontend/src/lib/utils.ts`
+
+### Reference Documents
+- **Coding Savant Memories**: `docs/reference/CODING_SAVANT_MEMORIES.md` - Codebase-specific patterns and rules
+- **Quick Cheat Sheet**: `docs/reference/CODING_SAVANT_CHEAT_SHEET.md` - One-page quick reference
+- **Business Logic Patterns**: `docs/reference/BUSINESS_LOGIC_PATTERNS.md` - Booking, pricing, payment workflows
+- **Error Codes**: `docs/reference/ERROR_CODES.md` - Standardized error handling
 
 ---
 

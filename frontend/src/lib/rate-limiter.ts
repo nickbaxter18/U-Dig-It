@@ -135,15 +135,19 @@ function initializeRateLimitPresetMonitor() {
   if (!previousSignature) {
     logger.info('Rate limiter presets initialized', {
       component: 'rate-limiter',
-      signature: RATE_LIMIT_PRESET_SIGNATURE,
-      presets: RateLimitPresets,
+      metadata: {
+        signature: RATE_LIMIT_PRESET_SIGNATURE,
+        presets: RateLimitPresets,
+      },
     });
   } else if (previousSignature !== RATE_LIMIT_PRESET_SIGNATURE) {
     logger.warn('Rate limiter presets signature changed during runtime', {
       component: 'rate-limiter',
-      previousSignature,
-      signature: RATE_LIMIT_PRESET_SIGNATURE,
-      presets: RateLimitPresets,
+      metadata: {
+        previousSignature,
+        signature: RATE_LIMIT_PRESET_SIGNATURE,
+        presets: RateLimitPresets,
+      },
     });
   }
 

@@ -17,13 +17,13 @@ import { checkAndCompleteBookingIfReady } from '@/lib/check-and-complete-booking
 import { sendInvoicePaymentConfirmation } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
 import {
-  broadcastInAppNotificationToAdmins,
-  createInAppNotification,
+    broadcastInAppNotificationToAdmins,
+    createInAppNotification,
 } from '@/lib/notification-service';
 import {
-  createStripeClient,
-  getStripeSecretKey,
-  getStripeWebhookSecret,
+    createStripeClient,
+    getStripeSecretKey,
+    getStripeWebhookSecret,
 } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
 import { formatCurrency } from '@/lib/utils';
@@ -97,8 +97,7 @@ async function generateSignedContractUrl(
           path,
           error: error?.message,
         },
-      },
-      error ?? undefined
+      }
     );
   }
 
@@ -208,6 +207,18 @@ export async function POST(request: NextRequest) {
         await handleDisputeUpdated(event.data.object as Stripe.Dispute, supabase);
         break;
 
+      case 'payout.paid':
+        await handlePayoutPaid(event.data.object as Stripe.Payout, supabase);
+        break;
+
+      case 'payout.failed':
+        await handlePayoutFailed(event.data.object as Stripe.Payout, supabase);
+        break;
+
+      case 'payout.created':
+        await handlePayoutCreated(event.data.object as Stripe.Payout, supabase);
+        break;
+
       default:
         logger.info('Unhandled webhook event type', {
           component: 'stripe-webhook',
@@ -269,9 +280,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     metadata: { paymentId, sessionId: session.id },
   });
 
+  const sessionData = session as any;
   const processedAt =
-    session.status_transitions?.paid_at != null
-      ? new Date(session.status_transitions.paid_at * 1000).toISOString()
+    sessionData.status_transitions?.paid_at != null
+      ? new Date(sessionData.status_transitions.paid_at * 1000).toISOString()
       : new Date().toISOString();
 
   const metadata = {
@@ -828,6 +840,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: any) {
   }
 
   // Submit evidence to Stripe
+  const stripe = await getStripeInstance();
   try {
     await stripe.disputes.update(dispute.id, { evidence });
 
@@ -903,5 +916,195 @@ async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: any) {
     });
 
     // TODO: Record in financial_transactions as a loss
+  }
+}
+
+/**
+ * Handle payout.paid
+ * Payout successfully transferred to bank account
+ */
+async function handlePayoutPaid(payout: Stripe.Payout, supabase: any) {
+  logger.info('Payout paid', {
+    component: 'stripe-webhook',
+    action: 'payout_paid',
+    metadata: {
+      payoutId: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency,
+      arrivalDate: payout.arrival_date,
+    },
+  });
+
+  // Update or create payout reconciliation record
+  const { error: upsertError } = await supabase
+    .from('payout_reconciliations')
+    .upsert(
+      {
+        stripe_payout_id: payout.id,
+        amount: payout.amount / 100,
+        currency: payout.currency?.toUpperCase() ?? 'CAD',
+        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+        status: 'pending', // Will be reconciled manually or via cron
+        details: {
+          stripeStatus: payout.status,
+          automatic: payout.automatic,
+          balanceTransaction: payout.balance_transaction,
+          method: payout.method,
+          metadata: payout.metadata ?? {},
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_payout_id' }
+    );
+
+  if (upsertError) {
+    logger.error(
+      'Failed to update payout reconciliation',
+      {
+        component: 'stripe-webhook',
+        action: 'payout_reconciliation_failed',
+        metadata: { payoutId: payout.id },
+      },
+      upsertError
+    );
+  } else {
+    // Notify admins about successful payout
+    await broadcastInAppNotificationToAdmins({
+      supabase,
+      title: 'Payout Completed',
+      message: `Payout of ${formatCurrency(payout.amount / 100, payout.currency?.toUpperCase() ?? 'CAD')} has been transferred to your bank account.`,
+      category: 'payment',
+      priority: 'medium',
+      actionUrl: `/admin/payments?tab=reconciliation&payout=${payout.id}`,
+      ctaLabel: 'View Payout',
+      metadata: {
+        payoutId: payout.id,
+        amount: payout.amount / 100,
+        currency: payout.currency,
+      },
+    });
+  }
+}
+
+/**
+ * Handle payout.failed
+ * Payout failed to transfer
+ */
+async function handlePayoutFailed(payout: Stripe.Payout, supabase: any) {
+  logger.error('Payout failed', {
+    component: 'stripe-webhook',
+    action: 'payout_failed',
+    metadata: {
+      payoutId: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency,
+      failureCode: payout.failure_code,
+      failureMessage: payout.failure_message,
+    },
+  });
+
+  // Update payout reconciliation record
+  const { error: upsertError } = await supabase
+    .from('payout_reconciliations')
+    .upsert(
+      {
+        stripe_payout_id: payout.id,
+        amount: payout.amount / 100,
+        currency: payout.currency?.toUpperCase() ?? 'CAD',
+        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+        status: 'discrepancy', // Failed payouts are discrepancies
+        details: {
+          stripeStatus: payout.status,
+          automatic: payout.automatic,
+          balanceTransaction: payout.balance_transaction,
+          failureCode: payout.failure_code,
+          failureMessage: payout.failure_message,
+          method: payout.method,
+          metadata: payout.metadata ?? {},
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_payout_id' }
+    );
+
+  if (upsertError) {
+    logger.error(
+      'Failed to update payout reconciliation',
+      {
+        component: 'stripe-webhook',
+        action: 'payout_reconciliation_failed',
+        metadata: { payoutId: payout.id },
+      },
+      upsertError
+    );
+  } else {
+    // Alert admins about failed payout
+    await broadcastInAppNotificationToAdmins({
+      supabase,
+      title: '⚠️ Payout Failed',
+      message: `Payout of ${formatCurrency(payout.amount / 100, payout.currency?.toUpperCase() ?? 'CAD')} failed: ${payout.failure_message || payout.failure_code || 'Unknown error'}`,
+      category: 'payment',
+      priority: 'high',
+      actionUrl: `/admin/payments?tab=reconciliation&payout=${payout.id}`,
+      ctaLabel: 'View Details',
+      metadata: {
+        payoutId: payout.id,
+        amount: payout.amount / 100,
+        failureCode: payout.failure_code,
+        failureMessage: payout.failure_message,
+      },
+    });
+  }
+}
+
+/**
+ * Handle payout.created
+ * New payout created (scheduled or manual)
+ */
+async function handlePayoutCreated(payout: Stripe.Payout, supabase: any) {
+  logger.info('Payout created', {
+    component: 'stripe-webhook',
+    action: 'payout_created',
+    metadata: {
+      payoutId: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency,
+      arrivalDate: payout.arrival_date,
+      automatic: payout.automatic,
+    },
+  });
+
+  // Create payout reconciliation record
+  const { error: upsertError } = await supabase
+    .from('payout_reconciliations')
+    .upsert(
+      {
+        stripe_payout_id: payout.id,
+        amount: payout.amount / 100,
+        currency: payout.currency?.toUpperCase() ?? 'CAD',
+        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+        status: 'pending',
+        details: {
+          stripeStatus: payout.status,
+          automatic: payout.automatic,
+          balanceTransaction: payout.balance_transaction,
+          method: payout.method,
+          metadata: payout.metadata ?? {},
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'stripe_payout_id' }
+    );
+
+  if (upsertError) {
+    logger.error(
+      'Failed to create payout reconciliation',
+      {
+        component: 'stripe-webhook',
+        action: 'payout_reconciliation_failed',
+        metadata: { payoutId: payout.id },
+      },
+      upsertError
+    );
   }
 }

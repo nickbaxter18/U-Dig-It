@@ -2,6 +2,7 @@
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   AlertTriangle,
   CheckCircle,
@@ -46,6 +47,7 @@ export default function InsurancePage() {
   const [selectedDoc, setSelectedDoc] = useState<InsuranceDocument | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -218,6 +220,47 @@ export default function InsurancePage() {
     }
   };
 
+  const handleExportDocuments = async () => {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+      if (typeFilter !== 'all') {
+        params.set('type', typeFilter);
+      }
+
+      const response = await fetchWithAuth(
+        `/api/admin/insurance/export${params.toString() ? `?${params.toString()}` : ''}`
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Failed to export documents');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `insurance-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+    } catch (err) {
+      logger.error(
+        'Insurance export failed',
+        { component: 'InsurancePage', action: 'export_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to export documents');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'coi':
@@ -288,6 +331,14 @@ export default function InsurancePage() {
             Review and approve customer insurance documents for rental compliance.
           </p>
         </div>
+        <button
+          onClick={handleExportDocuments}
+          disabled={exporting}
+          className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+        </button>
       </div>
 
       {/* Error */}
@@ -659,4 +710,3 @@ export default function InsurancePage() {
     </div>
   );
 }
-

@@ -11,8 +11,19 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const filters = maintenanceAlertQuerySchema.parse(
       Object.fromEntries(new URL(request.url).searchParams)
@@ -40,9 +51,7 @@ export async function GET(request: NextRequest) {
           component: 'admin-maintenance-alerts',
           action: 'fetch_failed',
           metadata: filters,
-        },
-        fetchError
-      );
+        });
       return NextResponse.json(
         { error: 'Unable to load maintenance alerts' },
         { status: 500 }
@@ -72,8 +81,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = maintenanceAlertCreateSchema.parse(await request.json());
 
@@ -95,7 +121,7 @@ export async function POST(request: NextRequest) {
         {
           component: 'admin-maintenance-alerts',
           action: 'create_failed',
-          metadata: { equipmentId: payload.equipmentId, adminId: user.id },
+          metadata: { equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
         },
         insertError ?? new Error('Missing alert data')
       );
@@ -108,7 +134,7 @@ export async function POST(request: NextRequest) {
     logger.info('Maintenance alert created', {
       component: 'admin-maintenance-alerts',
       action: 'alert_created',
-      metadata: { alertId: data.id, equipmentId: payload.equipmentId, adminId: user.id },
+      metadata: { alertId: data.id, equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ alert: data });
@@ -137,8 +163,25 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = maintenanceAlertPatchSchema.parse(await request.json());
 
@@ -148,7 +191,7 @@ export async function PATCH(request: NextRequest) {
     if (payload.resolvedBy !== undefined) updateBody.resolved_by = payload.resolvedBy ?? null;
     if (payload.status === 'resolved' && updateBody.resolved_at === undefined) {
       updateBody.resolved_at = new Date().toISOString();
-      updateBody.resolved_by = user.id;
+      updateBody.resolved_by = user?.id || 'unknown';
     }
 
     if (Object.keys(updateBody).length === 0) {
@@ -168,7 +211,7 @@ export async function PATCH(request: NextRequest) {
         {
           component: 'admin-maintenance-alerts',
           action: 'update_failed',
-          metadata: { alertId: payload.alertId, adminId: user.id },
+          metadata: { alertId: payload.alertId, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -181,7 +224,7 @@ export async function PATCH(request: NextRequest) {
     logger.info('Maintenance alert updated', {
       component: 'admin-maintenance-alerts',
       action: 'alert_updated',
-      metadata: { alertId: payload.alertId, adminId: user.id },
+      metadata: { alertId: payload.alertId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ alert: data });

@@ -172,7 +172,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
         setStripePayments([]);
       } else {
         setStripePayments(
-          (stripeData ?? []).map(payment => ({
+          ((stripeData ?? []) as any[]).map((payment: any) => ({
             amount: Number(payment.amount ?? 0),
             status: payment.status ?? 'pending',
           }))

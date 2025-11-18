@@ -25,44 +25,46 @@ Comprehensive security protocols, threat protection, and compliance standards fo
 
 For detailed security standards, see:
 - **Security Standards**: `security-standards.mdc` - Input validation, authentication, authorization, API security
-- **Security Compliance**: `security-compliance.mdc` - Snyk integration, compliance, incident response, payment security
+- **Security Compliance**: `security-compliance.mdc` - Security review, compliance, incident response, payment security
 
 ---
 
-## Snyk Security Integration
+## Security Review Process
 
-### Mandatory Snyk Scanning
+### Mandatory Security Review
 
-**ALWAYS run Snyk scans for new code:**
+**ALWAYS review code for security issues:**
 
-1. **Run scan** for new first-party code in Snyk-supported languages
+1. **Review code** for new first-party code
    ```typescript
-   // ✅ ALWAYS scan new code
-   // Use snyk_code_scan tool for generated code
+   // ✅ ALWAYS review new code for security
+   // Check for common vulnerabilities
+   // Verify input validation
+   // Test authentication/authorization
    ```
 
-2. **Fix issues** using Snyk results context
-   - Review Snyk findings
+2. **Fix issues** found during review
+   - Review security findings
    - Fix security vulnerabilities
    - Address dependency issues
 
-3. **Rescan** after fixes
-   - Verify issues are resolved
+3. **Verify fixes** after changes
+   - Test security fixes
    - Ensure no new issues introduced
 
 4. **Repeat** until no issues found
-   - Continue scanning and fixing
-   - Don't proceed until clean scan
+   - Continue reviewing and fixing
+   - Don't proceed until security review complete
 
 **Process:**
-- Scan → Fix → Rescan → Repeat until clean
+- Review → Fix → Verify → Repeat until clean
 
 ---
 
 ## ✅ Security Checklist
 
 Code Changes:
-- [ ] **Snyk scan passed** (`snyk_code_scan`) - MANDATORY
+- [ ] **Security review completed** - MANDATORY
 - [ ] Input validation implemented
 - [ ] XSS prevention applied
 - [ ] SQL injection prevented
@@ -70,13 +72,14 @@ Code Changes:
 - [ ] Authorization checked
 - [ ] Rate limiting applied
 - [ ] Audit logging added
+- [ ] Dependencies audited (`pnpm audit`)
 
 ---
 
 **Remember**:
 - 🔒 **Security is NOT optional**
 - 🛡️ **Defense in depth**
-- 🔍 **Snyk scan ALWAYS** - Run for all new code
+- 🔍 **Security review ALWAYS** - Review all new code
 - ✅ **Validate EVERYTHING**
 - 📊 **Audit EVERYTHING**
 - 🚨 **Monitor CONTINUOUSLY**

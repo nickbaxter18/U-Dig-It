@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 import { logger } from '@/lib/logger';
 
-export const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2023-10-16';
+export const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-09-30.clover' as Stripe.LatestApiVersion;
 
 const STRIPE_TEST_FALLBACK_KEY = 'sk_test_placeholder_key_here';
 const STRIPE_TEST_FALLBACK_PUBLISHABLE_KEY = 'pk_test_placeholder_key_here';

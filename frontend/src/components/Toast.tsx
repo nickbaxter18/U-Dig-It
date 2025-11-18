@@ -83,7 +83,7 @@ export default function Toast({ message, type, duration = 5000, onClose }: Toast
 
   return (
     <div
-      className={`fixed right-4 top-4 z-50 w-full max-w-sm rounded-lg border bg-white p-4 shadow-lg transition-all duration-300 ${
+      className={`w-full max-w-sm rounded-lg border bg-white p-4 shadow-lg transition-all duration-300 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       } ${getTypeStyles()}`}
     >

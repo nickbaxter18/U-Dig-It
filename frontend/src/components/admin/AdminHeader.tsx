@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+import { RealtimeConnectionIndicator } from './RealtimeConnectionIndicator';
 import { Bell, Menu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -38,6 +39,9 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
 
         {/* Right side - Return to homepage, Notifications and user menu */}
         <div className="flex items-center space-x-4">
+          {/* Real-time Connection Indicator */}
+          <RealtimeConnectionIndicator />
+
           {/* Return to Homepage button */}
           <button
             onClick={() => router.push('/')}

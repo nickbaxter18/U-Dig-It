@@ -96,5 +96,26 @@
     "NODE_ENV": "development",
     "TERM": "xterm-256color",
     "CLICOLOR": "1"
-  }
+  },
+
+  // Disable Jest extension completely to prevent auto-running tests
+  "jest.enable": false,
+  "jest.autoRun": "off",
+  "jest.runMode": "off",
+  "jest.disabledWorkspaceFolders": [
+    "frontend",
+    "."
+  ],
+  "jest.jestCommandLine": "",
+  "jest.rootPath": "",
+  "jest.autoRevealOutput": "off",
+  "jest.showCoverageOnLoad": false,
+
+  // Enable Vitest instead (if Vitest extension is installed)
+  "vitest.enable": true,
+  "vitest.commandLine": "pnpm vitest",
+  "vitest.autoRun": "off",
+
+  // Disable test explorer auto-run
+  "testExplorer.useNativeTesting": false
 }

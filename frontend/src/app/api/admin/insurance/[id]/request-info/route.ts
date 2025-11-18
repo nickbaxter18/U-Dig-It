@@ -10,8 +10,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = insuranceRequestInfoSchema.parse(await request.json());
 
@@ -48,7 +65,7 @@ export async function POST(
     await supabase.from('insurance_activity').insert({
       insurance_document_id: params.id,
       action: 'info_requested',
-      actor_id: user.id,
+      actor_id: user?.id || 'unknown',
       details: {
         message: payload.message,
         fields: payload.requestedFields ?? [],
@@ -58,7 +75,7 @@ export async function POST(
     logger.info('Insurance info requested', {
       component: 'admin-insurance-info',
       action: 'info_requested',
-      metadata: { insuranceId: params.id, adminId: user.id },
+      metadata: { insuranceId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ insuranceDocument: document });

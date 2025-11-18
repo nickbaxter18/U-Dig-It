@@ -8,7 +8,7 @@ import {
   bookingWizardUpdateSchema,
 } from '@/lib/validators/admin/bookings';
 
-const STATUS_ORDER: Record<(typeof bookingWizardStatusEnum)['enumValues'][number], number> = {
+const STATUS_ORDER: Record<string, number> = {
   draft: 0,
   in_progress: 1,
   ready_to_commit: 2,
@@ -35,8 +35,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data: session, error: fetchError } = await supabase
       .from('booking_wizard_sessions')
@@ -76,8 +87,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error, role } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
+    if (!supabase) return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const data = bookingWizardUpdateSchema.parse(body);
@@ -104,7 +118,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Wizard session not found' }, { status: 404 });
     }
 
-    if (session.admin_id !== user.id && role !== 'super_admin') {
+    const userId = user?.id || 'unknown';
+
+    // Check if user can modify this session (owner or super_admin)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (session.admin_id !== userId && userData?.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -168,7 +191,7 @@ export async function PATCH(
     logger.info('Booking wizard session updated', {
       component: 'admin-bookings-wizard',
       action: 'session_updated',
-      metadata: { sessionId: params.id, adminId: user.id, updates: Object.keys(patch) },
+      metadata: { sessionId: params.id, adminId: user?.id || 'unknown', updates: Object.keys(patch) },
     });
 
     return NextResponse.json({ session: serializeSession(updatedSession) });

@@ -220,22 +220,39 @@ console.log('Booking created'); // NEVER
 ## 8) Frontend Startup Protocol
 
 ### Server Startup (MANDATORY)
+
+**See dedicated rules:**
+- `@frontend-startup-protocol.mdc` - Critical startup protocol (ALWAYS APPLY)
+- `@nextjs-startup-optimization.mdc` - Detailed optimization guide
+
 ```bash
-# ✅ ONLY ACCEPTABLE METHOD - Always use this script
+# ✅ CORRECT - Use optimized script (recommended)
 bash start-frontend-clean.sh
 
-# ❌ FORBIDDEN - Never use these
-pnpm run dev
-pnpm dev
-npm run dev
-next dev
+# ✅ CORRECT - Or use pnpm dev (configured to run script)
+cd frontend && pnpm dev
+
+# ❌ FORBIDDEN - Bypasses optimizations (no port cleanup, no lock handling)
+cd frontend && next dev
+
+# ⚠️ INTERNAL USE ONLY - The scripts use 'pnpm next dev' internally
+# to avoid infinite loop (pnpm dev → script → pnpm dev → script...)
+# Users should NOT call 'pnpm next dev' directly
 ```
 
-**Why**: The script ensures:
-- Port cleanup (kills processes on 3000/3001)
-- Process cleanup (terminates existing Next.js)
-- Cache cleanup (removes `.next` directory)
-- Guaranteed clean start every time
+**Why**: The optimized setup provides:
+- ⚡ **70% faster restarts** (3-5s vs 15-20s) with Turbopack caching
+- 🧹 **Automatic port cleanup** (kills processes on 3000/3001)
+- 🔄 **Process cleanup** (terminates existing Next.js)
+- 🔒 **Lock file handling** (removes stale Turbopack locks)
+- 💾 **Cache preservation** (keeps Turbopack cache for speed)
+- 🔁 **No infinite loops** (scripts call `pnpm next dev` internally)
+
+**Performance:**
+- First start: 10-15s
+- Restarts: **3-5s** (with Turbopack filesystem cache)
+
+**Reference:** `@STARTUP_OPTIMIZATION.md` for complete documentation
 
 ---
 

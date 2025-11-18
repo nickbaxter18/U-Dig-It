@@ -15,8 +15,8 @@ const payloadSchema = z.object({
   face_liveness_score: z.number().nullable().optional(),
   face_match_score: z.number().nullable().optional(),
   failure_reasons: z.array(z.string()).optional(),
-  extracted_fields: z.record(z.unknown()).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  extracted_fields: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 function verifySignature(secret: string, rawBody: string, receivedSignature: string): boolean {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       logger.warn('Invalid IDKit webhook payload', {
         component: 'id-verification',
         action: 'webhook_invalid_payload',
-        issues: result.error.flatten(),
+        metadata: { issues: result.error.flatten() },
       });
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
     logger.warn('Failed to parse IDKit webhook payload', {
       component: 'id-verification',
       action: 'webhook_parse_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+      metadata: { error: error instanceof Error ? error.message : String(error) },
+    });
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
@@ -217,8 +218,7 @@ export async function POST(request: NextRequest) {
   logger.info('Processed IDKit webhook', {
     component: 'id-verification',
     action: 'webhook_processed',
-    requestId,
-    status: parsedPayload.status,
+    metadata: { requestId, status: parsedPayload.status },
   });
 
   return NextResponse.json({ success: true });

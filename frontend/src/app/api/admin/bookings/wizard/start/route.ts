@@ -57,19 +57,36 @@ function buildInitialPayload(
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const data = bookingWizardStartSchema.parse(body);
 
     const expiresAt = new Date(Date.now() + SESSION_TIMEOUT_MINUTES * 60 * 1000).toISOString();
-    const payload = buildInitialPayload(data, user.id);
+    const payload = buildInitialPayload(data, user?.id || 'unknown');
 
     const { data: session, error: insertError } = await supabase
       .from('booking_wizard_sessions')
       .insert({
-        admin_id: user.id,
+        admin_id: user?.id || 'unknown',
         booking_id: null,
         payload,
         status: 'in_progress',
@@ -84,7 +101,7 @@ export async function POST(request: NextRequest) {
         {
           component: 'admin-bookings-wizard-start',
           action: 'create_session_failed',
-          metadata: { adminId: user.id },
+          metadata: { adminId: user?.id || 'unknown' },
         },
         insertError
       );
@@ -97,7 +114,7 @@ export async function POST(request: NextRequest) {
     logger.info('Booking wizard session created', {
       component: 'admin-bookings-wizard-start',
       action: 'session_created',
-      metadata: { adminId: user.id, sessionId: session.id },
+      metadata: { adminId: user?.id || 'unknown', sessionId: session.id },
     });
 
     return NextResponse.json({ session: serializeSession(session) });

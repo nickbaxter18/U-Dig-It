@@ -1,11 +1,137 @@
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { sendAdminEmail } from '@/lib/sendgrid';
 import { NextRequest, NextResponse } from 'next/server';
+
+const MAX_RECIPIENTS = Number(process.env.COMMUNICATIONS_MAX_RECIPIENTS ?? '500');
+
+type RecipientFilter =
+  | undefined
+  | {
+      segment?: 'all' | 'active' | 'inactive';
+      tags?: string[];
+    };
+
+interface Recipient {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
+async function getBookingCustomerIds(
+  supabase: NonNullable<Awaited<ReturnType<typeof requireAdmin>>['supabase']>
+) {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('customerId')
+    .not('customerId', 'is', null);
+
+  if (error) throw error;
+
+  const ids = new Set<string>();
+  (data ?? []).forEach(row => {
+    if (row.customerId) {
+      ids.add(row.customerId);
+    }
+  });
+  return Array.from(ids);
+}
+
+function buildNotInList(ids: string[]) {
+  return `(${ids.map(id => `"${id}"`).join(',')})`;
+}
+
+async function buildRecipientCountQuery(
+  supabase: NonNullable<Awaited<ReturnType<typeof requireAdmin>>['supabase']>,
+  filter: RecipientFilter
+) {
+  let query = supabase
+    .from('users')
+    .select('id', { count: 'exact', head: true })
+    .eq('role', 'customer');
+
+  if (filter?.segment === 'active' || filter?.segment === 'inactive') {
+    const customerIds = await getBookingCustomerIds(supabase);
+    if (filter.segment === 'active') {
+      if (customerIds.length === 0) {
+        query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else {
+        query = query.in('id', customerIds);
+      }
+    } else if (filter.segment === 'inactive') {
+      if (customerIds.length > 0) {
+        query = query.not('id', 'in', buildNotInList(customerIds));
+      }
+    }
+  }
+
+  return query;
+}
+
+async function fetchRecipients(
+  supabase: NonNullable<Awaited<ReturnType<typeof requireAdmin>>['supabase']>,
+  filter: RecipientFilter
+) {
+  let query = supabase
+    .from('users')
+    .select('id, email, firstName, lastName', { count: 'exact' })
+    .eq('role', 'customer')
+    .order('createdAt', { ascending: false })
+    .limit(MAX_RECIPIENTS + 1);
+
+  if (filter?.segment === 'active' || filter?.segment === 'inactive') {
+    const customerIds = await getBookingCustomerIds(supabase);
+    if (filter.segment === 'active') {
+      if (customerIds.length === 0) {
+        return { recipients: [], count: 0 };
+      }
+      query = query.in('id', customerIds);
+    } else if (filter.segment === 'inactive') {
+      if (customerIds.length > 0) {
+        query = query.not('id', 'in', buildNotInList(customerIds));
+      }
+    }
+  }
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+
+  if ((count ?? data?.length ?? 0) > MAX_RECIPIENTS) {
+    throw new Error(
+      `Recipient count (${count}) exceeds the maximum of ${MAX_RECIPIENTS}. Please refine your filter.`
+    );
+  }
+
+  return {
+    recipients: (data ?? []) as Recipient[],
+    count: count ?? data?.length ?? 0,
+  };
+}
+
+function applyTemplateVariables(content: string, recipient: Recipient, campaignName: string) {
+  const name = `${recipient.firstName ?? ''} ${recipient.lastName ?? ''}`.trim() || recipient.email;
+  return content
+    .replace(/\{\{customerName\}\}/gi, name)
+    .replace(/\{\{customerEmail\}\}/gi, recipient.email)
+    .replace(/\{\{campaignName\}\}/gi, campaignName);
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     // Get date range parameter
     const { searchParams } = new URL(request.url);
@@ -104,8 +230,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
+
+    if (!supabase) {
+      logger.error('Supabase client unavailable for campaign creation', {
+        component: 'communications-api',
+        action: 'missing_client',
+      });
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const {
@@ -127,47 +265,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get recipient count based on filter
-    let recipientCount = 0;
-    if (recipientFilter) {
-      // Build query based on filter
-      let query = supabase.from('users').select('id', { count: 'exact', head: true });
-
-      if (recipientFilter.segment === 'all') {
-        // All customers
-        query = query.eq('role', 'customer');
-      } else if (recipientFilter.segment === 'active') {
-        // Active customers (have bookings)
-        const { data: bookingCustomers } = await supabase
-          .from('bookings')
-          .select('customerId')
-          .limit(10000);
-
-        const customerIds = bookingCustomers?.map(b => b.customerId) || [];
-        query = query
-          .eq('role', 'customer')
-          .in('id', customerIds);
-      } else if (recipientFilter.segment === 'inactive') {
-        // Inactive customers (no bookings)
-        const { data: bookingCustomers } = await supabase
-          .from('bookings')
-          .select('customerId')
-          .limit(10000);
-
-        const customerIds = bookingCustomers?.map(b => b.customerId) || [];
-        query = query
-          .eq('role', 'customer')
-          .not('id', 'in', customerIds);
-      }
-
-      const { count } = await query;
-      recipientCount = count || 0;
+    const countQuery = await buildRecipientCountQuery(supabase, recipientFilter);
+    const { count: countedRecipients, error: countError } = await countQuery;
+    if (countError) {
+      throw countError;
     }
+    let recipientCount = countedRecipients ?? 0;
 
     // Determine status
     let status = 'draft';
-    let scheduled_at = null;
-    let sent_at = null;
+    let scheduled_at: string | null = null;
+    let sent_at: string | null = null;
 
     if (sendImmediately) {
       status = 'sending';
@@ -202,14 +310,15 @@ export async function POST(request: NextRequest) {
           name,
           subject,
           template_id: templateId,
-          html_content: htmlContent,
-          text_content: textContent,
+          html_content: finalHtmlContent,
+          text_content: finalTextContent,
           status,
-          scheduled_at: scheduledAt,
+          scheduled_at,
+          sent_at,
           recipient_filter: recipientFilter,
           send_immediately: sendImmediately,
           recipient_count: recipientCount,
-          created_by: user.id,
+          created_by: user?.id || 'unknown',
         },
       ])
       .select()
@@ -219,14 +328,145 @@ export async function POST(request: NextRequest) {
       throw new Error(`Database error: ${insertError.message}`);
     }
 
-    // If sending immediately, trigger email sending (async)
-    if (sendImmediately && recipientCount > 0) {
-      // This would trigger a background job to send emails
-      // For now, we'll just log it
-      logger.info('Campaign created for immediate sending', {
+    let deliverySummary: { sent: number; failed: number; failures: string[] } | undefined;
+    let responseStatus = newCampaign.status;
+
+    if (sendImmediately) {
+      let recipientsResult;
+      try {
+        recipientsResult = await fetchRecipients(supabase, recipientFilter);
+      } catch (recipientError: any) {
+        logger.warn('Failed to resolve recipients', {
+          component: 'communications-api',
+          action: 'recipient_resolution_failed',
+          metadata: { campaignId: newCampaign.id },
+        });
+        return NextResponse.json(
+          { error: recipientError?.message || 'Unable to build recipient list' },
+          { status: 400 }
+        );
+      }
+
+      const { recipients, count } = recipientsResult;
+      recipientCount = count;
+
+      if (recipients.length === 0) {
+        return NextResponse.json(
+          { error: 'No recipients match the selected filter.' },
+          { status: 400 }
+        );
+      }
+
+      const emailFrom = process.env.EMAIL_FROM || 'notifications@udigit.ca';
+      const emailFromName = process.env.EMAIL_FROM_NAME || 'Kubota Rentals';
+
+      let sentCount = 0;
+      const failures: string[] = [];
+
+      for (const recipient of recipients) {
+        const recipientName =
+          `${recipient.firstName ?? ''} ${recipient.lastName ?? ''}`.trim() || recipient.email;
+
+        const personalizedHtml = finalHtmlContent
+          ? applyTemplateVariables(finalHtmlContent, recipient, name)
+          : undefined;
+        const personalizedText = finalTextContent
+          ? applyTemplateVariables(finalTextContent, recipient, name)
+          : undefined;
+
+        const { data: emailLog } = await supabase
+          .from('email_logs')
+          .insert({
+            recipient_email: recipient.email,
+            recipient_name: recipientName,
+            subject,
+            status: 'queued',
+            sent_at: new Date().toISOString(),
+            metadata: {
+              campaignId: newCampaign.id,
+              recipientId: recipient.id,
+            },
+          })
+          .select()
+          .single();
+
+        try {
+          await sendAdminEmail({
+            to: recipient.email,
+            from: {
+              email: emailFrom,
+              name: emailFromName,
+            },
+            subject,
+            text: personalizedText ?? personalizedHtml ?? '',
+            html: personalizedHtml,
+          });
+
+          sentCount += 1;
+
+          if (emailLog?.id) {
+            await supabase
+              .from('email_logs')
+              .update({
+                status: 'delivered',
+                delivered_at: new Date().toISOString(),
+              })
+              .eq('id', emailLog.id);
+          }
+        } catch (sendError: any) {
+          const message =
+            sendError?.message || `Failed to send to ${recipient.email}`;
+          failures.push(`${recipient.email}: ${message}`);
+
+          if (emailLog?.id) {
+            await supabase
+              .from('email_logs')
+              .update({
+                status: 'failed',
+                failed_at: new Date().toISOString(),
+                error_message: message,
+              })
+              .eq('id', emailLog.id);
+          }
+        }
+      }
+
+      const finalStatus =
+        sentCount === 0 && failures.length > 0
+          ? 'failed'
+          : failures.length > 0
+            ? 'partial'
+            : 'sent';
+      responseStatus = finalStatus;
+
+      await supabase
+        .from('email_campaigns')
+        .update({
+          status: finalStatus,
+          sent_at: new Date().toISOString(),
+        })
+        .eq('id', newCampaign.id);
+
+      deliverySummary = {
+        sent: sentCount,
+        failed: failures.length,
+        failures: failures.slice(0, 10),
+      };
+
+      logger.info('Campaign sent immediately', {
         component: 'communications-api',
-        action: 'create_campaign_immediate',
-        metadata: { campaignId: newCampaign.id, recipientCount }
+        action: 'campaign_sent',
+        metadata: {
+          campaignId: newCampaign.id,
+          sent: sentCount,
+          failed: failures.length,
+        },
+      });
+    } else {
+      logger.info('Campaign created for scheduling', {
+        component: 'communications-api',
+        action: 'create_campaign_scheduled',
+        metadata: { campaignId: newCampaign.id, recipientCount, scheduledAt: scheduled_at },
       });
     }
 
@@ -241,11 +481,12 @@ export async function POST(request: NextRequest) {
         id: newCampaign.id,
         name: newCampaign.name,
         subject: newCampaign.subject,
-        status: newCampaign.status,
-        recipientCount: newCampaign.recipient_count,
+        status: responseStatus,
+        recipientCount,
         scheduledAt: newCampaign.scheduled_at,
-        createdAt: newCampaign.created_at
-      }
+        createdAt: newCampaign.created_at,
+      },
+      delivery: deliverySummary,
     }, { status: 201 });
   } catch (error: any) {
     logger.error('Failed to create campaign', {

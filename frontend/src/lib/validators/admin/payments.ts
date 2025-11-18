@@ -104,7 +104,7 @@ export const exportCreateSchema = z.object({
     'accounts_receivable',
     'payout_summary',
   ]),
-  filters: z.record(z.any()).optional(),
+  filters: z.record(z.string(), z.any()).optional(),
 });
 
 export const exportQuerySchema = z.object({

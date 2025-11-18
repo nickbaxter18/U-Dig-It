@@ -1,0 +1,247 @@
+---
+description: Complete development workflow using all power tools together
+globs: []
+alwaysApply: true
+---
+
+# Complete Development Workflow
+
+## Daily Development Workflow
+
+### 1. Start Development
+```bash
+cd frontend
+
+# Terminal 1: Main app (clean start)
+bash start-frontend-clean.sh
+
+# Terminal 2: Storybook (component playground)
+pnpm storybook
+
+# Terminal 3: Tests (watch mode)
+pnpm test:watch
+```
+
+### 2. Build New Feature
+
+**Step 1: Create Component in Storybook**
+```bash
+# Create ComponentName.stories.tsx
+# Define all states: default, loading, error, empty
+# Test in Storybook at http://localhost:6006
+```
+
+**Step 2: Write Tests with MSW**
+```typescript
+// ComponentName.test.tsx
+// MSW automatically mocks API calls
+// Test all user interactions
+// Verify accessibility
+```
+
+**Step 3: Integrate into App**
+```typescript
+// Import component into page/route
+// Verify works with real data
+```
+
+**Step 4: Check Bundle Size**
+```bash
+pnpm size
+
+# If exceeded:
+pnpm size:why
+# Use dynamic imports for large components
+```
+
+**Step 5: Run Quality Checks**
+```bash
+pnpm quality:fast
+# Runs: lint + type-check
+```
+
+### 3. Before Committing
+```bash
+# Run full quality check
+pnpm quality:all
+# Runs: lint + type-check + test
+
+# Check bundle size
+pnpm size
+
+# Commit (triggers automatic checks)
+git add .
+git commit -m "feat: add new component"
+
+# Husky automatically runs:
+#   ✓ Lint & Format
+#   ✓ Type Check
+```
+
+### 4. Before PR/Push
+```bash
+# Full CI check
+pnpm ci
+# Runs: quality:all + build
+
+# E2E tests for critical flows
+pnpm test:e2e
+
+# Review changes
+git diff main
+```
+
+## Weekly Maintenance
+
+### Monday Morning Checklist
+```bash
+# 1. Clean up unused code
+pnpm knip > cleanup-report.txt
+# Review and remove unused files/deps
+
+# 2. Security audit
+pnpm audit
+# Fix any vulnerabilities
+
+# 3. Check bundle sizes
+pnpm size
+# Optimize if near limits
+
+# 4. Update dependencies (carefully)
+pnpm update --interactive
+
+# 5. Run full test suite
+pnpm test:coverage
+# Ensure coverage > 80%
+```
+
+## Feature Development Checklist
+
+For every new feature:
+
+- [ ] **Storybook story created** - All component states
+- [ ] **Tests written** - Using MSW for API mocks
+- [ ] **Accessibility verified** - Axe addon in Storybook
+- [ ] **Bundle size checked** - `pnpm size` under limits
+- [ ] **Type-safe** - No TypeScript errors
+- [ ] **Security review completed** - Code reviewed for vulnerabilities
+- [ ] **Code reviewed** - PR approved
+- [ ] **E2E test added** - For critical flows
+
+## Tool Selection Guide
+
+**Use Storybook when:**
+- Building new UI components
+- Designing component variations
+- Testing visual states
+- Documenting component API
+
+**Use MSW when:**
+- Testing API interactions
+- Mocking Supabase queries
+- Testing error states
+- Running E2E tests locally
+
+**Use Size Limit when:**
+- Before deploying
+- After adding dependencies
+- Optimizing performance
+- Reviewing bundle impact
+
+**Use Knip when:**
+- Before major releases
+- After refactoring
+- Weekly cleanup
+- Reducing bundle size
+
+**Use pnpm audit when:**
+- Before production deploy
+- After dependency updates
+- Weekly security audit
+- Checking for known CVEs
+
+## Quick Commands Reference
+
+```bash
+# Development
+pnpm dev                    # Next.js dev server
+pnpm storybook              # Component playground
+pnpm test:watch             # Watch tests
+
+# Quality
+pnpm quality:fast           # Lint + Type
+pnpm quality:all            # Full check
+pnpm ci                     # Full CI pipeline
+
+# Testing
+pnpm test                   # Unit tests (MSW)
+pnpm test:e2e               # E2E tests
+pnpm test:coverage          # Coverage report
+
+# Security
+pnpm audit                  # Dependency security audit
+
+# Performance
+pnpm size                   # Bundle sizes
+pnpm size:why               # Analyze bundles
+pnpm knip                   # Unused code
+
+# Cleanup
+pnpm clean                  # Clear caches
+bash start-frontend-clean.sh # Clean restart
+```
+
+## Troubleshooting Workflow
+
+**Port conflicts:**
+```bash
+bash start-frontend-clean.sh
+```
+
+**Tests failing:**
+```bash
+pnpm clean
+pnpm install
+pnpm test
+```
+
+**Type errors:**
+```bash
+pnpm type-check:verbose
+```
+
+**Lint errors:**
+```bash
+pnpm lint:fix
+```
+
+**Bundle too large:**
+```bash
+pnpm size:why
+# Use dynamic imports
+# Remove unused dependencies
+```
+
+**Security issues:**
+```bash
+pnpm audit
+# Review and fix vulnerabilities
+# Update dependencies as needed
+```
+
+## Reference Documentation
+
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+@frontend/docs/QUICK_COMMANDS_CHEATSHEET.md
+@GODLIKE_SETUP_COMPLETE.md
+
+## Key Principles
+
+1. **Storybook first** - Build components in isolation
+2. **MSW always** - Never manually mock APIs
+3. **Test everything** - 80% coverage minimum
+4. **Check bundle size** - Before every PR
+5. **Security scan** - Automatic on commit
+6. **Clean weekly** - Run `pnpm knip`
+7. **Type-safe** - Fix TypeScript errors immediately
+8. **Document** - Update Storybook stories

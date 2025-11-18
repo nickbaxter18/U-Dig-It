@@ -1,17 +1,20 @@
 'use client';
 
 import {
-  Calendar,
-  Calendar as CalendarIcon,
-  DollarSign,
-  RefreshCw,
-  Settings,
-  Users,
+    Calendar,
+    Calendar as CalendarIcon,
+    DollarSign,
+    Download,
+    RefreshCw,
+    Settings,
+    Users,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
 import BookingTrendsChart from '@/components/admin/BookingTrendsChart';
+import { DashboardAlerts } from '@/components/admin/DashboardAlerts';
 import { DashboardChart } from '@/components/admin/DashboardChart';
 import { EquipmentStatus } from '@/components/admin/EquipmentStatus';
 import EquipmentUtilizationChart from '@/components/admin/EquipmentUtilizationChart';
@@ -20,12 +23,13 @@ import { RevenueChart } from '@/components/admin/RevenueChart';
 import { StatsCard } from '@/components/admin/StatsCard';
 
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 import type {
-  DashboardChartsPayload,
-  DashboardOverviewResponse,
-  DashboardSummary,
-  DateRangeKey,
+    DashboardChartsPayload,
+    DashboardOverviewResponse,
+    DashboardSummary,
+    DateRangeKey,
 } from '@/types/dashboard';
 
 const comparisonLabels: Record<DateRangeKey, string> = {
@@ -224,7 +228,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeKey>('month');
+  const [advancedFilters, setAdvancedFilters] = useState<{
+    dateRange?: DateRange;
+    operators?: any[];
+    multiSelects?: Record<string, string[]>;
+  }>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -310,12 +321,77 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [fetchStats, loading]);
 
+  useEffect(() => {
+    let isMounted = true;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleRealtimeChange = () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(() => {
+        fetchStats();
+      }, 500);
+    };
+
+    const channel = supabase
+      .channel('admin-dashboard-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, handleRealtimeChange)
+      .subscribe(status => {
+        if (!isMounted) return;
+        setRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      isMounted = false;
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats]);
+
   const handleRefresh = () => {
     fetchStats();
   };
 
   const handleDateRangeChange = (newDateRange: DateRangeKey) => {
     setDateRange(newDateRange);
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const response = await fetch(`/api/admin/dashboard/export?range=${dateRange}`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to export dashboard data');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `dashboard-export-${dateRange}-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+    } catch (err) {
+      logger.error(
+        'Dashboard export failed',
+        { component: 'AdminDashboard', action: 'export_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to export dashboard report');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const comparisonLabel = comparisonLabels[dateRange] ?? comparisonLabels.custom;
@@ -442,8 +518,14 @@ export default function AdminDashboard() {
         <div className="flex items-center space-x-4">
           {/* WebSocket connection indicator */}
           <div className="flex items-center space-x-2">
-            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-            <span className="text-sm text-gray-500">Connected</span>
+            <div
+              className={`h-2 w-2 rounded-full ${
+                realtimeConnected ? 'bg-green-500' : 'bg-gray-300 animate-pulse'
+              }`}
+            ></div>
+            <span className="text-sm text-gray-500">
+              {realtimeConnected ? 'Live' : 'Offline'}
+            </span>
           </div>
 
           {/* Date range selector */}
@@ -460,6 +542,16 @@ export default function AdminDashboard() {
             <option value="quarter">This Quarter</option>
             <option value="year">This Year</option>
           </select>
+
+          {/* Export button */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center space-x-2 rounded-md bg-kubota-orange px-3 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            <span>{exporting ? 'Exporting…' : 'Export'}</span>
+          </button>
 
           {/* Refresh button */}
           <button
@@ -486,6 +578,38 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Advanced Filters */}
+      <div className="rounded-lg bg-white p-4 shadow-sm">
+        <AdvancedFilters
+          filters={advancedFilters}
+          onFiltersChange={setAdvancedFilters}
+          availableFields={[
+            { label: 'Booking Status', value: 'status', type: 'select', options: [
+              { label: 'Pending', value: 'pending' },
+              { label: 'Confirmed', value: 'confirmed' },
+              { label: 'Paid', value: 'paid' },
+              { label: 'Completed', value: 'completed' },
+              { label: 'Cancelled', value: 'cancelled' },
+            ]},
+            { label: 'Total Amount', value: 'totalAmount', type: 'number' },
+            { label: 'Created Date', value: 'createdAt', type: 'date' },
+          ]}
+          multiSelectFields={[
+            {
+              label: 'Booking Status',
+              value: 'status',
+              options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Confirmed', value: 'confirmed' },
+                { label: 'Paid', value: 'paid' },
+                { label: 'Completed', value: 'completed' },
+                { label: 'Cancelled', value: 'cancelled' },
+              ],
+            },
+          ]}
+        />
+      </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -564,6 +688,20 @@ export default function AdminDashboard() {
           growthType="neutral"
           color="purple"
           comparisonLabel={comparisonLabel}
+        />
+      </div>
+
+      {/* Dashboard Alerts */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">System Alerts</h2>
+        </div>
+        <DashboardAlerts
+          maxAlerts={10}
+          showOnlyActive={true}
+          onAlertChange={() => {
+            fetchStats();
+          }}
         />
       </div>
 

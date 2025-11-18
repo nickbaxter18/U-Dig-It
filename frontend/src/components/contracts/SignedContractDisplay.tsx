@@ -108,9 +108,9 @@ export default function SignedContractDisplay({
             metadata: {
               contractId,
               path: storagePath,
-              error: error?.message,
+              error: error?.message || 'signed_url_missing',
             },
-          }, error ?? new Error('signed_url_missing'));
+          });
           if (isActive) {
             setDownloadUrl(contract.signedDocumentUrl ?? null);
           }

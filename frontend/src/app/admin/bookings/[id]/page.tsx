@@ -99,30 +99,34 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
         .single();
 
       if (fetchError) throw fetchError;
+      if (!data) throw new Error('Booking not found');
+
+      // Type assertion needed due to complex query with joins
+      const bookingData = data as any;
 
       const normalized: Booking = {
-        id: data.id,
-        bookingNumber: data.bookingNumber,
-        customerId: data.customerId,
-        equipmentId: data.equipmentId,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        deliveryAddress: data.deliveryAddress,
-        distanceKm: data.distanceKm ?? 0,
-        deliveryFee: data.deliveryFee ?? 0,
-        transportationType: data.transportationType,
-        status: data.status,
-        subtotal: data.subtotal ?? 0,
-        taxes: data.taxes ?? 0,
-        totalAmount: data.totalAmount ?? 0,
-        createdAt: data.createdAt,
-        customer: data.customer,
-        equipment: data.equipment,
-        depositAmount: data.depositAmount ?? data.deposit_amount ?? null,
-        balanceAmount: data.balanceAmount ?? data.balance_amount ?? null,
-        balanceDueAt: data.balanceDueAt ?? data.balance_due_at ?? null,
-        billingStatus: data.billingStatus ?? data.billing_status ?? null,
-        financeNotes: data.financeNotes ?? data.finance_notes ?? null,
+        id: bookingData.id,
+        bookingNumber: bookingData.bookingNumber,
+        customerId: bookingData.customerId,
+        equipmentId: bookingData.equipmentId,
+        startDate: bookingData.startDate,
+        endDate: bookingData.endDate,
+        deliveryAddress: bookingData.deliveryAddress,
+        distanceKm: bookingData.distanceKm ?? 0,
+        deliveryFee: bookingData.deliveryFee ?? 0,
+        transportationType: bookingData.transportationType,
+        status: bookingData.status,
+        subtotal: bookingData.subtotal ?? 0,
+        taxes: bookingData.taxes ?? 0,
+        totalAmount: bookingData.totalAmount ?? 0,
+        createdAt: bookingData.createdAt,
+        customer: bookingData.customer,
+        equipment: bookingData.equipment,
+        depositAmount: bookingData.depositAmount ?? bookingData.deposit_amount ?? null,
+        balanceAmount: bookingData.balanceAmount ?? bookingData.balance_amount ?? null,
+        balanceDueAt: bookingData.balanceDueAt ?? bookingData.balance_due_at ?? null,
+        billingStatus: bookingData.billingStatus ?? bookingData.billing_status ?? null,
+        financeNotes: bookingData.financeNotes ?? bookingData.finance_notes ?? null,
       };
 
       setBooking(normalized);
@@ -247,9 +251,19 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Customer Information */}
             <div className="rounded-lg bg-white p-6 shadow">
-              <div className="mb-4 flex items-center gap-2">
-                <User className="h-5 w-5 text-kubota-orange" />
-                <h2 className="text-lg font-semibold">Customer Information</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-kubota-orange" />
+                  <h2 className="text-lg font-semibold">Customer Information</h2>
+                </div>
+                {booking.customerId && (
+                  <button
+                    onClick={() => router.push(`/admin/customers?customerId=${booking.customerId}`)}
+                    className="rounded-md bg-kubota-orange px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600 transition-colors"
+                  >
+                    View Customer
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 <div>

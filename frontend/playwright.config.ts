@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -16,6 +16,11 @@ export default defineConfig({
 
   // Enhanced test configuration for visual regression and accessibility
   projects: [
+    // Setup project - authenticate before running tests
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
     {
       name: 'visual-regression',
       testMatch: '**/*visual*.spec.ts',
@@ -24,6 +29,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
         screenshot: 'only-on-failure',
       },
+      dependencies: ['setup'],
     },
     {
       name: 'accessibility',
@@ -32,10 +38,16 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
       },
+      dependencies: ['setup'],
     },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Use saved authentication state
+        storageState: 'e2e/.auth/admin.json',
+      },
+      dependencies: ['setup'],
     },
     {
       name: 'firefox',

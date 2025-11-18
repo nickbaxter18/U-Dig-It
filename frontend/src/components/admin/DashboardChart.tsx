@@ -56,7 +56,6 @@ export function DashboardChart({
             <Info
               className="h-4 w-4 text-gray-400"
               aria-label={description}
-              title={description}
             />
           ) : null}
         </div>

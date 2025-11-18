@@ -2,31 +2,23 @@ import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * GET /api/admin/analytics/export
- * Export analytics data to CSV
- *
- * Admin-only endpoint
- */
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
 
-    // 2. Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', supabase.auth.getUser().data.user?.id)
-      .single();
-
-    if (!userData || !['admin', 'super_admin'].includes(userData.role)) {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    // After error check, TypeScript should know this is RequireAdminSuccess
+    const supabase = adminResult.supabase;
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
-    // 3. Get date range parameter
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get('dateRange') || 'month';
+    const format = searchParams.get('format') || 'csv';
 
     // Calculate date range
     const now = new Date();
@@ -47,150 +39,115 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // 4. Fetch analytics data
-    const { data: bookings, error: bookingsError } = await supabase
-      .from('bookings')
-      .select(
-        `
-        id,
-        bookingNumber,
-        startDate,
-        endDate,
-        totalAmount,
-        status,
-        createdAt,
-        customer:customerId (
-          firstName,
-          lastName,
-          email
-        ),
-        equipment:equipmentId (
-          make,
-          model
-        )
-      `
-      )
-      .gte('createdAt', startDate.toISOString())
-      .order('createdAt', { ascending: false });
-
-    if (bookingsError) throw bookingsError;
-
-    const { data: equipment } = await supabase
-      .from('equipment')
-      .select('id, make, model, status, dailyRate');
-
-    // 5. Calculate aggregated metrics
-    const metrics: any[] = [];
-
-    // Revenue metrics
-    const totalRevenue = bookings?.reduce((sum: any, b: any) => sum + parseFloat(b.totalAmount || '0'), 0) || 0;
-    const avgBookingValue = bookings && bookings.length > 0 ? totalRevenue / bookings.length : 0;
-
-    metrics.push({
-      metric: 'Total Revenue',
-      value: totalRevenue.toFixed(2),
-      period: dateRange,
-      unit: 'CAD',
+    // Fetch analytics data using RPC function
+    const { data: analyticsData, error: analyticsError } = await supabase.rpc('get_analytics_aggregated', {
+      p_metric_type: 'all',
+      p_start_date: startDate.toISOString(),
+      p_end_date: now.toISOString(),
     });
 
-    metrics.push({
-      metric: 'Total Bookings',
-      value: bookings?.length || 0,
-      period: dateRange,
-      unit: 'bookings',
-    });
+    if (analyticsError) {
+      throw analyticsError;
+    }
 
-    metrics.push({
-      metric: 'Average Booking Value',
-      value: avgBookingValue.toFixed(2),
-      period: dateRange,
-      unit: 'CAD',
-    });
+    if (format === 'csv') {
+      // Generate CSV with all analytics data
+      const revenueData = analyticsData.revenue?.daily_data || [];
+      const bookingsData = analyticsData.bookings?.daily_data || [];
+      const equipmentData = analyticsData.equipment?.utilization_data || [];
+      const customersData = analyticsData.customers?.daily_data || [];
 
-    // Booking status breakdown
-    const statusCounts: Record<string, number> = {};
-    bookings?.forEach(b => {
-      statusCounts[b.status] = (statusCounts[b.status] || 0) + 1;
-    });
+      // Revenue section
+      const revenueHeaders = ['Date', 'Revenue', 'Bookings'];
+      const revenueRows = revenueData.map((item: any) => [
+        item.date,
+        parseFloat(item.revenue || '0').toFixed(2),
+        parseInt(item.bookings || '0', 10),
+      ]);
 
-    Object.entries(statusCounts).forEach(([status, count]) => {
-      metrics.push({
-        metric: `Bookings - ${status}`,
-        value: count,
-        period: dateRange,
-        unit: 'bookings',
+      // Bookings section
+      const bookingsHeaders = ['Date', 'Total Bookings', 'Completed', 'Cancelled'];
+      const bookingsRows = bookingsData.map((item: any) => [
+        item.date,
+        parseInt(item.total || '0', 10),
+        parseInt(item.completed || '0', 10),
+        parseInt(item.cancelled || '0', 10),
+      ]);
+
+      // Equipment section
+      const equipmentHeaders = ['Equipment ID', 'Equipment Name', 'Utilization Rate (%)', 'Revenue'];
+      const equipmentRows = equipmentData.map((item: any) => [
+        item.equipment_id,
+        item.equipment_name,
+        parseFloat(item.utilization_rate || '0').toFixed(2),
+        parseFloat(item.revenue || '0').toFixed(2),
+      ]);
+
+      // Customers section
+      const customersHeaders = ['Date', 'New Customers', 'Returning Customers'];
+      const customersRows = customersData.map((item: any) => [
+        item.date,
+        parseInt(item.new_customers || '0', 10),
+        parseInt(item.returning_customers || '0', 10),
+      ]);
+
+      // Combine all sections
+      const csvLines = [
+        'ANALYTICS EXPORT',
+        `Date Range: ${dateRange}`,
+        `Generated: ${new Date().toISOString()}`,
+        '',
+        'REVENUE DATA',
+        revenueHeaders.join(','),
+        ...revenueRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        '',
+        'BOOKINGS DATA',
+        bookingsHeaders.join(','),
+        ...bookingsRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        '',
+        'EQUIPMENT UTILIZATION',
+        equipmentHeaders.join(','),
+        ...equipmentRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        '',
+        'CUSTOMERS DATA',
+        customersHeaders.join(','),
+        ...customersRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        '',
+        'SUMMARY',
+        `Total Revenue,${parseFloat(analyticsData.revenue?.total_revenue || '0').toFixed(2)}`,
+        `Total Bookings,${parseInt(analyticsData.bookings?.total_bookings || '0', 10)}`,
+        `Average Utilization,${parseFloat(analyticsData.equipment?.average_utilization || '0').toFixed(2)}%`,
+        `Total Customers,${parseInt(analyticsData.customers?.total_customers || '0', 10)}`,
+        `New Customers,${parseInt(analyticsData.customers?.new_customers || '0', 10)}`,
+      ];
+
+      const csvContent = csvLines.join('\n');
+
+      logger.info('Analytics export completed', {
+        component: 'admin-analytics-export',
+        action: 'export_csv',
+        metadata: { adminId: user?.id || 'unknown', dateRange, format },
       });
-    });
 
-    // Equipment utilization
-    const equipmentStats = await Promise.all(
-      (equipment || []).map(async eq => {
-        const { data: eqBookings } = await supabase
-          .from('bookings')
-          .select('id, startDate, endDate, status')
-          .eq('equipmentId', eq.id)
-          .gte('createdAt', startDate.toISOString());
-
-        const activeBookings = eqBookings?.filter(b =>
-          ['confirmed', 'paid', 'in_progress'].includes(b.status)
-        ).length || 0;
-
-        return {
-          equipment: `${eq.make} ${eq.model}`,
-          totalBookings: eqBookings?.length || 0,
-          activeBookings,
-          status: eq.status,
-        };
-      })
-    );
-
-    // Add equipment metrics
-    equipmentStats.forEach(stat => {
-      metrics.push({
-        metric: `Equipment Utilization - ${stat.equipment}`,
-        value: stat.activeBookings,
-        period: dateRange,
-        unit: 'active bookings',
+      return new NextResponse(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="analytics-export-${dateRange}-${new Date().toISOString().split('T')[0]}.csv"`,
+        },
       });
-    });
-
-    // 6. Generate CSV
-    const csvHeaders = ['Metric', 'Value', 'Period', 'Unit'];
-    const csvRows = metrics.map(m => [m.metric, m.value, m.period, m.unit]);
-
-    const csvContent = [
-      csvHeaders.map(h => `"${h}"`).join(','),
-      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(',')),
-    ].join('\n');
-
-    logger.info('Analytics exported', {
-      component: 'analytics-export-api',
-      action: 'export_success',
-      metadata: {
-        metricsCount: metrics.length,
-        dateRange,
-        adminId: supabase.auth.getUser().data.user?.id,
-      },
-    });
-
-    // 7. Return CSV file
-    return new NextResponse(csvContent, {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="analytics-export-${dateRange}-${new Date().toISOString().split('T')[0]}.csv"`,
-      },
-    });
-  } catch (error: any) {
+    } else {
+      return NextResponse.json(
+        { error: 'PDF export not yet implemented. Please use CSV format.' },
+        { status: 501 }
+      );
+    }
+  } catch (err) {
     logger.error(
-      'Analytics export error',
-      {
-        component: 'analytics-export-api',
-        action: 'error',
-      },
-      error
+      'Failed to export analytics',
+      { component: 'admin-analytics-export', action: 'error' },
+      err instanceof Error ? err : new Error(String(err))
     );
 
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to export analytics' }, { status: 500 });
   }
 }
-

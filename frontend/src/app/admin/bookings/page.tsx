@@ -10,6 +10,7 @@ import { BookingCalendarView } from '@/components/admin/BookingCalendarView';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFilters } from '@/components/admin/BookingFilters';
 import { BookingsTable } from '@/components/admin/BookingsTable';
+import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
@@ -35,9 +36,9 @@ interface Booking {
   status: string;
   total: number;
   createdAt: string;
-  deliveryAddress?: string | null;
-  specialInstructions?: string | null;
-  internalNotes?: string | null;
+  deliveryAddress?: string;
+  specialInstructions?: string;
+  internalNotes?: string;
   depositAmount?: number | null;
   balanceAmount?: number | null;
   balanceDueAt?: string | null;
@@ -160,6 +161,15 @@ export default function AdminBookingsPage() {
   const [upcomingDeliveries, setUpcomingDeliveries] = useState<LogisticsItem[]>([]);
   const [upcomingReturns, setUpcomingReturns] = useState<LogisticsItem[]>([]);
   const [isConnected, setIsConnected] = useState(true); // Supabase connection status
+  const [advancedFilters, setAdvancedFilters] = useState<{
+    dateRange?: DateRange;
+    operators?: any[];
+    multiSelects?: Record<string, string[]>;
+  }>({});
+  const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [bulkActionError, setBulkActionError] = useState<string | null>(null);
+  const [bulkActionMessage, setBulkActionMessage] = useState<string | null>(null);
 
   const fetchBookings = async (newFilters?: BookingFilters) => {
     try {
@@ -281,6 +291,9 @@ export default function AdminBookingsPage() {
       }));
 
       setBookings(bookingsData);
+      setSelectedBookingIds(prev =>
+        prev.filter(id => bookingsData.some(booking => booking.id === id))
+      );
       setPagination({
         page,
         limit,
@@ -565,6 +578,171 @@ export default function AdminBookingsPage() {
     }
   };
 
+  const toggleBookingSelection = (bookingId: string) => {
+    setSelectedBookingIds(prev =>
+      prev.includes(bookingId) ? prev.filter(id => id !== bookingId) : [...prev, bookingId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const visibleIds = bookings.map(booking => booking.id);
+    const hasAllVisible = visibleIds.length > 0 && visibleIds.every(id => selectedBookingIds.includes(id));
+
+    if (hasAllVisible) {
+      setSelectedBookingIds(prev => prev.filter(id => !visibleIds.includes(id)));
+    } else {
+      const merged = new Set(selectedBookingIds);
+      visibleIds.forEach(id => merged.add(id));
+      setSelectedBookingIds(Array.from(merged));
+    }
+  };
+
+  const performBulkAction = async (payload: { operation: 'update_status' | 'delete'; status?: string }) => {
+    if (selectedBookingIds.length === 0 || bulkActionLoading) return;
+
+    try {
+      setBulkActionLoading(true);
+      setBulkActionError(null);
+      setBulkActionMessage(null);
+
+      const response = await fetchWithAuth('/api/admin/bookings/bulk-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingIds: selectedBookingIds,
+          operation: payload.operation,
+          status: payload.status,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Bulk action failed');
+      }
+
+      const { affected } = await response.json();
+      setBulkActionMessage(
+        `${affected} booking${affected === 1 ? '' : 's'} ${
+          payload.operation === 'delete' ? 'deleted' : 'updated'
+        } successfully.`
+      );
+
+      await fetchBookings();
+      setSelectedBookingIds([]);
+    } catch (bulkError) {
+      setBulkActionError(
+        bulkError instanceof Error ? bulkError.message : 'Failed to perform bulk action'
+      );
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkStatusChange = (status: string) => {
+    performBulkAction({ operation: 'update_status', status });
+  };
+
+  const handleBulkDelete = () => {
+    if (
+      selectedBookingIds.length > 0 &&
+      confirm(
+        `Delete ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'}? This cannot be undone.`
+      )
+    ) {
+      performBulkAction({ operation: 'delete' });
+    }
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedBookingIds.length === 0 || bulkActionLoading) return;
+
+    try {
+      setBulkActionLoading(true);
+      setBulkActionError(null);
+      setBulkActionMessage(null);
+
+      const response = await fetchWithAuth('/api/admin/bookings/bulk-export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingIds: selectedBookingIds,
+          format: 'csv',
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookings-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setBulkActionMessage(`Exported ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'} successfully.`);
+      setSelectedBookingIds([]);
+    } catch (exportError) {
+      setBulkActionError(exportError instanceof Error ? exportError.message : 'Failed to export bookings');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkEmail = async () => {
+    if (selectedBookingIds.length === 0 || bulkActionLoading) return;
+
+    const subject = prompt('Email Subject:', 'Booking Update');
+    if (!subject) return;
+
+    const message = prompt('Email Message (use {{customerName}} and {{bookingNumber}} as placeholders):',
+      'Dear {{customerName}},\n\nThis is regarding your booking {{bookingNumber}}.\n\nThank you.');
+    if (!message) return;
+
+    try {
+      setBulkActionLoading(true);
+      setBulkActionError(null);
+      setBulkActionMessage(null);
+
+      const response = await fetchWithAuth('/api/admin/bookings/bulk-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingIds: selectedBookingIds,
+          subject,
+          message,
+          emailType: 'custom',
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Email send failed');
+      }
+
+      const { successful, failed } = await response.json();
+      setBulkActionMessage(
+        `Sent ${successful} email${successful === 1 ? '' : 's'} successfully.${failed > 0 ? ` ${failed} failed.` : ''}`
+      );
+      setSelectedBookingIds([]);
+    } catch (emailError) {
+      setBulkActionError(emailError instanceof Error ? emailError.message : 'Failed to send emails');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const handleDrilldownSelect = (status?: string) => {
     if (!status) {
       handleFilterChange({ status: undefined });
@@ -623,41 +801,45 @@ export default function AdminBookingsPage() {
           .single();
 
         if (fetchError) throw fetchError;
+        if (!data) throw new Error('Booking not found');
+
+        // Type assertion needed due to complex query with joins
+        const bookingData = data as any;
 
         const booking: Booking = {
-          id: data.id,
-          bookingNumber: data.bookingNumber,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          status: data.status,
-          total: parseFloat(data.totalAmount),
-          createdAt: data.createdAt,
-          deliveryAddress: data.deliveryAddress ?? null,
-          specialInstructions: data.specialInstructions ?? null,
-          internalNotes: data.internalNotes ?? null,
+          id: bookingData.id,
+          bookingNumber: bookingData.bookingNumber,
+          startDate: bookingData.startDate,
+          endDate: bookingData.endDate,
+          status: bookingData.status,
+          total: parseFloat(bookingData.totalAmount),
+          createdAt: bookingData.createdAt,
+          deliveryAddress: bookingData.deliveryAddress ?? undefined,
+          specialInstructions: bookingData.specialInstructions ?? undefined,
+          internalNotes: bookingData.internalNotes ?? undefined,
           depositAmount:
-            data.depositAmount !== undefined && data.depositAmount !== null
-              ? Number(data.depositAmount)
+            bookingData.depositAmount !== undefined && bookingData.depositAmount !== null
+              ? Number(bookingData.depositAmount)
               : null,
           balanceAmount:
-            data.balanceAmount !== undefined && data.balanceAmount !== null
-              ? Number(data.balanceAmount)
-              : data.balance_amount !== undefined && data.balance_amount !== null
-                ? Number(data.balance_amount)
+            bookingData.balanceAmount !== undefined && bookingData.balanceAmount !== null
+              ? Number(bookingData.balanceAmount)
+              : bookingData.balance_amount !== undefined && bookingData.balance_amount !== null
+                ? Number(bookingData.balance_amount)
                 : null,
-          balanceDueAt: data.balanceDueAt ?? data.balance_due_at ?? null,
-          billingStatus: data.billingStatus ?? data.billing_status ?? null,
+          balanceDueAt: bookingData.balanceDueAt ?? bookingData.balance_due_at ?? null,
+          billingStatus: bookingData.billingStatus ?? bookingData.billing_status ?? null,
           equipment: {
-            id: data.equipment?.id || '',
-            name: `${data.equipment?.make || 'Kubota'} ${data.equipment?.model || 'SVL-75'}`,
-            model: data.equipment?.model || 'SVL-75',
+            id: bookingData.equipment?.id || '',
+            name: `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`,
+            model: bookingData.equipment?.model || 'SVL-75',
           },
           customer: {
-            id: data.customer?.id || '',
-            firstName: data.customer?.firstName || '',
-            lastName: data.customer?.lastName || '',
-            email: data.customer?.email || '',
-            phone: data.customer?.phone || '',
+            id: bookingData.customer?.id || '',
+            firstName: bookingData.customer?.firstName || '',
+            lastName: bookingData.customer?.lastName || '',
+            email: bookingData.customer?.email || '',
+            phone: bookingData.customer?.phone || '',
           },
         };
 
@@ -1188,6 +1370,68 @@ export default function AdminBookingsPage() {
         </div>
       )}
 
+      {bulkActionError && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {bulkActionError}
+        </div>
+      )}
+
+      {bulkActionMessage && (
+        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+          {bulkActionMessage}
+        </div>
+      )}
+
+      {selectedBookingIds.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                {selectedBookingIds.length} booking{selectedBookingIds.length === 1 ? '' : 's'} selected
+              </p>
+              <p className="text-xs text-gray-500">Choose a bulk action below.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleBulkStatusChange('confirmed')}
+                disabled={bulkActionLoading}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Mark Confirmed
+              </button>
+              <button
+                onClick={() => handleBulkStatusChange('cancelled')}
+                disabled={bulkActionLoading}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Mark Cancelled
+              </button>
+              <button
+                onClick={handleBulkExport}
+                disabled={bulkActionLoading}
+                className="rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Export CSV
+              </button>
+              <button
+                onClick={handleBulkEmail}
+                disabled={bulkActionLoading}
+                className="rounded-md border border-green-200 px-3 py-2 text-sm font-medium text-green-600 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Send Email
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkActionLoading}
+                className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="space-y-4 rounded-lg bg-white p-4 shadow">
         <div className="flex flex-wrap gap-3">
@@ -1215,6 +1459,57 @@ export default function AdminBookingsPage() {
         </div>
 
         <BookingFilters filters={filters} onFilterChange={handleFilterChange} />
+
+        {/* Advanced Filters */}
+        <div className="border-t border-gray-200 pt-4">
+          <AdvancedFilters
+            filters={advancedFilters}
+            onFiltersChange={setAdvancedFilters}
+            availableFields={[
+              { label: 'Booking Number', value: 'bookingNumber', type: 'text' },
+              { label: 'Customer Name', value: 'customerName', type: 'text' },
+              { label: 'Customer Email', value: 'customerEmail', type: 'text' },
+              { label: 'Equipment Name', value: 'equipmentName', type: 'text' },
+              { label: 'Total Amount', value: 'totalAmount', type: 'number' },
+              { label: 'Start Date', value: 'startDate', type: 'date' },
+              { label: 'End Date', value: 'endDate', type: 'date' },
+              { label: 'Created Date', value: 'createdAt', type: 'date' },
+              {
+                label: 'Status',
+                value: 'status',
+                type: 'select',
+                options: [
+                  { label: 'Pending', value: 'pending' },
+                  { label: 'Confirmed', value: 'confirmed' },
+                  { label: 'Paid', value: 'paid' },
+                  { label: 'Insurance Verified', value: 'insurance_verified' },
+                  { label: 'Ready for Pickup', value: 'ready_for_pickup' },
+                  { label: 'Delivered', value: 'delivered' },
+                  { label: 'In Progress', value: 'in_progress' },
+                  { label: 'Completed', value: 'completed' },
+                  { label: 'Cancelled', value: 'cancelled' },
+                ],
+              },
+            ]}
+            multiSelectFields={[
+              {
+                label: 'Status',
+                value: 'status',
+                options: [
+                  { label: 'Pending', value: 'pending' },
+                  { label: 'Confirmed', value: 'confirmed' },
+                  { label: 'Paid', value: 'paid' },
+                  { label: 'Insurance Verified', value: 'insurance_verified' },
+                  { label: 'Ready for Pickup', value: 'ready_for_pickup' },
+                  { label: 'Delivered', value: 'delivered' },
+                  { label: 'In Progress', value: 'in_progress' },
+                  { label: 'Completed', value: 'completed' },
+                  { label: 'Cancelled', value: 'cancelled' },
+                ],
+              },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Content */}
@@ -1229,6 +1524,9 @@ export default function AdminBookingsPage() {
             onStatusUpdate={handleStatusUpdate}
             onCancelBooking={handleCancelBooking}
             onPageChange={handlePageChange}
+            selectedBookingIds={selectedBookingIds}
+            onToggleBookingSelection={toggleBookingSelection}
+            onToggleSelectAll={toggleSelectAll}
           />
         ) : (
           <BookingCalendarView

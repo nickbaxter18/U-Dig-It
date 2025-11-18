@@ -14,7 +14,7 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 
 interface Booking {
   id: string;
@@ -52,6 +52,9 @@ interface BookingsTableProps {
   onStatusUpdate: (bookingId: string, status: string) => void;
   onCancelBooking: (bookingId: string, reason?: string) => void;
   onPageChange: (page: number) => void;
+  selectedBookingIds: string[];
+  onToggleBookingSelection: (bookingId: string) => void;
+  onToggleSelectAll: () => void;
 }
 
 export function BookingsTable({
@@ -63,9 +66,23 @@ export function BookingsTable({
   onStatusUpdate,
   onCancelBooking,
   onPageChange,
+  selectedBookingIds,
+  onToggleBookingSelection,
+  onToggleSelectAll,
 }: BookingsTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [actionMenus, setActionMenus] = useState<Set<string>>(new Set());
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const allVisibleSelected =
+    bookings.length > 0 && bookings.every(booking => selectedBookingIds.includes(booking.id));
+  const someSelected = selectedBookingIds.length > 0 && !allVisibleSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected, allVisibleSelected]);
 
   const _toggleRowExpansion = (bookingId: string) => {
     const newExpanded = new Set(expandedRows);
@@ -154,6 +171,19 @@ export function BookingsTable({
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-4">
+                <input
+                  ref={selectAllRef}
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                  aria-label="Select all bookings"
+                  checked={allVisibleSelected}
+                  onChange={event => {
+                    event.stopPropagation();
+                    onToggleSelectAll();
+                  }}
+                />
+              </th>
               <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
                 Booking
               </th>
@@ -178,12 +208,31 @@ export function BookingsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {bookings.map(booking => (
+            {bookings.map(booking => {
+              const isSelected = selectedBookingIds.includes(booking.id);
+              return (
               <Fragment key={booking.id}>
                 <tr
-                  className="cursor-pointer hover:bg-gray-50"
+                  className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
                   onClick={() => onBookingSelect(booking)}
                 >
+                  <td
+                    className="px-3 py-4 lg:px-4"
+                    onClick={event => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                      checked={isSelected}
+                      onChange={event => {
+                        event.stopPropagation();
+                        onToggleBookingSelection(booking.id);
+                      }}
+                      aria-label={`Select booking ${booking.bookingNumber}`}
+                    />
+                  </td>
                   <td className="px-3 py-4 lg:px-6">
                     <div className="flex items-center">
                       <div className="hidden h-10 w-10 flex-shrink-0 sm:block">
@@ -391,7 +440,8 @@ export function BookingsTable({
                   </tr>
                 )}
               </Fragment>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

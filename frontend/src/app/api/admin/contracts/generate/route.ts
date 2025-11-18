@@ -12,14 +12,31 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     // 1. Verify authentication
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     // 2. Verify admin role
     const { data: userData } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', user?.id || 'unknown')
       .single();
 
     if (!userData || !['admin', 'super_admin'].includes(userData.role)) {
@@ -149,7 +166,7 @@ export async function POST(request: NextRequest) {
         generated_content: generatedContent,
         signer_email: customer.email,
         signer_name: variables.customerName,
-        created_by: user.id,
+        created_by: user?.id || 'unknown',
       })
       .select()
       .single();
@@ -161,7 +178,7 @@ export async function POST(request: NextRequest) {
       table_name: 'contracts',
       record_id: newContract.id,
       action: 'generate',
-      user_id: user.id,
+      user_id: user?.id || 'unknown',
       new_values: {
         contract_number: contractNumber,
         booking_id: bookingId,

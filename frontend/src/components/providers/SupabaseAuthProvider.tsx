@@ -43,7 +43,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         }
         setRole(fallbackRole);
       } else {
-        setRole(data?.role ?? fallbackRole);
+        setRole((data as any)?.role ?? fallbackRole);
       }
     } catch (roleError) {
       logger.error('[SupabaseAuthProvider] Unexpected error fetching user role', {

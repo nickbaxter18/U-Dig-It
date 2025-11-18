@@ -102,3 +102,6 @@ typeorm.config.ts
 *.bak
 *.old
 *~
+
+*storybook.log
+storybook-static

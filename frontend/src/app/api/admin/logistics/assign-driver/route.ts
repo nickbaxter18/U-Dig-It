@@ -7,8 +7,25 @@ import { assignDriverSchema } from '@/lib/validators/admin/bookings';
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = assignDriverSchema.parse(await request.json());
 
@@ -87,7 +104,7 @@ export async function POST(request: NextRequest) {
       booking_id: task.booking_id,
       driver_id: payload.driverId,
       assigned_at: new Date().toISOString(),
-      assigned_by: user.id,
+      assigned_by: user?.id || 'unknown',
       status: 'assigned',
       route_url: payload.routeUrl ?? null,
       eta_minutes: payload.etaMinutes ?? null,
@@ -106,16 +123,15 @@ export async function POST(request: NextRequest) {
         {
           component: 'admin-logistics-assign-driver',
           action: 'delivery_assignment_failed',
-          metadata: { taskId: payload.taskId, driverId: payload.driverId },
-        },
-        assignmentError
+          metadata: { taskId: payload.taskId, driverId: payload.driverId, error: assignmentError?.message },
+        }
       );
     }
 
     logger.info('Driver assigned to logistics task', {
       component: 'admin-logistics-assign-driver',
       action: 'driver_assigned',
-      metadata: { taskId: payload.taskId, driverId: payload.driverId, adminId: user.id },
+      metadata: { taskId: payload.taskId, driverId: payload.driverId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ task: updatedTask });

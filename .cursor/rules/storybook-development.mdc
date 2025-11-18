@@ -1,0 +1,172 @@
+---
+description: Storybook component development standards and best practices
+globs: ['**/*.stories.ts', '**/*.stories.tsx']
+alwaysApply: false
+---
+
+# Storybook Component Development
+
+## When Creating Components
+
+### ALWAYS Create Story First
+Develop components in Storybook before integrating into the app.
+
+**Workflow:**
+1. Create `ComponentName.stories.tsx` next to component
+2. Define all component states
+3. Test interactions in Storybook
+4. Integrate into app
+
+## Story Structure
+
+```typescript
+import type { Meta, StoryObj } from '@storybook/react';
+import { ComponentName } from './ComponentName';
+
+/**
+ * Component description goes here.
+ *
+ * ## Features
+ * - List key features
+ * - Show what it does
+ */
+const meta: Meta<typeof ComponentName> = {
+  title: 'Category/ComponentName',  // e.g., 'UI/Button', 'Forms/Input'
+  component: ComponentName,
+  parameters: {
+    layout: 'centered',  // or 'fullscreen', 'padded'
+  },
+  tags: ['autodocs'],  // Generates documentation
+  argTypes: {
+    variant: {
+      control: 'select',
+      options: ['default', 'primary', 'destructive'],
+      description: 'Visual style variant',
+    },
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof ComponentName>;
+
+// Define all states
+export const Default: Story = {
+  args: {
+    children: 'Click me',
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    disabled: true,
+    children: 'Loading...',
+  },
+};
+
+export const Error: Story = {
+  args: {
+    variant: 'destructive',
+    children: 'Error occurred',
+  },
+};
+```
+
+## Component States to Cover
+
+### Required Stories
+1. **Default** - Standard state
+2. **Loading** - Disabled/loading state
+3. **Error** - Error state
+4. **Empty** - No data state
+5. **Populated** - With data
+
+### Interactive Stories
+For components with interactions:
+
+```typescript
+export const WithInteraction: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button');
+
+    await userEvent.click(button);
+    await expect(canvas.getByText('Clicked!')).toBeInTheDocument();
+  },
+};
+```
+
+## Accessibility Testing
+
+Storybook includes Axe addon automatically. Check accessibility tab.
+
+```typescript
+// Add accessibility parameters
+export const Accessible: Story = {
+  parameters: {
+    a11y: {
+      config: {
+        rules: [
+          {
+            id: 'color-contrast',
+            enabled: true,
+          },
+        ],
+      },
+    },
+  },
+};
+```
+
+## Using MSW in Storybook
+
+To use MSW mocks in Storybook, uncomment in `.storybook/preview.tsx`:
+
+```typescript
+import { initialize, mswLoader } from 'msw-storybook-addon';
+import { handlers } from '../src/test/mocks/handlers';
+
+initialize({ handlers });
+
+export default {
+  loaders: [mswLoader],
+};
+```
+
+## Story Organization
+
+```
+src/components/
+  ui/
+    Button.tsx
+    Button.stories.tsx
+  booking/
+    BookingForm.tsx
+    BookingForm.stories.tsx
+```
+
+## Running Storybook
+
+```bash
+# Development
+pnpm storybook
+
+# Build
+pnpm build-storybook
+
+# Visual regression (Chromatic)
+npx chromatic
+```
+
+## Reference Files
+
+@frontend/src/components/Button.stories.tsx
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+
+## Key Rules
+
+1. **Story before integration** - Build in Storybook first
+2. **Cover all states** - Default, loading, error, empty, populated
+3. **Use autodocs** - Add `tags: ['autodocs']`
+4. **Test accessibility** - Check Axe addon
+5. **Interactive testing** - Use `play` function for interactions
+6. **Organize by category** - Use clear title paths

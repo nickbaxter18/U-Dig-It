@@ -1,0 +1,100 @@
+name: Admin Dashboard E2E Tests
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/app/admin/**'
+      - 'frontend/tests/e2e/admin/**'
+      - 'frontend/e2e/helpers/**'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'frontend/src/app/admin/**'
+      - 'frontend/tests/e2e/admin/**'
+      - 'frontend/e2e/helpers/**'
+
+jobs:
+  admin-e2e-tests:
+    name: Admin E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Setup Supabase
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        working-directory: ./supabase
+        run: |
+          supabase start
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Run admin E2E tests
+        working-directory: ./frontend
+        run: pnpm test:e2e:admin
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADMIN_TEST_EMAIL: ${{ secrets.ADMIN_TEST_EMAIL || 'aitest2@udigit.ca' }}
+          ADMIN_TEST_PASSWORD: ${{ secrets.ADMIN_TEST_PASSWORD || 'TestAI2024!@#$' }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-test-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-screenshots
+          path: frontend/test-results/**/*.png
+          retention-days: 7
+
+      - name: Upload videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-videos
+          path: frontend/test-results/**/*.webm
+          retention-days: 7
+
+      - name: Generate test report
+        if: always()
+        working-directory: ./frontend
+        run: |
+          npx playwright show-report || echo "Report generation failed"
+

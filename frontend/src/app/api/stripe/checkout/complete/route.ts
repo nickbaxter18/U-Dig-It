@@ -71,9 +71,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const sessionData = session as any;
     const processedAt =
-      session.status_transitions?.paid_at != null
-        ? new Date(session.status_transitions.paid_at * 1000).toISOString()
+      sessionData.status_transitions?.paid_at != null
+        ? new Date(sessionData.status_transitions.paid_at * 1000).toISOString()
         : session.payment_status === 'paid'
           ? new Date().toISOString()
           : null;

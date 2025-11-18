@@ -63,8 +63,25 @@ export async function GET(
     }
 
     // 1. Verify authentication
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     // 3. Fetch contract
     const { data: contract, error: contractError } = await supabase
@@ -137,8 +154,7 @@ export async function GET(
               path: storagePath,
               error: signedError.message,
             },
-          },
-          signedError
+          }
         );
       } else {
         downloadUrl = signedData?.signedUrl ?? null;
@@ -186,7 +202,7 @@ export async function GET(
       metadata: {
         contractId,
         contractNumber: contract.contractNumber,
-        adminId: user.id,
+        adminId: user?.id || 'unknown',
         downloadUrl,
       },
     });

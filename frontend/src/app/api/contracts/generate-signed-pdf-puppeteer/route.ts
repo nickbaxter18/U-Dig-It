@@ -308,8 +308,7 @@ export async function POST(req: NextRequest) {
           component: 'api-generate-signed-pdf-puppeteer',
           action: 'signed_url_warning',
           metadata: { error: signedError.message },
-        },
-        signedError
+        }
       );
     } else {
       signedUrl = signedData?.signedUrl ?? null;

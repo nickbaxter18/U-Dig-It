@@ -14,8 +14,6 @@ import {
 import { logger } from '@/lib/logger';
 import { createServiceClient } from '@/lib/supabase/service';
 
-import type { ImageAnalysis, LocalVerificationParams, LocalVerificationResult } from './types';
-
 type TfModule = typeof import('@tensorflow/tfjs-node');
 type SharpModule = typeof import('sharp');
 type HumanModule = typeof import('@vladmandic/human');
@@ -24,6 +22,13 @@ type ServiceClient = NonNullable<ReturnType<typeof createServiceClient>>;
 type SharpInstance = ReturnType<SharpModule>;
 type SharpMetadata = Awaited<ReturnType<SharpInstance['metadata']>>;
 type SharpTransform = (img: SharpInstance, meta: SharpMetadata) => SharpInstance;
+
+class AttemptLimitError extends Error {
+  constructor() {
+    super('Attempt limit reached');
+    this.name = 'AttemptLimitError';
+  }
+}
 
 const isNodeRuntime = typeof process !== 'undefined' && process.release?.name === 'node';
 
@@ -213,10 +218,12 @@ const logFaceDetectionIssue = (
   logger.warn('Face detection issue', {
     component: 'local-id-verification',
     action: `${type}_face_detection_issue`,
-    requestId,
-    reason,
-    stats,
-    face,
+    metadata: {
+      requestId,
+      reason,
+      stats,
+      face,
+    },
   });
 };
 
@@ -1183,12 +1190,6 @@ async function decodeBarcode(buffer: Buffer): Promise<ImageAnalysis['barcode']> 
     const binarizers = [HybridBinarizer, GlobalHistogramBinarizer];
 
     const MAX_DECODE_ATTEMPTS = 220;
-
-    class AttemptLimitError extends Error {
-      constructor(message = 'barcode_attempt_limit') {
-        super(message);
-      }
-    }
 
     const attemptDecode = (
       sources: Array<RGBLuminanceSource | InvertedLuminanceSource>

@@ -203,7 +203,7 @@ export default function BookingDetailsPage() {
             )
           `
           )
-          .eq('id', params.id)
+          .eq('id', params.id as string)
           .single();
 
         if (error) {
@@ -220,17 +220,17 @@ export default function BookingDetailsPage() {
           supabase
             .from('contracts')
             .select('id, contractNumber, status, type, documentUrl, signedAt, createdAt')
-            .eq('bookingId', params.id)
+            .eq('bookingId', params.id as string)
             .order('createdAt', { ascending: false }),
           supabase
             .from('payments')
             .select('id, paymentNumber, amount, status, type, method, stripePaymentIntentId, processedAt, createdAt')
-            .eq('bookingId', params.id)
+            .eq('bookingId', params.id as string)
             .order('createdAt', { ascending: false }),
           supabase
             .from('insurance_documents')
             .select('id, documentNumber, fileName, fileUrl, status, type, insuranceCompany, policyNumber, createdAt')
-            .eq('bookingId', params.id)
+            .eq('bookingId', params.id as string)
         ]);
 
         const contractsResponseError = contractsResponse.error;
@@ -238,8 +238,8 @@ export default function BookingDetailsPage() {
           logger.warn('Could not fetch contract data', {
             component: 'app-page',
             action: 'contracts_fetch_failed',
-            metadata: { bookingId: params.id, error: contractsResponseError.message }
-          }, contractsResponseError);
+            metadata: { bookingId: params.id as string, error: contractsResponseError.message },
+          });
         }
 
         const paymentsResponseError = paymentsResponse.error;
@@ -247,8 +247,8 @@ export default function BookingDetailsPage() {
           logger.warn('Could not fetch payment data', {
             component: 'app-page',
             action: 'payments_fetch_failed',
-            metadata: { bookingId: params.id, error: paymentsResponseError.message }
-          }, paymentsResponseError);
+            metadata: { bookingId: params.id as string, error: paymentsResponseError.message },
+          });
         }
 
         const insuranceResponseError = insuranceResponse.error;
@@ -256,8 +256,8 @@ export default function BookingDetailsPage() {
           logger.warn('Could not fetch insurance documents', {
             component: 'app-page',
             action: 'insurance_fetch_failed',
-            metadata: { bookingId: params.id, error: insuranceResponseError.message }
-          }, insuranceResponseError);
+            metadata: { bookingId: params.id as string, error: insuranceResponseError.message },
+          });
         }
 
         // Fetch customer data from public.users table
@@ -275,8 +275,8 @@ export default function BookingDetailsPage() {
           });
         }
 
-        const contractsData = contractsResponse.data ?? [];
-        const contracts = contractsData.map(contract => ({
+        const contractsData = (contractsResponse.data ?? []) as any[];
+        const contracts = contractsData.map((contract: any) => ({
             id: contract.id,
             contractNumber: contract.contractNumber ?? null,
             status: contract.status ?? null,
@@ -286,8 +286,8 @@ export default function BookingDetailsPage() {
             createdAt: contract.createdAt ?? null,
         }));
 
-        const paymentsData = paymentsResponse.data ?? [];
-        const payments = paymentsData.map(payment => ({
+        const paymentsData = (paymentsResponse.data ?? []) as any[];
+        const payments = paymentsData.map((payment: any) => ({
             id: payment.id,
             paymentNumber: payment.paymentNumber ?? null,
             amount: typeof payment.amount === 'string' ? Number(payment.amount) : payment.amount,
@@ -299,8 +299,8 @@ export default function BookingDetailsPage() {
             createdAt: payment.createdAt ?? null,
         }));
 
-        const insuranceData = insuranceResponse.data ?? [];
-        const insuranceDocuments = insuranceData.map(document => ({
+        const insuranceData = (insuranceResponse.data ?? []) as any[];
+        const insuranceDocuments = insuranceData.map((document: any) => ({
             id: document.id,
             documentNumber: document.documentNumber ?? null,
             fileName: document.fileName ?? null,

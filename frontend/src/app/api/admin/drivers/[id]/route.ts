@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -19,7 +20,7 @@ export async function GET(
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', user?.id || 'unknown')
       .single();
 
     if (userError || !userData || !['admin', 'super_admin'].includes(userData.role)) {
@@ -77,9 +78,22 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
 
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
     const { id } = params;
     const body = await request.json();
 
@@ -156,9 +170,22 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
 
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
     const { id } = params;
 
     // Check if driver has active deliveries

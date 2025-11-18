@@ -10,8 +10,13 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const { supabase } = adminResult;
+    if (!supabase) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const { data: { user } } = await supabase.auth.getUser();
 
     // 3. Fetch all bookings with customer and equipment data
     const { data: bookingsData, error: bookingsError } = await supabase.from('bookings').select(`
@@ -48,6 +53,11 @@ export async function GET(request: NextRequest) {
 
     if (bookingsError) throw bookingsError;
 
+    const safeBookings = bookingsData ?? [];
+    if (safeBookings.length === 0) {
+      return NextResponse.json({ error: 'No bookings available to export' }, { status: 404 });
+    }
+
     // 4. Generate CSV
     const csvHeaders = [
       'Booking Number',
@@ -71,7 +81,7 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const csvRows = (bookingsData || []).map((booking: any) => {
+    const csvRows = safeBookings.map((booking: any) => {
       const customer = booking.customer || {};
       const equipment = booking.equipment || {};
 
@@ -120,7 +130,7 @@ export async function GET(request: NextRequest) {
       action: 'export_success',
       metadata: {
         count: csvRows.length,
-        adminId: user.id,
+        adminId: user?.id || 'unknown',
       },
     });
 
@@ -147,4 +157,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

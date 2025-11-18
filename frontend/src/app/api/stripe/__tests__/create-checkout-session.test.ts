@@ -7,20 +7,48 @@ const mockSupabase = {
   from: vi.fn(),
 };
 
-const mockStripe = {
-  checkout: {
+const { mockStripe } = vi.hoisted(() => {
+  const checkout = {
     sessions: {
       create: vi.fn(),
     },
-  },
-};
+  };
+
+  return {
+    mockStripe: {
+      checkout,
+    },
+  };
+});
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
 }));
 
+// Mock stripe/config to return our mocked Stripe instance
+vi.mock('@/lib/stripe/config', () => ({
+  createStripeClient: vi.fn(() => {
+    const MockStripe = class {
+      checkout: any;
+      constructor() {
+        this.checkout = mockStripe.checkout;
+      }
+    };
+    return new MockStripe();
+  }),
+  getStripeSecretKey: vi.fn().mockResolvedValue('sk_test_mock_key'),
+  getStripePublishableKey: vi.fn().mockResolvedValue('pk_test_mock_key'),
+}));
+
+// Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
-  default: vi.fn(() => mockStripe),
+  default: class MockStripe {
+    checkout: any;
+
+    constructor() {
+      this.checkout = mockStripe.checkout;
+    }
+  },
 }));
 
 describe('POST /api/stripe/create-checkout-session', () => {

@@ -8,8 +8,16 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+    if (adminResult.error) return adminResult.error;
+    const supabase = adminResult.supabase;
+
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    }
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const { reportType, dateRange, format = 'pdf' } = body;
@@ -77,7 +85,7 @@ export async function POST(request: NextRequest) {
       reportData.equipment = {
         total: equipment?.length || 0,
         available: equipment?.filter(e => e.status === 'available').length || 0,
-        utilization: equipment?.map(eq => {
+        utilization: equipment?.map((eq: any) => {
           const eqBookings = bookings?.filter(b => b.equipmentId === eq.id) || [];
           return {
             id: eq.id,
@@ -166,7 +174,7 @@ export async function POST(request: NextRequest) {
     logger.info('Report generated successfully', {
       component: 'analytics-report-api',
       action: 'generate_report',
-      metadata: { reportType, dateRange, format, userId: user.id }
+      metadata: { reportType, dateRange, format, userId: user?.id || 'unknown' }
     });
 
     return new NextResponse(reportHTML, {

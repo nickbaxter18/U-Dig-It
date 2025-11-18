@@ -7,18 +7,45 @@ const mockSupabase = {
   from: vi.fn(),
 };
 
-const mockStripe = {
-  paymentIntents: {
+const { mockStripe } = vi.hoisted(() => {
+  const paymentIntents = {
     capture: vi.fn(),
-  },
-};
+  };
+
+  return {
+    mockStripe: {
+      paymentIntents,
+    },
+  };
+});
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
 }));
 
+// Mock stripe/config to return our mocked Stripe instance
+vi.mock('@/lib/stripe/config', () => ({
+  createStripeClient: vi.fn(() => {
+    const MockStripe = class {
+      paymentIntents: any;
+      constructor() {
+        this.paymentIntents = mockStripe.paymentIntents;
+      }
+    };
+    return new MockStripe();
+  }),
+  getStripeSecretKey: vi.fn().mockResolvedValue('sk_test_mock_key'),
+}));
+
+// Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
-  default: vi.fn(() => mockStripe),
+  default: class MockStripe {
+    paymentIntents: any;
+
+    constructor() {
+      this.paymentIntents = mockStripe.paymentIntents;
+    }
+  },
 }));
 
 describe('POST /api/stripe/capture-security-hold', () => {
@@ -30,12 +57,12 @@ describe('POST /api/stripe/capture-security-hold', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockSupabase.auth.getUser.mockResolvedValue({
       data: { user: mockUser },
       error: null,
     });
-    
+
     mockSupabase.from.mockReturnValue({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -46,7 +73,7 @@ describe('POST /api/stripe/capture-security-hold', () => {
       update: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
     });
-    
+
     mockStripe.paymentIntents.capture.mockResolvedValue({
       id: 'pi_test123',
       status: 'succeeded',
@@ -58,17 +85,17 @@ describe('POST /api/stripe/capture-security-hold', () => {
       data: { user: null },
       error: { message: 'Not authenticated' },
     });
-    
+
     const request = createMockRequest('POST', { bookingId: 'booking-123' });
     const response = await POST(request);
-    
+
     await expectErrorResponse(response, 401);
   });
 
   it('should require bookingId', async () => {
     const request = createMockRequest('POST', {});
     const response = await POST(request);
-    
+
     await expectErrorResponse(response, 400);
   });
 
@@ -81,17 +108,17 @@ describe('POST /api/stripe/capture-security-hold', () => {
         error: null,
       }),
     });
-    
+
     const request = createMockRequest('POST', { bookingId: mockBooking.id });
     const response = await POST(request);
-    
+
     await expectErrorResponse(response, 400);
   });
 
   it('should capture payment intent', async () => {
     const request = createMockRequest('POST', { bookingId: mockBooking.id });
     const response = await POST(request);
-    
+
     if (response.status === 200) {
       expect(mockStripe.paymentIntents.capture).toHaveBeenCalledWith('pi_test123');
     }
@@ -99,10 +126,10 @@ describe('POST /api/stripe/capture-security-hold', () => {
 
   it('should handle Stripe capture errors', async () => {
     mockStripe.paymentIntents.capture.mockRejectedValue(new Error('Capture failed'));
-    
+
     const request = createMockRequest('POST', { bookingId: mockBooking.id });
     const response = await POST(request);
-    
+
     await expectErrorResponse(response, 500);
   });
 });

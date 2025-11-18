@@ -14,7 +14,7 @@ const bookingExitSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const limiter = await rateLimit(request, RateLimitPresets.LIGHT);
+  const limiter = await rateLimit(request, RateLimitPresets.RELAXED);
   if (!limiter.success) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limiter.headers });
   }

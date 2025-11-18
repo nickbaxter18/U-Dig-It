@@ -25,11 +25,20 @@ if lsof -ti:3000 > /dev/null 2>&1; then
 fi
 
 echo "✅ Port 3000 is available"
+
+cd /home/vscode/U-Dig-It-1/frontend
+
+# Check for stale lock file (only clear if exists)
+# With turbopackFileSystemCacheForDev enabled, we DON'T want to clear .next on every start
+# Only clear the lock file if it exists from a crashed process
+if [ -f ".next/dev/lock" ]; then
+  echo "🔓 Removing stale Turbopack lock file..."
+  rm -f .next/dev/lock
+fi
+
 echo "🚀 Starting frontend on port 3000 with pnpm..."
+echo "   Using Turbopack with filesystem caching enabled for faster restarts"
 
-# Clear Next.js cache
-cd /home/vscode/Kubota-rental-platform/frontend
-rm -rf .next
-
-# Start frontend with pnpm
-PORT=3000 pnpm dev
+# Start frontend with Next.js directly (Turbopack is default in Next.js 16)
+# Use 'next dev' directly to avoid infinite loop (pnpm dev calls this script)
+PORT=3000 pnpm next dev

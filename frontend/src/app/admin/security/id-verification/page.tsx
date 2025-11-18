@@ -20,6 +20,7 @@ type VerificationStatus = 'all' | 'processing' | 'manual_review' | 'approved' | 
 
 interface VerificationResult {
   documentStatus?: string | null;
+  documentLivenessScore?: number | null;
   faceMatchScore?: number | null;
   faceLivenessScore?: number | null;
   failureReasons: string[];
@@ -334,15 +335,17 @@ export default function IdVerificationAdminPage() {
         },
       };
 
-      await supabase
-        .from('id_verification_requests')
+      // Type assertion needed due to Supabase type inference
+      await (supabase
+        .from('id_verification_requests') as any)
         .update({
           status: 'approved',
           metadata,
         })
         .eq('id', selected.id);
 
-      await supabase.from('id_verification_audits').insert({
+      // Type assertion needed due to Supabase type inference
+      await (supabase.from('id_verification_audits') as any).insert({
         request_id: selected.id,
         action: 'override_approved',
         performed_by: user.id,
@@ -381,7 +384,8 @@ export default function IdVerificationAdminPage() {
         updates.drivers_license_verified_at = new Date().toISOString();
 
         if (Object.keys(updates).length > 0) {
-          await supabase.from('users').update(updates).eq('id', selected.userId);
+          // Type assertion needed due to Supabase type inference
+          await (supabase.from('users') as any).update(updates).eq('id', selected.userId);
         }
       }
 
@@ -426,15 +430,17 @@ export default function IdVerificationAdminPage() {
         },
       };
 
-      await supabase
-        .from('id_verification_requests')
+      // Type assertion needed due to Supabase type inference
+      await (supabase
+        .from('id_verification_requests') as any)
         .update({
           status: 'rejected',
           metadata,
         })
         .eq('id', selected.id);
 
-      await supabase.from('id_verification_audits').insert({
+      // Type assertion needed due to Supabase type inference
+      await (supabase.from('id_verification_audits') as any).insert({
         request_id: selected.id,
         action: 'override_rejected',
         performed_by: user.id,
@@ -595,8 +601,8 @@ export default function IdVerificationAdminPage() {
                   <div>
                     <p className="font-semibold text-gray-800">Document sharpness</p>
                     <p className="mt-1">
-                      {typeof request.result.documentLivenessScore === 'number'
-                        ? `${(request.result.documentLivenessScore * 100).toFixed(1)}%`
+                      {request.result?.documentLivenessScore != null && typeof request.result?.documentLivenessScore === 'number'
+                        ? `${((request.result?.documentLivenessScore ?? 0) * 100).toFixed(1)}%`
                         : 'N/A'}
                     </p>
                   </div>

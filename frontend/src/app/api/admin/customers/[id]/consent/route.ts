@@ -10,8 +10,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('customer_consent')
@@ -54,8 +65,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = customerConsentPatchSchema.parse(await request.json());
 
@@ -80,7 +108,7 @@ export async function PATCH(
         {
           component: 'admin-customer-consent',
           action: 'update_failed',
-          metadata: { customerId: params.id, channel: payload.channel, adminId: user.id },
+          metadata: { customerId: params.id, channel: payload.channel, adminId: user?.id || 'unknown' },
         },
         upsertError
       );
@@ -93,7 +121,7 @@ export async function PATCH(
     logger.info('Customer consent updated', {
       component: 'admin-customer-consent',
       action: 'consent_updated',
-      metadata: { customerId: params.id, channel: payload.channel, adminId: user.id },
+      metadata: { customerId: params.id, channel: payload.channel, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ consent: data });

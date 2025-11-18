@@ -1,0 +1,206 @@
+---
+description: Next.js 16 startup optimization with Turbopack filesystem caching
+globs:
+  - "**/start-frontend*.sh"
+  - "**/next.config.js"
+  - "**/package.json"
+alwaysApply: false
+---
+
+# Next.js 16 Startup Optimization
+
+## Critical Rules - ALWAYS Follow
+
+### 1. Startup Script Usage
+
+**ALWAYS use the optimized startup script:**
+```bash
+bash start-frontend-clean.sh
+```
+
+**NEVER manually clear caches unless experiencing corruption:**
+```bash
+# ❌ WRONG - Too aggressive, defeats Turbopack caching
+rm -rf .next .turbo node_modules/.cache
+
+# ✅ CORRECT - Only remove lock file if needed
+if [ -f ".next/dev/lock" ]; then
+  rm -f .next/dev/lock
+fi
+```
+
+### 2. Turbopack FileSystem Caching
+
+**ALWAYS ensure this is enabled in `next.config.js`:**
+```javascript
+experimental: {
+  turbopackFileSystemCacheForDev: true,  // REQUIRED for fast restarts
+}
+```
+
+**Benefits:**
+- ⚡ 60-70% faster restarts (3-5s vs 15-20s)
+- 💾 Persistent compiled artifacts on disk
+- 🎯 Incremental compilation (only changed files)
+- 🔄 Automatic cache invalidation
+
+**Reference:** https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackFileSystemCache
+
+### 3. Package.json Scripts
+
+**ALWAYS configure dev script to use optimized startup:**
+```json
+"scripts": {
+  "dev": "bash ../start-frontend-clean.sh",
+  "dev:raw": "next dev",  // Backup for raw access
+  "dev:deep-clean": "bash ../start-frontend-deep-clean.sh"  // Emergency only
+}
+```
+
+### 4. VS Code / Cursor Tasks
+
+**The "Start Frontend Port 3000" task automatically runs the optimized script.**
+
+Configuration in `.vscode/tasks.json`:
+```json
+{
+  "label": "Start Frontend Port 3000",
+  "command": "cd frontend && pnpm dev",
+  "runOptions": {
+    "instanceLimit": 1,
+    "runOn": "folderOpen"  // Auto-runs on Cursor startup
+  }
+}
+```
+
+## When to Use Deep Clean
+
+**Use `start-frontend-deep-clean.sh` ONLY for:**
+- ✅ Persistent build errors after code changes
+- ✅ Strange behavior that persists after restart
+- ✅ After major dependency updates
+- ✅ Turbopack cache corruption (rare)
+
+**Deep clean is SLOWER (15-20s) - use sparingly!**
+
+## Startup Script Patterns
+
+### Optimized Script Pattern (start-frontend-clean.sh)
+```bash
+# 1. Kill processes on ports 3000/3001
+lsof -ti:3000 | xargs -r kill -9 2>/dev/null
+lsof -ti:3001 | xargs -r kill -9 2>/dev/null
+
+# 2. Kill Next.js processes
+pkill -9 -f "next dev" 2>/dev/null
+pkill -9 -f "next-server" 2>/dev/null
+
+# 3. Verify port availability
+if lsof -ti:3000 > /dev/null 2>&1; then
+    echo "❌ ERROR: Port 3000 is still in use!"
+    exit 1
+fi
+
+# 4. Remove ONLY stale lock file (preserves cache!)
+if [ -f ".next/dev/lock" ]; then
+  rm -f .next/dev/lock
+fi
+
+# 5. Start with Turbopack (default in Next.js 16)
+# CRITICAL: Use 'pnpm next dev' directly (not 'pnpm dev' which calls this script)
+PORT=3000 pnpm next dev
+```
+
+### Deep Clean Pattern (Emergency Only)
+```bash
+# Clear ALL caches (slower, but solves corruption)
+rm -rf .next .turbo node_modules/.cache
+rm -f .next/dev/lock
+
+# Then start normally
+# CRITICAL: Use 'pnpm next dev' directly (not 'pnpm dev' which calls start-frontend-clean.sh)
+PORT=3000 pnpm next dev
+```
+
+## Performance Targets
+
+| Metric | Target | Current |
+|--------|--------|---------|
+| First Start | 10-15s | ✅ |
+| Restart (with cache) | 3-5s | ✅ |
+| Cache Management | Automatic | ✅ |
+| Port Cleanup | Automatic | ✅ |
+
+## Troubleshooting
+
+### Issue: "Port 3000 is in use"
+**Solution:** The startup script automatically handles this. Just run:
+```bash
+bash start-frontend-clean.sh
+```
+
+### Issue: "Turbopack lock file" error
+**Solution:** The startup script automatically removes stale locks. If persists:
+```bash
+rm -f frontend/.next/dev/lock
+bash start-frontend-clean.sh
+```
+
+### Issue: Build errors persist after code fix
+**Solution:** Use deep clean (only if restart didn't work):
+```bash
+bash start-frontend-deep-clean.sh
+```
+
+### Issue: Slow startup after restart
+**Check:** Ensure Turbopack caching is enabled in `next.config.js`:
+```javascript
+experimental: {
+  turbopackFileSystemCacheForDev: true,  // Must be present!
+}
+```
+
+## Never Do This
+
+❌ **Don't manually run `rm -rf .next` on every start**
+- Defeats Turbopack caching benefits
+- Forces complete recompilation
+- Wastes 10-15 seconds every time
+
+❌ **Don't use `next dev` directly without port cleanup**
+- Can cause port conflicts
+- Doesn't handle stale locks
+- Misses optimization benefits
+
+❌ **Don't disable Turbopack caching to "solve" issues**
+- The caching is a feature, not a bug
+- Use deep clean script instead for corruption
+
+❌ **Don't modify startup scripts without testing**
+- They're optimized based on Next.js 16 best practices
+- Changes can break auto-startup functionality
+
+## Documentation Reference
+
+All details documented in: `STARTUP_OPTIMIZATION.md`
+
+Key sections:
+- How Turbopack caching works
+- Performance comparisons
+- Complete troubleshooting guide
+- Next.js 16 references
+
+## Version Requirements
+
+- **Next.js:** 16.0.3+ (currently installed)
+- **Turbopack:** Default in Next.js 16
+- **Node.js:** Check `.nvmrc` or `package.json`
+- **pnpm:** Workspace package manager
+
+## Related Files
+
+- `@start-frontend-clean.sh` - Optimized startup (use this)
+- `@start-frontend-deep-clean.sh` - Emergency cleanup
+- `@frontend/next.config.js` - Turbopack configuration
+- `@frontend/package.json` - Dev scripts
+- `@STARTUP_OPTIMIZATION.md` - Complete documentation

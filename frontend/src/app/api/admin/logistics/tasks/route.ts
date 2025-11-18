@@ -35,8 +35,19 @@ function parseFilters(searchParams: URLSearchParams) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const filters = parseFilters(new URL(request.url).searchParams);
 
@@ -80,9 +91,7 @@ export async function GET(request: NextRequest) {
     if (fetchError) {
       logger.error(
         'Failed to fetch logistics tasks',
-        { component: 'admin-logistics-tasks', action: 'fetch_failed', metadata: filters },
-        fetchError
-      );
+        { component: 'admin-logistics-tasks', action: 'fetch_failed', metadata: filters });
       return NextResponse.json(
         { error: 'Unable to load logistics tasks' },
         { status: 500 }
@@ -113,8 +122,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = logisticsTaskCreateSchema.parse(await request.json());
 
@@ -150,7 +176,7 @@ export async function POST(request: NextRequest) {
     logger.info('Logistics task created', {
       component: 'admin-logistics-tasks',
       action: 'task_created',
-      metadata: { taskId: data.id, bookingId: payload.bookingId, adminId: user.id },
+      metadata: { taskId: data.id, bookingId: payload.bookingId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ task: data });

@@ -1,0 +1,302 @@
+---
+description: Next.js configuration standards for optimal performance with Turbopack
+globs:
+  - "**/next.config.js"
+  - "**/next.config.ts"
+  - "**/next.config.mjs"
+alwaysApply: false
+---
+
+# Next.js Configuration Standards
+
+## Critical Configuration - ALWAYS Include
+
+### 1. Turbopack FileSystem Caching (REQUIRED)
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    // ⚡ REQUIRED - Enables 70% faster restarts
+    turbopackFileSystemCacheForDev: true,
+
+    // Other experimental features...
+    optimizePackageImports: [...],
+    optimizeCss: true,
+  },
+};
+
+module.exports = nextConfig;
+```
+
+**Why this matters:**
+- 70% faster restarts (3-5s vs 15-20s)
+- Persistent compiled artifacts
+- Incremental compilation
+- Automatic cache invalidation
+
+**Reference:** https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackFileSystemCache
+
+### 2. Turbopack Configuration
+
+```javascript
+// Turbopack Configuration (Next.js 16+)
+// Empty config allows webpack config to coexist with Turbopack
+turbopack: {},
+```
+
+**Never disable Turbopack** - it's the default in Next.js 16 and provides significant performance benefits.
+
+### 3. TypeScript Configuration
+
+```javascript
+typescript: {
+  ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true' || true,
+},
+```
+
+**Note:** While build errors are ignored for incremental migration, always run `pnpm type-check` before commits.
+
+### 4. Server External Packages
+
+```javascript
+serverExternalPackages: [
+  '@supabase/supabase-js',
+  'sharp',
+  '@tensorflow/tfjs-node',
+  '@vladmandic/human',
+],
+```
+
+**Critical for Supabase** - prevents bundling issues with server-side packages.
+
+### 5. Compiler Options
+
+```javascript
+compiler: {
+  // Remove console.log in production
+  removeConsole:
+    process.env.NODE_ENV === 'production'
+      ? {
+          exclude: ['error', 'warn'],
+        }
+      : false,
+},
+```
+
+Keeps error/warn logs in production for debugging.
+
+### 6. React Strict Mode
+
+```javascript
+reactStrictMode: true,
+```
+
+**Always enable** - catches potential problems during development.
+
+## Performance Optimization Configuration
+
+### Package Import Optimization
+
+```javascript
+experimental: {
+  optimizePackageImports: [
+    'lucide-react',
+    '@radix-ui/react-dialog',
+    '@radix-ui/react-dropdown-menu',
+    '@radix-ui/react-toast',
+    '@radix-ui/react-select',
+    '@radix-ui/react-popover',
+    '@radix-ui/react-tabs',
+    '@radix-ui/react-checkbox',
+    'date-fns',
+  ],
+},
+```
+
+Enables tree-shaking for large libraries.
+
+### Webpack Bundle Splitting
+
+```javascript
+webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+  // Don't modify server-side bundles
+  if (!isServer) {
+    // Optimize Client-Side Bundle Splitting
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          // Framework code (React, Next.js) - Changes infrequently
+          framework: {
+            name: 'framework',
+            chunks: 'all',
+            test: /[\\/]node_modules[\\/](react|react-dom|next)[\\/]/,
+            priority: 40,
+            enforce: true,
+          },
+          // Admin dashboard - Separate bundle (only loaded when needed)
+          admin: {
+            name: 'admin',
+            test: /[\\/]app[\\/]admin[\\/]/,
+            chunks: 'all',
+            priority: 30,
+            enforce: true,
+          },
+        },
+      },
+    };
+  }
+  return config;
+},
+```
+
+## Image Optimization
+
+```javascript
+images: {
+  remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'bnimazxnqligusckahab.supabase.co',
+    },
+    {
+      protocol: 'https',
+      hostname: 'lh3.googleusercontent.com',
+    },
+    {
+      protocol: 'https',
+      hostname: 'avatars.githubusercontent.com',
+    },
+  ],
+  formats: ['image/avif', 'image/webp'],
+  deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+  imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+},
+```
+
+## What NOT to Do
+
+### ❌ Never Disable Turbopack Caching
+
+```javascript
+// ❌ WRONG - Disables performance benefits
+experimental: {
+  turbopackFileSystemCacheForDev: false,  // NEVER do this!
+}
+```
+
+### ❌ Never Use Webpack Instead of Turbopack
+
+```javascript
+// ❌ WRONG - In package.json
+"dev": "next dev --webpack"  // Much slower!
+```
+
+Turbopack is 700% faster - only use webpack if absolutely required for compatibility.
+
+### ❌ Never Remove serverExternalPackages
+
+```javascript
+// ❌ WRONG - Breaks Supabase
+serverExternalPackages: [],  // Causes bundling issues!
+```
+
+### ❌ Never Disable React Strict Mode
+
+```javascript
+// ❌ WRONG - Hides potential issues
+reactStrictMode: false,  // Always keep true!
+```
+
+## Environment-Specific Configuration
+
+### Development
+
+```javascript
+env: {
+  NEXT_PUBLIC_DEV_BYPASS_PAYMENT: process.env.NODE_ENV === 'development' ? 'true' : 'false',
+},
+```
+
+### Production
+
+```javascript
+// Compression
+compress: true,
+
+// Production Source Maps (disable for smaller builds)
+productionBrowserSourceMaps: false,
+
+// Remove PoweredBy header for security
+poweredByHeader: false,
+```
+
+## Transpile Packages
+
+```javascript
+transpilePackages: ['@react-pdf/renderer'],
+```
+
+Required for packages that don't provide pre-compiled ESM bundles.
+
+## Complete Example
+
+See `@frontend/next.config.js` for the complete, optimized configuration.
+
+## Validation Checklist
+
+When editing `next.config.js`, ensure:
+
+- [ ] `turbopackFileSystemCacheForDev: true` is present
+- [ ] `turbopack: {}` configuration exists
+- [ ] `serverExternalPackages` includes Supabase
+- [ ] `reactStrictMode: true`
+- [ ] Webpack optimization for client bundles only (`!isServer`)
+- [ ] Image domains include Supabase and auth providers
+- [ ] Package import optimization for large libraries
+- [ ] Compression enabled
+- [ ] PoweredBy header disabled
+
+## Testing Configuration Changes
+
+After modifying `next.config.js`:
+
+```bash
+# 1. Stop the dev server
+# 2. Clear the .next cache (if major changes)
+rm -rf frontend/.next
+
+# 3. Restart with the optimized script
+bash start-frontend-clean.sh
+
+# 4. Verify no build errors
+# 5. Check performance (should still be 3-5s restarts)
+```
+
+## Performance Monitoring
+
+After configuration changes, monitor:
+- **First start time**: Should be 10-15s
+- **Restart time**: Should be 3-5s with cache
+- **Build time**: `pnpm build` should complete without errors
+- **Bundle sizes**: Check with `pnpm size`
+
+## Version Information
+
+- **Next.js**: 16.0.3+ (Turbopack is default)
+- **React**: 19.2.0+
+- **Node.js**: See `.nvmrc`
+
+## Related Documentation
+
+- Next.js 16 Upgrade Guide: https://nextjs.org/docs/app/guides/upgrading/version-16
+- Turbopack Documentation: https://nextjs.org/docs/app/api-reference/turbopack
+- FileSystem Cache: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackFileSystemCache
+
+## Related Rules
+
+- `@frontend-startup-protocol.mdc` - Startup procedures
+- `@nextjs-startup-optimization.mdc` - Performance optimization
+- `@performance-optimization.mdc` - General performance guidelines

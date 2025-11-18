@@ -8,8 +8,25 @@ import { supportTemplateUpdateSchema } from '@/lib/validators/admin/support';
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportTemplateUpdateSchema.parse(await request.json());
 
@@ -37,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         {
           component: 'admin-support-templates',
           action: 'update_failed',
-          metadata: { templateId: params.id, adminId: user.id },
+          metadata: { templateId: params.id, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -47,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     logger.info('Support template updated', {
       component: 'admin-support-templates',
       action: 'template_updated',
-      metadata: { templateId: params.id, adminId: user.id },
+      metadata: { templateId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ template: data });
@@ -74,8 +91,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { error: deleteError } = await supabase
       .from('support_templates')
@@ -88,7 +122,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         {
           component: 'admin-support-templates',
           action: 'delete_failed',
-          metadata: { templateId: params.id, adminId: user.id },
+          metadata: { templateId: params.id, adminId: user?.id || 'unknown' },
         },
         deleteError
       );
@@ -98,7 +132,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     logger.info('Support template deleted', {
       component: 'admin-support-templates',
       action: 'template_deleted',
-      metadata: { templateId: params.id, adminId: user.id },
+      metadata: { templateId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ success: true });

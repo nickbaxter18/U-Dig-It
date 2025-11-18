@@ -4,30 +4,63 @@
     {
       "label": "Start Frontend Port 3000",
       "type": "shell",
-      "command": "bash ${workspaceFolder}/start-frontend-clean.sh",
+      "command": "cd frontend && pnpm dev",
       "isBackground": true,
       "problemMatcher": {
+        "owner": "typescript",
         "pattern": {
-          "regexp": "^.*$",
+          "regexp": "^([^\\s].*)\\((\\d+|\\d+,\\d+|\\d+,\\d+,\\d+,\\d+)\\):\\s+(error|warning|info)\\s+(TS\\d+)\\s*:\\s*(.*)$",
           "file": 1,
           "location": 2,
-          "message": 3
+          "severity": 3,
+          "code": 4,
+          "message": 5
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "Starting",
-          "endsPattern": "Ready in"
+          "beginsPattern": ".*Starting.*|.*Cleaning.*|🚀.*|🧹.*",
+          "endsPattern": "(Local|Network):.*http.*3000"
         }
       },
       "presentation": {
+        "echo": true,
         "reveal": "always",
+        "focus": false,
         "panel": "dedicated",
-        "clear": true,
-        "showReuseMessage": false,
-        "focus": false
+        "showReuseMessage": true,
+        "clear": false
       },
       "runOptions": {
+        "instanceLimit": 1,
         "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "Deep Clean Frontend",
+      "type": "shell",
+      "command": "bash start-frontend-deep-clean.sh",
+      "isBackground": true,
+      "problemMatcher": {
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "⚠️.*DEEP CLEAN",
+          "endsPattern": "(Local|Network):.*http"
+        }
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Stop Frontend Server",
+      "type": "shell",
+      "command": "pkill -9 -f 'next dev' && pkill -9 -f 'next-server' && lsof -ti:3000 | xargs -r kill -9 2>/dev/null && echo '✅ Frontend server stopped'",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared"
       }
     }
   ]

@@ -7,18 +7,45 @@ const mockSupabase = {
   from: vi.fn(),
 };
 
-const mockStripe = {
-  paymentIntents: {
+const { mockStripe } = vi.hoisted(() => {
+  const paymentIntents = {
     cancel: vi.fn(),
-  },
-};
+  };
+
+  return {
+    mockStripe: {
+      paymentIntents,
+    },
+  };
+});
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => Promise.resolve(mockSupabase),
 }));
 
+// Mock stripe/config to return our mocked Stripe instance
+vi.mock('@/lib/stripe/config', () => ({
+  createStripeClient: vi.fn(() => {
+    const MockStripe = class {
+      paymentIntents: any;
+      constructor() {
+        this.paymentIntents = mockStripe.paymentIntents;
+      }
+    };
+    return new MockStripe();
+  }),
+  getStripeSecretKey: vi.fn().mockResolvedValue('sk_test_mock_key'),
+}));
+
+// Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
-  default: vi.fn(() => mockStripe),
+  default: class MockStripe {
+    paymentIntents: any;
+
+    constructor() {
+      this.paymentIntents = mockStripe.paymentIntents;
+    }
+  },
 }));
 
 describe('POST /api/stripe/release-security-hold', () => {

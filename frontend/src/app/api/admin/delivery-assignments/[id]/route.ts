@@ -23,8 +23,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     // Parse and validate request body
     const body = await request.json();
@@ -34,21 +51,21 @@ export async function PATCH(
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Update delivery assignment with service role
-    const { data, error } = await supabaseAdmin
+    const { data, error: updateError } = await supabaseAdmin
       .from('delivery_assignments')
       .update(validatedData)
       .eq('booking_id', params.id)
       .select()
       .single();
 
-    if (error) {
+    if (updateError) {
       logger.error('Failed to update delivery assignment', {
         component: 'admin-delivery-assignments-api',
         action: 'update_error',
-        metadata: { bookingId: params.id, adminId: user.id },
-      }, error);
+        metadata: { bookingId: params.id, adminId: user?.id || 'unknown' },
+      }, updateError);
       return NextResponse.json(
-        { error: 'Failed to update delivery assignment', details: error.message },
+        { error: 'Failed to update delivery assignment', details: updateError.message },
         { status: 500 }
       );
     }
@@ -58,7 +75,7 @@ export async function PATCH(
       action: 'delivery_assignment_updated',
       metadata: {
         bookingId: params.id,
-        adminId: user.id,
+        adminId: user?.id || 'unknown',
         updates: Object.keys(validatedData),
       },
     });

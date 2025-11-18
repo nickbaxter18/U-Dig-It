@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return new NextResponse(cachedBuffer, {
+    return new NextResponse(new Uint8Array(cachedBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'image/png',

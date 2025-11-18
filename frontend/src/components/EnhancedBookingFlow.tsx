@@ -179,7 +179,8 @@ export default function EnhancedBookingFlow({
       logger.debug('[BookingFlow] Failed to send exit notification beacon', {
         component: 'EnhancedBookingFlow',
         action: 'exit_notification_debug',
-      }, error instanceof Error ? error : undefined);
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      });
     }
   }, [bookingCompleted, formData.customerEmail, formData.deliveryAddress, formData.deliveryCity, formData.endDate, formData.startDate, showBookingConfirmed, step, user]);
 

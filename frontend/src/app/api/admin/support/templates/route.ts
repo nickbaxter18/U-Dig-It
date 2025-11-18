@@ -8,8 +8,19 @@ import { supportTemplateCreateSchema } from '@/lib/validators/admin/support';
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('support_templates')
@@ -19,9 +30,7 @@ export async function GET(request: NextRequest) {
     if (fetchError) {
       logger.error(
         'Failed to fetch support templates',
-        { component: 'admin-support-templates', action: 'fetch_failed' },
-        fetchError
-      );
+        { component: 'admin-support-templates', action: 'fetch_failed' });
       return NextResponse.json({ error: 'Unable to load support templates' }, { status: 500 });
     }
 
@@ -38,8 +47,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportTemplateCreateSchema.parse(await request.json());
 
@@ -50,7 +76,7 @@ export async function POST(request: NextRequest) {
         channel: payload.channel,
         subject: payload.subject ?? null,
         body: payload.body,
-        created_by: user.id,
+        created_by: user?.id || 'unknown',
       })
       .select()
       .single();
@@ -71,7 +97,7 @@ export async function POST(request: NextRequest) {
     logger.info('Support template created', {
       component: 'admin-support-templates',
       action: 'template_created',
-      metadata: { templateId: data.id, adminId: user.id },
+      metadata: { templateId: data.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ template: data });

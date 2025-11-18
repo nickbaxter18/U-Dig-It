@@ -1,0 +1,39 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/pages/**/*.{ts,tsx}",
+    "src/middleware.ts",
+    "next.config.js",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
+  "ignore": [
+    "src/**/*.test.{ts,tsx}",
+    "src/**/*.spec.{ts,tsx}",
+    "src/test/**",
+    "e2e/**",
+    "tests/**",
+    ".next/**",
+    ".storybook/**",
+    "storybook-static/**",
+    "coverage/**"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "typescript",
+    "eslint",
+    "prettier"
+  ],
+  "next": {
+    "entry": [
+      "src/app/**/*.{ts,tsx}",
+      "src/pages/**/*.{ts,tsx}",
+      "src/middleware.ts"
+    ]
+  }
+}
+

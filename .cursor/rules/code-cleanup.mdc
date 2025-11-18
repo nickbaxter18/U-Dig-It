@@ -1,0 +1,229 @@
+---
+description: Finding and removing unused code with Knip
+globs: []
+alwaysApply: false
+---
+
+# Code Cleanup with Knip
+
+## When to Use Knip
+
+Run Knip in these scenarios:
+1. **Before major releases** - Clean up dead code
+2. **Weekly maintenance** - Keep codebase lean
+3. **After refactoring** - Remove old implementations
+4. **Before bundle analysis** - Reduce bundle size
+
+## Basic Usage
+
+```bash
+# Find all unused code
+pnpm knip
+
+# Production code only (ignore tests)
+pnpm knip:production
+
+# Alias
+pnpm unused
+```
+
+## What Knip Finds
+
+### 1. Unused Files
+```bash
+pnpm knip
+
+# Output:
+Unused files (3)
+  src/components/OldBookingForm.tsx
+  src/utils/deprecated-helpers.ts
+  src/lib/legacy-api.ts
+
+# Action: Delete these files
+rm src/components/OldBookingForm.tsx
+```
+
+### 2. Unused Dependencies
+```bash
+# Output:
+Unused dependencies (5)
+  moment          # Use date-fns instead
+  lodash          # Use native JS
+  jquery          # Not needed in React
+
+# Action: Remove from package.json
+pnpm remove moment lodash jquery
+```
+
+### 3. Unused Exports
+```bash
+# Output:
+Unused exports (12)
+  src/lib/helpers.ts: oldFunction
+  src/lib/validation.ts: deprecatedValidator
+
+# Action: Remove these exports
+```
+
+### 4. Unused Types
+```bash
+# Output:
+Unused types (8)
+  src/types/legacy.ts: OldBookingType
+
+# Action: Remove or document if needed for API
+```
+
+## Cleanup Workflow
+
+### 1. Run Knip
+```bash
+pnpm knip > knip-report.txt
+```
+
+### 2. Review Findings
+Read the report and categorize:
+- **Safe to delete** - Truly unused
+- **Keep** - Used in ways Knip doesn't detect (dynamic imports, etc.)
+- **Investigate** - Might be used in production
+
+### 3. Clean Up
+```bash
+# Delete unused files
+rm src/components/OldComponent.tsx
+
+# Remove dependencies
+pnpm remove unused-package
+
+# Remove exports from files (manually)
+```
+
+### 4. Verify
+```bash
+# Ensure build still works
+pnpm build
+
+# Run tests
+pnpm test
+
+# Re-run Knip
+pnpm knip
+```
+
+## Common False Positives
+
+### Dynamic Imports
+```typescript
+// Knip might flag this as unused
+export function DynamicComponent() {}
+
+// But it's used dynamically:
+const Component = await import(`./components/${name}`);
+```
+
+**Solution:** Add to `knip.json` ignore list if truly used.
+
+### API Types
+```typescript
+// Type used in API contract
+export type BookingResponse = { ... };
+
+// Knip flags as unused but it's part of API
+```
+
+**Solution:** Keep types needed for external contracts.
+
+### Environment-Specific Code
+```typescript
+// Only used in production
+export function productionLogger() {}
+```
+
+**Solution:** Use comments to mark as intentionally environment-specific.
+
+## Configuration
+
+Edit `frontend/knip.json`:
+
+```json
+{
+  "entry": [
+    "src/app/**/*.{ts,tsx}",
+    "src/middleware.ts"
+  ],
+  "ignore": [
+    "src/**/*.test.{ts,tsx}",
+    "src/test/**"
+  ],
+  "ignoreDependencies": [
+    "@types/*",
+    "typescript"
+  ]
+}
+```
+
+## Weekly Maintenance Script
+
+```bash
+#!/bin/bash
+# weekly-cleanup.sh
+
+echo "🧹 Running weekly code cleanup..."
+
+# 1. Find unused code
+pnpm knip > knip-report.txt
+
+# 2. Show summary
+echo ""
+echo "📊 Cleanup Report:"
+grep "Unused" knip-report.txt
+
+# 3. Prompt for action
+echo ""
+echo "Review knip-report.txt and clean up unused code."
+```
+
+## Integration with Bundle Size
+
+Removing unused code reduces bundle size:
+
+```bash
+# Before cleanup
+pnpm size
+# Client Bundle: 155 KB (EXCEEDED!)
+
+# After cleanup
+pnpm knip
+pnpm remove unused-deps
+pnpm size
+# Client Bundle: 142 KB (✓ PASS)
+```
+
+## CI/CD Integration
+
+Add to CI pipeline:
+
+```yaml
+# .github/workflows/cleanup-check.yml
+- name: Check for unused code
+  run: |
+    pnpm knip
+    if [ $? -ne 0 ]; then
+      echo "Warning: Unused code detected"
+    fi
+```
+
+## Reference Files
+
+@frontend/knip.json
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+
+## Key Rules
+
+1. **Weekly maintenance** - Run `pnpm knip` every week
+2. **Before releases** - Clean up before major deployments
+3. **Review carefully** - Don't blindly delete
+4. **Test after cleanup** - Run `pnpm test` and `pnpm build`
+5. **Remove dependencies** - Use `pnpm remove` for unused packages
+6. **Document exceptions** - Comment why code seems unused
+7. **Track bundle size** - Verify cleanup reduces bundle size

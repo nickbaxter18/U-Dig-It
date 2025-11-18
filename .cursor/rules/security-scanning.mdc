@@ -1,0 +1,151 @@
+---
+description: Security scanning best practices - manual code review and security standards
+globs: []
+alwaysApply: true
+---
+
+# Security Scanning & Best Practices
+
+## Security Review Process
+
+### Manual Security Review
+Security issues should be identified through:
+- Code review
+- Static analysis tools (ESLint security plugins)
+- Dependency audits (npm/pnpm audit)
+- Manual security testing
+
+**Note**: Snyk CLI tools are not available in this environment. Use alternative security review methods.
+
+## Security Best Practices
+
+### 1. Code Review Checklist
+Review code for common vulnerabilities:
+- SQL injection risks
+- XSS vulnerabilities
+- Authentication/authorization issues
+- Input validation gaps
+- Hardcoded secrets
+- Insecure dependencies
+
+### 2. Apply Fixes
+Follow security best practices:
+
+```typescript
+// ❌ WRONG - SQL Injection vulnerability
+const query = `SELECT * FROM bookings WHERE id = '${bookingId}'`;
+await supabase.from('bookings').select(query);
+
+// ✅ CORRECT - Use parameterized queries
+const { data } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('id', bookingId);  // Safely parameterized
+```
+
+### 3. Verify Fixes
+- Review code changes
+- Test security fixes
+- Verify no new vulnerabilities introduced
+
+## Common Vulnerabilities to Avoid
+
+### 1. Input Validation
+```typescript
+// ✅ CORRECT - Always validate and sanitize
+import { z } from 'zod';
+import { sanitizeBookingFormData } from '@/lib/input-sanitizer';
+
+const schema = z.object({
+  equipmentId: z.string().uuid(),
+  startDate: z.string().datetime(),
+});
+
+const sanitized = sanitizeBookingFormData(body);
+const validated = schema.parse(sanitized);
+
+// ❌ WRONG - Trust user input
+await supabase.from('bookings').insert(request.body);
+```
+
+### 2. XSS Prevention
+```typescript
+// ✅ CORRECT - Use React (auto-escapes)
+<div>{userInput}</div>
+
+// ✅ CORRECT - Use DOMPurify for HTML
+import DOMPurify from 'dompurify';
+const clean = DOMPurify.sanitize(dirtyHTML);
+
+// ❌ WRONG - dangerouslySetInnerHTML without sanitization
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+```
+
+### 3. Authentication
+```typescript
+// ✅ CORRECT - Verify auth on server
+import { createClient } from '@/lib/supabase/server';
+
+export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Process request
+}
+
+// ❌ WRONG - Trust client-side auth
+export async function POST(request: NextRequest) {
+  const { userId } = await request.json();
+  // No verification!
+}
+```
+
+### 4. Secret Management
+```typescript
+// ✅ CORRECT - Use environment variables
+const apiKey = process.env.STRIPE_SECRET_KEY;
+
+// ❌ WRONG - Hardcoded secrets
+const apiKey = 'sk_test_abc123';  // Snyk will flag this!
+```
+
+## Dependency Security
+
+### npm/pnpm Audit
+```bash
+# Check for known vulnerabilities in dependencies
+pnpm audit
+
+# Fix automatically where possible
+pnpm audit fix
+```
+
+### Manual Security Review
+Weekly security review should include:
+- Review dependency updates
+- Check for known CVEs in dependencies
+- Review code for security patterns
+- Test authentication/authorization flows
+- Verify input validation
+
+## Reference Files
+
+@.husky/pre-commit
+@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
+@.cursor/rules/security-standards.mdc
+
+## Key Rules
+
+1. **Manual security review** - Review code for security issues before committing
+2. **Fix before commit** - Address security issues before committing
+3. **Validate all inputs** - Use Zod + sanitization
+4. **Parameterize queries** - Never concatenate user input
+5. **Weekly audits** - Review dependencies and code patterns weekly
+6. **No hardcoded secrets** - Use environment variables
+7. **Sanitize HTML** - Use DOMPurify for user HTML
+8. **Verify auth server-side** - Never trust client
+9. **Dependency audits** - Run `pnpm audit` regularly

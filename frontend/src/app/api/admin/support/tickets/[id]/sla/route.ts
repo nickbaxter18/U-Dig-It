@@ -16,6 +16,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
     }
 
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error: fetchError } = await supabase
       .from('support_sla')
       .select('*')
@@ -58,7 +60,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
     }
-    const { user } = result;
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportSlaUpdateSchema.parse(await request.json());
     if (Object.keys(payload).length === 0) {
@@ -87,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         {
           component: 'admin-support-sla',
           action: 'update_failed',
-          metadata: { ticketId: params.id, adminId: user.id },
+          metadata: { ticketId: params.id, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -97,7 +101,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     logger.info('Support SLA updated', {
       component: 'admin-support-sla',
       action: 'sla_updated',
-      metadata: { ticketId: params.id, adminId: user.id },
+      metadata: { ticketId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ sla: data });

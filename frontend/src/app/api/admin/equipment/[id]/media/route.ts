@@ -22,8 +22,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('equipment_media')
@@ -79,8 +90,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = equipmentMediaCreateSchema.parse(await request.json());
     const serviceClient = createServiceClient();
@@ -107,7 +135,6 @@ export async function POST(
     const { data: signedUpload, error: signedError } = await serviceClient.storage
       .from(BUCKET_ID)
       .createSignedUploadUrl(storagePath, {
-        contentType: payload.contentType,
         upsert: false,
       });
 
@@ -136,7 +163,7 @@ export async function POST(
         caption: payload.caption ?? null,
         metadata: payload.metadata ?? {},
         is_primary: payload.isPrimary ?? false,
-        uploaded_by: user.id,
+        uploaded_by: user?.id || 'unknown',
       })
       .select()
       .single();
@@ -167,7 +194,7 @@ export async function POST(
     logger.info('Created equipment media upload session', {
       component: 'admin-equipment-media',
       action: 'media_created',
-      metadata: { equipmentId: params.id, mediaId: mediaRow.id, adminId: user.id },
+      metadata: { equipmentId: params.id, mediaId: mediaRow.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({
@@ -198,13 +225,105 @@ export async function POST(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    const body = await request.json();
+    const { mediaId, isPrimary, caption } = body;
+
+    if (!mediaId) {
+      return NextResponse.json({ error: 'mediaId is required' }, { status: 400 });
+    }
+
+    // If setting as primary, unset all other primary media for this equipment
+    if (isPrimary === true) {
+      await supabase
+        .from('equipment_media')
+        .update({ is_primary: false })
+        .eq('equipment_id', params.id);
+
+      // Update equipment primary_media_id
+      await supabase
+        .from('equipment')
+        .update({ primary_media_id: mediaId })
+        .eq('id', params.id);
+    }
+
+    // Update the media record
+    const updates: Record<string, unknown> = {};
+    if (isPrimary !== undefined) updates.is_primary = isPrimary;
+    if (caption !== undefined) updates.caption = caption;
+
+    const { data, error: updateError } = await supabase
+      .from('equipment_media')
+      .update(updates)
+      .eq('id', mediaId)
+      .eq('equipment_id', params.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      logger.error(
+        'Failed to update equipment media',
+        {
+          component: 'admin-equipment-media',
+          action: 'update_failed',
+          metadata: { mediaId, equipmentId: params.id },
+        },
+        updateError
+      );
+      return NextResponse.json({ error: 'Unable to update media' }, { status: 500 });
+    }
+
+    return NextResponse.json({ media: data });
+  } catch (err) {
+    logger.error(
+      'Unexpected error updating equipment media',
+      {
+        component: 'admin-equipment-media',
+        action: 'update_unexpected',
+        metadata: { equipmentId: params.id },
+      },
+      err instanceof Error ? err : new Error(String(err))
+    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const payload = equipmentMediaDeleteSchema.safeParse(await request.json());
     if (!payload.success) {
@@ -259,9 +378,8 @@ export async function DELETE(
         {
           component: 'admin-equipment-media',
           action: 'storage_remove_failed',
-          metadata: { mediaId: mediaRow.id, path: mediaRow.storage_path },
-        },
-        storageError
+          metadata: { mediaId: mediaRow.id, path: mediaRow.storage_path, error: storageError?.message },
+        }
       );
     }
 

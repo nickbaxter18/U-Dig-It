@@ -185,7 +185,7 @@ export async function updateInstallmentStatus(
   return response.json();
 }
 
-export async function fetchLedgerEntries(query: LedgerQueryInput = {}) {
+export async function fetchLedgerEntries(query: LedgerQueryInput = { limit: 100 }) {
   const params = new URLSearchParams();
   if (query.bookingId) params.append('bookingId', query.bookingId);
   if (query.entryType) params.append('entryType', query.entryType);
@@ -202,7 +202,7 @@ export async function fetchLedgerEntries(query: LedgerQueryInput = {}) {
 }
 
 export async function fetchPayoutReconciliations(
-  query: ReconciliationQueryInput = {}
+  query: ReconciliationQueryInput = { limit: 100 }
 ) {
   const params = new URLSearchParams();
   if (query.status) params.append('status', query.status);
@@ -269,7 +269,7 @@ export async function requestFinancialExport(payload: ExportCreateInput) {
   }>;
 }
 
-export async function listFinancialExports(query: ExportQueryInput = {}) {
+export async function listFinancialExports(query: ExportQueryInput = { limit: 100 }) {
   const params = new URLSearchParams();
   if (query.limit) params.append('limit', query.limit.toString());
 

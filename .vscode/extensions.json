@@ -1,95 +1,11 @@
 {
   "recommendations": [
-    // ============================================
-    // CRITICAL - Core Diagnostics (AI can read)
-    // ============================================
+    "vitest.explorer",
     "dbaeumer.vscode-eslint",
-    "ms-vscode.vscode-typescript-next",
-
-    // ============================================
-    // Security & Code Quality (AI can read)
-    // ============================================
-    "snyk-security.snyk-vulnerability-scanner",
-    "SonarSource.sonarlint-vscode",
-
-    // ============================================
-    // Framework-Specific (AI can read)
-    // ============================================
-    "bradlc.vscode-tailwindcss",
-    "stylelint.vscode-stylelint",
-
-    // ============================================
-    // Supabase & Database
-    // Note: Supabase MCP tools available via MCP (no extension needed)
-    // ============================================
-    "mtxr.sqltools",
-    "mtxr.sqltools-driver-pg",
-    "cweijan.vscode-database-client2",
-
-    // ============================================
-    // Testing (AI can read test failures)
-    // ============================================
-    "Orta.vscode-jest",
-    "ms-playwright.playwright",
-
-    // ============================================
-    // Code Quality & Productivity (NEW)
-    // ============================================
-    "streetsidesoftware.code-spell-checker",
-    "usernamehw.errorlens",
-    "gruntfuggly.todo-tree",
-    "aaron-bond.better-comments",
-    "christian-kohler.path-intellisense",
-    "wix.vscode-import-cost",
-
-    // Zero-Config Extensions (Work Immediately)
-    "ryanluker.vscode-coverage-gutters",
-    "pmneo.tsimporter",
-    "vincaslt.highlight-matching-tag",
-    "IBM.output-colorizer",
-    "naumovs.color-highlight",
-
-    // ============================================
-    // Git & Version Control (NEW)
-    // ============================================
-    "eamodio.gitlens",
-    "mhutchie.git-graph",
-
-    // ============================================
-    // API Testing (NEW - Useful for API routes)
-    // ============================================
-    "rangav.vscode-thunder-client",
-    "humao.rest-client",
-
-    // ============================================
-    // Formatting & Styling (NEW)
-    // ============================================
-    "esbenp.prettier-vscode",
-    "formulahendry.auto-rename-tag",
-    "oderwat.indent-rainbow",
-
-    // ============================================
-    // Documentation (AI can read)
-    // ============================================
-    "davidanson.vscode-markdownlint",
-    "yzhang.markdown-all-in-one",
-
-    // ============================================
-    // Infrastructure (AI can read)
-    // ============================================
-    "ms-azuretools.vscode-docker",
-    "ms-vscode-remote.remote-containers",
-
-    // ============================================
-    // Environment & Config (NEW)
-    // ============================================
-    "mikestead.dotenv",
-    "redhat.vscode-yaml",
-    "ms-vscode.vscode-json"
+    "esbenp.prettier-vscode"
   ],
   "unwantedRecommendations": [
-    // These are visual-only and don't help AI
-    "formulahendry.code-runner",
-    "ritwickdey.liveserver"
+    "orta.vscode-jest",
+    "firsttris.vscode-jest-runner"
   ]
 }

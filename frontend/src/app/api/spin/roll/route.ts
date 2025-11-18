@@ -29,8 +29,7 @@ import { sendSpinWinnerEmail } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
 import { createInAppNotification } from '@/lib/notification-service';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
-// Stripe integration temporarily disabled - coupon codes will be created manually
-// import { createSpinWheelCoupon } from '@/lib/stripe/spin-coupons';
+import { createSpinWheelCoupon } from '@/lib/stripe/spin-coupons';
 import { createClient } from '@/lib/supabase/server';
 
 interface RollSpinRequest {
@@ -308,45 +307,49 @@ export async function POST(request: NextRequest) {
     }
 
     // ========================================================================
-    // 9. CREATE COUPON (IF WON) - STRIPE INTEGRATION TEMPORARILY DISABLED
+    // 9. CREATE COUPON (IF WON) - STRIPE INTEGRATION
     // ========================================================================
     let stripePromotionCodeId: string | undefined;
+    let stripeCouponId: string | undefined;
 
     if (spinNumber === 3 && prize && couponCode) {
-      // TODO: Re-enable Stripe integration once credentials are configured
-      // For now, just save the coupon code to the session
-      // Codes will need to be manually created in Stripe dashboard:
-      // - UDIG-SPIN50 ($50 off, minimum $50 order)
-      // - UDIG-SPIN75 ($75 off, minimum $75 order)
-      // - UDIG-SPIN100 ($100 off, minimum $100 order)
-
-      logger.info('[Spin Roll] Fixed coupon code assigned (Stripe disabled)', {
-        component: 'spin-roll-api',
-        action: 'coupon_assigned',
-        metadata: {
-          sessionId,
-          couponCode, // UDIG-SPIN50, UDIG-SPIN75, or UDIG-SPIN100
+      try {
+        const stripePromo = await createSpinWheelCoupon({
+          code: couponCode,
           discountAmount: prize.amount,
           expiresAt: session.expires_at,
-          note: 'Stripe integration disabled - create codes manually in Stripe dashboard',
-        },
-      });
+          spinSessionId: sessionId,
+          userId: session.user_id || undefined,
+          email: session.email || undefined,
+        });
+        stripePromotionCodeId = stripePromo.promotionCodeId;
+        stripeCouponId = stripePromo.couponId;
 
-      // Stripe integration commented out to prevent 500 errors
-      // try {
-      //   const stripePromo = await createSpinWheelCoupon({
-      //     code: couponCode,
-      //     discountAmount: prize.amount,
-      //     expiresAt: session.expires_at,
-      //     spinSessionId: sessionId,
-      //     userId: session.user_id || undefined,
-      //     email: session.email || undefined,
-      //   });
-      //   stripePromotionCodeId = stripePromo.promotionCodeId;
-      //   stripeCouponId = stripePromo.couponId;
-      // } catch (error) {
-      //   logger.error('[Spin Roll] Stripe error', { ... }, error);
-      // }
+        logger.info('[Spin Roll] Stripe coupon created successfully', {
+          component: 'spin-roll-api',
+          action: 'stripe_coupon_created',
+          metadata: {
+            sessionId,
+            couponCode,
+            discountAmount: prize.amount,
+            stripePromotionCodeId,
+            stripeCouponId,
+          },
+        });
+      } catch (error) {
+        // Log error but don't fail the spin - coupon code is still valid
+        logger.error('[Spin Roll] Stripe coupon creation failed (non-fatal)', {
+          component: 'spin-roll-api',
+          action: 'stripe_coupon_error',
+          metadata: {
+            sessionId,
+            couponCode,
+            discountAmount: prize.amount,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        }, error as Error);
+        // Continue - coupon code is still saved to session and can be used manually
+      }
     }
 
     // ========================================================================

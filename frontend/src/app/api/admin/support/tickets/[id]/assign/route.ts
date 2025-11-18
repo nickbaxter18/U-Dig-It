@@ -10,8 +10,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportAssignmentSchema.parse(await request.json());
 
@@ -38,7 +55,7 @@ export async function POST(
       await supabase.from('support_messages').insert({
         ticket_id: params.id,
         sender_type: 'admin',
-        sender_id: user.id,
+        sender_id: user?.id || 'unknown',
         message_text: payload.note,
         internal: true,
       });
@@ -47,7 +64,7 @@ export async function POST(
     logger.info('Support ticket reassigned', {
       component: 'admin-support-assign',
       action: 'ticket_assigned',
-      metadata: { ticketId: params.id, assigneeId: payload.assigneeId, adminId: user.id },
+      metadata: { ticketId: params.id, assigneeId: payload.assigneeId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ ticket });

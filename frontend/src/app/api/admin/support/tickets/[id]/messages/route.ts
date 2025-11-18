@@ -16,6 +16,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
     }
 
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error: fetchError } = await supabase
       .from('support_messages')
       .select(
@@ -69,7 +71,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
     }
-    const { user } = result;
+
+    // Get user for logging
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = supportMessageCreateSchema.parse(await request.json());
 
@@ -88,7 +92,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       .insert({
         ticket_id: params.id,
         sender_type: 'admin',
-        sender_id: user.id,
+        sender_id: user?.id || 'unknown',
         message_text: payload.message,
         attachments: payload.attachments ?? [],
         internal: payload.internal ?? false,
@@ -117,7 +121,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     logger.info('Support message posted', {
       component: 'admin-support-messages',
       action: 'message_created',
-      metadata: { ticketId: params.id, messageId: message.id, adminId: user.id },
+      metadata: { ticketId: params.id, messageId: message.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ message });

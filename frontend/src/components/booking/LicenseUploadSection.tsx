@@ -1315,7 +1315,7 @@ export default function LicenseUploadSection({
             <button
               type="button"
               onClick={() => startCamera(context)}
-              disabled={isProcessing}
+              disabled={isProcessing ?? false}
               className="flex-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
             >
               📸 {capture.preview ? 'Retake' : 'Take photo'}
@@ -1326,7 +1326,7 @@ export default function LicenseUploadSection({
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileSelect(context)}
-                disabled={isProcessing}
+                disabled={isProcessing ?? false}
                 className="hidden"
               />
             </label>

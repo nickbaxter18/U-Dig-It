@@ -10,8 +10,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
 
     const { data, error: fetchError } = await supabase
       .from('booking_notes')
@@ -53,8 +64,25 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
     const data = bookingNoteCreateSchema.parse(body);
@@ -63,7 +91,7 @@ export async function POST(
       .from('booking_notes')
       .insert({
         booking_id: params.id,
-        admin_id: user.id,
+        admin_id: user?.id || 'unknown',
         note: data.note,
         visibility: data.visibility,
       })
@@ -82,7 +110,7 @@ export async function POST(
     logger.info('Booking note created', {
       component: 'admin-bookings-notes',
       action: 'note_created',
-      metadata: { bookingId: params.id, noteId: note.id, adminId: user.id },
+      metadata: { bookingId: params.id, noteId: note.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ note });

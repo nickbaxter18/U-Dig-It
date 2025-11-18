@@ -90,7 +90,7 @@ it('matches equipment card snapshot', () => {
 pnpm test
 pnpm lint
 pnpm type-check
-snyk_code_scan
+pnpm audit
 ```
 
 ### PR Checks

@@ -10,8 +10,25 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = maintenanceLogUpdateSchema.parse(await request.json());
 
@@ -44,7 +61,7 @@ export async function PATCH(
         {
           component: 'admin-maintenance-log',
           action: 'update_failed',
-          metadata: { maintenanceLogId: params.id, adminId: user.id },
+          metadata: { maintenanceLogId: params.id, adminId: user?.id || 'unknown' },
         },
         updateError
       );
@@ -57,7 +74,7 @@ export async function PATCH(
     logger.info('Maintenance log updated', {
       component: 'admin-maintenance-log',
       action: 'log_updated',
-      metadata: { maintenanceLogId: params.id, adminId: user.id },
+      metadata: { maintenanceLogId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ maintenanceLog: data });
@@ -87,8 +104,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { error: deleteError } = await supabase
       .from('maintenance_logs')
@@ -101,7 +135,7 @@ export async function DELETE(
         {
           component: 'admin-maintenance-log',
           action: 'delete_failed',
-          metadata: { maintenanceLogId: params.id, adminId: user.id },
+          metadata: { maintenanceLogId: params.id, adminId: user?.id || 'unknown' },
         },
         deleteError
       );
@@ -114,7 +148,7 @@ export async function DELETE(
     logger.info('Maintenance log soft deleted', {
       component: 'admin-maintenance-log',
       action: 'log_deleted',
-      metadata: { maintenanceLogId: params.id, adminId: user.id },
+      metadata: { maintenanceLogId: params.id, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ success: true });

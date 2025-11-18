@@ -370,13 +370,12 @@ SENDGRID_API_KEY=SG.xxx...
 ```bash
 # ✅ Run security audits regularly
 pnpm audit
-snyk test
 
 # ✅ Keep dependencies updated
 pnpm update
 
-# ✅ Check for critical vulnerabilities
-snyk_sca_scan({ path: "/absolute/path/to/project" })
+# ✅ Fix vulnerabilities automatically where possible
+pnpm audit fix
 ```
 
 ---

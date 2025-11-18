@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const { data: userData } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', user?.id || 'unknown')
       .single();
 
     if (!userData || (userData.role !== 'admin' && userData.role !== 'super_admin')) {

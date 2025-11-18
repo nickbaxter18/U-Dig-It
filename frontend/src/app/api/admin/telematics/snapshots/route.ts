@@ -7,8 +7,25 @@ import { telematicsSnapshotCreateSchema } from '@/lib/validators/admin/equipment
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, user, error } = await requireAdmin(request);
-    if (error) return error;
+    const adminResult = await requireAdmin(request);
+
+    if (adminResult.error) return adminResult.error;
+
+    const supabase = adminResult.supabase;
+
+    
+
+    if (!supabase) {
+
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+
+    }
+
+    
+
+    // Get user for logging
+
+    const { data: { user } } = await supabase.auth.getUser();
 
     const payload = telematicsSnapshotCreateSchema.parse(await request.json());
 
@@ -33,7 +50,7 @@ export async function POST(request: NextRequest) {
         {
           component: 'admin-telematics-snapshots',
           action: 'ingest_failed',
-          metadata: { equipmentId: payload.equipmentId, adminId: user.id },
+          metadata: { equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
         },
         insertError ?? new Error('Missing telematics snapshot data')
       );
@@ -46,7 +63,7 @@ export async function POST(request: NextRequest) {
     logger.info('Telematics snapshot ingested', {
       component: 'admin-telematics-snapshots',
       action: 'snapshot_ingested',
-      metadata: { snapshotId: data.id, equipmentId: payload.equipmentId, adminId: user.id },
+      metadata: { snapshotId: data.id, equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
     });
 
     return NextResponse.json({ snapshot: data });
