@@ -1,14 +1,17 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
 import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import ProfilePictureUpload from '@/components/ProfilePictureUpload';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
-import { supabaseApi } from '@/lib/supabase/api-client';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
+import { supabaseApi } from '@/lib/supabase/api-client';
 
 export default function ProfilePage() {
   const { user, loading: isLoading, initialized, signOut } = useAuth();
@@ -26,10 +29,11 @@ export default function ProfilePage() {
   // CRITICAL: Only redirect if auth is fully initialized AND confirmed no user
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      logger.debug(
-        '[Profile] Auth state:',
-        { component: 'app-page', action: 'debug', metadata: { user: !!user, loading: isLoading, initialized } }
-      );
+      logger.debug('[Profile] Auth state:', {
+        component: 'app-page',
+        action: 'debug',
+        metadata: { user: !!user, loading: isLoading, initialized },
+      });
     }
 
     if (initialized && !isLoading && !user) {
@@ -74,10 +78,14 @@ export default function ProfilePage() {
       setIsEditing(false);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to update profile:', {
-          component: 'app-page',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to update profile:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
   };
@@ -139,7 +147,7 @@ export default function ProfilePage() {
                   <div className="mb-4">
                     <ProfilePictureUpload
                       currentAvatarUrl={user.user_metadata?.avatar_url}
-                      onUploadSuccess={(url: any) => {
+                      onUploadSuccess={(url: unknown) => {
                         // Force re-render by triggering auth state refresh
                         window.location.reload();
                       }}

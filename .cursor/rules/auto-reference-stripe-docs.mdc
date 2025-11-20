@@ -1,0 +1,74 @@
+---
+description: "Automatically reference Stripe indexed documentation when working with payments, webhooks, or billing"
+globs:
+  - "**/app/api/webhooks/stripe/**/*.ts"
+  - "**/app/api/payments/**/*.ts"
+  - "**/lib/stripe/**/*.{ts,tsx}"
+  - "**/components/*payment*/**/*.{ts,tsx}"
+  - "**/components/*checkout*/**/*.{ts,tsx}"
+  - "**/hooks/*stripe*/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Stripe Documentation Auto-Reference
+
+When working with Stripe payment code, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## General Stripe Integration
+- Use **@Stripe Docs** for:
+  - Payment Intents API
+  - Checkout Sessions
+  - Customer management
+  - Subscription management
+  - Product and pricing setup
+  - API authentication
+
+## Webhooks
+- Use **@Stripe Webhooks** when:
+  - Setting up webhook endpoints
+  - Verifying webhook signatures
+  - Handling webhook events
+  - Implementing idempotency
+  - Testing webhooks locally
+  - Debugging webhook failures
+
+## Disputes & Chargebacks
+- Use **@Stripe Disputes** when:
+  - Handling dispute notifications
+  - Submitting dispute evidence
+  - Managing chargeback processes
+  - Implementing dispute prevention
+  - Reviewing dispute analytics
+
+## Fraud Prevention
+- Use **@https://stripe.com/docs/radar** when:
+  - Implementing Stripe Radar
+  - Creating fraud rules
+  - Managing risk scoring
+  - Reviewing blocked payments
+  - Setting up 3D Secure
+
+## Example Usage Pattern
+
+```typescript
+// When creating webhook handlers:
+// @Stripe Webhooks for signature verification and event handling
+// @Stripe Docs for specific event types and payloads
+
+// When implementing payments:
+// @Stripe Docs for Payment Intents flow
+// @https://stripe.com/docs/radar for fraud prevention
+
+// When handling disputes:
+// @Stripe Disputes for evidence submission and response handling
+```
+
+## Critical Reminders
+- **ALWAYS verify webhook signatures** - reference @Stripe Webhooks
+- **ALWAYS use idempotency keys** for payment operations
+- **ALWAYS handle errors gracefully** with proper logging
+- **ALWAYS convert amounts to cents** before sending to Stripe
+- **ALWAYS use service role client** for webhook handlers (not regular client)
+
+## Reminder
+**Check Stripe docs FIRST** before implementing payment flows to ensure PCI compliance and security best practices.

@@ -1,30 +1,25 @@
-import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
-import { handleSupabaseError } from '@/lib/supabase/error-handler';
-import { NextRequest, NextResponse } from 'next/server';
+import type { TablesInsert } from '@/../../supabase/types';
 import { z } from 'zod';
-import { logger } from '@/lib/logger';
-import { createClient } from '@/lib/supabase/server';
+
+import { NextRequest, NextResponse } from 'next/server';
+
+import { calculateBookingPricing, calculateRentalDays } from '@/lib/booking/pricing';
 import {
-  detectMaliciousInput,
   sanitizeAddress,
   sanitizeBookingID,
   sanitizeEmail,
-  sanitizeNumber,
   sanitizePhone,
   sanitizePostalCode,
   sanitizeTextInput,
 } from '@/lib/input-sanitizer';
+import { logger } from '@/lib/logger';
+import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import {
-  calculateBookingPricing,
-  calculateDeliveryFee,
-  calculateRentalDays,
-} from '@/lib/booking/pricing';
-import type { TablesInsert } from '@/../../supabase/types';
+import { handleSupabaseError } from '@/lib/supabase/error-handler';
+import { createClient } from '@/lib/supabase/server';
 
 const MAX_RENTAL_DAYS = 365;
 const MAX_NOTES_LENGTH = 2000;
-const CANCELLATION_FEE_DEFAULT = 0;
 
 const bookingSchema = z.object({
   equipmentId: z.string().min(1, 'Equipment ID is required'),
@@ -172,9 +167,7 @@ export async function POST(request: NextRequest) {
       .select('id, startDate, endDate')
       .eq('equipmentId', equipment.id)
       .not('status', 'in', '("cancelled","rejected","no_show")')
-      .or(
-        `and(startDate.lte.${sanitized.endDate},endDate.gte.${sanitized.startDate})`
-      );
+      .or(`and(startDate.lte.${sanitized.endDate},endDate.gte.${sanitized.startDate})`);
 
     if (availabilityError) {
       throw availabilityError;
@@ -194,10 +187,8 @@ export async function POST(request: NextRequest) {
     const pricing = calculateBookingPricing({
       equipment: {
         dailyRate: Number(equipment.dailyRate ?? 0),
-        weeklyRate:
-          Number(equipment.weeklyRate ?? 0) || Number(equipment.dailyRate ?? 0) * 5,
-        monthlyRate:
-          Number(equipment.monthlyRate ?? 0) || Number(equipment.dailyRate ?? 0) * 20,
+        weeklyRate: Number(equipment.weeklyRate ?? 0) || Number(equipment.dailyRate ?? 0) * 5,
+        monthlyRate: Number(equipment.monthlyRate ?? 0) || Number(equipment.dailyRate ?? 0) * 20,
         overageHourlyRate: Number(equipment.overageHourlyRate ?? 0),
         dailyHourAllowance: equipment.dailyHourAllowance ?? 8,
         weeklyHourAllowance: equipment.weeklyHourAllowance ?? 40,
@@ -274,7 +265,15 @@ export async function POST(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error('Booking error', { component: 'api-bookings', action: 'error', metadata: { error: error instanceof Error ? error.message : String(error) } }, error instanceof Error ? error : undefined);
+    logger.error(
+      'Booking error',
+      {
+        component: 'api-bookings',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -316,14 +315,18 @@ function sanitizeBookingPayload(payload: BookingPayload): SanitizedBookingPayloa
       postalCode: sanitizePostalCode(payload.deliveryAddress.postalCode),
       province: sanitizeTextInput(payload.deliveryAddress.province, 50),
     },
-    customerInfo: payload.customerInfo ? {
-      ...payload.customerInfo,
-      firstName: sanitizeTextInput(payload.customerInfo.firstName, 100),
-      lastName: sanitizeTextInput(payload.customerInfo.lastName, 100),
-      email: sanitizeEmail(payload.customerInfo.email),
-      phone: sanitizePhone(payload.customerInfo.phone),
-      company: payload.customerInfo.company ? sanitizeTextInput(payload.customerInfo.company, 200) : undefined,
-    } : undefined,
+    customerInfo: payload.customerInfo
+      ? {
+          ...payload.customerInfo,
+          firstName: sanitizeTextInput(payload.customerInfo.firstName, 100),
+          lastName: sanitizeTextInput(payload.customerInfo.lastName, 100),
+          email: sanitizeEmail(payload.customerInfo.email),
+          phone: sanitizePhone(payload.customerInfo.phone),
+          company: payload.customerInfo.company
+            ? sanitizeTextInput(payload.customerInfo.company, 200)
+            : undefined,
+        }
+      : undefined,
     notes: payload.notes ? sanitizeTextInput(payload.notes, MAX_NOTES_LENGTH) : undefined,
   };
 }

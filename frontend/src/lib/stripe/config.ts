@@ -1,19 +1,20 @@
 import Stripe from 'stripe';
 
 import { logger } from '@/lib/logger';
+import { getSecret } from '@/lib/secrets/loader';
 
-export const STRIPE_API_VERSION: Stripe.LatestApiVersion = '2025-09-30.clover' as Stripe.LatestApiVersion;
+export const STRIPE_API_VERSION: Stripe.LatestApiVersion =
+  '2025-09-30.clover' as Stripe.LatestApiVersion;
 
 const STRIPE_TEST_FALLBACK_KEY = 'sk_test_placeholder_key_here';
 const STRIPE_TEST_FALLBACK_PUBLISHABLE_KEY = 'pk_test_placeholder_key_here';
 
-// Cache for database-loaded keys
-const cachedStripeKeys: { secret?: string; publishable?: string } | null = null;
+// Cache for database-loaded keys (reserved for future caching)
+const _cachedStripeKeys: { secret?: string; publishable?: string } | null = null;
 
 /**
- * Load Stripe keys from Supabase secrets (environment variables)
- * Supabase secrets are available as environment variables in Next.js
- * Priority: Supabase secrets > system_config table > legacy env vars > fallback
+ * Load Stripe keys from Supabase secrets and system_config table
+ * Priority: Supabase Edge Function secrets > system_config table > legacy env vars > fallback
  */
 async function loadStripeKeysFromSupabaseSecrets(): Promise<{
   secret?: string;
@@ -21,17 +22,21 @@ async function loadStripeKeysFromSupabaseSecrets(): Promise<{
 }> {
   const keys: { secret?: string; publishable?: string } = {};
 
-  // First priority: Supabase secrets (set via `supabase secrets set`)
-  // These are available as environment variables
-  const secretFromSupabase = process.env.STRIPE_SECRET_TEST_KEY?.trim();
-  const publishableFromSupabase = process.env.STRIPE_PUBLIC_TEST_KEY?.trim();
+  // Priority 1: Supabase Edge Function secrets (STRIPE_SECRET_TEST_KEY or STRIPE_SECRET_KEY)
+  const secretFromSupabase =
+    process.env.STRIPE_SECRET_TEST_KEY?.trim() || process.env.STRIPE_SECRET_KEY?.trim();
+  const publishableFromSupabase =
+    process.env.STRIPE_PUBLIC_TEST_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
 
   if (secretFromSupabase) {
     keys.secret = secretFromSupabase;
     logger.info('[Stripe] Loaded secret key from Supabase secrets', {
       component: 'stripe-config',
       action: 'supabase_secrets_load',
-      metadata: { source: 'STRIPE_SECRET_TEST_KEY' },
+      metadata: {
+        source: process.env.STRIPE_SECRET_TEST_KEY ? 'STRIPE_SECRET_TEST_KEY' : 'STRIPE_SECRET_KEY',
+      },
     });
   }
 
@@ -40,7 +45,11 @@ async function loadStripeKeysFromSupabaseSecrets(): Promise<{
     logger.info('[Stripe] Loaded publishable key from Supabase secrets', {
       component: 'stripe-config',
       action: 'supabase_secrets_load',
-      metadata: { source: 'STRIPE_PUBLIC_TEST_KEY' },
+      metadata: {
+        source: process.env.STRIPE_PUBLIC_TEST_KEY
+          ? 'STRIPE_PUBLIC_TEST_KEY'
+          : 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+      },
     });
   }
 
@@ -49,56 +58,81 @@ async function loadStripeKeysFromSupabaseSecrets(): Promise<{
     return keys;
   }
 
-  // Second priority: system_config table (for backward compatibility)
+  // Priority 2: Unified secrets loader (checks system_config table)
   if (typeof window === 'undefined') {
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = await import('@/lib/supabase/config');
+      // Try unified secrets loader for secret key
+      if (!keys.secret) {
+        const secretResult = await getSecret('STRIPE_SECRET_KEY', {
+          required: false,
+          logSource: true,
+        });
+        if (secretResult?.value) {
+          keys.secret = secretResult.value;
+        }
+      }
 
-      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      // Try unified secrets loader for publishable key
+      if (!keys.publishable) {
+        const publishableResult = await getSecret('STRIPE_PUBLISHABLE_KEY', {
+          required: false,
+          logSource: true,
+        });
+        if (publishableResult?.value) {
+          keys.publishable = publishableResult.value;
+        }
+      }
 
-        const { data, error } = await supabase
-          .from('system_config')
-          .select('key, value')
-          .in('key', ['stripe_secret_key', 'stripe_publishable_key']);
+      // Also check system_config table directly for legacy keys
+      if (!keys.secret || !keys.publishable) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = await import('@/lib/supabase/config');
 
-        if (!error && data) {
-          for (const row of data) {
-            // Parse value - it might be a JSON string or plain string
-            let value: string | null = null;
-            if (typeof row.value === 'string') {
-              value = row.value;
-            } else if (row.value && typeof row.value === 'object') {
-              // If it's stored as JSON, extract the string
-              value = String(row.value);
+        if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+          const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+          const { data, error } = await supabase
+            .from('system_config')
+            .select('key, value')
+            .in('key', ['stripe_secret_key', 'stripe_publishable_key']);
+
+          if (!error && data) {
+            for (const row of data) {
+              // Parse value - it might be a JSON string or plain string
+              let value: string | null = null;
+              if (typeof row.value === 'string') {
+                value = row.value;
+              } else if (row.value && typeof row.value === 'object') {
+                // If it's stored as JSON, extract the string
+                value = String(row.value);
+              }
+
+              // Strip quotes if the value is a JSON-encoded string
+              if (value && value.startsWith('"') && value.endsWith('"')) {
+                value = value.slice(1, -1);
+              }
+
+              if (row.key === 'stripe_secret_key' && value && !keys.secret) {
+                keys.secret = value;
+              } else if (row.key === 'stripe_publishable_key' && value && !keys.publishable) {
+                keys.publishable = value;
+              }
             }
 
-            // Strip quotes if the value is a JSON-encoded string
-            if (value && value.startsWith('"') && value.endsWith('"')) {
-              value = value.slice(1, -1);
+            if (keys.secret || keys.publishable) {
+              logger.info('[Stripe] Loaded keys from system_config table', {
+                component: 'stripe-config',
+                action: 'database_load',
+                metadata: { hasSecret: !!keys.secret, hasPublishable: !!keys.publishable },
+              });
             }
-
-            if (row.key === 'stripe_secret_key' && value && !keys.secret) {
-              keys.secret = value;
-            } else if (row.key === 'stripe_publishable_key' && value && !keys.publishable) {
-              keys.publishable = value;
-            }
-          }
-
-          if (keys.secret || keys.publishable) {
-            logger.info('[Stripe] Loaded keys from system_config table', {
-              component: 'stripe-config',
-              action: 'database_load',
-              metadata: { hasSecret: !!keys.secret, hasPublishable: !!keys.publishable },
-            });
           }
         }
       }
     } catch (error) {
-      logger.warn('[Stripe] Failed to load keys from database', {
+      logger.warn('[Stripe] Failed to load keys from secrets system', {
         component: 'stripe-config',
-        action: 'database_fallback',
+        action: 'secrets_load_failed',
         metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
       });
     }

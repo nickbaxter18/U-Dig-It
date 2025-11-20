@@ -1,28 +1,6 @@
 'use client';
 
-import { DisputesSection } from '@/components/admin/DisputesSection';
-import { FinancialReportsSection } from '@/components/admin/FinancialReportsSection';
-import { RefundModal } from '@/components/admin/RefundModal';
-import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
-import {
-  listManualPayments,
-  updateManualPayment,
-  fetchLedgerEntries,
-  fetchPayoutReconciliations,
-  triggerPayoutReconciliation,
-  updatePayoutReconciliation,
-  requestFinancialExport,
-  listFinancialExports,
-} from '@/lib/api/admin/payments';
-import type {
-  FinancialExportRecord,
-  LedgerEntryRecord,
-  ManualPaymentRecord,
-  PayoutReconciliationRecord,
-} from '@/lib/api/admin/payments';
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import { format } from 'date-fns';
 import {
   AlertTriangle,
   CheckCircle,
@@ -35,8 +13,34 @@ import {
   Search,
   XCircle,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
+import { DisputesSection } from '@/components/admin/DisputesSection';
+import { FinancialReportsSection } from '@/components/admin/FinancialReportsSection';
+import { PermissionGate } from '@/components/admin/PermissionGate';
+import { RefundModal } from '@/components/admin/RefundModal';
+
+import {
+  fetchLedgerEntries,
+  fetchPayoutReconciliations,
+  listFinancialExports,
+  listManualPayments,
+  requestFinancialExport,
+  triggerPayoutReconciliation,
+  updateManualPayment,
+  updatePayoutReconciliation,
+} from '@/lib/api/admin/payments';
+import type {
+  FinancialExportRecord,
+  LedgerEntryRecord,
+  ManualPaymentRecord,
+  PayoutReconciliationRecord,
+} from '@/lib/api/admin/payments';
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface Payment {
   id: string;
@@ -129,23 +133,11 @@ export default function PaymentManagement() {
   const [installmentsLoading, setInstallmentsLoading] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<{
     dateRange?: DateRange;
-    operators?: any[];
+    operators?: unknown[];
     multiSelects?: Record<string, string[]>;
   }>({});
 
-  useEffect(() => {
-    fetchPayments();
-  }, [statusFilter, searchTerm, dateFilter]);
-
-  useEffect(() => {
-    loadManualPayments();
-    loadLedgerEntries();
-    loadPayouts();
-    loadExports();
-    loadUpcomingInstallments();
-  }, []);
-
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -225,7 +217,7 @@ export default function PaymentManagement() {
       if (queryError) throw queryError;
 
       // Transform Supabase data to Payment interface
-      const paymentsData: Payment[] = (data || []).map((payment: any) => {
+      const paymentsData: Payment[] = (data || []).map((payment: unknown) => {
         const firstName = payment.booking?.customer?.firstName || '';
         const lastName = payment.booking?.customer?.lastName || '';
         const customerName =
@@ -288,7 +280,7 @@ export default function PaymentManagement() {
           refundedAt: payment.refundedAt
             ? new Date(payment.refundedAt)
             : payment.failedAt &&
-              (payment.status === 'refunded' || payment.status === 'partially_refunded')
+                (payment.status === 'refunded' || payment.status === 'partially_refunded')
               ? new Date(payment.failedAt)
               : undefined,
           refundAmount: parseFloat(payment.amountRefunded || '0'),
@@ -301,7 +293,7 @@ export default function PaymentManagement() {
       // Client-side filter by booking number if search term provided
       const filtered = searchTerm
         ? paymentsData.filter(
-            p =>
+            (p) =>
               p.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
               p.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
               p.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -311,14 +303,27 @@ export default function PaymentManagement() {
       setPayments(filtered);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch payments:', { component: 'app-page', action: 'error' }, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          'Failed to fetch payments:',
+          { component: 'app-page', action: 'error' },
+          err instanceof Error ? err : new Error(String(err))
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to fetch payments');
       setPayments([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  };
+    loadManualPayments();
+    loadLedgerEntries();
+    loadPayouts();
+    loadExports();
+    loadUpcomingInstallments();
+  }, [statusFilter, searchTerm, dateFilter]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   const loadManualPayments = async () => {
     try {
@@ -412,7 +417,7 @@ export default function PaymentManagement() {
 
       if (upcomingError) throw upcomingError;
 
-      const rows: UpcomingInstallment[] = (data ?? []).map((row: any) => ({
+      const rows: UpcomingInstallment[] = (data ?? []).map((row: unknown) => ({
         id: row.id,
         bookingId: row.booking_id,
         bookingNumber: row.booking?.bookingNumber ?? row.booking_id,
@@ -480,7 +485,7 @@ export default function PaymentManagement() {
     }
   };
 
-  const filteredPayments = payments.filter(payment => {
+  const filteredPayments = payments.filter((payment) => {
     const matchesSearch =
       payment.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -532,7 +537,7 @@ export default function PaymentManagement() {
       'Refund Reason',
     ];
 
-    const rows = filteredPayments.map(payment => [
+    const rows = filteredPayments.map((payment) => [
       payment.id,
       payment.bookingNumber,
       payment.customerName,
@@ -547,16 +552,16 @@ export default function PaymentManagement() {
     ]);
 
     const csvContent = [header, ...rows]
-      .map(row =>
+      .map((row) =>
         row
-          .map(value => {
+          .map((value) => {
             const needsEscaping = /[",\n]/.test(value);
             if (needsEscaping) {
               return `"${value.replace(/"/g, '""')}"`;
             }
             return value;
           })
-          .join(','),
+          .join(',')
       )
       .join('\n');
 
@@ -594,7 +599,7 @@ export default function PaymentManagement() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message || 'Failed to download receipt');
     }
   };
@@ -618,7 +623,7 @@ export default function PaymentManagement() {
     try {
       setStripeLinkLoadingId(payment.id);
       const response = await fetchWithAuth(
-        `/api/admin/payments/stripe/link?paymentId=${payment.id}`,
+        `/api/admin/payments/stripe/link?paymentId=${payment.id}`
       );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -630,7 +635,7 @@ export default function PaymentManagement() {
       } else {
         throw new Error('Stripe dashboard link was not provided');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message || 'Failed to open Stripe dashboard');
     } finally {
       setStripeLinkLoadingId(null);
@@ -641,7 +646,7 @@ export default function PaymentManagement() {
     try {
       await updateManualPayment(manualPaymentId, { status: 'completed' });
       await loadManualPayments();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message ?? 'Failed to update manual payment');
     }
   };
@@ -651,7 +656,7 @@ export default function PaymentManagement() {
       setPayoutsLoading(true);
       await triggerPayoutReconciliation();
       await loadPayouts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message ?? 'Failed to trigger Stripe reconciliation');
     } finally {
       setPayoutsLoading(false);
@@ -669,7 +674,7 @@ export default function PaymentManagement() {
       }
       await updatePayoutReconciliation(payout.stripe_payout_id, { status, notes });
       await loadPayouts();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message ?? 'Failed to update payout reconciliation');
     }
   };
@@ -688,7 +693,7 @@ export default function PaymentManagement() {
         window.open(response.downloadUrl, '_blank', 'noopener,noreferrer');
       }
       await loadExports();
-    } catch (err: any) {
+    } catch (err: unknown) {
       alert(err.message ?? 'Failed to generate export');
     } finally {
       setExportSubmitting(false);
@@ -696,16 +701,16 @@ export default function PaymentManagement() {
   };
 
   const totalRevenue = payments
-    .filter(p => p.status === 'succeeded')
-    .reduce((sum: any, p: any) => sum + p.amount, 0);
+    .filter((p) => p.status === 'succeeded')
+    .reduce((sum: unknown, p: unknown) => sum + p.amount, 0);
 
   const pendingAmount = payments
-    .filter(p => p.status === 'pending')
-    .reduce((sum: any, p: any) => sum + p.amount, 0);
+    .filter((p) => p.status === 'pending')
+    .reduce((sum: unknown, p: unknown) => sum + p.amount, 0);
 
   const refundedAmount = payments
-    .filter(p => p.status === 'refunded' || p.status === 'partially_refunded')
-    .reduce((sum: any, p: any) => sum + (p.refundAmount || 0), 0);
+    .filter((p) => p.status === 'refunded' || p.status === 'partially_refunded')
+    .reduce((sum: unknown, p: unknown) => sum + (p.refundAmount || 0), 0);
 
   if (loading) {
     return (
@@ -755,19 +760,29 @@ export default function PaymentManagement() {
             { label: 'Customer Name', value: 'customerName', type: 'text' },
             { label: 'Amount', value: 'amount', type: 'number' },
             { label: 'Created Date', value: 'createdAt', type: 'date' },
-            { label: 'Status', value: 'status', type: 'select', options: [
-              { label: 'Succeeded', value: 'succeeded' },
-              { label: 'Pending', value: 'pending' },
-              { label: 'Failed', value: 'failed' },
-              { label: 'Refunded', value: 'refunded' },
-              { label: 'Partially Refunded', value: 'partially_refunded' },
-            ]},
-            { label: 'Payment Method', value: 'paymentMethod', type: 'select', options: [
-              { label: 'Card', value: 'card' },
-              { label: 'Bank Transfer', value: 'bank_transfer' },
-              { label: 'Cash', value: 'cash' },
-              { label: 'Check', value: 'check' },
-            ]},
+            {
+              label: 'Status',
+              value: 'status',
+              type: 'select',
+              options: [
+                { label: 'Succeeded', value: 'succeeded' },
+                { label: 'Pending', value: 'pending' },
+                { label: 'Failed', value: 'failed' },
+                { label: 'Refunded', value: 'refunded' },
+                { label: 'Partially Refunded', value: 'partially_refunded' },
+              ],
+            },
+            {
+              label: 'Payment Method',
+              value: 'paymentMethod',
+              type: 'select',
+              options: [
+                { label: 'Card', value: 'card' },
+                { label: 'Bank Transfer', value: 'bank_transfer' },
+                { label: 'Cash', value: 'cash' },
+                { label: 'Check', value: 'check' },
+              ],
+            },
           ]}
           multiSelectFields={[
             {
@@ -833,7 +848,7 @@ export default function PaymentManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Failed</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {payments.filter(p => p.status === 'failed').length}
+                {payments.filter((p) => p.status === 'failed').length}
               </p>
             </div>
           </div>
@@ -861,7 +876,7 @@ export default function PaymentManagement() {
             type="text"
             placeholder="Search payments..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -869,7 +884,7 @@ export default function PaymentManagement() {
 
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
@@ -882,7 +897,7 @@ export default function PaymentManagement() {
 
         <select
           value={dateFilter}
-          onChange={e => setDateFilter(e.target.value)}
+          onChange={(e) => setDateFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Time</option>
@@ -891,29 +906,35 @@ export default function PaymentManagement() {
           <option value="month">This Month</option>
         </select>
 
-        <button
-          onClick={handleExportPayments}
-          disabled={filteredPayments.length === 0}
-          className={`focus:ring-kubota-orange flex items-center space-x-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-            filteredPayments.length === 0
-              ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-              : 'text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          <Filter className="h-4 w-4" />
-          <span>Export</span>
-        </button>
+        <PermissionGate permission="payments:export:all">
+          <button
+            onClick={handleExportPayments}
+            disabled={filteredPayments.length === 0}
+            className={`focus:ring-kubota-orange flex items-center space-x-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              filteredPayments.length === 0
+                ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            <span>Export</span>
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Financial Reports */}
-      <FinancialReportsSection dateRange={dateFilter as any} />
+      <FinancialReportsSection
+        dateRange={dateFilter as 'today' | 'week' | 'month' | 'quarter' | 'year'}
+      />
 
       {/* Manual Payments */}
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Manual Payments</h2>
-            <p className="text-sm text-gray-600">Cash, cheque, and ACH payments recorded outside Stripe.</p>
+            <p className="text-sm text-gray-600">
+              Cash, cheque, and ACH payments recorded outside Stripe.
+            </p>
           </div>
           <button
             onClick={loadManualPayments}
@@ -927,17 +948,31 @@ export default function PaymentManagement() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Booking</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Received</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Method</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">Amount</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Notes</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Booking
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Received
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Method
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">
+                  Amount
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Notes
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {manualPaymentsAdmin.map(payment => (
+              {manualPaymentsAdmin.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {payment.booking?.bookingNumber ?? payment.booking_id}
@@ -961,13 +996,15 @@ export default function PaymentManagement() {
                   <td className="px-4 py-3 text-sm text-gray-600">{payment.notes ?? '—'}</td>
                   <td className="px-4 py-3 text-right text-sm">
                     {payment.status !== 'completed' ? (
-                      <button
-                        onClick={() => handleCompleteManualPayment(payment.id)}
-                        className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
-                      >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Mark Completed
-                      </button>
+                      <PermissionGate permission="payments:approve:all">
+                        <button
+                          onClick={() => handleCompleteManualPayment(payment.id)}
+                          className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Mark Completed
+                        </button>
+                      </PermissionGate>
                     ) : (
                       <span className="text-xs text-gray-400">Settled</span>
                     )}
@@ -998,7 +1035,9 @@ export default function PaymentManagement() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Upcoming Installments</h2>
-            <p className="text-sm text-gray-600">Monitor pending installments across all bookings.</p>
+            <p className="text-sm text-gray-600">
+              Monitor pending installments across all bookings.
+            </p>
           </div>
           <button
             onClick={loadUpcomingInstallments}
@@ -1012,15 +1051,25 @@ export default function PaymentManagement() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Booking</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Customer</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Due Date</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">Amount</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Booking
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Customer
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Due Date
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-500">
+                  Amount
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {upcomingInstallments.map(installment => (
+              {upcomingInstallments.map((installment) => (
                 <tr key={installment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-700">{installment.bookingNumber}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">
@@ -1118,7 +1167,7 @@ export default function PaymentManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {payouts.map(payout => (
+              {payouts.map((payout) => (
                 <tr key={payout.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {payout.stripe_payout_id}
@@ -1127,7 +1176,8 @@ export default function PaymentManagement() {
                     {formatDateTime(payout.arrival_date, true)}
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
-                    ${Number(payout.amount ?? 0).toFixed(2)} {payout.currency?.toUpperCase() ?? 'CAD'}
+                    ${Number(payout.amount ?? 0).toFixed(2)}{' '}
+                    {payout.currency?.toUpperCase() ?? 'CAD'}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span
@@ -1218,7 +1268,7 @@ export default function PaymentManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {ledgerEntries.map(entry => (
+              {ledgerEntries.map((entry) => (
                 <tr key={entry.id}>
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {formatDateTime(entry.created_at, true)}
@@ -1267,9 +1317,7 @@ export default function PaymentManagement() {
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={exportType}
-              onChange={event =>
-                setExportType(event.target.value as typeof exportType)
-              }
+              onChange={(event) => setExportType(event.target.value as typeof exportType)}
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             >
               <option value="payments_summary">Payments Summary</option>
@@ -1277,23 +1325,25 @@ export default function PaymentManagement() {
               <option value="accounts_receivable">Accounts Receivable</option>
               <option value="payout_summary">Payout Summary</option>
             </select>
-            <button
-              onClick={handleGenerateExport}
-              disabled={exportSubmitting}
-              className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
-            >
-              {exportSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Generate Export
-                </>
-              )}
-            </button>
+            <PermissionGate permission="payments:export:all">
+              <button
+                onClick={handleGenerateExport}
+                disabled={exportSubmitting}
+                className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+              >
+                {exportSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Generate Export
+                  </>
+                )}
+              </button>
+            </PermissionGate>
             <button
               onClick={loadExports}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
@@ -1323,7 +1373,7 @@ export default function PaymentManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {exportsList.map(exportRecord => (
+              {exportsList.map((exportRecord) => (
                 <tr key={exportRecord.id}>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {exportRecord.export_type.replace('_', ' ')}
@@ -1386,7 +1436,7 @@ export default function PaymentManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredPayments.map(payment => (
+              {filteredPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div>
@@ -1447,13 +1497,13 @@ export default function PaymentManagement() {
                       </button>
                       {payment.status === 'succeeded' &&
                         payment.amount - (payment.amountRefundedToDate ?? 0) > 0 && (
-                        <button
-                          onClick={() => setRefundPayment(payment)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Refund
-                        </button>
-                      )}
+                          <button
+                            onClick={() => setRefundPayment(payment)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Refund
+                          </button>
+                        )}
                       {payment.status === 'failed' && (
                         <button
                           className="cursor-not-allowed text-blue-300"
@@ -1632,10 +1682,11 @@ export default function PaymentManagement() {
                   </div>
                   {!selectedPayment.stripePaymentIntentId &&
                     !selectedPayment.stripeCheckoutSessionId && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      This payment was created internally and does not have Stripe identifiers. Stripe-specific actions are unavailable.
-                    </p>
-                  )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        This payment was created internally and does not have Stripe identifiers.
+                        Stripe-specific actions are unavailable.
+                      </p>
+                    )}
                 </div>
               </div>
             </div>

@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,12 +11,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // ✅ Fetch templates from Supabase
@@ -29,34 +26,35 @@ export async function GET(request: NextRequest) {
     }
 
     // ✅ Transform data to match frontend interface
-    const transformedTemplates = (templates || []).map((template: any) => ({
+    const transformedTemplates = (templates || []).map((template: unknown) => ({
       id: template.id,
       name: template.name,
       description: template.description,
       templateType: template.template_type,
-      isActive: template.is_active
+      isActive: template.is_active,
     }));
 
     logger.info('Templates fetched successfully', {
       component: 'communications-api',
       action: 'fetch_templates',
-      metadata: { count: transformedTemplates.length }
+      metadata: { count: transformedTemplates.length },
     });
 
     return NextResponse.json({
-      templates: transformedTemplates
+      templates: transformedTemplates,
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch templates', {
-      component: 'communications-api',
-      action: 'fetch_templates_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch templates' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch templates',
+      {
+        component: 'communications-api',
+        action: 'fetch_templates_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
 }
 
@@ -68,19 +66,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const {
@@ -91,7 +85,7 @@ export async function POST(request: NextRequest) {
       htmlContent,
       textContent,
       variables,
-      isActive = true
+      isActive = true,
     } = body;
 
     // Validate required fields
@@ -114,7 +108,7 @@ export async function POST(request: NextRequest) {
         text_content: textContent || null,
         variables: variables || null,
         is_active: isActive,
-        created_by: user?.id || 'unknown'
+        created_by: user?.id || 'unknown',
       })
       .select()
       .single();
@@ -126,28 +120,32 @@ export async function POST(request: NextRequest) {
     logger.info('Template created successfully', {
       component: 'communications-api',
       action: 'create_template',
-      metadata: { templateId: template.id, name }
+      metadata: { templateId: template.id, name },
     });
 
-    return NextResponse.json({
-      template: {
-        id: template.id,
-        name: template.name,
-        description: template.description,
-        templateType: template.template_type,
-        isActive: template.is_active
-      }
-    }, { status: 201 });
-  } catch (error: any) {
-    logger.error('Failed to create template', {
-      component: 'communications-api',
-      action: 'create_template_error',
-      metadata: { error: error.message }
-    }, error);
-
     return NextResponse.json(
-      { error: 'Failed to create template' },
-      { status: 500 }
+      {
+        template: {
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          templateType: template.template_type,
+          isActive: template.is_active,
+        },
+      },
+      { status: 201 }
     );
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to create template',
+      {
+        component: 'communications-api',
+        action: 'create_template_error',
+        metadata: { error: error.message },
+      },
+      error
+    );
+
+    return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }
 }

@@ -1,17 +1,18 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const supabase = await createClient();
 
     // ✅ Verify authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -56,27 +57,25 @@ export async function GET(
         isAvailable: driver.is_available,
         currentLocation: driver.current_location,
         activeDeliveries: driver.active_deliveries,
-        totalDeliveriesCompleted: driver.total_deliveries_completed
-      }
+        totalDeliveriesCompleted: driver.total_deliveries_completed,
+      },
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch driver', {
-      component: 'drivers-api',
-      action: 'fetch_driver_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch driver' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch driver',
+      {
+        component: 'drivers-api',
+        action: 'fetch_driver_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch driver' }, { status: 500 });
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -84,22 +83,20 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
     const { id } = params;
     const body = await request.json();
 
     // Build update object
     const updateData: any = {
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (body.name !== undefined) updateData.name = body.name;
@@ -107,12 +104,14 @@ export async function PATCH(
     if (body.licenseNumber !== undefined) updateData.license_number = body.licenseNumber;
     if (body.licenseExpiry !== undefined) updateData.license_expiry = body.licenseExpiry;
     if (body.vehicleType !== undefined) updateData.vehicle_type = body.vehicleType;
-    if (body.vehicleRegistration !== undefined) updateData.vehicle_registration = body.vehicleRegistration;
+    if (body.vehicleRegistration !== undefined)
+      updateData.vehicle_registration = body.vehicleRegistration;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.isAvailable !== undefined) updateData.is_available = body.isAvailable;
     if (body.currentLocation !== undefined) updateData.current_location = body.currentLocation;
     if (body.activeDeliveries !== undefined) updateData.active_deliveries = body.activeDeliveries;
-    if (body.totalDeliveriesCompleted !== undefined) updateData.total_deliveries_completed = body.totalDeliveriesCompleted;
+    if (body.totalDeliveriesCompleted !== undefined)
+      updateData.total_deliveries_completed = body.totalDeliveriesCompleted;
 
     // Update driver
     const { data: driver, error: driverError } = await supabase
@@ -132,7 +131,7 @@ export async function PATCH(
     logger.info('Driver updated successfully', {
       component: 'drivers-api',
       action: 'update_driver',
-      metadata: { driverId: id }
+      metadata: { driverId: id },
     });
 
     return NextResponse.json({
@@ -148,27 +147,25 @@ export async function PATCH(
         isAvailable: driver.is_available,
         currentLocation: driver.current_location,
         activeDeliveries: driver.active_deliveries,
-        totalDeliveriesCompleted: driver.total_deliveries_completed
-      }
+        totalDeliveriesCompleted: driver.total_deliveries_completed,
+      },
     });
-  } catch (error: any) {
-    logger.error('Failed to update driver', {
-      component: 'drivers-api',
-      action: 'update_driver_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to update driver' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to update driver',
+      {
+        component: 'drivers-api',
+        action: 'update_driver_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to update driver' }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -176,16 +173,14 @@ export async function DELETE(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
     const { id } = params;
 
     // Check if driver has active deliveries
@@ -204,10 +199,7 @@ export async function DELETE(
     }
 
     // Delete driver
-    const { error: deleteError } = await supabase
-      .from('drivers')
-      .delete()
-      .eq('id', id);
+    const { error: deleteError } = await supabase.from('drivers').delete().eq('id', id);
 
     if (deleteError) {
       throw new Error(`Database error: ${deleteError.message}`);
@@ -216,20 +208,21 @@ export async function DELETE(
     logger.info('Driver deleted successfully', {
       component: 'drivers-api',
       action: 'delete_driver',
-      metadata: { driverId: id }
+      metadata: { driverId: id },
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    logger.error('Failed to delete driver', {
-      component: 'drivers-api',
-      action: 'delete_driver_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to delete driver' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to delete driver',
+      {
+        component: 'drivers-api',
+        action: 'delete_driver_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to delete driver' }, { status: 500 });
   }
 }

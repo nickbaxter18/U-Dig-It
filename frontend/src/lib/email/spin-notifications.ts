@@ -4,17 +4,15 @@
  * Sends winner notifications and reminders using React Email templates.
  * Supports multiple email providers (SendGrid, Resend, AWS SES).
  */
-
-import SpinReminder24h from '@/emails/spin-reminder-24h';
 import SpinReminder4h from '@/emails/spin-reminder-4h';
+import SpinReminder24h from '@/emails/spin-reminder-24h';
 import SpinWinnerEmail from '@/emails/spin-winner';
-import { logger } from '@/lib/logger';
 import { render } from '@react-email/render';
 
+import { logger } from '@/lib/logger';
+
 const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.NEXT_PUBLIC_BASE_URL ||
-  'https://udigit.ca';
+  process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://udigit.ca';
 const DEFAULT_FROM =
   process.env.SPIN_EMAIL_FROM ||
   process.env.SENDGRID_FROM_EMAIL ||
@@ -129,8 +127,7 @@ export async function sendSpinReminderEmail(params: SendReminderEmailParams): Pr
 }> {
   try {
     const bookingUrl = buildBookingUrl(params.couponCode, params.sessionId);
-    const Template =
-      params.reminderType === '4h' ? SpinReminder4h : SpinReminder24h;
+    const Template = params.reminderType === '4h' ? SpinReminder4h : SpinReminder24h;
 
     const html = await render(
       Template({
@@ -306,12 +303,11 @@ async function sendViaSendGrid(params: {
   replyTo?: string;
   tags?: Record<string, string>;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (!process.env.SENDGRID_API_KEY) {
-    throw new Error('SENDGRID_API_KEY not configured');
-  }
+  const { getSendGridApiKey } = await import('@/lib/secrets/email');
+  const apiKey = await getSendGridApiKey();
 
   const { default: sgMail } = await import('@sendgrid/mail');
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  sgMail.setApiKey(apiKey);
 
   const msg = {
     to: params.to,

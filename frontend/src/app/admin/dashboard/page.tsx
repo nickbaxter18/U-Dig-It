@@ -1,13 +1,19 @@
 'use client';
 
+import type {
+  DashboardChartsPayload,
+  DashboardOverviewResponse,
+  DashboardSummary,
+  DateRangeKey,
+} from '@/types/dashboard';
 import {
-    Calendar,
-    Calendar as CalendarIcon,
-    DollarSign,
-    Download,
-    RefreshCw,
-    Settings,
-    Users,
+  Calendar,
+  Calendar as CalendarIcon,
+  DollarSign,
+  Download,
+  RefreshCw,
+  Settings,
+  Users,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,13 +30,6 @@ import { StatsCard } from '@/components/admin/StatsCard';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-
-import type {
-    DashboardChartsPayload,
-    DashboardOverviewResponse,
-    DashboardSummary,
-    DateRangeKey,
-} from '@/types/dashboard';
 
 const comparisonLabels: Record<DateRangeKey, string> = {
   today: 'vs yesterday',
@@ -116,7 +115,7 @@ function normalizeChartsPayload(payload: DashboardOverviewResponse): DashboardCh
     return null;
   }
 
-  const revenueSeries = (legacy.revenue ?? []).map(point => {
+  const revenueSeries = (legacy.revenue ?? []).map((point) => {
     const grossRevenue = Number(point.gross_revenue ?? 0);
     const refundedAmount = Number(point.refunded_amount ?? 0);
 
@@ -139,7 +138,7 @@ function normalizeChartsPayload(payload: DashboardOverviewResponse): DashboardCh
     { grossRevenue: 0, refundedAmount: 0, netRevenue: 0 }
   );
 
-  const bookingSeries = (legacy.bookings ?? []).map(point => ({
+  const bookingSeries = (legacy.bookings ?? []).map((point) => ({
     date: point.bucket_date,
     total: Number(point.total_bookings ?? 0),
     completed: Number(point.completed_bookings ?? 0),
@@ -159,10 +158,12 @@ function normalizeChartsPayload(payload: DashboardOverviewResponse): DashboardCh
 
   const bookingConversion = {
     completionRate: bookingTotals.total ? (bookingTotals.completed / bookingTotals.total) * 100 : 0,
-    cancellationRate: bookingTotals.total ? (bookingTotals.cancelled / bookingTotals.total) * 100 : 0,
+    cancellationRate: bookingTotals.total
+      ? (bookingTotals.cancelled / bookingTotals.total) * 100
+      : 0,
   };
 
-  const utilizationRecords = (legacy.utilization ?? []).map(record => {
+  const utilizationRecords = (legacy.utilization ?? []).map((record) => {
     const utilizationPct = Number(record.utilization_pct ?? 0);
     const revenue = Number(record.revenue_generated ?? 0);
 
@@ -230,7 +231,7 @@ export default function AdminDashboard() {
   const [dateRange, setDateRange] = useState<DateRangeKey>('month');
   const [advancedFilters, setAdvancedFilters] = useState<{
     dateRange?: DateRange;
-    operators?: any[];
+    operators?: unknown[];
     multiSelects?: Record<string, string[]>;
   }>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -285,8 +286,7 @@ export default function AdminDashboard() {
       const normalizedCharts = normalizeChartsPayload(payload);
       setCharts(normalizedCharts);
 
-      const updatedAtSource =
-        payload.metadata?.generatedAt ?? summary.lastGeneratedAt ?? undefined;
+      const updatedAtSource = payload.metadata?.generatedAt ?? summary.lastGeneratedAt ?? undefined;
       const updatedAt = updatedAtSource ? new Date(updatedAtSource) : new Date();
       setLastUpdated(Number.isNaN(updatedAt.getTime()) ? new Date() : updatedAt);
     } catch (err) {
@@ -336,10 +336,22 @@ export default function AdminDashboard() {
 
     const channel = supabase
       .channel('admin-dashboard-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, handleRealtimeChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, handleRealtimeChange)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'equipment' }, handleRealtimeChange)
-      .subscribe(status => {
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        handleRealtimeChange
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payments' },
+        handleRealtimeChange
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'equipment' },
+        handleRealtimeChange
+      )
+      .subscribe((status) => {
         if (!isMounted) return;
         setRealtimeConnected(status === 'SUBSCRIBED');
       });
@@ -523,17 +535,13 @@ export default function AdminDashboard() {
                 realtimeConnected ? 'bg-green-500' : 'bg-gray-300 animate-pulse'
               }`}
             ></div>
-            <span className="text-sm text-gray-500">
-              {realtimeConnected ? 'Live' : 'Offline'}
-            </span>
+            <span className="text-sm text-gray-500">{realtimeConnected ? 'Live' : 'Offline'}</span>
           </div>
 
           {/* Date range selector */}
           <select
             value={dateRange}
-            onChange={(e) =>
-              handleDateRangeChange(e.target.value as DateRangeKey)
-            }
+            onChange={(e) => handleDateRangeChange(e.target.value as DateRangeKey)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           >
             <option value="today">Today</option>
@@ -585,13 +593,18 @@ export default function AdminDashboard() {
           filters={advancedFilters}
           onFiltersChange={setAdvancedFilters}
           availableFields={[
-            { label: 'Booking Status', value: 'status', type: 'select', options: [
-              { label: 'Pending', value: 'pending' },
-              { label: 'Confirmed', value: 'confirmed' },
-              { label: 'Paid', value: 'paid' },
-              { label: 'Completed', value: 'completed' },
-              { label: 'Cancelled', value: 'cancelled' },
-            ]},
+            {
+              label: 'Booking Status',
+              value: 'status',
+              type: 'select',
+              options: [
+                { label: 'Pending', value: 'pending' },
+                { label: 'Confirmed', value: 'confirmed' },
+                { label: 'Paid', value: 'paid' },
+                { label: 'Completed', value: 'completed' },
+                { label: 'Cancelled', value: 'cancelled' },
+              ],
+            },
             { label: 'Total Amount', value: 'totalAmount', type: 'number' },
             { label: 'Created Date', value: 'createdAt', type: 'date' },
           ]}

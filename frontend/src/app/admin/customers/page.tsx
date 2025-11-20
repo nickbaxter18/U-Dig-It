@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 
 import { CustomerEditModal } from '@/components/admin/CustomerEditModal';
 import { EmailCustomerModal } from '@/components/admin/EmailCustomerModal';
+import { PermissionGate } from '@/components/admin/PermissionGate';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
@@ -85,24 +86,24 @@ export default function CustomerManagement() {
           .select('customerId, totalAmount, createdAt, status');
 
         // Group bookings by customer
-        const bookingsByCustomer = ((allBookings || []) as any[]).reduce(
-          (acc: Record<string, any[]>, booking: any) => {
+        const bookingsByCustomer = ((allBookings || []) as unknown[]).reduce(
+          (acc: Record<string, unknown[]>, booking: unknown) => {
             if (!acc[booking.customerId]) {
               acc[booking.customerId] = [];
             }
             acc[booking.customerId].push(booking);
             return acc;
           },
-          {} as Record<string, any[]>
+          {} as Record<string, unknown[]>
         );
 
         // Map users to customer format with stats
-        const customersWithStats = ((usersData || []) as any[]).map((user: any) => {
+        const customersWithStats = ((usersData || []) as unknown[]).map((user: unknown) => {
           const customerBookings = bookingsByCustomer[user.id] || [];
 
           const totalBookings = customerBookings.length;
           const totalSpent = customerBookings.reduce(
-            (sum: any, b: any) => sum + parseFloat(b.totalAmount || '0'),
+            (sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount || '0'),
             0
           );
 
@@ -144,12 +145,14 @@ export default function CustomerManagement() {
         setCustomers(customersWithStats);
       } else {
         // ✅ Transform RPC function results to match Customer interface
-        const transformedCustomers = ((customersData || []) as any[]).map((customer: any) => ({
-          ...customer,
-          totalSpent: parseFloat(customer.totalSpent || '0'),
-          lastBooking: customer.lastBooking ? new Date(customer.lastBooking) : undefined,
-          registrationDate: new Date(customer.registrationDate),
-        }));
+        const transformedCustomers = ((customersData || []) as unknown[]).map(
+          (customer: unknown) => ({
+            ...customer,
+            totalSpent: parseFloat(customer.totalSpent || '0'),
+            lastBooking: customer.lastBooking ? new Date(customer.lastBooking) : undefined,
+            registrationDate: new Date(customer.registrationDate),
+          })
+        );
 
         setCustomers(transformedCustomers);
       }
@@ -336,38 +339,44 @@ export default function CustomerManagement() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => setSelectedCustomer(customer)}
-                        className="text-kubota-orange hover:text-orange-600"
-                        title="View Details"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setShowEditModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit Customer"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEmailCustomer({
-                            email: customer.email,
-                            name: `${customer.firstName} ${customer.lastName}`,
-                            bookingNumber: 'General',
-                            bookingId: '', // General email, no specific booking
-                          });
-                          setShowEmailModal(true);
-                        }}
-                        className="text-green-600 hover:text-green-800"
-                        title="Email Customer"
-                      >
-                        <Mail className="h-4 w-4" />
-                      </button>
+                      <PermissionGate permission="customers:read:all">
+                        <button
+                          onClick={() => setSelectedCustomer(customer)}
+                          className="text-kubota-orange hover:text-orange-600"
+                          title="View Details"
+                        >
+                          View
+                        </button>
+                      </PermissionGate>
+                      <PermissionGate permission="customers:update:all">
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setShowEditModal(true);
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Edit Customer"
+                        >
+                          Edit
+                        </button>
+                      </PermissionGate>
+                      <PermissionGate permission="customers:read:all">
+                        <button
+                          onClick={() => {
+                            setEmailCustomer({
+                              email: customer.email,
+                              name: `${customer.firstName} ${customer.lastName}`,
+                              bookingNumber: 'General',
+                              bookingId: '', // General email, no specific booking
+                            });
+                            setShowEmailModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-800"
+                          title="Email Customer"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </button>
+                      </PermissionGate>
                     </div>
                   </td>
                 </tr>
@@ -415,7 +424,7 @@ export default function CustomerManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Bookings</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {customers.reduce((sum: any, c: any) => sum + c.totalBookings, 0)}
+                {customers.reduce((sum: unknown, c: unknown) => sum + c.totalBookings, 0)}
               </p>
             </div>
           </div>
@@ -429,7 +438,10 @@ export default function CustomerManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Revenue</p>
               <p className="text-2xl font-semibold text-gray-900">
-                ${customers.reduce((sum: any, c: any) => sum + c.totalSpent, 0).toLocaleString()}
+                $
+                {customers
+                  .reduce((sum: unknown, c: unknown) => sum + c.totalSpent, 0)
+                  .toLocaleString()}
               </p>
             </div>
           </div>

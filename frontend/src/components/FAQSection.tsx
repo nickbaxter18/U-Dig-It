@@ -77,7 +77,7 @@ export default function FAQSection() {
 
         {/* FAQ Accordion */}
         <div className="space-y-4">
-          {faqs.map((faq: any, index: any) => (
+          {faqs.map((faq: unknown, index: unknown) => (
             <div
               key={index}
               className="overflow-hidden rounded-xl border-2 border-gray-100 bg-white shadow-md transition-all duration-200 hover:shadow-lg"

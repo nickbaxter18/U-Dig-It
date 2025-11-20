@@ -1,5 +1,6 @@
 // For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
 import storybook from "eslint-plugin-storybook";
+import reactHooks from "eslint-plugin-react-hooks";
 
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
@@ -45,6 +46,15 @@ export default [js.configs.recommended, ...tseslint.configs.recommended, {
     "@typescript-eslint/triple-slash-reference": "off",
     "no-case-declarations": "warn",
     "prefer-const": "warn",
-    "no-undef": "off" // TypeScript handles this
+    "no-undef": "off", // TypeScript handles this
+    "no-control-regex": "warn" // Allow control characters in regex when needed (with disable comment)
+  }
+}, {
+  plugins: {
+    "react-hooks": reactHooks
+  },
+  rules: {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
   }
 }, ...storybook.configs["flat/recommended"]];

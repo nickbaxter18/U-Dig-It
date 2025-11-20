@@ -1,8 +1,10 @@
 'use client';
 
-import { logger } from '@/lib/logger';
 import { AlertCircle, Loader2, MapPin, Navigation } from 'lucide-react';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { logger } from '@/lib/logger';
 
 interface LocationPickerProps {
   onLocationSelect: (location: LocationData) => void;
@@ -94,7 +96,7 @@ export default function LocationPicker({
       const data = await response.json();
 
       if (data.status === 'OK' && data.predictions) {
-        const newSuggestions = data.predictions.slice(0, 5).map((pred: any) => ({
+        const newSuggestions = data.predictions.slice(0, 5).map((pred: unknown) => ({
           description: pred.description,
           placeId: pred.place_id,
         }));
@@ -104,10 +106,14 @@ export default function LocationPicker({
         setSuggestions([]);
       }
     } catch (err) {
-      logger.error('Error fetching suggestions:', {
-        component: 'LocationPicker',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Error fetching suggestions:',
+        {
+          component: 'LocationPicker',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setSuggestions([]);
     } finally {
       setIsLoadingSuggestions(false);
@@ -163,10 +169,14 @@ export default function LocationPicker({
         return { distanceKm: 50, drivingTimeMinutes: 60 };
       }
     } catch (error) {
-      logger.error('Error calculating driving distance', {
-        component: 'LocationPicker',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Error calculating driving distance',
+        {
+          component: 'LocationPicker',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       // Fallback: return a conservative estimate
       return { distanceKm: 50, drivingTimeMinutes: 60 };
     }
@@ -213,7 +223,7 @@ export default function LocationPicker({
         let province = '';
         let postalCode = '';
 
-        addressComponents.forEach((component: any) => {
+        addressComponents.forEach((component: unknown) => {
           if (component.types.includes('locality')) city = component.long_name;
           if (component.types.includes('administrative_area_level_1'))
             province = component.short_name;
@@ -224,8 +234,9 @@ export default function LocationPicker({
         const lng = result.geometry.location.lng;
 
         // Calculate ACTUAL DRIVING distance (not straight-line)
-        const { distanceKm: exactDistance, drivingTimeMinutes } =
-          await calculateDrivingDistance(result.formatted_address);
+        const { distanceKm: exactDistance, drivingTimeMinutes } = await calculateDrivingDistance(
+          result.formatted_address
+        );
 
         // CRITICAL: Round to 1 decimal place to prevent micro-charges
         // Example: 30.02km → 30.0km, 39.84km → 39.8km
@@ -255,7 +266,11 @@ export default function LocationPicker({
         setGeocodeError('Unable to find location. Please try again.');
       }
     } catch (err) {
-      logger.error('Geocoding error:', { component: 'LocationPicker', action: 'error' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Geocoding error:',
+        { component: 'LocationPicker', action: 'error' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setGeocodeError('Error finding location. Please try again.');
     } finally {
       setIsGeocoding(false);
@@ -305,7 +320,7 @@ export default function LocationPicker({
             id="location"
             type="text"
             value={address}
-            onChange={e => handleInputChange(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             onFocus={() =>
               address.length >= 3 && suggestions.length > 0 && setShowSuggestions(true)
             }
@@ -330,7 +345,7 @@ export default function LocationPicker({
             ref={suggestionsRef}
             className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-300 bg-white shadow-lg"
           >
-            {suggestions.map((suggestion: any, index: any) => (
+            {suggestions.map((suggestion: unknown, index: unknown) => (
               <button
                 key={suggestion.placeId}
                 onClick={() => handleSuggestionClick(suggestion)}
@@ -370,22 +385,22 @@ export default function LocationPicker({
           <div className="flex items-start space-x-3">
             <Navigation className="mt-0.5 h-5 w-5 text-blue-600" />
             <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-900">{locationData.formattedDistance}</p>
-                        <p className="mt-1 text-xs text-blue-700">
-                          Google Maps driving distance
-                        </p>
-                        <p className="mt-1 text-xs text-green-700 font-medium">
-                          ✓ You pay for exact distance (no rounding)
-                        </p>
-                        <p className="mt-2 text-xs text-gray-600 italic">
-                          💡 See a different distance on Google Maps?
-                          <a href={`https://www.google.com/maps/dir/945+Golden+Grove+Road,+Saint+John,+NB+E2H+2X1,+Canada/${encodeURIComponent(locationData.address)}`}
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             className="ml-1 underline hover:text-blue-600">
-                            Click here to compare routes
-                          </a>
-                        </p>
+              <p className="text-sm font-medium text-blue-900">{locationData.formattedDistance}</p>
+              <p className="mt-1 text-xs text-blue-700">Google Maps driving distance</p>
+              <p className="mt-1 text-xs text-green-700 font-medium">
+                ✓ You pay for exact distance (no rounding)
+              </p>
+              <p className="mt-2 text-xs text-gray-600 italic">
+                💡 See a different distance on Google Maps?
+                <a
+                  href={`https://www.google.com/maps/dir/945+Golden+Grove+Road,+Saint+John,+NB+E2H+2X1,+Canada/${encodeURIComponent(locationData.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-1 underline hover:text-blue-600"
+                >
+                  Click here to compare routes
+                </a>
+              </p>
             </div>
           </div>
 
@@ -396,9 +411,13 @@ export default function LocationPicker({
                 <div className="flex justify-between border-b border-blue-200 pb-2">
                   <div>
                     <p className="font-semibold text-gray-900">Equipment Rental</p>
-                    <p className="text-xs text-gray-600">{rentalDays} {rentalDays === 1 ? 'day' : 'days'} @ ${dailyRate}/day</p>
+                    <p className="text-xs text-gray-600">
+                      {rentalDays} {rentalDays === 1 ? 'day' : 'days'} @ ${dailyRate}/day
+                    </p>
                   </div>
-                  <span className="font-semibold text-gray-900">${(dailyRate * rentalDays).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">
+                    ${(dailyRate * rentalDays).toFixed(2)}
+                  </span>
                 </div>
               </div>
 
@@ -407,7 +426,8 @@ export default function LocationPicker({
                 <p className="font-semibold text-gray-900">Transportation & Staging</p>
                 {locationData.distanceKm > INCLUDED_KM && (
                   <p className="text-xs text-gray-600">
-                    Base $300 + ${((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM * 2).toFixed(2)} for{' '}
+                    Base $300 + $
+                    {((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM * 2).toFixed(2)} for{' '}
                     {(locationData.distanceKm - INCLUDED_KM).toFixed(1)}km extra (both ways)
                   </p>
                 )}
@@ -429,8 +449,13 @@ export default function LocationPicker({
                         <span>$150.00</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>- Additional mileage ({(locationData.distanceKm - INCLUDED_KM).toFixed(1)}km × $3):</span>
-                        <span>${((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM).toFixed(2)}</span>
+                        <span>
+                          - Additional mileage ({(locationData.distanceKm - INCLUDED_KM).toFixed(1)}
+                          km × $3):
+                        </span>
+                        <span>
+                          ${((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM).toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between border-t border-gray-300 pt-0.5 font-medium text-gray-700">
                         <span>Subtotal:</span>
@@ -455,8 +480,13 @@ export default function LocationPicker({
                         <span>$150.00</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>- Additional mileage ({(locationData.distanceKm - INCLUDED_KM).toFixed(1)}km × $3):</span>
-                        <span>${((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM).toFixed(2)}</span>
+                        <span>
+                          - Additional mileage ({(locationData.distanceKm - INCLUDED_KM).toFixed(1)}
+                          km × $3):
+                        </span>
+                        <span>
+                          ${((locationData.distanceKm - INCLUDED_KM) * COST_PER_KM).toFixed(2)}
+                        </span>
                       </div>
                       <div className="flex justify-between border-t border-gray-300 pt-0.5 font-medium text-gray-700">
                         <span>Subtotal:</span>
@@ -478,15 +508,22 @@ export default function LocationPicker({
               <div className="mt-3 space-y-2 border-t-2 border-blue-300 pt-3">
                 <div className="flex justify-between text-sm font-semibold text-gray-900">
                   <span>Subtotal (Equipment + Transport)</span>
-                  <span>${((dailyRate * rentalDays) + locationData.deliveryFee).toFixed(2)}</span>
+                  <span>${(dailyRate * rentalDays + locationData.deliveryFee).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>HST (15%)</span>
-                  <span>${(((dailyRate * rentalDays) + locationData.deliveryFee) * HST_RATE).toFixed(2)}</span>
+                  <span>
+                    ${((dailyRate * rentalDays + locationData.deliveryFee) * HST_RATE).toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between border-t border-blue-300 pt-2 text-lg font-bold text-blue-900">
                   <span>Estimated Total</span>
-                  <span>${(((dailyRate * rentalDays) + locationData.deliveryFee) * (1 + HST_RATE)).toFixed(2)}</span>
+                  <span>
+                    $
+                    {((dailyRate * rentalDays + locationData.deliveryFee) * (1 + HST_RATE)).toFixed(
+                      2
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
@@ -494,13 +531,13 @@ export default function LocationPicker({
 
           <div className="border-t border-blue-200 pt-3">
             <p className="text-xs text-gray-600">
-              <strong>Note:</strong> This is an estimate. Final amount will be confirmed before payment.
+              <strong>Note:</strong> This is an estimate. Final amount will be confirmed before
+              payment.
               <br />
               ✓ Distance rounded to nearest kilometer
               <br />
               ✓ Price includes equipment rental, delivery, and pickup
-              <br />
-              ✓ A $500 security deposit (refundable) will be required
+              <br />✓ A $500 security deposit (refundable) will be required
             </p>
           </div>
         </div>
@@ -523,12 +560,14 @@ export default function LocationPicker({
               both ways)
             </p>
             <p>• Distance is Google Maps driving route with real-time traffic</p>
-            <p className="font-medium text-green-700">• You pay for EXACT distance (no rounding markup)</p>
+            <p className="font-medium text-green-700">
+              • You pay for EXACT distance (no rounding markup)
+            </p>
             <p>• We show driving time to help you verify the route</p>
             <p>• Click the verification link to compare routes on Google Maps</p>
             <p className="text-xs text-gray-600 mt-2">
-              <strong>Note:</strong> Routes can vary by 1-2 km based on traffic conditions and time of day.
-              We use Google's Distance Matrix API with real-time traffic optimization.
+              <strong>Note:</strong> Routes can vary by 1-2 km based on traffic conditions and time
+              of day. We use Google's Distance Matrix API with real-time traffic optimization.
             </p>
             <p className="pt-2 text-xs italic text-gray-500">
               We confirm the total before finalizing your booking

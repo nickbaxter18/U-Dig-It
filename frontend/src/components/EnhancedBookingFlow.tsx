@@ -1,11 +1,16 @@
 'use client';
 
 import { checkAvailabilityEnhanced, createBookingEnhanced } from '@/app/book/actions-v2';
+
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+
+import Link from 'next/link';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { calculateRentalCost, formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+
 import AvailabilityCalendar from './AvailabilityCalendar';
 import DiscountCodeInput, { type AppliedDiscount } from './DiscountCodeInput';
 import LoadingOverlay from './LoadingOverlay';
@@ -53,6 +58,8 @@ interface EnhancedBookingFlowProps {
   progressIndicator?: 'animated' | 'simple' | 'none';
   /** Additional CSS classes for styling */
   className?: string;
+  /** Whether to resume from saved booking data */
+  shouldResume?: boolean;
 }
 
 const DAILY_RATE = 450;
@@ -93,6 +100,7 @@ type AvailabilityState =
 export default function EnhancedBookingFlow({
   progressIndicator = 'animated',
   className = '',
+  shouldResume = false,
 }: EnhancedBookingFlowProps) {
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -182,7 +190,17 @@ export default function EnhancedBookingFlow({
         metadata: { error: error instanceof Error ? error.message : String(error) },
       });
     }
-  }, [bookingCompleted, formData.customerEmail, formData.deliveryAddress, formData.deliveryCity, formData.endDate, formData.startDate, showBookingConfirmed, step, user]);
+  }, [
+    bookingCompleted,
+    formData.customerEmail,
+    formData.deliveryAddress,
+    formData.deliveryCity,
+    formData.endDate,
+    formData.startDate,
+    showBookingConfirmed,
+    step,
+    user,
+  ]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -213,7 +231,7 @@ export default function EnhancedBookingFlow({
       const lastName = user.user_metadata?.lastName || '';
       const fullName = `${firstName} ${lastName}`.trim() || user.email || '';
 
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         customerEmail: user.email || prev.customerEmail,
         customerName: fullName,
@@ -221,7 +239,7 @@ export default function EnhancedBookingFlow({
     }
   }, [user, authLoading]);
 
-  // Load saved form data from localStorage on mount
+  // Load saved form data from localStorage on mount or when shouldResume is true
   useEffect(() => {
     const savedFormData = localStorage.getItem('booking-form-draft');
     if (savedFormData) {
@@ -231,8 +249,10 @@ export default function EnhancedBookingFlow({
         const now = new Date();
         const hoursSinceSaved = (now.getTime() - savedDate.getTime()) / (1000 * 60 * 60);
 
-        // Only restore if saved within last 24 hours
-        if (hoursSinceSaved < 24) {
+        // Restore if saved within last 24 hours, or if shouldResume is true (even if older)
+        const shouldRestore = shouldResume || hoursSinceSaved < 24;
+
+        if (shouldRestore) {
           setFormData(parsed.formData);
           setStep(parsed.step || 1);
           if (parsed.locationData) {
@@ -241,20 +261,31 @@ export default function EnhancedBookingFlow({
           logger.debug('[BookingFlow] Restored saved progress from localStorage', {
             component: 'EnhancedBookingFlow',
             action: 'debug',
+            metadata: { shouldResume, hoursSinceSaved },
           });
         } else {
           // Clear old data
           localStorage.removeItem('booking-form-draft');
         }
       } catch (error) {
-        logger.error('[BookingFlow] Error loading saved form data:', {
-          component: 'EnhancedBookingFlow',
-          action: 'error',
-        }, error instanceof Error ? error : undefined);
+        logger.error(
+          '[BookingFlow] Error loading saved form data:',
+          {
+            component: 'EnhancedBookingFlow',
+            action: 'error',
+          },
+          error instanceof Error ? error : undefined
+        );
         localStorage.removeItem('booking-form-draft');
       }
+    } else if (shouldResume) {
+      // If shouldResume is true but no saved data, log a warning
+      logger.warn('[BookingFlow] Resume requested but no saved booking data found', {
+        component: 'EnhancedBookingFlow',
+        action: 'resume_no_data',
+      });
     }
-  }, []);
+  }, [shouldResume]);
 
   // Save form data to localStorage whenever it changes (debounced)
   useEffect(() => {
@@ -273,10 +304,14 @@ export default function EnhancedBookingFlow({
             action: 'debug',
           });
         } catch (error) {
-          logger.error('[BookingFlow] Error saving form data:', {
-            component: 'EnhancedBookingFlow',
-            action: 'error',
-          }, error instanceof Error ? error : undefined);
+          logger.error(
+            '[BookingFlow] Error saving form data:',
+            {
+              component: 'EnhancedBookingFlow',
+              action: 'error',
+            },
+            error instanceof Error ? error : undefined
+          );
         }
       }, 1000); // Debounce by 1 second
 
@@ -302,7 +337,7 @@ export default function EnhancedBookingFlow({
   }, [showBookingConfirmed, bookingResult]);
 
   const selectedArea = useMemo(
-    () => SERVICE_AREAS.find(area => area.value === formData.deliveryCity),
+    () => SERVICE_AREAS.find((area) => area.value === formData.deliveryCity),
     [formData.deliveryCity]
   );
 
@@ -335,7 +370,7 @@ export default function EnhancedBookingFlow({
     const deliveryFee = locationData?.deliveryFee || selectedArea?.fee || 0;
 
     // Calculate waiver cost ($29/day) - added to subtotal BEFORE discount
-    const waiverCost = waiverSelected ? (rentalDays * 29) : 0;
+    const waiverCost = waiverSelected ? rentalDays * 29 : 0;
     const holdAmount = 500; // Always $500, waiver protects it from damage charges
 
     // Calculate subtotal INCLUDING waiver BEFORE discount
@@ -509,7 +544,6 @@ export default function EnhancedBookingFlow({
     }
   };
 
-
   /* Contract signing moved to manage booking page
   const handleContractSigned = async (contractId: string) => {
     logger.debug('✅ Contract signed successfully', {
@@ -590,7 +624,7 @@ export default function EnhancedBookingFlow({
         totalAmount,
         subtotal: equipmentSubtotal,
         deliveryFee: deliveryTotal,
-        taxes
+        taxes,
       },
     });
 
@@ -643,7 +677,7 @@ export default function EnhancedBookingFlow({
               action: 'debug',
               metadata: {
                 deliveryFee: locationData.deliveryFee,
-                distanceKm: locationData.distanceKm
+                distanceKm: locationData.distanceKm,
               },
             });
           }
@@ -670,7 +704,7 @@ export default function EnhancedBookingFlow({
               metadata: {
                 couponCode: appliedDiscount.code,
                 couponType: appliedDiscount.type,
-                couponValue: appliedDiscount.value
+                couponValue: appliedDiscount.value,
               },
             });
           }
@@ -700,7 +734,7 @@ export default function EnhancedBookingFlow({
               action: 'debug',
               metadata: {
                 waiverEnabled: waiverSelected,
-                waiverDays: rentalDays
+                waiverDays: rentalDays,
               },
             });
           }
@@ -731,13 +765,18 @@ export default function EnhancedBookingFlow({
         }
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create booking. Please try again.';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to create booking. Please try again.';
 
-      logger.error('[EnhancedBookingFlow] Booking creation failed', {
-        component: 'EnhancedBookingFlow',
-        action: 'error',
-        metadata: { error: errorMessage },
-      }, error instanceof Error ? error : undefined);
+      logger.error(
+        '[EnhancedBookingFlow] Booking creation failed',
+        {
+          component: 'EnhancedBookingFlow',
+          action: 'error',
+          metadata: { error: errorMessage },
+        },
+        error instanceof Error ? error : undefined
+      );
 
       setSubmitError(errorMessage);
     } finally {
@@ -813,7 +852,7 @@ export default function EnhancedBookingFlow({
               aria-valuemax={3}
               aria-label={`Booking progress: step ${step} of 3`}
             >
-              {[1, 2, 3].map(stepNum => (
+              {[1, 2, 3].map((stepNum) => (
                 <div key={stepNum} className="flex items-center">
                   <div
                     className={`booking-step ${
@@ -907,7 +946,7 @@ export default function EnhancedBookingFlow({
               equipmentId="96488a54-2649-4e1f-8a55-9eac48de5a4d" // SVL75-001
               selectedStartDate={formData.startDate ? new Date(formData.startDate) : null}
               selectedEndDate={formData.endDate ? new Date(formData.endDate) : null}
-              onDateSelect={(start: any, end: any) => {
+              onDateSelect={(start: unknown, end: unknown) => {
                 // Format dates using local timezone to avoid UTC conversion shifting dates
                 const formatLocalDate = (date: Date): string => {
                   const year = date.getFullYear();
@@ -916,13 +955,13 @@ export default function EnhancedBookingFlow({
                   return `${year}-${month}-${day}`;
                 };
 
-                setFormData(prev => ({
+                setFormData((prev) => ({
                   ...prev,
                   startDate: start ? formatLocalDate(start) : '',
                   endDate: end ? formatLocalDate(end) : '',
                 }));
                 // Clear errors when dates are selected
-                setErrors(prev => ({
+                setErrors((prev) => ({
                   ...prev,
                   startDate: undefined,
                   endDate: undefined,
@@ -1022,9 +1061,9 @@ export default function EnhancedBookingFlow({
         {step === 2 && (
           <div className="space-y-6">
             <LocationPicker
-              onLocationSelect={location => {
+              onLocationSelect={(location) => {
                 setLocationData(location);
-                setFormData(prev => ({
+                setFormData((prev) => ({
                   ...prev,
                   deliveryAddress: location.address,
                   deliveryCity: location.city,
@@ -1032,7 +1071,7 @@ export default function EnhancedBookingFlow({
                   deliveryPostalCode: location.postalCode || '',
                 }));
                 // Clear errors when location is selected
-                setErrors(prev => ({
+                setErrors((prev) => ({
                   ...prev,
                   deliveryAddress: undefined,
                   deliveryCity: undefined,
@@ -1050,7 +1089,6 @@ export default function EnhancedBookingFlow({
           </div>
         )}
 
-
         {step === 3 && (
           <div className="space-y-6">
             {/* Booking Summary - Matches Step 2 Blue Section EXACTLY */}
@@ -1060,14 +1098,24 @@ export default function EnhancedBookingFlow({
                   {/* Distance Info */}
                   {locationData && (
                     <div className="flex items-start space-x-3">
-                      <svg className="mt-0.5 h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      <svg
+                        className="mt-0.5 h-5 w-5 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                        />
                       </svg>
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-blue-900">{locationData.formattedDistance}</p>
-                        <p className="mt-1 text-xs text-blue-700">
-                          Google Maps driving distance
+                        <p className="text-sm font-medium text-blue-900">
+                          {locationData.formattedDistance}
                         </p>
+                        <p className="mt-1 text-xs text-blue-700">Google Maps driving distance</p>
                         <p className="mt-1 text-xs text-green-700 font-medium">
                           ✓ You pay for exact distance (no rounding markup)
                         </p>
@@ -1082,9 +1130,13 @@ export default function EnhancedBookingFlow({
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium text-gray-900">Equipment Rental</p>
-                            <p className="text-xs text-gray-600">{rentalDays} day{rentalDays !== 1 ? 's' : ''} @ $450/day</p>
+                            <p className="text-xs text-gray-600">
+                              {rentalDays} day{rentalDays !== 1 ? 's' : ''} @ $450/day
+                            </p>
                           </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(pricing.subtotal)}</span>
+                          <span className="font-semibold text-gray-900">
+                            {formatCurrency(pricing.subtotal)}
+                          </span>
                         </div>
                       </div>
 
@@ -1092,7 +1144,8 @@ export default function EnhancedBookingFlow({
                       <p className="font-medium text-gray-900">Transportation & Staging</p>
                       {locationData && locationData.distanceKm > 30 && (
                         <p className="text-xs text-gray-600">
-                          Base $300 + ${((locationData.distanceKm - 30) * 3 * 2).toFixed(2)} for {(locationData.distanceKm - 30).toFixed(1)}km extra (both ways)
+                          Base $300 + ${((locationData.distanceKm - 30) * 3 * 2).toFixed(2)} for{' '}
+                          {(locationData.distanceKm - 30).toFixed(1)}km extra (both ways)
                         </p>
                       )}
 
@@ -1112,7 +1165,10 @@ export default function EnhancedBookingFlow({
                                 <span>$150.00</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>- Additional mileage ({(locationData.distanceKm - 30).toFixed(1)}km × $3):</span>
+                                <span>
+                                  - Additional mileage ({(locationData.distanceKm - 30).toFixed(1)}
+                                  km × $3):
+                                </span>
                                 <span>${((locationData.distanceKm - 30) * 3).toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between border-t border-gray-300 pt-0.5 font-medium text-gray-700">
@@ -1138,7 +1194,10 @@ export default function EnhancedBookingFlow({
                                 <span>$150.00</span>
                               </div>
                               <div className="flex justify-between">
-                                <span>- Additional mileage ({(locationData.distanceKm - 30).toFixed(1)}km × $3):</span>
+                                <span>
+                                  - Additional mileage ({(locationData.distanceKm - 30).toFixed(1)}
+                                  km × $3):
+                                </span>
                                 <span>${((locationData.distanceKm - 30) * 3).toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between border-t border-gray-300 pt-0.5 font-medium text-gray-700">
@@ -1152,7 +1211,9 @@ export default function EnhancedBookingFlow({
 
                       <div className="flex justify-between border-t border-blue-200 pt-2 text-sm">
                         <span className="font-medium text-gray-700">Transport Subtotal</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(pricing.deliveryFee)}</span>
+                        <span className="font-semibold text-gray-900">
+                          {formatCurrency(pricing.deliveryFee)}
+                        </span>
                       </div>
 
                       {/* Waiver (if selected) - itemized BEFORE subtotal */}
@@ -1161,21 +1222,39 @@ export default function EnhancedBookingFlow({
                           <span className="text-gray-700">
                             Damage Waiver ({rentalDays} day{rentalDays !== 1 ? 's' : ''} × $29)
                           </span>
-                          <span className="font-medium text-gray-900">+{formatCurrency(pricing.waiverCost)}</span>
+                          <span className="font-medium text-gray-900">
+                            +{formatCurrency(pricing.waiverCost)}
+                          </span>
                         </div>
                       )}
 
                       {/* Subtotal, Discount, and Taxes */}
                       <div className="mt-2 space-y-1 border-t-2 border-blue-300 pt-2">
                         <div className="flex justify-between text-sm font-semibold text-gray-900">
-                          <span>Subtotal (Equipment + Transport{waiverSelected ? ' + Waiver' : ''})</span>
-                          <span>{formatCurrency(pricing.subtotal + pricing.deliveryFee + pricing.waiverCost)}</span>
+                          <span>
+                            Subtotal (Equipment + Transport{waiverSelected ? ' + Waiver' : ''})
+                          </span>
+                          <span>
+                            {formatCurrency(
+                              pricing.subtotal + pricing.deliveryFee + pricing.waiverCost
+                            )}
+                          </span>
                         </div>
                         {appliedDiscount && pricing.discountAmount > 0 && (
                           <div className="flex justify-between text-sm font-semibold text-green-600">
                             <span className="flex items-center">
-                              <svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                              <svg
+                                className="mr-1 h-4 w-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                                />
                               </svg>
                               Discount ({appliedDiscount.code})
                             </span>
@@ -1185,7 +1264,14 @@ export default function EnhancedBookingFlow({
                         {appliedDiscount && pricing.discountAmount > 0 && (
                           <div className="flex justify-between border-t border-gray-200 pt-1 text-sm font-semibold text-gray-900">
                             <span>Subtotal after discount</span>
-                            <span>{formatCurrency((pricing.subtotal + pricing.deliveryFee + pricing.waiverCost) - pricing.discountAmount)}</span>
+                            <span>
+                              {formatCurrency(
+                                pricing.subtotal +
+                                  pricing.deliveryFee +
+                                  pricing.waiverCost -
+                                  pricing.discountAmount
+                              )}
+                            </span>
                           </div>
                         )}
                         <div className="flex justify-between text-xs text-gray-600">
@@ -1197,20 +1283,28 @@ export default function EnhancedBookingFlow({
                           <span>{formatCurrency(pricing.total)}</span>
                         </div>
                         <div className="mt-2 flex justify-between text-xs text-gray-600">
-                          <span>Security Hold (placed 48h before pickup){waiverSelected && ' 🛡'}</span>
-                          <span className={waiverSelected ? 'text-green-600 font-semibold' : 'font-semibold'}>${pricing.holdAmount}.00{waiverSelected && ' - Protected'}</span>
+                          <span>
+                            Security Hold (placed 48h before pickup){waiverSelected && ' 🛡'}
+                          </span>
+                          <span
+                            className={
+                              waiverSelected ? 'text-green-600 font-semibold' : 'font-semibold'
+                            }
+                          >
+                            ${pricing.holdAmount}.00{waiverSelected && ' - Protected'}
+                          </span>
                         </div>
                       </div>
 
                       <div className="mt-3 border-t border-blue-200 pt-3">
                         <p className="text-xs text-gray-600">
-                          <strong>Note:</strong> This is an estimate. Final amount will be confirmed before payment.
+                          <strong>Note:</strong> This is an estimate. Final amount will be confirmed
+                          before payment.
                           <br />
                           ✓ Distance rounded to nearest kilometer
                           <br />
                           ✓ Price includes equipment rental, delivery, and pickup
-                          <br />
-                          ✓ A $500 security deposit (refundable) will be required
+                          <br />✓ A $500 security deposit (refundable) will be required
                         </p>
                       </div>
                     </div>
@@ -1225,23 +1319,32 @@ export default function EnhancedBookingFlow({
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <span className="text-2xl">🛡</span>
-                    <h3 className="text-xl font-bold text-gray-900">Damage Waiver Protection — Because Accidents Happen</h3>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Damage Waiver Protection — Because Accidents Happen
+                    </h3>
                   </div>
 
                   {/* Headline */}
                   <div className="mt-4 rounded-lg border-l-4 border-amber-500 bg-amber-100 p-4">
                     <p className="text-base font-bold text-gray-900">
-                      Don't take on <span className="text-red-600">$500 of risk</span> for a <span className="text-green-600">$29/day decision.</span>
+                      Don't take on <span className="text-red-600">$500 of risk</span> for a{' '}
+                      <span className="text-green-600">$29/day decision.</span>
                     </p>
                   </div>
 
                   {/* Value Proposition */}
                   <div className="mt-4 space-y-3">
                     <p className="text-sm leading-relaxed text-gray-700">
-                      Even the best operators get a nick or a blown hose once in a while. Regular wear and tear is always on us — but things like <strong>dents, scratches, or a hydraulic line failure from improper use</strong> aren't.
+                      Even the best operators get a nick or a blown hose once in a while. Regular
+                      wear and tear is always on us — but things like{' '}
+                      <strong>
+                        dents, scratches, or a hydraulic line failure from improper use
+                      </strong>{' '}
+                      aren't.
                     </p>
                     <p className="text-sm font-medium text-blue-700">
-                      With Damage Waiver Protection, you're covered for those "oops" moments and your $500 security hold stays protected.
+                      With Damage Waiver Protection, you're covered for those "oops" moments and
+                      your $500 security hold stays protected.
                     </p>
                   </div>
 
@@ -1251,15 +1354,22 @@ export default function EnhancedBookingFlow({
                     <ul className="ml-4 space-y-2 text-sm text-gray-700">
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-green-600">•</span>
-                        <span><strong>Protection for your $500 security hold</strong> from accidental damage charges</span>
+                        <span>
+                          <strong>Protection for your $500 security hold</strong> from accidental
+                          damage charges
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-green-600">•</span>
-                        <span>Coverage for minor incidental damage (scratches, dents, blown hoses, etc.)</span>
+                        <span>
+                          Coverage for minor incidental damage (scratches, dents, blown hoses, etc.)
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-green-600">•</span>
-                        <span>Peace of mind knowing you won't get stuck paying for small mishaps</span>
+                        <span>
+                          Peace of mind knowing you won't get stuck paying for small mishaps
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -1270,15 +1380,24 @@ export default function EnhancedBookingFlow({
                     <ul className="ml-4 space-y-2 text-sm text-gray-700">
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-red-600">•</span>
-                        <span><strong>Accidental damage or misuse repairs</strong> come straight out of your $500 hold</span>
+                        <span>
+                          <strong>Accidental damage or misuse repairs</strong> come straight out of
+                          your $500 hold
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-red-600">•</span>
-                        <span>Your full hold <strong>stays tied up</strong> until the machine is inspected and cleared</span>
+                        <span>
+                          Your full hold <strong>stays tied up</strong> until the machine is
+                          inspected and cleared
+                        </span>
                       </li>
                       <li className="flex items-start">
                         <span className="mr-2 mt-0.5 text-red-600">•</span>
-                        <span>One bad move with a bucket or coupler can <strong>erase your savings fast</strong></span>
+                        <span>
+                          One bad move with a bucket or coupler can{' '}
+                          <strong>erase your savings fast</strong>
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -1286,13 +1405,21 @@ export default function EnhancedBookingFlow({
                   {/* Social Proof */}
                   <div className="mt-4 rounded-lg border border-blue-300 bg-blue-50 p-3">
                     <p className="text-sm text-blue-900">
-                      <strong className="font-bold">Over 80% of renters add Damage Waiver Protection</strong> — because it's simply not worth gambling a $500 hold against a $29/day safety net.
+                      <strong className="font-bold">
+                        Over 80% of renters add Damage Waiver Protection
+                      </strong>{' '}
+                      — because it's simply not worth gambling a $500 hold against a $29/day safety
+                      net.
                     </p>
                   </div>
 
                   {/* Fine Print */}
                   <p className="mt-3 text-xs text-gray-500 italic">
-                    Waiver covers accidental minor damage during normal operation (e.g., scratched or dented body panels, blown hydraulic hoses). Does not cover intentional damage, negligence, theft, or operation outside manufacturer guidelines. Security hold is placed 48 hours before pickup. Equipment must be returned clean, refueled, and in good condition for hold release within 24 hours.
+                    Waiver covers accidental minor damage during normal operation (e.g., scratched
+                    or dented body panels, blown hydraulic hoses). Does not cover intentional
+                    damage, negligence, theft, or operation outside manufacturer guidelines.
+                    Security hold is placed 48 hours before pickup. Equipment must be returned
+                    clean, refueled, and in good condition for hold release within 24 hours.
                   </p>
                 </div>
 
@@ -1315,7 +1442,9 @@ export default function EnhancedBookingFlow({
                     />
                   </button>
                   <div className="mt-2 text-center">
-                    <span className={`text-xs font-bold ${waiverSelected ? 'text-green-700' : 'text-gray-500'}`}>
+                    <span
+                      className={`text-xs font-bold ${waiverSelected ? 'text-green-700' : 'text-gray-500'}`}
+                    >
                       {waiverSelected ? 'ADDED ✓' : 'Add Now'}
                     </span>
                   </div>
@@ -1326,11 +1455,17 @@ export default function EnhancedBookingFlow({
               {waiverSelected && pricing && (
                 <div className="mt-4 rounded-lg border border-green-300 bg-green-100 p-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-green-900">Damage Waiver ({rentalDays} day{rentalDays !== 1 ? 's' : ''} @ $29/day)</span>
-                    <span className="font-semibold text-green-900">+${pricing.waiverCost.toFixed(2)}</span>
+                    <span className="font-medium text-green-900">
+                      Damage Waiver ({rentalDays} day{rentalDays !== 1 ? 's' : ''} @ $29/day)
+                    </span>
+                    <span className="font-semibold text-green-900">
+                      +${pricing.waiverCost.toFixed(2)}
+                    </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between border-t border-green-300 pt-2 text-sm">
-                    <span className="font-medium text-green-700">🛡 Your $500 Hold is Now Protected</span>
+                    <span className="font-medium text-green-700">
+                      🛡 Your $500 Hold is Now Protected
+                    </span>
                     <span className="font-semibold text-green-700">✓ Added</span>
                   </div>
                 </div>
@@ -1342,7 +1477,7 @@ export default function EnhancedBookingFlow({
               <h3 className="mb-3 text-lg font-medium text-gray-900">Have a Promo Code?</h3>
               <DiscountCodeInput
                 onDiscountApplied={setAppliedDiscount}
-                subtotal={pricing ? (pricing.subtotal + pricing.deliveryFee + pricing.waiverCost) : 0}
+                subtotal={pricing ? pricing.subtotal + pricing.deliveryFee + pricing.waiverCost : 0}
               />
             </div>
 

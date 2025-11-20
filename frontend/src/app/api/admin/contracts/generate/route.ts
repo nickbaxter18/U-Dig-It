@@ -1,7 +1,8 @@
-import { logger } from '@/lib/logger';
-import { contractNumberFromBooking } from '@/lib/utils';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { contractNumberFromBooking } from '@/lib/utils';
 
 /**
  * POST /api/admin/contracts/generate
@@ -18,19 +19,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 2. Verify admin role
     const { data: userData } = await supabase
@@ -54,7 +51,8 @@ export async function POST(request: NextRequest) {
     // 4. Fetch booking details
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
+      .select(
+        `
         id,
         bookingNumber,
         startDate,
@@ -86,7 +84,8 @@ export async function POST(request: NextRequest) {
           model,
           serialNumber
         )
-      `)
+      `
+      )
       .eq('id', bookingId)
       .single();
 
@@ -115,12 +114,14 @@ export async function POST(request: NextRequest) {
     // 7. Calculate rental days
     const startDate = new Date(bookingData.startDate);
     const endDate = new Date(bookingData.endDate);
-    const rentalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const rentalDays =
+      Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     // 8. Calculate waiver fee
-    const waiverFee = bookingData.waiver_selected && bookingData.waiver_rate_cents
-      ? (bookingData.waiver_rate_cents / 100) * rentalDays
-      : 0;
+    const waiverFee =
+      bookingData.waiver_selected && bookingData.waiver_rate_cents
+        ? (bookingData.waiver_rate_cents / 100) * rentalDays
+        : 0;
 
     // 9. Prepare template variables
     const customer = bookingData.customer || {};
@@ -132,7 +133,8 @@ export async function POST(request: NextRequest) {
       customerName: `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A',
       customerEmail: customer.email || 'N/A',
       customerPhone: customer.phone || 'N/A',
-      customerAddress: `${bookingData.deliveryAddress || customer.address || ''}, ${bookingData.deliveryCity || customer.city || ''}, ${bookingData.deliveryProvince || customer.province || ''} ${bookingData.deliveryPostalCode || customer.postalCode || ''}`.trim(),
+      customerAddress:
+        `${bookingData.deliveryAddress || customer.address || ''}, ${bookingData.deliveryCity || customer.city || ''}, ${bookingData.deliveryProvince || customer.province || ''} ${bookingData.deliveryPostalCode || customer.postalCode || ''}`.trim(),
       equipmentMake: equipment.make || 'Kubota',
       equipmentModel: equipment.model || 'SVL-75',
       equipmentSerial: equipment.serialNumber || 'TBD',
@@ -204,21 +206,15 @@ export async function POST(request: NextRequest) {
       contract: newContract,
       contractNumber,
     });
-  } catch (error: any) {
-    logger.error('Contract generation error', {
-      component: 'admin-contracts-api',
-      action: 'error',
-    }, error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Contract generation error',
+      {
+        component: 'admin-contracts-api',
+        action: 'error',
+      },
+      error
     );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-

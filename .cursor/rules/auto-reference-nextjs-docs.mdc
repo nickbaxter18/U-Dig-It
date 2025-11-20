@@ -1,0 +1,81 @@
+---
+description: "Automatically reference Next.js indexed documentation when working with routing, server components, or app router"
+globs:
+  - "**/app/**/*.{ts,tsx}"
+  - "**/pages/**/*.{ts,tsx}"
+  - "**/middleware.ts"
+  - "**/next.config.{js,ts,mjs}"
+  - "**/layout.tsx"
+  - "**/page.tsx"
+  - "**/route.ts"
+  - "**/loading.tsx"
+  - "**/error.tsx"
+alwaysApply: false
+---
+
+# Next.js Documentation Auto-Reference
+
+When working with Next.js code, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## General Next.js Features
+- Use **@next.js docs** for:
+  - App Router concepts
+  - Server vs Client Components
+  - Data fetching patterns
+  - Caching strategies
+  - Image optimization
+  - Font optimization
+  - Metadata API
+
+## API Routes & Route Handlers
+- Use **@https://nextjs.org/docs/app/building-your-application/routing/route-handlers** when:
+  - Creating API endpoints (`route.ts`)
+  - Handling HTTP methods (GET, POST, PUT, DELETE)
+  - Working with request/response objects
+  - Implementing serverless functions
+  - Setting up webhooks
+  - Edge vs Node runtime decisions
+
+## Middleware & Edge Runtime
+- Use **@https://nextjs.org/docs/app/building-your-application/routing/middleware** when:
+  - Creating middleware.ts
+  - Implementing request/response modifications
+  - Setting up redirects or rewrites
+  - Adding security headers
+  - Rate limiting at edge
+  - Geolocation-based routing
+  - Edge runtime limitations
+
+## Turbopack (Development)
+- Use **@turbopack** when:
+  - Configuring development server
+  - Optimizing build performance
+  - Troubleshooting dev server issues
+  - Setting up filesystem caching
+
+## Vercel Deployment
+- Use **@https://vercel.com/docs** when:
+  - Configuring deployment settings
+  - Managing environment variables
+  - Setting up edge functions
+  - Configuring domains
+  - Reviewing logs and analytics
+
+## Example Usage Pattern
+
+```typescript
+// When creating API routes:
+// @https://nextjs.org/docs/app/building-your-application/routing/route-handlers
+// for route handler patterns and best practices
+
+// When setting up middleware:
+// @https://nextjs.org/docs/app/building-your-application/routing/middleware
+// for middleware configuration and edge runtime considerations
+
+// When optimizing build:
+// @turbopack for development performance
+// @https://vercel.com/docs for production deployment
+```
+
+## Reminder
+**ALWAYS check Next.js docs** before implementing routing, server actions, or API routes to ensure you're using the latest App Router patterns and best practices.

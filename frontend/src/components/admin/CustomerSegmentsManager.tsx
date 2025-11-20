@@ -1,15 +1,18 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import { Edit2, Filter, Loader2, Plus, Trash2, Users, X } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Plus, Users, X, Edit2, Trash2, Loader2, Filter } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface CustomerSegment {
   id: string;
   name: string;
   description: string | null;
-  criteria: Record<string, any>;
+  criteria: Record<string, unknown>;
   customer_count: number | null;
   avg_booking_value: number | null;
   avg_booking_frequency: number | null;
@@ -43,11 +46,7 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
     tier: '' as '' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'enterprise',
   });
 
-  useEffect(() => {
-    fetchSegments();
-  }, []);
-
-  const fetchSegments = async () => {
+  const fetchSegments = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchWithAuth('/api/admin/customers/segments');
@@ -58,11 +57,18 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
       const data = await response.json();
       setSegments(data.segments || []);
     } catch (error) {
-      toast.error('Failed to load segments', error instanceof Error ? error.message : 'Unable to fetch customer segments');
+      toast.error(
+        'Failed to load segments',
+        error instanceof Error ? error.message : 'Unable to fetch customer segments'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchSegments();
+  }, [fetchSegments]);
 
   const handleCreateSegment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +79,7 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
 
     setSubmitting(true);
     try {
-      const criteria: Record<string, any> = {};
+      const criteria: Record<string, unknown> = {};
       if (formData.criteria.minTotalSpent) {
         criteria.minTotalSpent = parseFloat(formData.criteria.minTotalSpent);
       }
@@ -114,7 +120,10 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
       await fetchSegments();
       onSegmentChange?.();
     } catch (error) {
-      toast.error('Failed to create segment', error instanceof Error ? error.message : 'Unable to create segment');
+      toast.error(
+        'Failed to create segment',
+        error instanceof Error ? error.message : 'Unable to create segment'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +148,10 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
       await fetchSegments();
       onSegmentChange?.();
     } catch (error) {
-      toast.error('Failed to delete segment', error instanceof Error ? error.message : 'Unable to delete segment');
+      toast.error(
+        'Failed to delete segment',
+        error instanceof Error ? error.message : 'Unable to delete segment'
+      );
     }
   };
 
@@ -268,7 +280,7 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="e.g., High Value Customers, Frequent Renters"
                   required
@@ -279,7 +291,9 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
                 <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
                   rows={2}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="Describe this segment..."
@@ -288,30 +302,38 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Min Total Spent (CAD)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Min Total Spent (CAD)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.criteria.minTotalSpent}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      criteria: { ...prev.criteria, minTotalSpent: e.target.value },
-                    }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        criteria: { ...prev.criteria, minTotalSpent: e.target.value },
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Min Bookings</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Min Bookings
+                  </label>
                   <input
                     type="number"
                     min="0"
                     value={formData.criteria.minBookings}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      criteria: { ...prev.criteria, minBookings: e.target.value },
-                    }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        criteria: { ...prev.criteria, minBookings: e.target.value },
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     placeholder="0"
                   />
@@ -319,10 +341,14 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Tier (Optional)</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Tier (Optional)
+                </label>
                 <select
                   value={formData.tier}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tier: e.target.value as any }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, tier: e.target.value as any }))
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">None</option>
@@ -372,4 +398,3 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
     </div>
   );
 }
-

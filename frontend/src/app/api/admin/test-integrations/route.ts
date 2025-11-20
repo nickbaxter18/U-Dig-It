@@ -16,7 +16,7 @@ import {
 } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Verify admin authentication
     const supabase = await createClient();
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
           message: `From email configured: ${emailFrom}`,
         });
       }
-    } catch (error) {
+    } catch {
       results.tests.push({
         name: 'Email From Address',
         status: 'fail',
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
           message: `Connected to Supabase (${count || 0} bookings)`,
         });
       }
-    } catch (error) {
+    } catch {
       results.tests.push({
         name: 'Database Connection',
         status: 'fail',
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
             message: `Table accessible (${count || 0} records)`,
           });
         }
-      } catch (error) {
+      } catch {
         results.tests.push({
           name: `Table: ${table}`,
           status: 'fail',

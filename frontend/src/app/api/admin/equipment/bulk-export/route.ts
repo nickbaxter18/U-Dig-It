@@ -1,7 +1,9 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const bulkExportSchema = z.object({
   equipmentIds: z.array(z.string().uuid()).min(1),
@@ -16,19 +18,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
@@ -84,7 +82,7 @@ export async function POST(request: NextRequest) {
         'Created At',
       ];
 
-      const rows = equipment.map((eq: any) => [
+      const rows = equipment.map((eq: unknown) => [
         eq.unitId || '',
         eq.make || '',
         eq.model || '',
@@ -99,7 +97,9 @@ export async function POST(request: NextRequest) {
         eq.createdAt ? new Date(eq.createdAt).toLocaleString() : '',
       ]);
 
-      const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
 
       logger.info('Bulk equipment export completed', {
         component: 'admin-equipment-bulk-export',
@@ -121,7 +121,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body', details: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body', details: err.issues },
+        { status: 400 }
+      );
     }
 
     logger.error(
@@ -133,5 +136,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to perform bulk export' }, { status: 500 });
   }
 }
-
-

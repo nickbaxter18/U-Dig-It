@@ -1,15 +1,13 @@
 /// <reference types="@testing-library/jest-dom" />
-import { render, RenderOptions } from '@testing-library/react';
+import { RenderOptions, render } from '@testing-library/react';
+
 import { ReactElement } from 'react';
 
 /**
  * Renders a component with all necessary providers
  * Use this for components that need auth, query client, or other providers
  */
-export const renderWithProviders = (
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) => {
+export const renderWithProviders = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) => {
   // Note: Add providers as needed
   // const Wrapper = ({ children }: { children: React.ReactNode }) => (
   //   <SupabaseAuthProvider>
@@ -49,7 +47,7 @@ export const waitForElementToDisappear = async (element: HTMLElement) => {
  */
 export const getValidationErrors = (container: HTMLElement) => {
   return Array.from(container.querySelectorAll('[role="alert"]')).map(
-    (el: any) => el.textContent
+    (el: unknown) => el.textContent
   );
 };
 
@@ -123,5 +121,3 @@ export const mockIntersectionObserver = () => {
     disconnect() {}
   } as any;
 };
-
-

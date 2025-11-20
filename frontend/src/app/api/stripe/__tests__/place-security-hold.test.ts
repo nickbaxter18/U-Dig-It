@@ -1,13 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST } from '../place-security-hold/route';
 import {
   createMockRequest,
-  expectErrorResponse,
-  createTestBooking,
+  createMockResponse,
   createRateLimiterModuleMock,
   createRequestValidatorModuleMock,
-  createMockResponse,
+  createTestBooking,
+  expectErrorResponse,
 } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { POST } from '../place-security-hold/route';
 
 const mockUser = { id: 'user-123', email: 'test@example.com' };
 
@@ -74,7 +75,7 @@ let supabaseMock: typeof supabaseRef.value;
 let stripeInstance: typeof stripeRef.instance;
 
 const configureSupabase = (
-  bookingData: any,
+  bookingData: unknown,
   options: {
     userRole?: string;
     bookingError?: string | null;
@@ -96,11 +97,13 @@ const configureSupabase = (
   };
 
   const bookingPaymentsChain = {
-    insert: vi.fn().mockResolvedValue(
-      options.bookingPaymentsError
-        ? { data: null, error: { message: options.bookingPaymentsError } }
-        : { data: { id: 'booking-payment-1' }, error: null }
-    ),
+    insert: vi
+      .fn()
+      .mockResolvedValue(
+        options.bookingPaymentsError
+          ? { data: null, error: { message: options.bookingPaymentsError } }
+          : { data: { id: 'booking-payment-1' }, error: null }
+      ),
   };
 
   const usersChain = {

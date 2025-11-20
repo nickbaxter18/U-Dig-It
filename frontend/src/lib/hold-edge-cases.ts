@@ -8,7 +8,9 @@
  *   4. Booking reschedules (cancel old hold, schedule new one)
  *   5. SCA requirements (deep-link for 3D Secure)
  */
-import Stripe from 'stripe';
+import _Stripe from 'stripe';
+
+// Reserved for future Stripe type usage
 
 import { logger } from './logger';
 import {
@@ -28,7 +30,7 @@ async function getStripeInstance() {
 export async function handleBookingWithin48h(
   bookingId: string,
   paymentMethodId: string,
-  supabase: any
+  _supabase: unknown // Reserved for future Supabase usage
 ): Promise<{ success: boolean; error?: string }> {
   try {
     logger.warn('Booking within 48h - placing both holds immediately', {
@@ -83,7 +85,7 @@ export async function handleBookingWithin48h(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Failed to handle <48h booking',
       {
@@ -415,7 +417,7 @@ export async function handleBookingReschedule(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Failed to handle booking reschedule',
       {

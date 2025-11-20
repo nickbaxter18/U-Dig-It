@@ -193,39 +193,47 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
             </div>
 
             {/* Specifications */}
-            {(equipment.specifications as any) && (
+            {equipment.specifications && (
               <div>
                 <h4 className="mb-4 text-lg font-semibold text-gray-900">Specifications</h4>
                 <dl className="grid grid-cols-1 gap-4">
-                  {(equipment.specifications as any).engine && (
+                  {(equipment.specifications as { engine?: string }).engine && (
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Engine</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {(equipment.specifications as any).engine}
+                        {(equipment.specifications as { engine?: string }).engine}
                       </dd>
                     </div>
                   )}
-                  {(equipment.specifications as any).horsepower && (
+                  {(equipment.specifications as { horsepower?: string | number }).horsepower && (
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Horsepower</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {(equipment.specifications as any).horsepower}
+                        {(equipment.specifications as { horsepower?: string | number }).horsepower}
                       </dd>
                     </div>
                   )}
-                  {(equipment.specifications as any).operatingWeight && (
+                  {(equipment.specifications as { operatingWeight?: string | number })
+                    .operatingWeight && (
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Operating Weight</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {(equipment.specifications as any).operatingWeight}
+                        {
+                          (equipment.specifications as { operatingWeight?: string | number })
+                            .operatingWeight
+                        }
                       </dd>
                     </div>
                   )}
-                  {(equipment.specifications as any).bucketCapacity && (
+                  {(equipment.specifications as { bucketCapacity?: string | number })
+                    .bucketCapacity && (
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Bucket Capacity</dt>
                       <dd className="mt-1 text-sm text-gray-900">
-                        {(equipment.specifications as any).bucketCapacity}
+                        {
+                          (equipment.specifications as { bucketCapacity?: string | number })
+                            .bucketCapacity
+                        }
                       </dd>
                     </div>
                   )}

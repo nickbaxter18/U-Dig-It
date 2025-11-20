@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ZodError } from 'zod';
+
+// // import { ZodError } from 'zod'; // Reserved for future validation error handling // Unused
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import {
-  bookingWizardStatusEnum,
-  bookingWizardUpdateSchema,
-} from '@/lib/validators/admin/bookings';
+import { bookingWizardUpdateSchema } from '@/lib/validators/admin/bookings';
 
 const STATUS_ORDER: Record<string, number> = {
   draft: 0,
@@ -17,7 +15,7 @@ const STATUS_ORDER: Record<string, number> = {
   abandoned: 5,
 };
 
-function serializeSession(session: any) {
+function serializeSession(session: unknown) {
   return {
     id: session.id,
     adminId: session.admin_id,
@@ -30,10 +28,7 @@ function serializeSession(session: any) {
   };
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -41,12 +36,8 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data: session, error: fetchError } = await supabase
@@ -58,13 +49,14 @@ export async function GET(
     if (fetchError) {
       logger.error(
         'Failed to fetch wizard session',
-        { component: 'admin-bookings-wizard', action: 'fetch_session_failed', metadata: { sessionId: params.id } },
+        {
+          component: 'admin-bookings-wizard',
+          action: 'fetch_session_failed',
+          metadata: { sessionId: params.id },
+        },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to load booking wizard session' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to load booking wizard session' }, { status: 500 });
     }
 
     if (!session) {
@@ -75,23 +67,27 @@ export async function GET(
   } catch (err) {
     logger.error(
       'Unexpected error fetching booking wizard session',
-      { component: 'admin-bookings-wizard', action: 'fetch_session_unexpected', metadata: { sessionId: params.id } },
+      {
+        component: 'admin-bookings-wizard',
+        action: 'fetch_session_unexpected',
+        metadata: { sessionId: params.id },
+      },
       err instanceof Error ? err : new Error(String(err))
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
     const supabase = adminResult.supabase;
-    if (!supabase) return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!supabase)
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const data = bookingWizardUpdateSchema.parse(body);
@@ -105,7 +101,11 @@ export async function PATCH(
     if (fetchError) {
       logger.error(
         'Failed to fetch wizard session for update',
-        { component: 'admin-bookings-wizard', action: 'fetch_session_failed', metadata: { sessionId: params.id } },
+        {
+          component: 'admin-bookings-wizard',
+          action: 'fetch_session_failed',
+          metadata: { sessionId: params.id },
+        },
         fetchError
       );
       return NextResponse.json(
@@ -152,10 +152,7 @@ export async function PATCH(
       const nextOrder = STATUS_ORDER[data.status];
 
       if (nextOrder < currentOrder) {
-        return NextResponse.json(
-          { error: 'Cannot regress wizard status' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Cannot regress wizard status' }, { status: 400 });
       }
 
       patch.status = data.status;
@@ -179,7 +176,11 @@ export async function PATCH(
     if (updateError) {
       logger.error(
         'Failed to update wizard session',
-        { component: 'admin-bookings-wizard', action: 'update_session_failed', metadata: { sessionId: params.id } },
+        {
+          component: 'admin-bookings-wizard',
+          action: 'update_session_failed',
+          metadata: { sessionId: params.id },
+        },
         updateError
       );
       return NextResponse.json(
@@ -191,7 +192,11 @@ export async function PATCH(
     logger.info('Booking wizard session updated', {
       component: 'admin-bookings-wizard',
       action: 'session_updated',
-      metadata: { sessionId: params.id, adminId: user?.id || 'unknown', updates: Object.keys(patch) },
+      metadata: {
+        sessionId: params.id,
+        adminId: user?.id || 'unknown',
+        updates: Object.keys(patch),
+      },
     });
 
     return NextResponse.json({ session: serializeSession(updatedSession) });
@@ -205,11 +210,13 @@ export async function PATCH(
 
     logger.error(
       'Unexpected error updating booking wizard session',
-      { component: 'admin-bookings-wizard', action: 'update_session_unexpected', metadata: { sessionId: params.id } },
+      {
+        component: 'admin-bookings-wizard',
+        action: 'update_session_unexpected',
+        metadata: { sessionId: params.id },
+      },
       err instanceof Error ? err : new Error(String(err))
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

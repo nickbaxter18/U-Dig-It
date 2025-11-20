@@ -1,5 +1,6 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { cacheGet, cacheSet, cacheDelete, cacheClear } from '../cache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { cacheClear, cacheDelete, cacheGet, cacheSet } from '../cache';
 
 describe('Cache Service', () => {
   beforeEach(() => {
@@ -142,7 +143,7 @@ describe('Cache Service', () => {
 
     it('should not leak memory on delete', () => {
       cacheSet('temp', { large: 'data' });
-      const initialSize = Object.keys(cacheGet).length;
+      const _initialSize = Object.keys(cacheGet).length; // Reserved for future size tracking
 
       cacheDelete('temp');
 
@@ -174,5 +175,3 @@ describe('Cache Service', () => {
     });
   });
 });
-
-

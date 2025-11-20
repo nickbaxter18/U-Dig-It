@@ -1,6 +1,8 @@
-import { logger } from '@/lib/logger';
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+
+import { logger } from '@/lib/logger';
+
 import { ErrorMonitor } from './error-monitor';
 import { MockApiClient } from './mock-api';
 
@@ -24,7 +26,7 @@ export interface ApiError {
   message: string;
   code: string;
   statusCode: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // Equipment types
@@ -35,7 +37,7 @@ export interface Equipment {
   category: string;
   dailyRate: number;
   description: string;
-  specifications: Record<string, any>;
+  specifications: Record<string, unknown>;
   images: string[];
   available: boolean;
   location: {
@@ -93,7 +95,7 @@ class ApiClient {
   private setupInterceptors() {
     // Request interceptor for correlation IDs and error context
     this.client.interceptors.request.use(
-      config => {
+      (config) => {
         const requestId = uuidv4();
         config.headers['X-Correlation-ID'] = requestId;
         config.headers['X-Client-Version'] = process.env.NEXT_PUBLIC_APP_VERSION;
@@ -113,7 +115,7 @@ class ApiClient {
 
         return config;
       },
-      error => {
+      (error) => {
         ErrorMonitor.captureError(error, {
           component: 'ApiClient',
           action: 'request',
@@ -124,7 +126,7 @@ class ApiClient {
 
     // Response interceptor for performance and error handling
     this.client.interceptors.response.use(
-      response => {
+      (response) => {
         if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
           if (process.env.NODE_ENV === 'development') {
             logger.debug(`✅ API Response: ${response.status}`, {
@@ -136,7 +138,7 @@ class ApiClient {
 
         return response;
       },
-      error => {
+      (error) => {
         const errorContext = {
           component: 'ApiClient',
           action: 'response',
@@ -175,27 +177,27 @@ class ApiClient {
   }
 
   // Generic API methods
-  async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+  async get<T>(url: string, config?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.get<ApiResponse<T>>(url, config);
     return response.data;
   }
 
-  async post<T>(url: string, data?: unknown, config?: any): Promise<ApiResponse<T>> {
+  async post<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  async put<T>(url: string, data?: unknown, config?: any): Promise<ApiResponse<T>> {
+  async put<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.put<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
-  async delete<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+  async delete<T>(url: string, config?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.delete<ApiResponse<T>>(url, config);
     return response.data;
   }
 
-  async patch<T>(url: string, data?: unknown, config?: any): Promise<ApiResponse<T>> {
+  async patch<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.patch<ApiResponse<T>>(url, data, config);
     return response.data;
   }
@@ -308,7 +310,7 @@ class HybridApiClient {
     }
   }
 
-  async getEquipmentList(params?: any) {
+  async getEquipmentList(params?: unknown) {
     if (this.useMock) {
       return this.mockClient.getEquipmentList(params);
     }
@@ -322,7 +324,7 @@ class HybridApiClient {
     return this.realClient.checkAvailability(equipmentId, startDate, endDate);
   }
 
-  async createBooking(bookingData: any) {
+  async createBooking(bookingData: unknown) {
     if (this.useMock) {
       return this.mockClient.createBooking(bookingData);
     }
@@ -330,7 +332,7 @@ class HybridApiClient {
   }
 
   // Delegate other methods to real client
-  async getBookings(params?: any) {
+  async getBookings(params?: unknown) {
     return this.realClient.getBookings(params);
   }
 
@@ -338,7 +340,7 @@ class HybridApiClient {
     return this.realClient.getBooking(id);
   }
 
-  async updateBookingStatus(id: string, status: any) {
+  async updateBookingStatus(id: string, status: unknown) {
     return this.realClient.updateBookingStatus(id, status);
   }
 
@@ -346,7 +348,7 @@ class HybridApiClient {
     return this.realClient.getCurrentUser();
   }
 
-  async updateProfile(userData: any) {
+  async updateProfile(userData: unknown) {
     return this.realClient.updateProfile(userData);
   }
 

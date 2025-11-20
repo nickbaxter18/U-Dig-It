@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ZodError } from 'zod';
+
+// import { ZodError } from 'zod'; // Unused
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { manualPaymentCreateSchema } from '@/lib/validators/admin/payments';
 
-const BUCKET_ID = 'manual-payment-attachments';
+const _BUCKET_ID = 'manual-payment-attachments'; // Reserved for future file attachments
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,12 +17,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -64,9 +61,10 @@ export async function GET(request: NextRequest) {
 
     if (fetchError) {
       if ((fetchError as any)?.code === '42P01') {
-        logger.warn(
-          'manual_payments table not found; returning empty result',
-          { component: 'admin-manual-payments', action: 'table_missing' });
+        logger.warn('manual_payments table not found; returning empty result', {
+          component: 'admin-manual-payments',
+          action: 'table_missing',
+        });
         return NextResponse.json({ manualPayments: [] });
       }
       logger.error(
@@ -74,10 +72,7 @@ export async function GET(request: NextRequest) {
         { component: 'admin-manual-payments', action: 'fetch_failed', metadata: { bookingId } },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to load manual payments' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to load manual payments' }, { status: 500 });
     }
 
     return NextResponse.json({ manualPayments: data ?? [] });
@@ -99,29 +94,22 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const payload = manualPaymentCreateSchema.parse(body);
 
     const serviceClient = createServiceClient();
     if (!serviceClient) {
-      return NextResponse.json(
-        { error: 'Storage configuration unavailable' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Storage configuration unavailable' }, { status: 500 });
     }
 
     const { data: manualPayment, error: insertError } = await supabase
@@ -151,10 +139,7 @@ export async function POST(request: NextRequest) {
         },
         insertError ?? new Error('Missing manual payment data')
       );
-      return NextResponse.json(
-        { error: 'Unable to record manual payment' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to record manual payment' }, { status: 500 });
     }
 
     const ledgerEntry = {
@@ -168,25 +153,24 @@ export async function POST(request: NextRequest) {
       created_by: user?.id || 'unknown',
     };
 
-    const { error: ledgerError } = await supabase
-      .from('financial_ledger')
-      .insert(ledgerEntry);
+    const { error: ledgerError } = await supabase.from('financial_ledger').insert(ledgerEntry);
 
     if (ledgerError) {
-      logger.warn(
-        'Manual payment recorded but ledger entry failed',
-        {
-          component: 'admin-manual-payments',
-          action: 'ledger_insert_failed',
-          metadata: { manualPaymentId: manualPayment.id, error: ledgerError?.message },
-        }
-      );
+      logger.warn('Manual payment recorded but ledger entry failed', {
+        component: 'admin-manual-payments',
+        action: 'ledger_insert_failed',
+        metadata: { manualPaymentId: manualPayment.id, error: ledgerError?.message },
+      });
     }
 
     logger.info('Manual payment recorded', {
       component: 'admin-manual-payments',
       action: 'manual_payment_created',
-      metadata: { manualPaymentId: manualPayment.id, bookingId: manualPayment.booking_id, adminId: user?.id || 'unknown' },
+      metadata: {
+        manualPaymentId: manualPayment.id,
+        bookingId: manualPayment.booking_id,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({ manualPayment });
@@ -209,5 +193,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

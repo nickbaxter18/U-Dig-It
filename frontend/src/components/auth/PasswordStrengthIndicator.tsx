@@ -1,7 +1,8 @@
 'use client';
 
-import { checkPasswordStrength, type PasswordStrength } from '@/lib/validators/password';
 import { useMemo } from 'react';
+
+import { type PasswordStrength, checkPasswordStrength } from '@/lib/validators/password';
 
 interface PasswordStrengthIndicatorProps {
   password: string;
@@ -12,10 +13,7 @@ export default function PasswordStrengthIndicator({
   password,
   show = true,
 }: PasswordStrengthIndicatorProps) {
-  const strength: PasswordStrength = useMemo(
-    () => checkPasswordStrength(password),
-    [password]
-  );
+  const strength: PasswordStrength = useMemo(() => checkPasswordStrength(password), [password]);
 
   if (!show || !password) return null;
 
@@ -59,18 +57,22 @@ export default function PasswordStrengthIndicator({
   };
 
   return (
-    <div className={`mt-2 rounded-lg border ${getBorderColor(strength.color)} ${getBackgroundColor(strength.color)} p-3`}>
+    <div
+      className={`mt-2 rounded-lg border ${getBorderColor(strength.color)} ${getBackgroundColor(strength.color)} p-3`}
+    >
       {/* Strength Bar */}
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700">Password Strength:</span>
-        <span className={`text-sm font-semibold ${strength.color === 'red' ? 'text-red-700' : strength.color === 'orange' ? 'text-orange-700' : strength.color === 'yellow' ? 'text-yellow-700' : 'text-green-700'}`}>
+        <span
+          className={`text-sm font-semibold ${strength.color === 'red' ? 'text-red-700' : strength.color === 'orange' ? 'text-orange-700' : strength.color === 'yellow' ? 'text-yellow-700' : 'text-green-700'}`}
+        >
           {strength.label}
         </span>
       </div>
 
       {/* Visual strength bar */}
       <div className="mb-2 flex gap-1">
-        {[1, 2, 3, 4].map(level => (
+        {[1, 2, 3, 4].map((level) => (
           <div
             key={level}
             className={`h-2 flex-1 rounded-full transition-colors ${
@@ -85,7 +87,7 @@ export default function PasswordStrengthIndicator({
       {/* Feedback */}
       {strength.feedback.length > 0 && (
         <ul className="space-y-1 text-xs text-gray-700">
-          {strength.feedback.map((item: any, index: any) => (
+          {strength.feedback.map((item: unknown, index: unknown) => (
             <li key={index} className="flex items-start">
               <span className="mr-1">{item.startsWith('✓') ? '✓' : '•'}</span>
               <span>{item.replace(/^[✓•]\s*/, '')}</span>
@@ -96,4 +98,3 @@ export default function PasswordStrengthIndicator({
     </div>
   );
 }
-

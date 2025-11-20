@@ -2,10 +2,11 @@
  * Comprehensive API Route Tests for Availability Endpoint
  * Tests availability checking, rate limiting, validation, and error handling
  */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { GET, OPTIONS } from '../availability/route';
 import { NextRequest } from 'next/server';
+
+import { GET, OPTIONS } from '../availability/route';
 
 // Mock dependencies
 vi.mock('@/lib/logger', () => ({
@@ -51,9 +52,7 @@ describe('API Route: /api/availability', () => {
 
   describe('GET /api/availability', () => {
     it('should return 400 if startDate is missing', async () => {
-      const request = new NextRequest(
-        'http://localhost:3000/api/availability?endDate=2025-11-10'
-      );
+      const request = new NextRequest('http://localhost:3000/api/availability?endDate=2025-11-10');
 
       const response = await GET(request);
       const data = await response.json();
@@ -160,9 +159,7 @@ describe('API Route: /api/availability', () => {
     it('should handle specific equipment ID in query', async () => {
       const { supabaseApi } = await import('@/lib/supabase/api-client');
 
-      supabaseApi.getEquipmentList.mockResolvedValue([
-        { id: 'equip-1', dailyRate: 450 },
-      ]);
+      supabaseApi.getEquipmentList.mockResolvedValue([{ id: 'equip-1', dailyRate: 450 }]);
 
       supabaseApi.checkAvailability.mockResolvedValue({
         available: true,
@@ -173,7 +170,7 @@ describe('API Route: /api/availability', () => {
         'http://localhost:3000/api/availability?startDate=2025-11-01&endDate=2025-11-10&equipmentId=equip-specific'
       );
 
-      const response = await GET(request);
+      await GET(request);
 
       expect(supabaseApi.checkAvailability).toHaveBeenCalledWith(
         'equip-specific',
@@ -225,9 +222,7 @@ describe('API Route: /api/availability', () => {
     it('should handle database errors gracefully', async () => {
       const { supabaseApi } = await import('@/lib/supabase/api-client');
 
-      supabaseApi.getEquipmentList.mockRejectedValue(
-        new Error('Database connection failed')
-      );
+      supabaseApi.getEquipmentList.mockRejectedValue(new Error('Database connection failed'));
 
       const request = new NextRequest(
         'http://localhost:3000/api/availability?startDate=2025-11-01&endDate=2025-11-10'
@@ -244,9 +239,7 @@ describe('API Route: /api/availability', () => {
     it('should include cache headers in successful response', async () => {
       const { supabaseApi } = await import('@/lib/supabase/api-client');
 
-      supabaseApi.getEquipmentList.mockResolvedValue([
-        { id: 'equip-1', dailyRate: 450 },
-      ]);
+      supabaseApi.getEquipmentList.mockResolvedValue([{ id: 'equip-1', dailyRate: 450 }]);
 
       supabaseApi.checkAvailability.mockResolvedValue({
         available: true,
@@ -273,5 +266,3 @@ describe('API Route: /api/availability', () => {
     });
   });
 });
-
-

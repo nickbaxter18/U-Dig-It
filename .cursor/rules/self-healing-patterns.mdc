@@ -1,0 +1,387 @@
+---
+description: "Self-healing code patterns and automatic error recovery strategies for common codebase issues"
+alwaysApply: true
+---
+
+# Self-Healing Code Patterns
+
+## 🎯 Purpose
+Automatically detect and fix common errors based on known patterns from this codebase's bug history.
+
+---
+
+## Pattern Detection & Auto-Fix
+
+When I encounter errors during implementation, I will:
+
+1. **Recognize Pattern**: Check if error matches known patterns below
+2. **Auto-Fix**: Apply documented fix automatically
+3. **Verify**: Test the fix works
+4. **Learn**: Update pattern database if new pattern discovered
+
+---
+
+## 🔥 Known Self-Healing Patterns
+
+### Pattern 1: RLS Policy Blocks Update (Silent Failure)
+
+**Symptoms**:
+- UPDATE query succeeds but `rowCount` is 0
+- No error thrown
+- Database not updated
+- Webhook returns 200 OK but data unchanged
+
+**Root Cause**: RLS policy blocks update when using regular client (no user session)
+
+**Auto-Fix**:
+```typescript
+// ❌ BEFORE: Regular client (blocked by RLS)
+const supabase = await createClient();
+const { data, error } = await supabase
+  .from('bookings')
+  .update({ status: 'confirmed' })
+  .eq('id', bookingId);
+// data is null, no error, but update failed silently
+
+// ✅ AFTER: Service role client (bypasses RLS)
+import { createAdminClient } from '@/lib/supabase/admin';
+const supabase = createAdminClient(); // Uses SUPABASE_SERVICE_ROLE_KEY
+const { data, error } = await supabase
+  .from('bookings')
+  .update({ status: 'confirmed' })
+  .eq('id', bookingId);
+// Update succeeds
+```
+
+**When to Apply**: Webhook endpoints, background jobs, admin operations
+
+---
+
+### Pattern 2: Port Already in Use (EADDRINUSE)
+
+**Symptoms**:
+- Error: `EADDRINUSE: address already in use :::3000`
+- Dev server won't start
+- Port 3000/3001 occupied
+
+**Auto-Fix**:
+```bash
+# I automatically run:
+bash start-frontend-clean.sh
+# This script:
+# 1. Kills processes on ports 3000/3001
+# 2. Cleans .next directory
+# 3. Removes stale Turbopack locks
+# 4. Starts server cleanly
+```
+
+**When to Apply**: Any time dev server fails to start
+
+---
+
+### Pattern 3: Unquoted camelCase in SQL (PostgreSQL Error)
+
+**Symptoms**:
+- Error: `column "equipmentid" does not exist`
+- Error: `column "customerid" does not exist`
+- Database trigger fails
+- Column name is camelCase in TypeScript but lowercase in error
+
+**Root Cause**: PostgreSQL lowercases unquoted identifiers
+
+**Auto-Fix**:
+```sql
+-- ❌ BEFORE: Unquoted camelCase
+SELECT equipmentId, customerId FROM bookings;
+
+-- ✅ AFTER: Quoted camelCase
+SELECT "equipmentId", "customerId" FROM bookings;
+```
+
+**When to Apply**: All SQL queries, database triggers, functions
+
+---
+
+### Pattern 4: NULL Handling in Database Triggers
+
+**Symptoms**:
+- Trigger function fails silently
+- Error: `null value in column violates not-null constraint`
+- Search index not updated
+- Booking creation fails without clear error
+
+**Root Cause**: NULL values not handled in trigger functions
+
+**Auto-Fix**:
+```sql
+-- ❌ BEFORE: Assumes non-NULL
+CREATE OR REPLACE FUNCTION update_search_index()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector := first_name || ' ' || last_name;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ✅ AFTER: Handles NULL with COALESCE
+CREATE OR REPLACE FUNCTION update_search_index()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector := COALESCE(first_name, '') || ' ' || COALESCE(last_name, '');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**When to Apply**: All database triggers that concatenate or process user data
+
+---
+
+### Pattern 5: setTimeout Cleanup Prematurely
+
+**Symptoms**:
+- Payment success overlay stuck on "Updating..."
+- Timer never fires
+- Redirect doesn't happen
+- Component cleanup runs before timer completes
+
+**Root Cause**: Cleanup function clears timer before it fires
+
+**Auto-Fix**:
+```typescript
+// ❌ BEFORE: Cleanup clears timer too early
+useEffect(() => {
+  const timer = setTimeout(() => {
+    router.push('/dashboard');
+  }, 3000);
+
+  return () => clearTimeout(timer); // Runs immediately on unmount
+}, []);
+
+// ✅ AFTER: Only clear if component unmounts AFTER delay
+useEffect(() => {
+  let mounted = true;
+  const timer = setTimeout(() => {
+    if (mounted) {
+      router.push('/dashboard');
+    }
+  }, 3000);
+
+  return () => {
+    mounted = false;
+    clearTimeout(timer);
+  };
+}, []);
+```
+
+**When to Apply**: Any setTimeout in React components with cleanup
+
+---
+
+### Pattern 6: SELECT * Without Pagination
+
+**Symptoms**:
+- Query takes 200ms+ (should be <20ms)
+- Large payload size (150KB+)
+- Memory issues with large datasets
+- Slow page loads
+
+**Root Cause**: Loading all columns and all rows
+
+**Auto-Fix**:
+```typescript
+// ❌ BEFORE: SELECT * without pagination
+const { data } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('customerId', userId);
+
+// ✅ AFTER: Specific columns + pagination
+const { data, count } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status, totalAmount', { count: 'exact' })
+  .eq('customerId', userId)
+  .order('created_at', { ascending: false })
+  .range(0, 19)
+  .limit(20);
+```
+
+**When to Apply**: All list queries, dashboard queries, admin queries
+
+---
+
+### Pattern 7: Missing Index on RLS Policy Columns
+
+**Symptoms**:
+- Query slow (500ms+)
+- Full table scan in EXPLAIN ANALYZE
+- RLS policy checks every row
+- Performance degrades with more data
+
+**Root Cause**: Columns in RLS policies not indexed
+
+**Auto-Fix**:
+```sql
+-- ❌ BEFORE: RLS policy without index
+CREATE POLICY "bookings_select" ON bookings
+FOR SELECT TO authenticated
+USING ("customerId" = (SELECT auth.uid()));
+
+-- ✅ AFTER: Index policy columns
+CREATE INDEX CONCURRENTLY idx_bookings_customer_id
+ON bookings("customerId");
+
+CREATE POLICY "bookings_select" ON bookings
+FOR SELECT TO authenticated
+USING ("customerId" = (SELECT auth.uid()));
+```
+
+**When to Apply**: All RLS policies (index ALL columns in USING/WITH CHECK)
+
+---
+
+### Pattern 8: Booking Availability Check Wrong Dates
+
+**Symptoms**:
+- Equipment shows as available when actually rented
+- Double bookings possible
+- Availability check uses wrong date fields
+
+**Root Cause**: Checking `start_date`/`end_date` instead of `actual_start_date`/`actual_end_date` for active rentals
+
+**Auto-Fix**:
+```typescript
+// ❌ BEFORE: Only checks scheduled dates
+const { data: conflicts } = await supabase
+  .from('bookings')
+  .select('id')
+  .eq('equipmentId', equipmentId)
+  .eq('status', 'confirmed')
+  .gte('endDate', startDate)
+  .lte('startDate', endDate);
+
+// ✅ AFTER: Checks actual dates for active rentals
+const { data: conflicts } = await supabase
+  .from('bookings')
+  .select('id')
+  .eq('equipmentId', equipmentId)
+  .in('status', ['confirmed', 'active'])
+  .or(`and(endDate.gte.${startDate},startDate.lte.${endDate}),and(actualEndDate.gte.${startDate},actualStartDate.lte.${endDate})`);
+```
+
+**When to Apply**: All availability checks for equipment
+
+---
+
+## 🔄 Self-Healing Workflow
+
+### When Error Occurs:
+
+1. **Pattern Recognition** (Automatic)
+   ```
+   Error detected → Check pattern database → Match found?
+   ```
+
+2. **Auto-Fix Application** (Automatic)
+   ```
+   Match found → Apply fix → Verify fix works
+   ```
+
+3. **User Notification** (Transparent)
+   ```
+   "✅ Auto-fixed: [Pattern Name] - [What was fixed]"
+   ```
+
+4. **Pattern Learning** (If new)
+   ```
+   New pattern? → Document → Add to database
+   ```
+
+---
+
+## 📊 Pattern Database
+
+### Pattern Metadata
+
+Each pattern includes:
+- **Name**: Descriptive name
+- **Symptoms**: How to recognize it
+- **Root Cause**: Why it happens
+- **Auto-Fix**: Exact code fix
+- **When to Apply**: Context for application
+- **Success Rate**: How often fix works (tracked over time)
+
+### Pattern Categories
+
+1. **Database Issues** (4 patterns)
+   - RLS blocks, SQL casing, NULL handling, missing indexes
+
+2. **Frontend Issues** (2 patterns)
+   - Port conflicts, setTimeout cleanup
+
+3. **Query Performance** (2 patterns)
+   - SELECT *, missing indexes
+
+4. **Business Logic** (1 pattern)
+   - Availability checks
+
+---
+
+## ✅ Success Metrics
+
+Track these metrics:
+- **Pattern Recognition Rate**: % of errors matched to patterns
+- **Auto-Fix Success Rate**: % of fixes that work
+- **Time Saved**: Average time per auto-fix
+- **New Patterns Discovered**: Patterns added to database
+
+**Target**: 80%+ recognition rate, 90%+ success rate
+
+---
+
+## 🎯 Usage
+
+### For AI Model (Automatic)
+
+I will automatically:
+1. Detect errors matching known patterns
+2. Apply fixes without asking
+3. Verify fixes work
+4. Report what was fixed
+
+### For Developers
+
+If you see:
+```
+✅ Auto-fixed: RLS Policy Blocks Update
+   → Changed to service role client in webhook endpoint
+```
+
+This means I detected and fixed a known issue automatically.
+
+---
+
+## 🔍 Pattern Discovery
+
+### Adding New Patterns
+
+When a new error pattern is discovered:
+1. Document symptoms
+2. Identify root cause
+3. Create fix pattern
+4. Add to this rule
+5. Test in multiple scenarios
+
+### Pattern Validation
+
+Before adding:
+- ✅ Fix works in 3+ scenarios
+- ✅ No side effects
+- ✅ Clear symptoms to detect
+- ✅ Documented root cause
+
+---
+
+**Status**: ✅ Active Self-Healing System
+**Patterns**: 8 documented patterns
+**Auto-Fix**: Enabled for all patterns

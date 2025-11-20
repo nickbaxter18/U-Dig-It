@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import {
   Bell,
   Calendar,
@@ -14,8 +13,12 @@ import {
   User,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
+
 import { useEffect, useRef, useState } from 'react';
+
+import Link from 'next/link';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 
 interface MobileNavigationProps {
   className?: string;
@@ -90,7 +93,18 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
     triggerHapticFeedback();
 
     const SpeechRecognition =
-      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      (
+        window as unknown as {
+          webkitSpeechRecognition?: typeof SpeechRecognition;
+          SpeechRecognition?: typeof SpeechRecognition;
+        }
+      ).webkitSpeechRecognition ||
+      (
+        window as unknown as {
+          webkitSpeechRecognition?: typeof SpeechRecognition;
+          SpeechRecognition?: typeof SpeechRecognition;
+        }
+      ).SpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.continuous = false;
@@ -98,7 +112,9 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
     recognition.lang = 'en-CA';
 
     recognition.onresult = (event: unknown) => {
-      const transcript = (event as any).results[0][0].transcript.toLowerCase();
+      const transcript = (
+        event as { results: Array<Array<{ transcript: string }>> }
+      ).results[0][0].transcript.toLowerCase();
       setIsListening(false);
 
       // Navigate based on voice command
@@ -143,7 +159,7 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
         className={`fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white ${className}`}
       >
         <div className="flex items-center justify-around py-2">
-          {navigationItems.map(item => {
+          {navigationItems.map((item) => {
             const Icon = item.icon;
             const isActive =
               typeof window !== 'undefined' && window.location.pathname === item.href;
@@ -192,7 +208,7 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
                       </p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
-                    {profileItems.map(item => {
+                    {profileItems.map((item) => {
                       const Icon = item.icon;
                       return (
                         <Link
@@ -290,7 +306,7 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
 
           {/* Navigation Items */}
           <div className="space-y-2">
-            {navigationItems.map(item => {
+            {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive =
                 typeof window !== 'undefined' && window.location.pathname === item.href;
@@ -336,7 +352,7 @@ export default function MobileNavigation({ className = '' }: MobileNavigationPro
                   </div>
                 </div>
 
-                {profileItems.map(item => {
+                {profileItems.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link

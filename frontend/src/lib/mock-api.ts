@@ -8,7 +8,7 @@ export interface MockEquipment {
   category: string;
   dailyRate: number;
   description: string;
-  specifications: Record<string, any>;
+  specifications: Record<string, unknown>;
   images: string[];
   available: boolean;
   location: {
@@ -67,7 +67,7 @@ export class MockApiClient {
   }
 
   async getEquipmentById(id: string): Promise<ApiResponse<MockEquipment>> {
-    const equipment = this.mockEquipment.find(e => e.id === id);
+    const equipment = this.mockEquipment.find((e) => e.id === id);
     if (!equipment) {
       return {
         data: {} as MockEquipment,
@@ -82,7 +82,8 @@ export class MockApiClient {
     };
   }
 
-  async getEquipmentList(params?: unknown): Promise<ApiResponse<MockEquipment[]>> {
+  async getEquipmentList(_params?: unknown): Promise<ApiResponse<MockEquipment[]>> {
+    // Reserved for future filtering
     return {
       data: this.mockEquipment,
       success: true,
@@ -91,10 +92,11 @@ export class MockApiClient {
   }
 
   async checkAvailability(
-    equipmentId: string,
-    startDate: string,
-    endDate: string
+    _equipmentId: string,
+    _startDate: string,
+    _endDate: string
   ): Promise<ApiResponse<{ available: boolean }>> {
+    // Reserved for future validation
     return {
       data: { available: true },
       success: true,
@@ -131,7 +133,8 @@ export class MockApiClient {
   }
 
   // HTTP methods to match ApiClient interface
-  async get<T>(url: string, config?: unknown): Promise<ApiResponse<T>> {
+  async get<T>(_url: string, _config?: unknown): Promise<ApiResponse<T>> {
+    // Unused params - mock implementation
     return {
       data: {} as T,
       success: true,
@@ -139,7 +142,8 @@ export class MockApiClient {
     };
   }
 
-  async post<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
+  async post<T>(_url: string, _data?: unknown, _config?: unknown): Promise<ApiResponse<T>> {
+    // Unused params - mock implementation
     return {
       data: {} as T,
       success: true,
@@ -147,7 +151,8 @@ export class MockApiClient {
     };
   }
 
-  async put<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
+  async put<T>(_url: string, _data?: unknown, _config?: unknown): Promise<ApiResponse<T>> {
+    // Unused params - mock implementation
     return {
       data: {} as T,
       success: true,
@@ -155,7 +160,8 @@ export class MockApiClient {
     };
   }
 
-  async patch<T>(url: string, data?: unknown, config?: unknown): Promise<ApiResponse<T>> {
+  async patch<T>(_url: string, _data?: unknown, _config?: unknown): Promise<ApiResponse<T>> {
+    // Unused params - mock implementation
     return {
       data: {} as T,
       success: true,
@@ -163,7 +169,8 @@ export class MockApiClient {
     };
   }
 
-  async delete<T>(url: string, config?: unknown): Promise<ApiResponse<T>> {
+  async delete<T>(_url: string, _config?: unknown): Promise<ApiResponse<T>> {
+    // Unused params - mock implementation
     return {
       data: {} as T,
       success: true,

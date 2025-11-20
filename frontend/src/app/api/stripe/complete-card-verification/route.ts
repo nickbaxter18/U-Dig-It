@@ -4,19 +4,17 @@
  * Called after successful Stripe Checkout Session (setup mode)
  * Retrieves payment method and saves to booking
  */
-import Stripe from 'stripe';
-
 import { NextRequest, NextResponse } from 'next/server';
 
 import { sendAdminBookingNotification, sendBookingConfirmationEmail } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
-import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import {
   broadcastInAppNotificationToAdmins,
   createInAppNotification,
 } from '@/lib/notification-service';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
+import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
@@ -176,7 +174,7 @@ export async function POST(request: NextRequest) {
           couponType_isEmpty: couponType === '',
           couponType_length: couponType ? couponType.length : 0,
           couponType_charCodes: couponType
-            ? Array.from(couponType).map((c: any) => (c as string).charCodeAt(0))
+            ? Array.from(couponType).map((c: unknown) => (c as string).charCodeAt(0))
             : [],
           appliedDiscountRaw: bookingFormData.appliedDiscount,
         },
@@ -512,7 +510,7 @@ export async function POST(request: NextRequest) {
           ? `$500 security hold will be placed on ${holdPlacementTime.toLocaleString()}`
           : 'Security hold placement needed (booking within 48h)',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Failed to complete card verification',
       {

@@ -1,20 +1,35 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  Edit2,
+  FileText,
+  Loader2,
+  Mail,
+  Play,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Plus, Calendar, Mail, FileText, Play, Edit2, Trash2, Loader2, X, CheckCircle, AlertCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface ScheduledReport {
   id: string;
   name: string;
   report_type: 'dashboard' | 'analytics' | 'bookings' | 'customers' | 'equipment' | 'payments';
   frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
-  frequency_config: Record<string, any> | null;
+  frequency_config: Record<string, unknown> | null;
   date_range: '7d' | '30d' | '90d' | 'ytd' | 'all';
   format: 'csv' | 'pdf' | 'json';
   recipients: string[];
-  filters: Record<string, any> | null;
+  filters: Record<string, unknown> | null;
   is_active: boolean;
   last_run_at: string | null;
   next_run_at: string;
@@ -49,11 +64,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
     recipientInput: '',
   });
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchWithAuth('/api/admin/reports/scheduled');
@@ -64,11 +75,18 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
       const data = await response.json();
       setReports(data.reports || []);
     } catch (error) {
-      toast.error('Failed to load scheduled reports', error instanceof Error ? error.message : 'Unable to fetch scheduled reports');
+      toast.error(
+        'Failed to load scheduled reports',
+        error instanceof Error ? error.message : 'Unable to fetch scheduled reports'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const handleCreateReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +128,10 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
       await fetchReports();
       onReportChange?.();
     } catch (error) {
-      toast.error('Failed to create scheduled report', error instanceof Error ? error.message : 'Unable to create scheduled report');
+      toast.error(
+        'Failed to create scheduled report',
+        error instanceof Error ? error.message : 'Unable to create scheduled report'
+      );
     }
   };
 
@@ -133,7 +154,10 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
       await fetchReports();
       onReportChange?.();
     } catch (error) {
-      toast.error('Failed to delete scheduled report', error instanceof Error ? error.message : 'Unable to delete scheduled report');
+      toast.error(
+        'Failed to delete scheduled report',
+        error instanceof Error ? error.message : 'Unable to delete scheduled report'
+      );
     }
   };
 
@@ -152,18 +176,24 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
         throw new Error(error.error || 'Failed to update report');
       }
 
-      toast.success('Report updated', `Report ${!report.is_active ? 'activated' : 'deactivated'} successfully`);
+      toast.success(
+        'Report updated',
+        `Report ${!report.is_active ? 'activated' : 'deactivated'} successfully`
+      );
       await fetchReports();
       onReportChange?.();
     } catch (error) {
-      toast.error('Failed to update report', error instanceof Error ? error.message : 'Unable to update scheduled report');
+      toast.error(
+        'Failed to update report',
+        error instanceof Error ? error.message : 'Unable to update scheduled report'
+      );
     }
   };
 
   const handleRunNow = async (reportId: string) => {
     if (runningReport.has(reportId)) return;
 
-    setRunningReport(prev => new Set(prev).add(reportId));
+    setRunningReport((prev) => new Set(prev).add(reportId));
     try {
       const response = await fetchWithAuth(`/api/admin/reports/scheduled/${reportId}/run`, {
         method: 'POST',
@@ -178,9 +208,12 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
       await fetchReports();
       onReportChange?.();
     } catch (error) {
-      toast.error('Failed to run report', error instanceof Error ? error.message : 'Unable to run scheduled report');
+      toast.error(
+        'Failed to run report',
+        error instanceof Error ? error.message : 'Unable to run scheduled report'
+      );
     } finally {
-      setRunningReport(prev => {
+      setRunningReport((prev) => {
         const next = new Set(prev);
         next.delete(reportId);
         return next;
@@ -192,7 +225,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
     const email = formData.recipientInput.trim();
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       if (!formData.recipients.includes(email)) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           recipients: [...prev.recipients, email],
           recipientInput: '',
@@ -206,9 +239,9 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
   };
 
   const removeRecipient = (email: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      recipients: prev.recipients.filter(e => e !== email),
+      recipients: prev.recipients.filter((e) => e !== email),
     }));
   };
 
@@ -335,7 +368,8 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                     </span>
                     <span className="flex items-center">
                       <Mail className="mr-1 h-4 w-4" />
-                      {report.recipients.length} recipient{report.recipients.length !== 1 ? 's' : ''}
+                      {report.recipients.length} recipient
+                      {report.recipients.length !== 1 ? 's' : ''}
                     </span>
                     {report.last_run_at && (
                       <span className="flex items-center">
@@ -437,7 +471,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="e.g., Weekly Dashboard Summary"
                   required
@@ -446,10 +480,17 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Report Type</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Report Type
+                  </label>
                   <select
                     value={formData.reportType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, reportType: e.target.value as ScheduledReport['report_type'] }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        reportType: e.target.value as ScheduledReport['report_type'],
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   >
                     <option value="dashboard">Dashboard</option>
@@ -464,7 +505,12 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                   <label className="mb-1 block text-sm font-medium text-gray-700">Frequency</label>
                   <select
                     value={formData.frequency}
-                    onChange={(e) => setFormData(prev => ({ ...prev, frequency: e.target.value as ScheduledReport['frequency'] }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        frequency: e.target.value as ScheduledReport['frequency'],
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   >
                     <option value="daily">Daily</option>
@@ -479,7 +525,12 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                   <label className="mb-1 block text-sm font-medium text-gray-700">Date Range</label>
                   <select
                     value={formData.dateRange}
-                    onChange={(e) => setFormData(prev => ({ ...prev, dateRange: e.target.value as ScheduledReport['date_range'] }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dateRange: e.target.value as ScheduledReport['date_range'],
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   >
                     <option value="7d">Last 7 days</option>
@@ -493,7 +544,12 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                   <label className="mb-1 block text-sm font-medium text-gray-700">Format</label>
                   <select
                     value={formData.format}
-                    onChange={(e) => setFormData(prev => ({ ...prev, format: e.target.value as ScheduledReport['format'] }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        format: e.target.value as ScheduledReport['format'],
+                      }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   >
                     <option value="csv">CSV</option>
@@ -509,7 +565,9 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                   <input
                     type="email"
                     value={formData.recipientInput}
-                    onChange={(e) => setFormData(prev => ({ ...prev, recipientInput: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, recipientInput: e.target.value }))
+                    }
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -583,5 +641,3 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
     </div>
   );
 }
-
-

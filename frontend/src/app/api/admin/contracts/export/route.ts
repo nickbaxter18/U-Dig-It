@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 function formatCsvValue(value: unknown) {
   const asString = value === null || value === undefined ? '' : String(value);
@@ -15,12 +16,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -77,10 +74,12 @@ export async function GET(request: NextRequest) {
     const { data, error: queryError } = await query;
     if (queryError) throw queryError;
 
-    const contracts = (data ?? []).map((contract: any) => {
+    const contracts = (data ?? []).map((contract: unknown) => {
       const booking = contract.booking ?? {};
-      const customer = (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
-      const equipment = (Array.isArray(booking.equipment) ? booking.equipment[0] : booking.equipment) ?? {};
+      const customer =
+        (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
+      const equipment =
+        (Array.isArray(booking.equipment) ? booking.equipment[0] : booking.equipment) ?? {};
       const equipmentName =
         equipment.make && equipment.model
           ? `${equipment.make} ${equipment.model}`
@@ -107,7 +106,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const filteredContracts = contracts.filter(contract => {
+    const filteredContracts = contracts.filter((contract) => {
       if (searchTerm) {
         const matchesSearch =
           contract.contractNumber.toLowerCase().includes(searchTerm) ||
@@ -138,7 +137,7 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const rows = filteredContracts.map(contract => [
+    const rows = filteredContracts.map((contract) => [
       contract.contractNumber,
       contract.bookingNumber,
       contract.customerName,
@@ -157,7 +156,7 @@ export async function GET(request: NextRequest) {
       contract.createdAt ? contract.createdAt.toLocaleString() : '',
     ]);
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `contracts-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {
@@ -179,5 +178,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to export contracts' }, { status: 500 });
   }
 }
-
-

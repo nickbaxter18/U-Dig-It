@@ -1,9 +1,11 @@
 'use client';
 
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { logger } from '@/lib/logger';
+
+import Link from 'next/link';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface ProfileApiResponse {

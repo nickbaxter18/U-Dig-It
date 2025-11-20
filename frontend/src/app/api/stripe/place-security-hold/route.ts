@@ -8,22 +8,23 @@
  *   4. Record in booking_payments
  *   5. Send notification email/SMS
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
+
+// // import Stripe from 'stripe'; // Reserved for future type usage // Unused - type only
 
 const SECURITY_HOLD_AMOUNT_CENTS = 50000; // $500
 const CURRENCY = 'cad';
 
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
-  
-  try{
+
+  try {
     // 1. Request validation
     const validation = await validateRequest(request, {
       maxSize: 10 * 1024,
@@ -42,10 +43,14 @@ export async function POST(request: NextRequest) {
 
     // 3. Auth verification (internal service or admin only)
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     // Allow internal service calls (from job scheduler)
-    const isInternalCall = request.headers.get('x-internal-service-key') === process.env.INTERNAL_SERVICE_KEY;
+    const isInternalCall =
+      request.headers.get('x-internal-service-key') === process.env.INTERNAL_SERVICE_KEY;
 
     if (!isInternalCall) {
       if (authError || !user) {
@@ -81,7 +86,8 @@ export async function POST(request: NextRequest) {
     // 5. Get booking details
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
+      .select(
+        `
         id,
         customerId,
         startDate,
@@ -92,7 +98,8 @@ export async function POST(request: NextRequest) {
         stripe_customer_id,
         stripe_payment_method_id,
         status
-      `)
+      `
+      )
       .eq('id', bookingId)
       .single();
 
@@ -136,24 +143,27 @@ export async function POST(request: NextRequest) {
     const idempotencyKey = `${bookingId}:security_hold:${new Date(booking.startDate).getTime()}`;
 
     // 9. Create $500 PaymentIntent (manual capture, off_session)
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.hold_security_amount_cents || SECURITY_HOLD_AMOUNT_CENTS,
-      currency: CURRENCY,
-      customer: booking.stripe_customer_id!,
-      payment_method: booking.stripe_payment_method_id,
-      capture_method: 'manual', // CRITICAL: Hold only, don't capture
-      confirm: true, // Confirm immediately
-      off_session: true, // Customer not present (scheduled job)
-      description: `$500 security hold for booking ${bookingId}`,
-      metadata: {
-        bookingId,
-        userId: booking.customerId,
-        purpose: 'security_hold',
-        pickup_date: booking.startDate,
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: booking.hold_security_amount_cents || SECURITY_HOLD_AMOUNT_CENTS,
+        currency: CURRENCY,
+        customer: booking.stripe_customer_id!,
+        payment_method: booking.stripe_payment_method_id,
+        capture_method: 'manual', // CRITICAL: Hold only, don't capture
+        confirm: true, // Confirm immediately
+        off_session: true, // Customer not present (scheduled job)
+        description: `$500 security hold for booking ${bookingId}`,
+        metadata: {
+          bookingId,
+          userId: booking.customerId,
+          purpose: 'security_hold',
+          pickup_date: booking.startDate,
+        },
       },
-    }, {
-      idempotencyKey,
-    });
+      {
+        idempotencyKey,
+      }
+    );
 
     logger.info('Security hold authorized', {
       component: 'security-hold-api',
@@ -212,8 +222,7 @@ export async function POST(request: NextRequest) {
       amount: paymentIntent.amount / 100,
       status: paymentIntent.status,
     });
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle SCA (3D Secure) requirements
     if (error.type === 'StripeCardError' && error.code === 'authentication_required') {
       logger.warn('SCA required for security hold', {
@@ -222,20 +231,27 @@ export async function POST(request: NextRequest) {
         metadata: { error: error.message },
       });
 
-      return NextResponse.json({
-        success: false,
-        requiresAction: true,
-        error: 'Additional authentication required',
-        clientSecret: error.payment_intent?.client_secret,
-        message: 'Please complete card authentication to proceed',
-      }, { status: 402 }); // 402 Payment Required
+      return NextResponse.json(
+        {
+          success: false,
+          requiresAction: true,
+          error: 'Additional authentication required',
+          clientSecret: error.payment_intent?.client_secret,
+          message: 'Please complete card authentication to proceed',
+        },
+        { status: 402 }
+      ); // 402 Payment Required
     }
 
-    logger.error('Failed to place security hold', {
-      component: 'security-hold-api',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+    logger.error(
+      'Failed to place security hold',
+      {
+        component: 'security-hold-api',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Failed to place security hold', details: error.message },
@@ -243,9 +259,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-
-
-
-

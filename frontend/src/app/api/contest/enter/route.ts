@@ -3,13 +3,14 @@
  *
  * Proxies to contest-entry Edge Function with rate limiting and validation
  */
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { broadcastInAppNotificationToAdmins } from '@/lib/notification-service';
+import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 // Validation schema
 const entrySchema = z.object({
@@ -21,7 +22,7 @@ const entrySchema = z.object({
   city: z.string().optional(),
   referralCode: z.string().optional(),
   marketingConsent: z.boolean(),
-  rulesAccepted: z.boolean().refine((val: any) => val === true, {
+  rulesAccepted: z.boolean().refine((val: unknown) => val === true, {
     message: 'You must accept the contest rules',
   }),
   deviceFingerprint: z.string().optional(),
@@ -56,8 +57,9 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'x-forwarded-for': request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-forwarded-for':
+          request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
         'user-agent': request.headers.get('user-agent') || 'unknown',
       },
       body: JSON.stringify({
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
       action: 'entry_success',
       metadata: {
         entrantId: data.entrantId,
-        hasReferral: !!validated.referralCode
+        hasReferral: !!validated.referralCode,
       },
     });
 
@@ -120,8 +122,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(responseBody);
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid form data', details: error.issues },
@@ -129,31 +130,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.error('Contest entry API error', {
-      component: 'contest-api',
-      action: 'error',
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    logger.error(
+      'Contest entry API error',
+      {
+        component: 'contest-api',
+        action: 'error',
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

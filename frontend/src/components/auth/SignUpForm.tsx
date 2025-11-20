@@ -1,14 +1,21 @@
 'use client';
 
-import PasswordStrengthIndicator from '@/components/auth/PasswordStrengthIndicator';
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
-import { sanitizePassword, validatePassword, validatePasswordsMatch } from '@/lib/validators/password';
+import { Suspense, useEffect, useState } from 'react';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+
+import PasswordStrengthIndicator from '@/components/auth/PasswordStrengthIndicator';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import {
+  sanitizePassword,
+  validatePassword,
+  validatePasswordsMatch,
+} from '@/lib/validators/password';
 
 interface SignUpFormProps {
   redirectTo?: string;
@@ -77,7 +84,7 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
 
     // Validate phone (optional but must be valid if provided)
     if (touched.has('phone') && formData.phone) {
-      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      const phoneRegex = /^[\d\s\-+()]+$/;
       if (!phoneRegex.test(formData.phone)) {
         errors.phone = 'Please enter a valid phone number';
       } else if (formData.phone.replace(/\D/g, '').length < 10) {
@@ -114,7 +121,11 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
         router.push('/');
       }
     } catch (error) {
-      logger.error('Sign in error', { component: 'SignUpForm', action: 'error' }, error instanceof Error ? error : undefined);
+      logger.error(
+        'Sign in error',
+        { component: 'SignUpForm', action: 'error' },
+        error instanceof Error ? error : undefined
+      );
       setError('Failed to sign in. Please try again.');
     } finally {
       setIsLoading(false);
@@ -122,12 +133,12 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
   };
 
   const handleBlur = (fieldName: string) => {
-    setTouched(prev => new Set(prev).add(fieldName));
+    setTouched((prev) => new Set(prev).add(fieldName));
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -146,7 +157,7 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
 
     // Final password match check
     if (formData.password !== formData.confirmPassword) {
-      setFieldErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: 'Passwords do not match' }));
       setError('Passwords do not match');
       return false;
     }
@@ -215,14 +226,26 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
         setError('Unexpected error during account creation. Please try again or contact support.');
       }
     } catch (error) {
-      logger.error('Email sign up error', { component: 'SignUpForm', action: 'error' }, error instanceof Error ? error : undefined);
+      logger.error(
+        'Email sign up error',
+        { component: 'SignUpForm', action: 'error' },
+        error instanceof Error ? error : undefined
+      );
 
       // Show specific error messages
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes('already registered') || errorMessage.includes('User already registered')) {
+      if (
+        errorMessage.includes('already registered') ||
+        errorMessage.includes('User already registered')
+      ) {
         setError('This email is already registered. Please sign in or use a different email.');
-      } else if (errorMessage.includes('weak and easy to guess') || errorMessage.includes('weak_password')) {
-        setError('This password is too common and easy to guess. Please choose a more unique password with a mix of characters, numbers, and symbols.');
+      } else if (
+        errorMessage.includes('weak and easy to guess') ||
+        errorMessage.includes('weak_password')
+      ) {
+        setError(
+          'This password is too common and easy to guess. Please choose a more unique password with a mix of characters, numbers, and symbols.'
+        );
       } else if (errorMessage.includes('Password should be at least')) {
         setError('Password must be at least 6 characters long.');
       } else if (errorMessage.includes('Invalid email')) {
@@ -234,7 +257,6 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
       setIsLoading(false);
     }
   };
-
 
   // Show success message if email confirmation is required
   if (success) {
@@ -251,10 +273,14 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
         setResendSuccess(true);
         setTimeout(() => setResendSuccess(false), 5000);
       } catch (err) {
-        logger.error('Resend confirmation error', {
-          component: 'SignUpForm',
-          action: 'resend_error',
-        }, err instanceof Error ? err : undefined);
+        logger.error(
+          'Resend confirmation error',
+          {
+            component: 'SignUpForm',
+            action: 'resend_error',
+          },
+          err instanceof Error ? err : undefined
+        );
       } finally {
         setResending(false);
       }
@@ -268,7 +294,13 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
           <div className="border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-green-50 px-8 py-6">
             <div className="flex items-center justify-center space-x-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 shadow-md">
-                <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <svg
+                  className="h-8 w-8 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -282,8 +314,18 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
           {/* Email Sent Notification */}
           <div className="border-b border-gray-100 bg-blue-50 px-8 py-5">
             <div className="flex items-start space-x-3">
-              <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <svg
+                className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
               <div>
                 <p className="text-sm font-medium text-gray-900">Confirmation email sent to:</p>
@@ -305,7 +347,8 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
                 <div className="flex-1 pt-1">
                   <h4 className="text-sm font-semibold text-gray-900">Check your inbox</h4>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
-                    Look for an email from <span className="font-medium text-gray-900">NickBaxter@udigit.ca</span>
+                    Look for an email from{' '}
+                    <span className="font-medium text-gray-900">NickBaxter@udigit.ca</span>
                   </p>
                 </div>
               </div>
@@ -316,7 +359,9 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
                   <span className="text-base font-bold text-gray-700">2</span>
                 </div>
                 <div className="flex-1 pt-1">
-                  <h4 className="text-sm font-semibold text-gray-900">Click the confirmation link</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    Click the confirmation link
+                  </h4>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
                     Verify your email address to activate your account
                   </p>
@@ -329,7 +374,9 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
                   <span className="text-base font-bold text-gray-700">3</span>
                 </div>
                 <div className="flex-1 pt-1">
-                  <h4 className="text-sm font-semibold text-gray-900">You'll be automatically logged in!</h4>
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    You'll be automatically logged in!
+                  </h4>
                   <p className="mt-1 text-sm leading-relaxed text-gray-600">
                     After clicking the link, you'll be taken straight to your dashboard
                   </p>
@@ -343,27 +390,49 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
             <details className="group">
               <summary className="flex cursor-pointer items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900">
                 <span>Didn't receive the email?</span>
-                <svg className="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </summary>
 
               <div className="mt-4 space-y-4">
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li className="flex items-start">
-                    <svg className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <circle cx="10" cy="10" r="2" />
                     </svg>
                     Check your spam or junk folder
                   </li>
                   <li className="flex items-start">
-                    <svg className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <circle cx="10" cy="10" r="2" />
                     </svg>
                     Wait a few minutes for email delivery
                   </li>
                   <li className="flex items-start">
-                    <svg className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <svg
+                      className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <circle cx="10" cy="10" r="2" />
                     </svg>
                     Confirmation link expires in 24 hours
@@ -372,8 +441,18 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
 
                 {resendSuccess ? (
                   <div className="flex items-center rounded-lg bg-emerald-50 px-4 py-3 text-emerald-700">
-                    <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="mr-2 h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span className="text-sm font-medium">Email sent successfully</span>
                   </div>
@@ -385,16 +464,41 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
                   >
                     {resending ? (
                       <>
-                        <svg className="mr-2 inline h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        <svg
+                          className="mr-2 inline h-4 w-4 animate-spin"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
                         </svg>
                         Sending email...
                       </>
                     ) : (
                       <>
-                        <svg className="mr-2 inline h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        <svg
+                          className="mr-2 inline h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
                         </svg>
                         Resend confirmation email
                       </>
@@ -415,7 +519,12 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
           >
             Continue to Sign In
             <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
             </svg>
           </Link>
         </div>
@@ -717,7 +826,9 @@ function SignUpFormContent({ redirectTo = '/dashboard' }: SignUpFormProps) {
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-label={
+                    showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'
+                  }
                 >
                   {showConfirmPassword ? (
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,12 +1,15 @@
 'use client';
 
+import { useEffect } from 'react';
+
+import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 
 // Dynamically import components with no SSR to avoid hydration issues
 const EnhancedBookingFlow = dynamic(() => import('@/components/EnhancedBookingFlow'), {
@@ -36,6 +39,8 @@ const EnhancedBookingFlow = dynamic(() => import('@/components/EnhancedBookingFl
 export default function BookPage() {
   const { user, loading, initialized } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const shouldResume = searchParams?.get('resume') === '1';
 
   // Require authentication - redirect to sign-in if not logged in
   useEffect(() => {
@@ -130,7 +135,7 @@ export default function BookPage() {
             <UrgencyIndicator availableUnits={1} viewingCount={5} />
           </div> */}
 
-          <EnhancedBookingFlow />
+          <EnhancedBookingFlow shouldResume={shouldResume} />
 
           {/* Exit Intent Popup - TODO: Re-enable when component is created */}
           {/* <ExitIntentPopup /> */}

@@ -13,11 +13,11 @@ test.describe('U-Dig It Rentals - Performance & Error Handling E2E', () => {
     expect(loadTime).toBeLessThan(3000);
 
     // Check Core Web Vitals
-    const navigation = await page.evaluate(() => {
+    const _navigation = await page.evaluate(() => {
       return new Promise((resolve) => {
         const observer = new PerformanceObserver((list) => {
           const entries = list.getEntries();
-          const navigation = entries.find(entry => entry.entryType === 'navigation');
+          const navigation = entries.find((entry) => entry.entryType === 'navigation');
           resolve(navigation);
         });
         observer.observe({ entryTypes: ['navigation'] });
@@ -31,7 +31,7 @@ test.describe('U-Dig It Rentals - Performance & Error Handling E2E', () => {
   test('should handle slow network conditions gracefully', async ({ page }) => {
     // Simulate slow 3G connection
     await page.route('**/*', async (route) => {
-      await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+      await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
       await route.continue();
     });
 
@@ -187,7 +187,7 @@ test.describe('U-Dig It Rentals - Performance & Error Handling E2E', () => {
         for (let i = 0; i < 1000; i++) {
           localStorage.setItem(`test-key-${i}`, `test-value-${i}`.repeat(10));
         }
-      } catch (e) {
+      } catch {
         // Expected to hit storage limits
       }
     });
@@ -329,8 +329,8 @@ test.describe('U-Dig It Rentals - Performance & Error Handling E2E', () => {
             status: 429,
             contentType: 'application/json',
             body: JSON.stringify({
-              error: 'Too many requests. Please try again later.'
-            })
+              error: 'Too many requests. Please try again later.',
+            }),
           });
         }
       });

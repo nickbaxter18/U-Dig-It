@@ -36,11 +36,11 @@ export class AccessibilityHelper {
     );
 
     if (violations.length > 0) {
-      const violationDetails = violations.map(v => ({
+      const violationDetails = violations.map((v) => ({
         rule: v.id,
         description: v.description,
         impact: v.impact,
-        elements: v.nodes.map(node => ({
+        elements: v.nodes.map((node) => ({
           html: node.html,
           target: node.target,
           failureSummary: node.failureSummary,
@@ -61,19 +61,23 @@ export class AccessibilityHelper {
    */
   async checkKeyboardNavigation(selector: string) {
     // Check that all interactive elements are keyboard accessible
-    const interactiveElements = await this.page.locator(`${selector} button, ${selector} a, ${selector} input, ${selector} select, ${selector} textarea, ${selector} [tabindex]`);
+    const interactiveElements = await this.page.locator(
+      `${selector} button, ${selector} a, ${selector} input, ${selector} select, ${selector} textarea, ${selector} [tabindex]`
+    );
 
-    for (let i = 0; i < await interactiveElements.count(); i++) {
+    for (let i = 0; i < (await interactiveElements.count()); i++) {
       const element = interactiveElements.nth(i);
 
       // Check if element is visible and enabled
-      if (await element.isVisible() && await element.isEnabled()) {
+      if ((await element.isVisible()) && (await element.isEnabled())) {
         await element.focus();
 
         // Verify element can receive focus
-        const hasFocus = await element.evaluate(el => el === document.activeElement);
+        const hasFocus = await element.evaluate((el) => el === document.activeElement);
         if (!hasFocus) {
-          throw new Error(`Element ${await element.getAttribute('data-testid') || await element.innerHTML()} cannot receive keyboard focus`);
+          throw new Error(
+            `Element ${(await element.getAttribute('data-testid')) || (await element.innerHTML())} cannot receive keyboard focus`
+          );
         }
       }
     }
@@ -84,14 +88,16 @@ export class AccessibilityHelper {
    * @param selector - CSS selector for container to test
    */
   async checkColorContrast(selector: string) {
-    const textElements = await this.page.locator(`${selector} p, ${selector} h1, ${selector} h2, ${selector} h3, ${selector} h4, ${selector} h5, ${selector} h6, ${selector} span, ${selector} div`);
+    const textElements = await this.page.locator(
+      `${selector} p, ${selector} h1, ${selector} h2, ${selector} h3, ${selector} h4, ${selector} h5, ${selector} h6, ${selector} span, ${selector} div`
+    );
 
-    for (let i = 0; i < await textElements.count(); i++) {
+    for (let i = 0; i < (await textElements.count()); i++) {
       const element = textElements.nth(i);
 
       if (await element.isVisible()) {
         // Check if element has sufficient color contrast
-        const color = await element.evaluate(el => {
+        const color = await element.evaluate((el) => {
           const styles = window.getComputedStyle(el);
           return {
             color: styles.color,
@@ -103,7 +109,9 @@ export class AccessibilityHelper {
 
         // Basic contrast validation (in a real implementation, you'd use a proper contrast calculation)
         if (color.color === color.backgroundColor) {
-          console.warn(`Element may have insufficient color contrast: ${await element.innerHTML()}`);
+          console.warn(
+            `Element may have insufficient color contrast: ${await element.innerHTML()}`
+          );
         }
       }
     }
@@ -114,9 +122,11 @@ export class AccessibilityHelper {
    * @param selector - CSS selector for container to test
    */
   async checkAriaLabels(selector: string) {
-    const elements = await this.page.locator(`${selector} [aria-label], ${selector} [aria-labelledby], ${selector} [aria-describedby]`);
+    const elements = await this.page.locator(
+      `${selector} [aria-label], ${selector} [aria-labelledby], ${selector} [aria-describedby]`
+    );
 
-    for (let i = 0; i < await elements.count(); i++) {
+    for (let i = 0; i < (await elements.count()); i++) {
       const element = elements.nth(i);
 
       if (await element.isVisible()) {
@@ -151,12 +161,14 @@ export class AccessibilityHelper {
    */
   async checkSemanticStructure(selector: string) {
     // Check for proper heading hierarchy
-    const headings = await this.page.locator(`${selector} h1, ${selector} h2, ${selector} h3, ${selector} h4, ${selector} h5, ${selector} h6`);
+    const headings = await this.page.locator(
+      `${selector} h1, ${selector} h2, ${selector} h3, ${selector} h4, ${selector} h5, ${selector} h6`
+    );
 
     const headingLevels: number[] = [];
-    for (let i = 0; i < await headings.count(); i++) {
+    for (let i = 0; i < (await headings.count()); i++) {
       const heading = headings.nth(i);
-      const tagName = await heading.evaluate(el => el.tagName.toLowerCase());
+      const tagName = await heading.evaluate((el) => el.tagName.toLowerCase());
       const level = parseInt(tagName.replace('h', ''));
       headingLevels.push(level);
     }
@@ -164,14 +176,16 @@ export class AccessibilityHelper {
     // Check that heading levels don't skip (e.g., h1 followed by h3)
     for (let i = 1; i < headingLevels.length; i++) {
       if (headingLevels[i] - headingLevels[i - 1] > 1) {
-        console.warn(`Heading level skip detected: h${headingLevels[i - 1]} followed by h${headingLevels[i]}`);
+        console.warn(
+          `Heading level skip detected: h${headingLevels[i - 1]} followed by h${headingLevels[i]}`
+        );
       }
     }
 
     // Check for landmarks
     const nav = await this.page.locator(`${selector} nav`).count();
     const main = await this.page.locator(`${selector} main`).count();
-    const aside = await this.page.locator(`${selector} aside`).count();
+    const _aside = await this.page.locator(`${selector} aside`).count();
 
     if (nav === 0) {
       console.warn('No navigation landmark found');
@@ -192,7 +206,9 @@ export class AccessibilityHelper {
     }
 
     // Check for focus trap - simplified version
-    const focusableElements = await modal.locator('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])').all();
+    const focusableElements = await modal
+      .locator('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      .all();
 
     if (focusableElements.length > 0) {
       // Focus should be trapped within modal
@@ -214,9 +230,11 @@ export class AccessibilityHelper {
    * @param formSelector - CSS selector for form container
    */
   async checkErrorMessages(formSelector: string) {
-    const errorElements = await this.page.locator(`${formSelector} .error, ${formSelector} [role="alert"]`);
+    const errorElements = await this.page.locator(
+      `${formSelector} .error, ${formSelector} [role="alert"]`
+    );
 
-    for (let i = 0; i < await errorElements.count(); i++) {
+    for (let i = 0; i < (await errorElements.count()); i++) {
       const error = errorElements.nth(i);
 
       if (await error.isVisible()) {
@@ -225,8 +243,10 @@ export class AccessibilityHelper {
 
         if (ariaDescribedBy) {
           // Check if error ID is referenced by form fields
-          const referencedElements = await this.page.locator(`[aria-describedby*="${ariaDescribedBy}"]`);
-          if (await referencedElements.count() === 0) {
+          const referencedElements = await this.page.locator(
+            `[aria-describedby*="${ariaDescribedBy}"]`
+          );
+          if ((await referencedElements.count()) === 0) {
             throw new Error(`Error message ${errorText} is not associated with any form fields`);
           }
         }
@@ -240,14 +260,21 @@ export class AccessibilityHelper {
    */
   async checkScreenReaderSupport(selector: string) {
     // Check for live regions
-    const liveRegions = await this.page.locator(`${selector} [aria-live], ${selector} [role="status"], ${selector} [role="alert"]`);
+    const liveRegions = await this.page.locator(
+      `${selector} [aria-live], ${selector} [role="status"], ${selector} [role="alert"]`
+    );
 
-    for (let i = 0; i < await liveRegions.count(); i++) {
+    for (let i = 0; i < (await liveRegions.count()); i++) {
       const region = liveRegions.nth(i);
       const ariaLive = await region.getAttribute('aria-live');
       const role = await region.getAttribute('role');
 
-      if (ariaLive === 'polite' || ariaLive === 'assertive' || role === 'status' || role === 'alert') {
+      if (
+        ariaLive === 'polite' ||
+        ariaLive === 'assertive' ||
+        role === 'status' ||
+        role === 'alert'
+      ) {
         // Live regions should have content
         const content = await region.innerText();
         if (!content.trim()) {
@@ -257,8 +284,10 @@ export class AccessibilityHelper {
     }
 
     // Check for proper labeling of complex UI components
-    const unlabeledElements = await this.page.locator(`${selector} [role]:not([aria-label]):not([aria-labelledby])`);
-    for (let i = 0; i < await unlabeledElements.count(); i++) {
+    const unlabeledElements = await this.page.locator(
+      `${selector} [role]:not([aria-label]):not([aria-labelledby])`
+    );
+    for (let i = 0; i < (await unlabeledElements.count()); i++) {
       const element = unlabeledElements.nth(i);
       const role = await element.getAttribute('role');
 

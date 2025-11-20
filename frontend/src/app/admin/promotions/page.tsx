@@ -1,8 +1,5 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   CheckCircle,
   Copy,
@@ -15,7 +12,12 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface DiscountCode {
   id: string;
@@ -70,7 +72,7 @@ export default function PromotionsPage() {
 
       if (queryError) throw queryError;
 
-      const discountsData: DiscountCode[] = (data || []).map((disc: any) => ({
+      const discountsData: DiscountCode[] = (data || []).map((disc: unknown) => ({
         id: disc.id,
         code: disc.code,
         name: disc.name,
@@ -89,7 +91,11 @@ export default function PromotionsPage() {
 
       setDiscounts(discountsData);
     } catch (err) {
-      logger.error('Failed to fetch discount codes', { component: 'PromotionsPage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to fetch discount codes',
+        { component: 'PromotionsPage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to fetch discount codes');
     } finally {
       setLoading(false);
@@ -146,7 +152,11 @@ export default function PromotionsPage() {
       resetForm();
       await fetchDiscounts();
     } catch (err) {
-      logger.error('Failed to save discount code', {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to save discount code',
+        {},
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to save discount code');
     }
   };
@@ -252,9 +262,9 @@ export default function PromotionsPage() {
     }
   };
 
-  const activeDiscounts = discounts.filter(d => d.isActive).length;
-  const totalUses = discounts.reduce((sum: any, d: any) => sum + d.usedCount, 0);
-  const totalSavings = discounts.reduce((sum: any, d: any) => {
+  const activeDiscounts = discounts.filter((d) => d.isActive).length;
+  const totalUses = discounts.reduce((sum: unknown, d: unknown) => sum + d.usedCount, 0);
+  const totalSavings = discounts.reduce((sum: unknown, d: unknown) => {
     if (d.type === 'percentage') {
       // Can't calculate without booking data
       return sum;
@@ -337,7 +347,9 @@ export default function PromotionsPage() {
             <DollarSign className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Savings</p>
-              <p className="text-2xl font-semibold text-gray-900">${totalSavings.toLocaleString()}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                ${totalSavings.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
@@ -373,7 +385,7 @@ export default function PromotionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {discounts.map(discount => {
+              {discounts.map((discount) => {
                 const isExpired = discount.validUntil && discount.validUntil < new Date();
                 const isMaxedOut = discount.maxUses && discount.usedCount >= discount.maxUses;
 
@@ -383,7 +395,9 @@ export default function PromotionsPage() {
                       <div className="flex items-center">
                         <Tag className="text-kubota-orange mr-2 h-4 w-4" />
                         <div>
-                          <div className="text-sm font-mono font-bold text-gray-900">{discount.code}</div>
+                          <div className="text-sm font-mono font-bold text-gray-900">
+                            {discount.code}
+                          </div>
                           <button
                             onClick={() => copyCode(discount.code)}
                             className="flex items-center text-xs text-blue-600 hover:text-blue-800"
@@ -397,7 +411,9 @@ export default function PromotionsPage() {
                     <td className="whitespace-nowrap px-6 py-4">
                       <div className="text-sm text-gray-900">{discount.name}</div>
                       {discount.minBookingAmount && (
-                        <div className="text-xs text-gray-500">Min: ${discount.minBookingAmount}</div>
+                        <div className="text-xs text-gray-500">
+                          Min: ${discount.minBookingAmount}
+                        </div>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
@@ -409,8 +425,8 @@ export default function PromotionsPage() {
                           </>
                         ) : (
                           <>
-                            <DollarSign className="mr-1 h-4 w-4 text-green-600" />
-                            ${discount.value} OFF
+                            <DollarSign className="mr-1 h-4 w-4 text-green-600" />${discount.value}{' '}
+                            OFF
                           </>
                         )}
                       </div>
@@ -500,7 +516,9 @@ export default function PromotionsPage() {
                       required
                       disabled={!!editingDiscount}
                       value={formData.code}
-                      onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, code: e.target.value.toUpperCase() })
+                      }
                       placeholder="SUMMER2025"
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 font-mono focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100"
                     />
@@ -512,7 +530,7 @@ export default function PromotionsPage() {
                       type="text"
                       required
                       value={formData.name}
-                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Summer 2025 Promotion"
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
@@ -522,7 +540,7 @@ export default function PromotionsPage() {
                     <label className="mb-1 block text-sm font-medium text-gray-700">Type *</label>
                     <select
                       value={formData.type}
-                      onChange={e =>
+                      onChange={(e) =>
                         setFormData({
                           ...formData,
                           type: e.target.value as 'percentage' | 'fixed' | 'fixed_amount',
@@ -546,7 +564,9 @@ export default function PromotionsPage() {
                       max={formData.type === 'percentage' ? '100' : undefined}
                       step={formData.type === 'percentage' ? '1' : '0.01'}
                       value={formData.value}
-                      onChange={e => setFormData({ ...formData, value: parseFloat(e.target.value) })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, value: parseFloat(e.target.value) })
+                      }
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
@@ -559,7 +579,7 @@ export default function PromotionsPage() {
                       type="number"
                       min="1"
                       value={formData.maxUses || ''}
-                      onChange={e =>
+                      onChange={(e) =>
                         setFormData({
                           ...formData,
                           maxUses: e.target.value ? parseInt(e.target.value) : undefined,
@@ -579,7 +599,9 @@ export default function PromotionsPage() {
                       required
                       min="1"
                       value={formData.maxUsesPerUser}
-                      onChange={e => setFormData({ ...formData, maxUsesPerUser: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, maxUsesPerUser: parseInt(e.target.value) })
+                      }
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
@@ -593,7 +615,7 @@ export default function PromotionsPage() {
                       min="0"
                       step="0.01"
                       value={formData.minBookingAmount || ''}
-                      onChange={e =>
+                      onChange={(e) =>
                         setFormData({
                           ...formData,
                           minBookingAmount: e.target.value ? parseFloat(e.target.value) : undefined,
@@ -605,21 +627,25 @@ export default function PromotionsPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Valid From</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Valid From
+                    </label>
                     <input
                       type="date"
                       value={formData.validFrom}
-                      onChange={e => setFormData({ ...formData, validFrom: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Valid Until</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Valid Until
+                    </label>
                     <input
                       type="date"
                       value={formData.validUntil}
-                      onChange={e => setFormData({ ...formData, validUntil: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
@@ -629,10 +655,12 @@ export default function PromotionsPage() {
                       <input
                         type="checkbox"
                         checked={formData.isActive}
-                        onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
+                        onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                         className="text-kubota-orange focus:ring-kubota-orange rounded"
                       />
-                      <span className="ml-2 text-sm text-gray-700">Active (can be used immediately)</span>
+                      <span className="ml-2 text-sm text-gray-700">
+                        Active (can be used immediately)
+                      </span>
                     </label>
                   </div>
                 </div>

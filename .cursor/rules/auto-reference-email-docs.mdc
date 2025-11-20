@@ -1,0 +1,66 @@
+---
+description: "Automatically reference SendGrid documentation when working with email functionality"
+globs:
+  - "**/app/api/email/**/*.ts"
+  - "**/lib/email/**/*.{ts,tsx}"
+  - "**/lib/sendgrid/**/*.{ts,tsx}"
+  - "**/components/email/**/*.{ts,tsx}"
+  - "**/emails/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# SendGrid Email Documentation Auto-Reference
+
+When working with email functionality, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## General SendGrid Integration
+- Use **@Send Grid Docs** for:
+  - API authentication
+  - Sending transactional emails
+  - Template management
+  - Personalization
+  - API error handling
+  - Rate limits and quotas
+
+## Email Deliverability
+- Use **@https://docs.sendgrid.com/for-developers/sending-email/deliverability** when:
+  - Improving email deliverability rates
+  - Setting up SPF/DKIM records
+  - Managing sender reputation
+  - Avoiding spam filters
+  - Testing email delivery
+  - Monitoring bounce rates
+
+## Email Compliance
+- Use **@https://docs.sendgrid.com/for-developers/sending-email/compliance** when:
+  - Implementing unsubscribe links
+  - Managing consent and permissions
+  - Following CAN-SPAM requirements
+  - GDPR compliance
+  - Setting up list management
+  - Handling opt-outs
+
+## Example Usage Pattern
+
+```typescript
+// When sending transactional emails:
+// @Send Grid Docs for API usage and templates
+
+// When improving deliverability:
+// @https://docs.sendgrid.com/for-developers/sending-email/deliverability
+// for best practices
+
+// When ensuring compliance:
+// @https://docs.sendgrid.com/for-developers/sending-email/compliance
+// for legal requirements
+```
+
+## Email Best Practices
+- **ALWAYS include unsubscribe links** in marketing emails
+- **ALWAYS use templates** for consistent branding
+- **ALWAYS handle errors gracefully** with retries
+- **ALWAYS log email events** for debugging
+- **ALWAYS test emails** before sending to production
+
+## Reminder
+**Check SendGrid docs** for deliverability best practices and compliance requirements before implementing email flows.

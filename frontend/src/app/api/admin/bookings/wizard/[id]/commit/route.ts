@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
@@ -10,7 +11,7 @@ import {
   logisticsTaskInputSchema,
 } from '@/lib/validators/admin/bookings';
 
-function isSessionExpired(session: any): boolean {
+function isSessionExpired(session: unknown): boolean {
   if (!session?.expires_at) return false;
   return new Date(session.expires_at).getTime() < Date.now();
 }
@@ -37,10 +38,7 @@ function buildPricingBreakdown(commit: BookingWizardCommitInput) {
   };
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -48,19 +46,15 @@ export async function POST(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const commitData = bookingWizardCommitSchema.parse(body);
@@ -74,7 +68,11 @@ export async function POST(
     if (sessionError) {
       logger.error(
         'Failed to load booking wizard session for commit',
-        { component: 'admin-bookings-wizard-commit', action: 'session_fetch_failed', metadata: { sessionId: params.id } },
+        {
+          component: 'admin-bookings-wizard-commit',
+          action: 'session_fetch_failed',
+          metadata: { sessionId: params.id },
+        },
         sessionError
       );
       return NextResponse.json(
@@ -100,26 +98,19 @@ export async function POST(
         .update({ status: 'expired' })
         .eq('id', params.id);
 
-      return NextResponse.json(
-        { error: 'Wizard session expired' },
-        { status: 410 }
-      );
+      return NextResponse.json({ error: 'Wizard session expired' }, { status: 410 });
     }
 
     const bookingNumber = generateBookingNumber();
-    const subtotal =
-      commitData.overrideTotals?.subtotal ?? commitData.booking.subtotal ?? 0;
-    const taxes =
-      commitData.overrideTotals?.taxes ?? commitData.booking.taxes ?? 0;
-    const totalAmount =
-      commitData.overrideTotals?.totalAmount ?? commitData.booking.totalAmount;
+    const subtotal = commitData.overrideTotals?.subtotal ?? commitData.booking.subtotal ?? 0;
+    const taxes = commitData.overrideTotals?.taxes ?? commitData.booking.taxes ?? 0;
+    const totalAmount = commitData.overrideTotals?.totalAmount ?? commitData.booking.totalAmount;
 
     const deliveryAddress = commitData.booking.deliveryAddress;
 
     const depositAmount = commitData.payment?.depositAmount ?? null;
     const balanceDue =
-      commitData.payment?.balanceDue ??
-      (totalAmount - normalizeNumber(depositAmount ?? 0));
+      commitData.payment?.balanceDue ?? totalAmount - normalizeNumber(depositAmount ?? 0);
 
     const insertedBookingPayload: Record<string, unknown> = {
       bookingNumber,
@@ -154,18 +145,19 @@ export async function POST(
     if (insertError) {
       logger.error(
         'Failed to commit booking wizard session',
-        { component: 'admin-bookings-wizard-commit', action: 'booking_insert_failed', metadata: { sessionId: params.id } },
+        {
+          component: 'admin-bookings-wizard-commit',
+          action: 'booking_insert_failed',
+          metadata: { sessionId: params.id },
+        },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to create booking from wizard' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create booking from wizard' }, { status: 500 });
     }
 
     const notes = commitData.notes ?? [];
     if (notes.length > 0) {
-      const noteRows = notes.map(note => ({
+      const noteRows = notes.map((note) => ({
         booking_id: bookingRecord.id,
         admin_id: user?.id || 'unknown',
         note: note.note,
@@ -174,16 +166,17 @@ export async function POST(
 
       const { error: notesError } = await supabase.from('booking_notes').insert(noteRows);
       if (notesError) {
-        logger.warn(
-          'Failed to insert booking notes during wizard commit',
-          { component: 'admin-bookings-wizard-commit', action: 'notes_insert_failed', metadata: { bookingId: bookingRecord.id, error: notesError?.message } }
-        );
+        logger.warn('Failed to insert booking notes during wizard commit', {
+          component: 'admin-bookings-wizard-commit',
+          action: 'notes_insert_failed',
+          metadata: { bookingId: bookingRecord.id, error: notesError?.message },
+        });
       }
     }
 
     const logisticsTasks = commitData.logisticsTasks ?? [];
     if (logisticsTasks.length > 0) {
-      const taskRows = logisticsTasks.map((task: any) => {
+      const taskRows = logisticsTasks.map((task: unknown) => {
         const parsed = logisticsTaskInputSchema.parse(task);
         return {
           booking_id: bookingRecord.id,
@@ -199,15 +192,14 @@ export async function POST(
         };
       });
 
-      const { error: logisticsError } = await supabase
-        .from('logistics_tasks')
-        .insert(taskRows);
+      const { error: logisticsError } = await supabase.from('logistics_tasks').insert(taskRows);
 
       if (logisticsError) {
-        logger.warn(
-          'Failed to create logistics tasks during wizard commit',
-          { component: 'admin-bookings-wizard-commit', action: 'logistics_insert_failed', metadata: { bookingId: bookingRecord.id, error: logisticsError?.message } }
-        );
+        logger.warn('Failed to create logistics tasks during wizard commit', {
+          component: 'admin-bookings-wizard-commit',
+          action: 'logistics_insert_failed',
+          metadata: { bookingId: bookingRecord.id, error: logisticsError?.message },
+        });
       }
     }
 
@@ -219,7 +211,11 @@ export async function POST(
     logger.info('Booking wizard session committed', {
       component: 'admin-bookings-wizard-commit',
       action: 'booking_created',
-      metadata: { sessionId: params.id, bookingId: bookingRecord.id, adminId: user?.id || 'unknown' },
+      metadata: {
+        sessionId: params.id,
+        bookingId: bookingRecord.id,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({
@@ -235,7 +231,11 @@ export async function POST(
 
     logger.error(
       'Unexpected error committing booking wizard',
-      { component: 'admin-bookings-wizard-commit', action: 'unexpected_error', metadata: { sessionId: params.id } },
+      {
+        component: 'admin-bookings-wizard-commit',
+        action: 'unexpected_error',
+        metadata: { sessionId: params.id },
+      },
       err instanceof Error ? err : new Error(String(err))
     );
 
@@ -245,5 +245,3 @@ export async function POST(
     );
   }
 }
-
-

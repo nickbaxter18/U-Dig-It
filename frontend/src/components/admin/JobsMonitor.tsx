@@ -1,9 +1,21 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Loader2,
+  Play,
+  RefreshCw,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Play, RefreshCw, Loader2, CheckCircle, XCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface JobStatusSummary {
   job_name: string;
@@ -28,7 +40,7 @@ interface JobRun {
   success_count: number;
   failure_count: number;
   error_message: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface JobsMonitorProps {
@@ -43,20 +55,7 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
   const [triggeringJobs, setTriggeringJobs] = useState<Set<string>>(new Set());
   const toast = useAdminToast();
 
-  useEffect(() => {
-    fetchJobStatus();
-    fetchRecentRuns();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchJobStatus();
-      fetchRecentRuns();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchJobStatus = async () => {
+  const fetchJobStatus = useCallback(async () => {
     try {
       const response = await fetchWithAuth('/api/admin/jobs/status');
       if (!response.ok) {
@@ -66,13 +65,16 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
       const data = await response.json();
       setSummary(data.summary || []);
     } catch (error) {
-      toast.error('Failed to load job status', error instanceof Error ? error.message : 'Unable to fetch job status');
+      toast.error(
+        'Failed to load job status',
+        error instanceof Error ? error.message : 'Unable to fetch job status'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const fetchRecentRuns = async () => {
+  const fetchRecentRuns = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (selectedJob) {
@@ -88,14 +90,30 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
       const data = await response.json();
       setRecentRuns(data.runs || []);
     } catch (error) {
-      toast.error('Failed to load job runs', error instanceof Error ? error.message : 'Unable to fetch job runs');
+      toast.error(
+        'Failed to load job runs',
+        error instanceof Error ? error.message : 'Unable to fetch job runs'
+      );
     }
-  };
+  }, [selectedJob, toast]);
+
+  useEffect(() => {
+    fetchJobStatus();
+    fetchRecentRuns();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchJobStatus();
+      fetchRecentRuns();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchJobStatus, fetchRecentRuns]);
 
   const handleTriggerJob = async (jobName: string) => {
     if (triggeringJobs.has(jobName)) return;
 
-    setTriggeringJobs(prev => new Set(prev).add(jobName));
+    setTriggeringJobs((prev) => new Set(prev).add(jobName));
     try {
       const response = await fetchWithAuth(`/api/admin/jobs/${jobName}/trigger`, {
         method: 'POST',
@@ -111,9 +129,12 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
       await fetchRecentRuns();
       onJobChange?.();
     } catch (error) {
-      toast.error('Failed to trigger job', error instanceof Error ? error.message : 'Unable to trigger job');
+      toast.error(
+        'Failed to trigger job',
+        error instanceof Error ? error.message : 'Unable to trigger job'
+      );
     } finally {
-      setTriggeringJobs(prev => {
+      setTriggeringJobs((prev) => {
         const next = new Set(prev);
         next.delete(jobName);
         return next;
@@ -173,10 +194,13 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
           <div
             key={job.job_name}
             className={`rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${
-              job.last_status === 'failed' ? 'border-red-200 bg-red-50' :
-              job.last_status === 'running' ? 'border-blue-200 bg-blue-50' :
-              job.last_status === 'success' ? 'border-green-200 bg-green-50' :
-              'bg-white'
+              job.last_status === 'failed'
+                ? 'border-red-200 bg-red-50'
+                : job.last_status === 'running'
+                  ? 'border-blue-200 bg-blue-50'
+                  : job.last_status === 'success'
+                    ? 'border-green-200 bg-green-50'
+                    : 'bg-white'
             }`}
           >
             <div className="flex items-start justify-between">
@@ -189,15 +213,15 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
                   <div className="flex items-center justify-between">
                     <span>Last Run:</span>
                     <span className="font-medium">
-                      {job.last_run_at
-                        ? new Date(job.last_run_at).toLocaleString()
-                        : 'Never'}
+                      {job.last_run_at ? new Date(job.last_run_at).toLocaleString() : 'Never'}
                     </span>
                   </div>
                   {job.success_rate !== null && (
                     <div className="flex items-center justify-between">
                       <span>Success Rate:</span>
-                      <span className={`font-medium ${job.success_rate >= 95 ? 'text-green-600' : job.success_rate >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      <span
+                        className={`font-medium ${job.success_rate >= 95 ? 'text-green-600' : job.success_rate >= 80 ? 'text-yellow-600' : 'text-red-600'}`}
+                      >
                         {job.success_rate.toFixed(1)}%
                       </span>
                     </div>
@@ -256,7 +280,7 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
           >
             <option value="">All Jobs</option>
-            {summary.map(job => (
+            {summary.map((job) => (
               <option key={job.job_name} value={job.job_name}>
                 {job.job_name}
               </option>
@@ -351,4 +375,3 @@ export function JobsMonitor({ onJobChange }: JobsMonitorProps) {
     </div>
   );
 }
-

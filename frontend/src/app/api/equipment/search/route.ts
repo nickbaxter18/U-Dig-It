@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,7 @@ interface SearchFilters {
 }
 
 interface SearchResults {
-  data: any[];
+  data: unknown[];
   total: number;
   page: number;
   limit: number;
@@ -113,11 +114,15 @@ export async function POST(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      logger.error('Equipment search error', {
-        component: 'api-search',
-        action: 'error',
-        metadata: { error: error.message }
-      }, error);
+      logger.error(
+        'Equipment search error',
+        {
+          component: 'api-search',
+          action: 'error',
+          metadata: { error: error.message },
+        },
+        error
+      );
       return NextResponse.json(
         { error: 'Failed to search equipment', details: error.message },
         { status: 500 }
@@ -137,11 +142,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(results);
   } catch (error) {
-    logger.error('Equipment search request error', {
-      component: 'api-search',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) },
-    }, error instanceof Error ? error : undefined);
+    logger.error(
+      'Equipment search request error',
+      {
+        component: 'api-search',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
     return NextResponse.json(
       {
         error: 'Invalid search request',

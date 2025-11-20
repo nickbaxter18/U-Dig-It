@@ -7,17 +7,23 @@
 
 'use client';
 
-import BookingConfirmedModal from '@/components/booking/BookingConfirmedModal';
-import { logger } from '@/lib/logger';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+
+import BookingConfirmedModal from '@/components/booking/BookingConfirmedModal';
+
+import { logger } from '@/lib/logger';
 
 function VerifyCardSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing card verification...');
-  const [bookingData, setBookingData] = useState<{ bookingId: string; bookingNumber: string } | null>(null);
+  const [bookingData, setBookingData] = useState<{
+    bookingId: string;
+    bookingNumber: string;
+  } | null>(null);
 
   useEffect(() => {
     const processSuccess = async () => {
@@ -58,7 +64,7 @@ function VerifyCardSuccessContent() {
           body: JSON.stringify({
             sessionId,
             bookingId,
-            bookingFormData // Send the saved form data to create the booking
+            bookingFormData, // Send the saved form data to create the booking
           }),
         });
 
@@ -74,7 +80,7 @@ function VerifyCardSuccessContent() {
           action: 'success',
           metadata: {
             bookingId: result.bookingId,
-            paymentMethodId: result.paymentMethodId?.substring(0, 10) + '...'
+            paymentMethodId: result.paymentMethodId?.substring(0, 10) + '...',
           },
         });
 
@@ -94,19 +100,20 @@ function VerifyCardSuccessContent() {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && (
-            key.startsWith('booking') ||
-            key.startsWith('enhanced_booking') ||
-            key === 'pending_booking_data' ||
-            key === 'booking_form_data' ||
-            key === 'booking-form-draft' // ← The component uses this to restore saved progress
-          )) {
+          if (
+            key &&
+            (key.startsWith('booking') ||
+              key.startsWith('enhanced_booking') ||
+              key === 'pending_booking_data' ||
+              key === 'booking_form_data' ||
+              key === 'booking-form-draft') // ← The component uses this to restore saved progress
+          ) {
             keysToRemove.push(key);
           }
         }
 
         // Now remove all collected keys
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
 
         logger.info('Cleaned up ALL localStorage booking data after successful booking creation', {
           component: 'VerifyCardSuccess',
@@ -114,16 +121,19 @@ function VerifyCardSuccessContent() {
           metadata: {
             bookingId: result.bookingId,
             clearedKeys: keysToRemove,
-            totalKeysCleared: keysToRemove.length
+            totalKeysCleared: keysToRemove.length,
           },
         });
-
-      } catch (error: any) {
-        logger.error('Card verification or booking creation failed', {
-          component: 'VerifyCardSuccess',
-          action: 'error',
-          metadata: { error: error.message },
-        }, error);
+      } catch (error: unknown) {
+        logger.error(
+          'Card verification or booking creation failed',
+          {
+            component: 'VerifyCardSuccess',
+            action: 'error',
+            metadata: { error: error.message },
+          },
+          error
+        );
 
         setStatus('error');
         setMessage(error.message || 'Failed to complete booking');
@@ -178,8 +188,18 @@ function VerifyCardSuccessContent() {
             {status === 'error' && (
               <div className="flex flex-col items-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                  <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"></path>
+                  <svg
+                    className="h-8 w-8 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
                   </svg>
                 </div>
                 <h2 className="text-xl font-bold text-red-900">❌ {message}</h2>
@@ -206,4 +226,3 @@ export default function VerifyCardSuccessPage() {
     </Suspense>
   );
 }
-

@@ -1,15 +1,30 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import {
+  Bell,
+  Edit2,
+  Loader2,
+  Mail,
+  MessageSquare,
+  Plus,
+  Smartphone,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  X,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Plus, Bell, Mail, MessageSquare, Smartphone, Edit2, Trash2, Loader2, X, ToggleLeft, ToggleRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface NotificationRule {
   id: string;
   name: string;
   rule_type: string;
-  trigger_conditions: Record<string, any>;
+  trigger_conditions: Record<string, unknown>;
   channels: string[];
   template_id: string | null;
   is_active: boolean;
@@ -58,11 +73,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
     priority: 0,
   });
 
-  useEffect(() => {
-    fetchRules();
-  }, []);
-
-  const fetchRules = async () => {
+  const fetchRules = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchWithAuth('/api/admin/notifications/rules');
@@ -73,11 +84,18 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
       const data = await response.json();
       setRules(data.rules || []);
     } catch (error) {
-      toast.error('Failed to load notification rules', error instanceof Error ? error.message : 'Unable to fetch notification rules');
+      toast.error(
+        'Failed to load notification rules',
+        error instanceof Error ? error.message : 'Unable to fetch notification rules'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRules();
+  }, [fetchRules]);
 
   const handleCreateRule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +138,10 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
       await fetchRules();
       onRuleChange?.();
     } catch (error) {
-      toast.error('Failed to create notification rule', error instanceof Error ? error.message : 'Unable to create notification rule');
+      toast.error(
+        'Failed to create notification rule',
+        error instanceof Error ? error.message : 'Unable to create notification rule'
+      );
     }
   };
 
@@ -143,7 +164,10 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
       await fetchRules();
       onRuleChange?.();
     } catch (error) {
-      toast.error('Failed to delete notification rule', error instanceof Error ? error.message : 'Unable to delete notification rule');
+      toast.error(
+        'Failed to delete notification rule',
+        error instanceof Error ? error.message : 'Unable to delete notification rule'
+      );
     }
   };
 
@@ -162,25 +186,31 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
         throw new Error(error.error || 'Failed to update rule');
       }
 
-      toast.success('Rule updated', `Rule ${!rule.is_active ? 'activated' : 'deactivated'} successfully`);
+      toast.success(
+        'Rule updated',
+        `Rule ${!rule.is_active ? 'activated' : 'deactivated'} successfully`
+      );
       await fetchRules();
       onRuleChange?.();
     } catch (error) {
-      toast.error('Failed to update rule', error instanceof Error ? error.message : 'Unable to update notification rule');
+      toast.error(
+        'Failed to update rule',
+        error instanceof Error ? error.message : 'Unable to update notification rule'
+      );
     }
   };
 
   const toggleChannel = (channel: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       channels: prev.channels.includes(channel)
-        ? prev.channels.filter(c => c !== channel)
+        ? prev.channels.filter((c) => c !== channel)
         : [...prev.channels, channel],
     }));
   };
 
   const getRuleTypeLabel = (ruleType: string) => {
-    return RULE_TYPES.find(r => r.value === ruleType)?.label || ruleType;
+    return RULE_TYPES.find((r) => r.value === ruleType)?.label || ruleType;
   };
 
   if (loading) {
@@ -192,7 +222,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Automated Notification Rules</h3>
         <button
@@ -272,7 +302,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
                     <span className="flex items-center">
                       Channels:{' '}
                       {rule.channels.map((ch, idx) => {
-                        const channelInfo = CHANNELS.find(c => c.value === ch);
+                        const channelInfo = CHANNELS.find((c) => c.value === ch);
                         const Icon = channelInfo?.icon || Bell;
                         return (
                           <span key={ch} className="ml-1 flex items-center">
@@ -343,7 +373,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="e.g., Pickup Reminder 24h Before"
                   required
@@ -354,10 +384,10 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
                 <label className="mb-1 block text-sm font-medium text-gray-700">Rule Type</label>
                 <select
                   value={formData.ruleType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ruleType: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, ruleType: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  {RULE_TYPES.map(type => (
+                  {RULE_TYPES.map((type) => (
                     <option key={type.value} value={type.value}>
                       {type.label}
                     </option>
@@ -366,23 +396,31 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Days Before Event</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Days Before Event
+                </label>
                 <input
                   type="number"
                   min="0"
                   max="30"
                   value={formData.daysBefore}
-                  onChange={(e) => setFormData(prev => ({ ...prev, daysBefore: parseInt(e.target.value) || 0 }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, daysBefore: parseInt(e.target.value) || 0 }))
+                  }
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">How many days before the event should the notification be sent?</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  How many days before the event should the notification be sent?
+                </p>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Notification Channels</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Notification Channels
+                </label>
                 <div className="mt-2 flex flex-wrap gap-3">
-                  {CHANNELS.map(channel => {
+                  {CHANNELS.map((channel) => {
                     const Icon = channel.icon;
                     const isSelected = formData.channels.includes(channel.value);
                     return (
@@ -415,17 +453,23 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
                     min="0"
                     max="10"
                     value={formData.priority}
-                    onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, priority: parseInt(e.target.value) || 0 }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Higher priority rules are processed first</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Higher priority rules are processed first
+                  </p>
                 </div>
                 <div className="flex items-center">
                   <label className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       checked={formData.isActive}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
+                      }
                       className="rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
                     />
                     <span className="text-sm font-medium text-gray-700">Active</span>
@@ -467,5 +511,3 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
     </div>
   );
 }
-
-

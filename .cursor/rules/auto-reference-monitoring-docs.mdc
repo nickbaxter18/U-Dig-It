@@ -1,0 +1,70 @@
+---
+description: "Automatically reference monitoring and analytics documentation when implementing observability"
+globs:
+  - "**/lib/analytics/**/*.{ts,tsx}"
+  - "**/lib/monitoring/**/*.{ts,tsx}"
+  - "**/lib/logger/**/*.{ts,tsx}"
+  - "**/middleware.ts"
+alwaysApply: false
+---
+
+# Monitoring & Analytics Documentation Auto-Reference
+
+When implementing monitoring and analytics, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## Application Monitoring
+- Use **@SigNoz** when:
+  - Setting up application monitoring
+  - Implementing distributed tracing
+  - Creating custom metrics
+  - Setting up alerts
+  - Analyzing performance bottlenecks
+  - Debugging production issues
+
+## OpenTelemetry Integration
+- Use **@OpenTelemetry** when:
+  - Instrumenting applications
+  - Setting up spans and traces
+  - Configuring exporters
+  - Adding custom attributes
+  - Implementing context propagation
+  - Integrating with monitoring platforms
+
+## Google Cloud Monitoring
+- Use **@https://docs.cloud.google.com/docs** when:
+  - Setting up GCP monitoring
+  - Configuring Cloud Logging
+  - Creating custom dashboards
+  - Setting up uptime checks
+  - Managing service accounts
+
+## Google OAuth2 (Authentication Analytics)
+- Use **@https://developers.google.com/identity/protocols/oauth2** when:
+  - Implementing Google OAuth2
+  - Tracking authentication events
+  - Managing OAuth tokens
+  - Setting up refresh tokens
+  - Handling OAuth errors
+
+## Example Usage Pattern
+
+```typescript
+// When setting up monitoring:
+// @SigNoz for application monitoring setup
+// @OpenTelemetry for instrumentation patterns
+
+// When implementing OAuth:
+// @https://developers.google.com/identity/protocols/oauth2
+// for OAuth2 flow and token management
+```
+
+## Monitoring Best Practices
+- **ALWAYS log errors** with context
+- **Use structured logging** for better searchability
+- **Implement distributed tracing** for microservices
+- **Set up alerts** for critical errors
+- **Monitor Core Web Vitals** in production
+- **Track user journeys** with analytics
+
+## Reminder
+**Set up monitoring EARLY** in the development process to catch issues before they reach production.

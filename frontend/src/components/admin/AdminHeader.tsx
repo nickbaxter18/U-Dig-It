@@ -1,10 +1,15 @@
 'use client';
 
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
-import { RealtimeConnectionIndicator } from './RealtimeConnectionIndicator';
-import { Bell, Menu } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Menu } from 'lucide-react';
+
 import { useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import NotificationCenter from '@/components/NotificationCenter';
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
+import { RealtimeConnectionIndicator } from './RealtimeConnectionIndicator';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -60,11 +65,7 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
           </button>
 
           {/* Notifications */}
-          <button className="relative rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-            <Bell className="h-6 w-6" />
-            {/* Notification badge */}
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"></span>
-          </button>
+          <NotificationCenter userId={user?.id} showBadge={true} />
 
           {/* User menu */}
           <div className="relative">

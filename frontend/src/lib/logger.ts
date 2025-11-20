@@ -24,7 +24,7 @@ export interface LogContext {
   requestId?: string;
   component?: string;
   action?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LogEntry {
@@ -89,7 +89,7 @@ class Logger {
   /**
    * Sanitize sensitive data from log entries
    */
-  private sanitizeData(data: any): any {
+  private sanitizeData(data: unknown): any {
     if (typeof data !== 'object' || data === null) {
       return data;
     }
@@ -113,18 +113,18 @@ class Logger {
       'driversLicense',
     ];
 
-    const sanitized = Array.isArray(data) ? [] : {};
+    const sanitized: Record<string, unknown> = Array.isArray(data) ? {} : {};
 
     for (const [key, value] of Object.entries(data)) {
       const lowerKey = key.toLowerCase();
-      const isSensitive = sensitiveKeys.some(sensitive => lowerKey.includes(sensitive));
+      const isSensitive = sensitiveKeys.some((sensitive) => lowerKey.includes(sensitive));
 
       if (isSensitive) {
-        (sanitized as any)[key] = '[REDACTED]';
+        sanitized[key] = '[REDACTED]';
       } else if (typeof value === 'object' && value !== null) {
-        (sanitized as any)[key] = this.sanitizeData(value);
+        sanitized[key] = this.sanitizeData(value);
       } else {
-        (sanitized as any)[key] = value;
+        sanitized[key] = value;
       }
     }
 
@@ -326,7 +326,7 @@ class Logger {
       'admin',
     ];
 
-    originalMethods.forEach(method => {
+    originalMethods.forEach((method) => {
       const original = (childLogger as any)[method];
       (childLogger as any)[method] = (message: string, context?: LogContext, error?: Error) => {
         const mergedContext = { ...defaultContext, ...context };

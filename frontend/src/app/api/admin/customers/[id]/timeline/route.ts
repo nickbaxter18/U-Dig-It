@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ZodError } from 'zod';
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { customerTimelineQuerySchema } from '@/lib/validators/admin/customers';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -16,12 +12,8 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const queryParams = Object.fromEntries(new URL(request.url).searchParams);
@@ -67,10 +59,7 @@ export async function GET(
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to load timeline events' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to load timeline events' }, { status: 500 });
     }
 
     const items = data ?? [];
@@ -98,5 +87,3 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

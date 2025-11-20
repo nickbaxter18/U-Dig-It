@@ -9,18 +9,21 @@
  * - Re-send to active winners as a reminder
  * - Test the full email flow
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { sendSpinWinnerEmail } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const supabase = await createClient();
 
     // Verify admin authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -46,10 +49,14 @@ export async function POST(request: NextRequest) {
       .not('email', 'is', null);
 
     if (fetchError) {
-      logger.error('Failed to fetch active sessions', {
-        component: 'send-winner-emails-api',
-        action: 'fetch_error',
-      }, fetchError);
+      logger.error(
+        'Failed to fetch active sessions',
+        {
+          component: 'send-winner-emails-api',
+          action: 'fetch_error',
+        },
+        fetchError
+      );
       return NextResponse.json({ error: 'Failed to fetch winners' }, { status: 500 });
     }
 
@@ -57,7 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         sent: 0,
-        message: 'No active unredeemed winners found'
+        message: 'No active unredeemed winners found',
       });
     }
 
@@ -106,11 +113,15 @@ export async function POST(request: NextRequest) {
           error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        logger.error('❌ Failed to send winner email', {
-          component: 'send-winner-emails-api',
-          action: 'email_failed',
-          metadata: { sessionId: session.id },
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          '❌ Failed to send winner email',
+          {
+            component: 'send-winner-emails-api',
+            action: 'email_failed',
+            metadata: { sessionId: session.id },
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
 
@@ -126,21 +137,25 @@ export async function POST(request: NextRequest) {
       failed,
       total: activeSessions.length,
       results,
-      message: `Sent ${sent} emails to active winners, ${failed} failed`
+      message: `Sent ${sent} emails to active winners, ${failed} failed`,
     });
-
   } catch (error) {
-    logger.error('❌ Batch email send error', {
-      component: 'send-winner-emails-api',
-      action: 'batch_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      '❌ Batch email send error',
+      {
+        component: 'send-winner-emails-api',
+        action: 'batch_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
-    return NextResponse.json({
-      success: false,
-      error: 'Batch email send failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Batch email send failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }
-
-

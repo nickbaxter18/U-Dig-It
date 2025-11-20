@@ -1,9 +1,11 @@
 'use client';
 
+import { AlertTriangle, DollarSign, X, XCircle } from 'lucide-react';
+
+import { useState } from 'react';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { AlertTriangle, DollarSign, X, XCircle } from 'lucide-react';
-import { useState } from 'react';
 
 interface RefundModalProps {
   payment: {
@@ -21,7 +23,7 @@ interface RefundModalProps {
 export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalProps) {
   const remainingAmount = Math.max(payment.amount - (payment.amountRefunded ?? 0), 0);
   const [refundAmount, setRefundAmount] = useState(
-    remainingAmount > 0 ? remainingAmount.toString() : '0',
+    remainingAmount > 0 ? remainingAmount.toString() : '0'
   );
   const [refundReason, setRefundReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -43,7 +45,7 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
       const amount = parseFloat(refundAmount);
       if (Number.isNaN(amount) || amount <= 0 || amount > maxRefundAmount) {
         throw new Error(
-          `Refund amount must be between $0.01 and $${Math.max(maxRefundAmount, 0).toFixed(2)}`,
+          `Refund amount must be between $0.01 and $${Math.max(maxRefundAmount, 0).toFixed(2)}`
         );
       }
 
@@ -93,11 +95,15 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
       // Close modal and refresh payments list
       onRefundComplete();
       onClose();
-    } catch (err: any) {
-      logger.error('Refund error:', {
-        component: 'RefundModal',
-        action: 'refund_error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Refund error:',
+        {
+          component: 'RefundModal',
+          action: 'refund_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message || 'Failed to process refund');
     } finally {
       setProcessing(false);
@@ -123,7 +129,11 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
               </h3>
               <p className="mt-1 text-sm text-gray-500">Booking: {payment.bookingNumber}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={processing}>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+              disabled={processing}
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -135,7 +145,8 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
               <div className="ml-3">
                 <h4 className="text-sm font-medium text-yellow-800">Important</h4>
                 <p className="mt-1 text-sm text-yellow-700">
-                  This will initiate a refund to the customer's payment method. This action cannot be undone.
+                  This will initiate a refund to the customer's payment method. This action cannot
+                  be undone.
                 </p>
               </div>
             </div>
@@ -153,8 +164,7 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
                   <strong>Original Amount:</strong> ${payment.amount.toFixed(2)}
                 </div>
                 <div>
-                  <strong>Refunded To-Date:</strong> $
-                  {(payment.amountRefunded ?? 0).toFixed(2)}
+                  <strong>Refunded To-Date:</strong> ${(payment.amountRefunded ?? 0).toFixed(2)}
                 </div>
                 <div>
                   <strong>Available to Refund:</strong> ${maxRefundAmount.toFixed(2)}
@@ -178,7 +188,7 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
                   min="0.01"
                   max={maxRefundAmount}
                   value={refundAmount}
-                  onChange={(e: any) => setRefundAmount(e.target.value)}
+                  onChange={(e: unknown) => setRefundAmount(e.target.value)}
                   disabled={processing}
                   className="block w-full rounded-md border-gray-300 pl-10 pr-12 focus:border-orange-500 focus:ring-orange-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="0.00"
@@ -220,7 +230,7 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
                 id="refundReason"
                 rows={3}
                 value={refundReason}
-                onChange={(e: any) => setRefundReason(e.target.value)}
+                onChange={(e: unknown) => setRefundReason(e.target.value)}
                 disabled={processing}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter the reason for this refund (required for audit trail)"
@@ -273,4 +283,3 @@ export function RefundModal({ payment, onClose, onRefundComplete }: RefundModalP
     </div>
   );
 }
-

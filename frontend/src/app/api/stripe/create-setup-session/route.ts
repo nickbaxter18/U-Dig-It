@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
           action: 'customer_created',
           metadata: { userId: user.id, stripeCustomerId },
         });
-      } catch (stripeError: any) {
+      } catch (stripeError: unknown) {
         logger.error(
           'Failed to create Stripe customer',
           {
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       url: session.url,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Failed to create setup session',
       {

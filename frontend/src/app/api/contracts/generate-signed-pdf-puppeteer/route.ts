@@ -2,15 +2,16 @@
  * Generate Signed Contract PDF using Puppeteer
  * Creates professional PDF with embedded signature image
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import puppeteer from 'puppeteer';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { generateSignedContractHTML } from '@/lib/contract-pdf-template-comprehensive';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { readFileSync } from 'fs';
-import { NextRequest, NextResponse } from 'next/server';
-import { join } from 'path';
-import puppeteer from 'puppeteer';
 
 export async function POST(req: NextRequest) {
   let browser;
@@ -56,11 +57,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (contractError || !contract) {
-      logger.error('Contract fetch error', {
-        component: 'api-generate-signed-pdf-puppeteer',
-        action: 'error',
-        metadata: { error: contractError?.message },
-      }, contractError || undefined);
+      logger.error(
+        'Contract fetch error',
+        {
+          component: 'api-generate-signed-pdf-puppeteer',
+          action: 'error',
+          metadata: { error: contractError?.message },
+        },
+        contractError || undefined
+      );
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
     }
 
@@ -174,7 +179,8 @@ export async function POST(req: NextRequest) {
       // Signature information
       signatureImage: signature.signature,
       signerTypedName: signature.name || `${customer.firstName} ${customer.lastName}`,
-      signerInitials: signature.initials || customer.firstName.charAt(0) + customer.lastName.charAt(0),
+      signerInitials:
+        signature.initials || customer.firstName.charAt(0) + customer.lastName.charAt(0),
       signedDate: new Date(contract.signedAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -196,17 +202,14 @@ export async function POST(req: NextRequest) {
       const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
 
       // Replace the placeholder URL with base64
-      html = html.replace(
-        "url('/images/udigit-logo.png')",
-        `url('${logoBase64}')`
-      );
+      html = html.replace("url('/images/udigit-logo.png')", `url('${logoBase64}')`);
 
       logger.debug('✅ Logo watermark embedded', {
         component: 'api-generate-signed-pdf-puppeteer',
         action: 'debug',
-        metadata: { logoSize: logoBuffer.length }
+        metadata: { logoSize: logoBuffer.length },
       });
-    } catch (error) {
+    } catch {
       logger.warn('⚠️ Could not embed logo watermark, using text watermark', {
         component: 'api-generate-signed-pdf-puppeteer',
         action: 'warn',
@@ -273,11 +276,15 @@ export async function POST(req: NextRequest) {
       });
 
     if (uploadError) {
-      logger.error('❌ Upload error', {
-        component: 'api-generate-signed-pdf-puppeteer',
-        action: 'error',
-        metadata: { error: uploadError?.message },
-      }, uploadError || undefined);
+      logger.error(
+        '❌ Upload error',
+        {
+          component: 'api-generate-signed-pdf-puppeteer',
+          action: 'error',
+          metadata: { error: uploadError?.message },
+        },
+        uploadError || undefined
+      );
       return NextResponse.json(
         {
           error: 'Failed to upload signed contract',
@@ -302,14 +309,11 @@ export async function POST(req: NextRequest) {
       .createSignedUrl(fileName, SIGNED_URL_TTL_SECONDS);
 
     if (signedError) {
-      logger.warn(
-        'Unable to create signed URL using session client',
-        {
-          component: 'api-generate-signed-pdf-puppeteer',
-          action: 'signed_url_warning',
-          metadata: { error: signedError.message },
-        }
-      );
+      logger.warn('Unable to create signed URL using session client', {
+        component: 'api-generate-signed-pdf-puppeteer',
+        action: 'signed_url_warning',
+        metadata: { error: signedError.message },
+      });
     } else {
       signedUrl = signedData?.signedUrl ?? null;
     }
@@ -352,11 +356,15 @@ export async function POST(req: NextRequest) {
       .eq('id', contractId);
 
     if (updateError) {
-      logger.error('Contract update error', {
-        component: 'api-generate-signed-pdf-puppeteer',
-        action: 'error',
-        metadata: { error: updateError?.message },
-      }, updateError || undefined);
+      logger.error(
+        'Contract update error',
+        {
+          component: 'api-generate-signed-pdf-puppeteer',
+          action: 'error',
+          metadata: { error: updateError?.message },
+        },
+        updateError || undefined
+      );
       return NextResponse.json({ error: 'Failed to update contract' }, { status: 500 });
     }
 
@@ -370,23 +378,31 @@ export async function POST(req: NextRequest) {
       contractUrl: signedUrl,
       fileName,
     });
-  } catch (error: any) {
-    logger.error('Error generating signed PDF', {
-      component: 'api-generate-signed-pdf-puppeteer',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) },
-    }, error instanceof Error ? error : undefined);
+  } catch (error: unknown) {
+    logger.error(
+      'Error generating signed PDF',
+      {
+        component: 'api-generate-signed-pdf-puppeteer',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
 
     // Cleanup browser if still open
     if (browser) {
       try {
         await browser.close();
       } catch (e) {
-        logger.error('Error closing browser', {
-          component: 'api-generate-signed-pdf-puppeteer',
-          action: 'error',
-          metadata: { error: e instanceof Error ? e.message : String(e) },
-        }, e instanceof Error ? e : undefined);
+        logger.error(
+          'Error closing browser',
+          {
+            component: 'api-generate-signed-pdf-puppeteer',
+            action: 'error',
+            metadata: { error: e instanceof Error ? e.message : String(e) },
+          },
+          e instanceof Error ? e : undefined
+        );
       }
     }
 

@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+
 import { logger } from '@/lib/logger';
 
 // Configure DOMPurify for safe HTML sanitization
@@ -82,10 +83,14 @@ export function setSafeInnerHTML(element: HTMLElement, html: string): void {
     element.textContent = sanitizedHTML.replace(/<[^>]*>/g, '');
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Failed to set content:', {
-        component: 'html-sanitizer',
-        action: 'warning',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to set content:',
+        {
+          component: 'html-sanitizer',
+          action: 'warning',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     // Ultimate fallback: use textContent
     element.textContent = sanitizedHTML.replace(/<[^>]*>/g, '');
@@ -101,17 +106,33 @@ export function createTrustedHTMLPolicy() {
   }
 
   try {
-    return (window as any).trustedTypes.createPolicy('udigit-rentals', {
+    return (
+      window as unknown as {
+        trustedTypes?: {
+          createPolicy: (
+            name: string,
+            config: {
+              createHTML: (input: string) => string;
+              createScript: (input: string) => string;
+            }
+          ) => unknown;
+        };
+      }
+    ).trustedTypes?.createPolicy('udigit-rentals', {
       createHTML: (input: string) => sanitizeHTML(input),
       createScript: (input: string) => input, // Scripts are not allowed
       createScriptURL: (input: string) => input, // Script URLs are not allowed
     });
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Failed to create TrustedHTML policy:', {
-        component: 'html-sanitizer',
-        action: 'warning',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to create TrustedHTML policy:',
+        {
+          component: 'html-sanitizer',
+          action: 'warning',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     return null;
   }
@@ -140,8 +161,29 @@ export function createSafeInnerHTML(html: string): { __html: string } {
     // But we need to ensure it doesn't trigger TrustedHTML errors
     try {
       // Try to create a TrustedHTML policy if available
-      if (typeof window !== 'undefined' && (window as any).trustedTypes) {
-        const policy = (window as any).trustedTypes.createPolicy('udigit-rentals', {
+      if (
+        typeof window !== 'undefined' &&
+        (
+          window as unknown as {
+            trustedTypes?: {
+              createPolicy: (
+                name: string,
+                config: { createHTML: (input: string) => string }
+              ) => unknown;
+            };
+          }
+        ).trustedTypes
+      ) {
+        const policy = (
+          window as unknown as {
+            trustedTypes: {
+              createPolicy: (
+                name: string,
+                config: { createHTML: (input: string) => string }
+              ) => unknown;
+            };
+          }
+        ).trustedTypes.createPolicy('udigit-rentals', {
           createHTML: function (input: string) {
             return input; // For structured data, we trust it
           },
@@ -152,10 +194,14 @@ export function createSafeInnerHTML(html: string): { __html: string } {
     } catch (error) {
       // If TrustedHTML fails, fall back to regular HTML
       if (process.env.NODE_ENV === 'development') {
-        logger.error('TrustedHTML policy creation failed:', {
-          component: 'html-sanitizer',
-          action: 'warning',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'TrustedHTML policy creation failed:',
+          {
+            component: 'html-sanitizer',
+            action: 'warning',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
 
@@ -175,15 +221,23 @@ export function initializeTrustedHTMLPolicy(): void {
 
   try {
     // Create the policy if it doesn't exist
-    if ('trustedTypes' in window && !(window as any).trustedTypes.defaultPolicy) {
+    if (
+      'trustedTypes' in window &&
+      !(window as unknown as { trustedTypes?: { defaultPolicy?: unknown } }).trustedTypes
+        ?.defaultPolicy
+    ) {
       createTrustedHTMLPolicy();
     }
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Failed to initialize TrustedHTML policy:', {
-        component: 'html-sanitizer',
-        action: 'warning',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to initialize TrustedHTML policy:',
+        {
+          component: 'html-sanitizer',
+          action: 'warning',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 }

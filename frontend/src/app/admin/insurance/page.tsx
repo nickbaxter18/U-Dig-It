@@ -1,8 +1,5 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   AlertTriangle,
   CheckCircle,
@@ -10,11 +7,15 @@ import {
   Download,
   Eye,
   FileText,
-  Search,
   Shield,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface InsuranceDocument {
   id: string;
@@ -49,11 +50,7 @@ export default function InsurancePage() {
   const [reviewNotes, setReviewNotes] = useState('');
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [statusFilter, typeFilter]);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -97,10 +94,11 @@ export default function InsurancePage() {
 
       if (queryError) throw queryError;
 
-      const docsData: InsuranceDocument[] = (data || []).map((doc: any) => {
+      const docsData: InsuranceDocument[] = (data || []).map((doc: unknown) => {
         const booking = doc.booking || {};
         const customer = booking.customer || {};
-        const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
+        const customerName =
+          `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
 
         return {
           id: doc.id,
@@ -114,7 +112,9 @@ export default function InsurancePage() {
           policyNumber: doc.policyNumber,
           effectiveDate: doc.effectiveDate ? new Date(doc.effectiveDate) : undefined,
           expiresAt: doc.expiresAt ? new Date(doc.expiresAt) : undefined,
-          generalLiabilityLimit: doc.generalLiabilityLimit ? parseFloat(doc.generalLiabilityLimit) : undefined,
+          generalLiabilityLimit: doc.generalLiabilityLimit
+            ? parseFloat(doc.generalLiabilityLimit)
+            : undefined,
           equipmentLimit: doc.equipmentLimit ? parseFloat(doc.equipmentLimit) : undefined,
           fileUrl: doc.fileUrl,
           fileName: doc.fileName,
@@ -127,12 +127,20 @@ export default function InsurancePage() {
 
       setDocuments(docsData);
     } catch (err) {
-      logger.error('Failed to fetch insurance documents', { component: 'InsurancePage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to fetch insurance documents',
+        { component: 'InsurancePage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to fetch insurance documents');
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, typeFilter]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
 
   const handleApprove = async () => {
     if (!selectedDoc) return;
@@ -174,7 +182,11 @@ export default function InsurancePage() {
       await fetchDocuments();
       alert('✅ Insurance document approved!');
     } catch (err) {
-      logger.error('Failed to approve document', {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to approve document',
+        {},
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to approve document');
     }
   };
@@ -215,7 +227,11 @@ export default function InsurancePage() {
       await fetchDocuments();
       alert('❌ Insurance document rejected. Customer will be notified.');
     } catch (err) {
-      logger.error('Failed to reject document', {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to reject document',
+        {},
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to reject document');
     }
   };
@@ -308,10 +324,10 @@ export default function InsurancePage() {
     }
   };
 
-  const pendingCount = documents.filter(d => d.status === 'pending').length;
-  const underReviewCount = documents.filter(d => d.status === 'under_review').length;
-  const approvedCount = documents.filter(d => d.status === 'approved').length;
-  const rejectedCount = documents.filter(d => d.status === 'rejected').length;
+  const pendingCount = documents.filter((d) => d.status === 'pending').length;
+  const underReviewCount = documents.filter((d) => d.status === 'under_review').length;
+  const approvedCount = documents.filter((d) => d.status === 'approved').length;
+  const rejectedCount = documents.filter((d) => d.status === 'rejected').length;
 
   if (loading) {
     return (
@@ -395,7 +411,7 @@ export default function InsurancePage() {
       <div className="flex flex-wrap items-center gap-4 rounded-lg bg-white p-4 shadow-sm">
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
@@ -408,7 +424,7 @@ export default function InsurancePage() {
 
         <select
           value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
+          onChange={(e) => setTypeFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Types</option>
@@ -449,13 +465,15 @@ export default function InsurancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {documents.map(doc => (
+              {documents.map((doc) => (
                 <tr key={doc.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
                       <Shield className="mr-2 h-5 w-5 text-kubota-orange" />
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{doc.documentNumber}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {doc.documentNumber}
+                        </div>
                         <div className="text-sm text-gray-500">{getTypeLabel(doc.type)}</div>
                       </div>
                     </div>
@@ -638,7 +656,9 @@ export default function InsurancePage() {
                       <div className="flex items-center">
                         <FileText className="mr-2 h-6 w-6 text-kubota-orange" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{selectedDoc.fileName}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {selectedDoc.fileName}
+                          </p>
                           <p className="text-xs text-gray-500">Click to view full document</p>
                         </div>
                       </div>
@@ -660,7 +680,7 @@ export default function InsurancePage() {
                   </label>
                   <textarea
                     value={reviewNotes}
-                    onChange={e => setReviewNotes(e.target.value)}
+                    onChange={(e) => setReviewNotes(e.target.value)}
                     rows={4}
                     placeholder="Add notes about this insurance document..."
                     className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"

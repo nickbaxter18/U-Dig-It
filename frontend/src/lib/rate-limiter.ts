@@ -6,10 +6,10 @@
  *
  * @module rate-limiter
  */
-
 import { createHash } from 'node:crypto';
 
 import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from './logger';
 
 type RateLimitConfig = {
@@ -232,7 +232,7 @@ export async function rateLimit(
   }
 
   // Clean up old requests outside the window
-  tokenCount = tokenCount.filter((timestamp: any) => timestamp > windowStart);
+  tokenCount = tokenCount.filter((timestamp: unknown) => timestamp > windowStart);
 
   // Add current request
   tokenCount.push(now);
@@ -316,7 +316,9 @@ export async function shouldSkipRateLimit(_req: NextRequest): Promise<boolean> {
     const { createClient } = await import('./supabase/server');
     const supabase = await createClient();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return false;
 
     // Check if user is admin or super_admin
@@ -332,7 +334,7 @@ export async function shouldSkipRateLimit(_req: NextRequest): Promise<boolean> {
       logger.info('Admin user bypassing rate limit', {
         component: 'rate-limiter',
         action: 'admin_bypass',
-        metadata: { userId: user.id, role: userData?.role }
+        metadata: { userId: user.id, role: userData?.role },
       });
     }
 

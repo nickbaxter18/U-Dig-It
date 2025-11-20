@@ -1,12 +1,17 @@
 'use client';
 
-import { formatCurrency, formatDate } from '@/lib/utils';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
+
+import Link from 'next/link';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
+import { logger } from '@/lib/logger';
+import { formatCurrency, formatDate } from '@/lib/utils';
+
 import AnalyticsDashboard from './AnalyticsDashboard';
 import LiveBookingStatus from './LiveBookingStatus';
 import NotificationCenter from './NotificationCenter';
-import { logger } from '@/lib/logger';
 
 interface AdminStats {
   totalBookings: number;
@@ -55,13 +60,14 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'revenue' | 'equipment'>(
+  const [_activeTab, _setActiveTab] = useState<'overview' | 'bookings' | 'revenue' | 'equipment'>(
     'overview'
-  );
+  ); // Reserved for future tab functionality
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
 
   useEffect(() => {
@@ -182,10 +188,14 @@ export default function AdminDashboard() {
       setRecentActivity(mockActivity);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch admin data:', {
-          component: 'AdminDashboard',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to fetch admin data:',
+          {
+            component: 'AdminDashboard',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     } finally {
       setLoading(false);
@@ -249,7 +259,7 @@ export default function AdminDashboard() {
         <div className="animate-pulse">
           <div className="mb-6 h-8 rounded bg-gray-200"></div>
           <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
-            {[1, 2, 3, 4].map(i => (
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="h-24 rounded bg-gray-200"></div>
             ))}
           </div>
@@ -270,7 +280,7 @@ export default function AdminDashboard() {
               Manage bookings, track revenue, and monitor equipment performance
             </p>
           </div>
-          <NotificationCenter showBadge={true} />
+          <NotificationCenter userId={user?.id} showBadge={true} />
         </div>
       </div>
 
@@ -280,7 +290,9 @@ export default function AdminDashboard() {
           <label className="text-sm font-medium text-gray-700">Time Period:</label>
           <select
             value={dateRange}
-            onChange={e => setDateRange(e.target.value as any)}
+            onChange={(e) =>
+              setDateRange(e.target.value as 'today' | 'week' | 'month' | 'quarter' | 'year')
+            }
             className="rounded-md border border-gray-300 px-3 py-1 text-sm"
           >
             <option value="7d">Last 7 days</option>
@@ -483,7 +495,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {bookings.map(booking => (
+              {bookings.map((booking) => (
                 <div
                   key={booking.id}
                   className="rounded-lg border border-gray-200 p-4 hover:bg-gray-50"
@@ -548,7 +560,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {recentActivity.map(activity => (
+              {recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
                     <span className="text-2xl">{getActivityIcon(activity.type)}</span>

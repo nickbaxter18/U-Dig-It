@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 export async function GET(request: NextRequest) {
   const paymentId = request.nextUrl.searchParams.get('paymentId');
@@ -18,12 +18,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data: payment, error: paymentError } = await supabase
@@ -44,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (!payment.stripePaymentIntentId && !payment.stripeCheckoutSessionId) {
       return NextResponse.json(
         { error: 'Payment is not linked to Stripe (missing payment intent and checkout session)' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -54,9 +50,7 @@ export async function GET(request: NextRequest) {
 
     try {
       if (payment.stripePaymentIntentId) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(
-          payment.stripePaymentIntentId,
-        );
+        const paymentIntent = await stripe.paymentIntents.retrieve(payment.stripePaymentIntentId);
         const baseUrl = paymentIntent.livemode
           ? 'https://dashboard.stripe.com'
           : 'https://dashboard.stripe.com/test';
@@ -72,9 +66,7 @@ export async function GET(request: NextRequest) {
           },
         });
       } else if (payment.stripeCheckoutSessionId) {
-        const session = await stripe.checkout.sessions.retrieve(
-          payment.stripeCheckoutSessionId,
-        );
+        const session = await stripe.checkout.sessions.retrieve(payment.stripeCheckoutSessionId);
 
         const baseUrl = session.livemode
           ? 'https://dashboard.stripe.com'
@@ -97,7 +89,7 @@ export async function GET(request: NextRequest) {
           },
         });
       }
-    } catch (stripeError: any) {
+    } catch (stripeError: unknown) {
       logger.warn('Unable to retrieve Stripe resource, falling back to heuristic URL', {
         component: 'admin-stripe-link-api',
         action: 'stripe_lookup_fallback',
@@ -111,7 +103,9 @@ export async function GET(request: NextRequest) {
 
       const fallbackBase = (() => {
         const identifier = payment.stripePaymentIntentId || payment.stripeCheckoutSessionId || '';
-        return identifier.includes('test') || identifier.startsWith('pi_test_') || identifier.startsWith('cs_test_')
+        return identifier.includes('test') ||
+          identifier.startsWith('pi_test_') ||
+          identifier.startsWith('cs_test_')
           ? 'https://dashboard.stripe.com/test'
           : 'https://dashboard.stripe.com';
       })();
@@ -124,19 +118,17 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ url: dashboardUrl });
-  } catch (error: any) {
-    logger.error('Stripe dashboard link error', {
-      component: 'admin-stripe-link-api',
-      action: 'error',
-      metadata: { paymentId, error: error?.message },
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
+  } catch (error: unknown) {
+    logger.error(
+      'Stripe dashboard link error',
+      {
+        component: 'admin-stripe-link-api',
+        action: 'error',
+        metadata: { paymentId, error: error?.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-

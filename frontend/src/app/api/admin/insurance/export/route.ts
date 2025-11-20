@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 function formatCsvValue(value: unknown) {
   const asString = value === null || value === undefined ? '' : String(value);
@@ -15,12 +16,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -87,10 +84,12 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const rows = (data ?? []).map((record: any) => {
+    const rows = (data ?? []).map((record: unknown) => {
       const booking = record.booking ?? {};
-      const customer = (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
-      const customerName = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Unknown';
+      const customer =
+        (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
+      const customerName =
+        `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Unknown';
 
       return [
         record.documentNumber ?? 'N/A',
@@ -116,7 +115,7 @@ export async function GET(request: NextRequest) {
       ];
     });
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `insurance-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {
@@ -138,5 +137,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to export insurance documents' }, { status: 500 });
   }
 }
-
-

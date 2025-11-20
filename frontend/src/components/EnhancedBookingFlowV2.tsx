@@ -1,7 +1,6 @@
 'use client';
 
-import { checkAvailability, createBooking, type BookingFormData } from '@/app/book/actions';
-import { calculateRentalCost, formatCurrency } from '@/lib/utils';
+import { type BookingFormData, checkAvailability, createBooking } from '@/app/book/actions';
 import {
   AlertCircle,
   Calendar,
@@ -11,8 +10,13 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react';
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
+import { calculateRentalCost, formatCurrency } from '@/lib/utils';
+
 import GuestCheckout from './GuestCheckout';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -130,7 +134,7 @@ export default function EnhancedBookingFlowV2({
   const [, startSubmitTransition] = useTransition();
 
   const selectedArea = useMemo(
-    () => SERVICE_AREAS.find(area => area.value === formData.deliveryCity),
+    () => SERVICE_AREAS.find((area) => area.value === formData.deliveryCity),
     [formData.deliveryCity]
   );
 
@@ -240,13 +244,13 @@ export default function EnhancedBookingFlowV2({
         if (availability.available) {
           availableSuggestions.push(suggestion);
         }
-      } catch (_error) {
+      } catch {
         // If we can't check availability, include the suggestion anyway
         availableSuggestions.push(suggestion);
       }
     }
 
-    return availableSuggestions.sort((a: any, b: any) => {
+    return availableSuggestions.sort((a: unknown, b: unknown) => {
       const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
     });
@@ -278,7 +282,7 @@ export default function EnhancedBookingFlowV2({
           });
           return false;
         }
-      } catch (_error) {
+      } catch {
         setAvailabilityState({
           status: 'error',
           message: 'Failed to check availability. Please try again.',
@@ -286,7 +290,7 @@ export default function EnhancedBookingFlowV2({
         return false;
       }
     },
-    []
+    [generateAlternativeDates] // checkAvailability is stable, doesn't need to be in deps
   );
 
   /**
@@ -325,7 +329,7 @@ export default function EnhancedBookingFlowV2({
                 reason: `${offset} day${offset > 1 ? 's' : ''} earlier`,
               });
             }
-          } catch (_error) {
+          } catch {
             // Continue if availability check fails
           }
         }
@@ -348,7 +352,7 @@ export default function EnhancedBookingFlowV2({
               reason: `${offset} day${offset > 1 ? 's' : ''} later`,
             });
           }
-        } catch (_error) {
+        } catch {
           // Continue if availability check fails
         }
       }
@@ -454,7 +458,7 @@ export default function EnhancedBookingFlowV2({
 
   const handleGuestCheckout = (guest: GuestData) => {
     setGuestData(guest);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       customerName: `${guest.firstName} ${guest.lastName}`,
       customerEmail: guest.email,
@@ -484,7 +488,7 @@ export default function EnhancedBookingFlowV2({
         } else {
           setSubmitError(result.error || 'Failed to create booking. Please try again.');
         }
-      } catch (_error) {
+      } catch {
         setSubmitError('An unexpected error occurred. Please try again.');
       } finally {
         setIsLoading(false);
@@ -493,7 +497,7 @@ export default function EnhancedBookingFlowV2({
   };
 
   const handleSuggestionClick = (suggestion: SmartSuggestion) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       startDate: suggestion.startDate,
       endDate: suggestion.endDate,
@@ -504,7 +508,7 @@ export default function EnhancedBookingFlowV2({
   const handleAlternativeClick = (
     alternative: NonNullable<AvailabilityResult['alternatives']>[0]
   ) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       startDate: alternative.startDate,
       endDate: alternative.endDate,
@@ -540,7 +544,7 @@ export default function EnhancedBookingFlowV2({
               <div className="space-y-2">
                 <p className="text-sm font-medium text-gray-700">Available alternatives:</p>
                 <div className="space-y-2">
-                  {availabilityState.alternatives.map((alt: any, index: any) => (
+                  {availabilityState.alternatives.map((alt: unknown, index: unknown) => (
                     <button
                       key={index}
                       onClick={() => handleAlternativeClick(alt)}
@@ -583,7 +587,7 @@ export default function EnhancedBookingFlowV2({
           <span className="text-sm font-medium text-gray-700">Smart Suggestions</span>
         </div>
         <div className="grid grid-cols-1 gap-2">
-          {smartSuggestions.map((suggestion: any, index: any) => {
+          {smartSuggestions.map((suggestion: unknown, index: unknown) => {
             const Icon = suggestion.icon;
             return (
               <button
@@ -624,7 +628,7 @@ export default function EnhancedBookingFlowV2({
       {progressIndicator !== 'none' && (
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            {[1, 2, 3, 4, 5].map(stepNumber => (
+            {[1, 2, 3, 4, 5].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
@@ -667,7 +671,7 @@ export default function EnhancedBookingFlowV2({
                 type="date"
                 id="startDate"
                 value={formData.startDate}
-                onChange={e => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
                 className="focus:ring-kubota-orange focus:border-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2"
                 min={new Date().toISOString().split('T')[0]}
               />
@@ -682,7 +686,7 @@ export default function EnhancedBookingFlowV2({
                 type="date"
                 id="endDate"
                 value={formData.endDate}
-                onChange={e => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
                 className="focus:ring-kubota-orange focus:border-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2"
                 min={formData.startDate || new Date().toISOString().split('T')[0]}
               />

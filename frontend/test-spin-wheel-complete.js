@@ -19,14 +19,14 @@ const TEST_CONFIG = {
 };
 
 // Expected outcomes
-const EXPECTED_OUTCOMES = {
+const _EXPECTED_OUTCOMES = { // Reserved for future test validation
   spin1: { outcome: 'try_again', color: 'gray', label: 'Try Again' },
   spin2: { outcome: 'try_again', color: 'gray', label: 'Try Again' },
   spin3: { outcome: 'prize', color: ['green', 'orange', 'red'], label: ['5%', '10%', '15%'] },
 };
 
 // Slice configuration (must match SpinWheel.tsx)
-const WHEEL_SLICES = [
+const _WHEEL_SLICES = [ // Reserved for future test validation
   { id: 'try_again', label: 'Try Again', color: '#6B7280' },
   { id: '5%', label: '5%', color: '#10B981' },
   { id: '10%', label: '10%', color: '#F59E0B' },
@@ -57,8 +57,8 @@ function ensureScreenshotDir() {
   }
 }
 
-// Utility: Calculate which slice is at top given rotation
-function calculateSliceAtTop(rotation) {
+// Utility: Calculate which slice is at top given rotation (reserved for future test validation)
+function _calculateSliceAtTop(rotation) {
   const normalized = ((rotation % 360) + 360) % 360;
   return Math.round((360 - normalized) / 30) % 12;
 }

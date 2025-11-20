@@ -1,9 +1,11 @@
+import { z } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
-import { ZodError } from 'zod';
+
+// import { ZodError } from 'zod'; // Reserved for future validation error handling
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { z } from 'zod';
 
 const notificationRuleCreateSchema = z.object({
   name: z.string().min(1).max(200),
@@ -28,7 +30,7 @@ const notificationRuleCreateSchema = z.object({
   priority: z.number().int().default(0),
 });
 
-const notificationRuleUpdateSchema = notificationRuleCreateSchema.partial();
+const _notificationRuleUpdateSchema = notificationRuleCreateSchema.partial();
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,12 +40,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -67,13 +65,11 @@ export async function GET(request: NextRequest) {
     const { data, error: fetchError } = await query;
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch notification rules',
-        { component: 'admin-notification-rules', action: 'fetch_failed' });
-      return NextResponse.json(
-        { error: 'Unable to fetch notification rules' },
-        { status: 500 }
-      );
+      logger.error('Failed to fetch notification rules', {
+        component: 'admin-notification-rules',
+        action: 'fetch_failed',
+      });
+      return NextResponse.json({ error: 'Unable to fetch notification rules' }, { status: 500 });
     }
 
     return NextResponse.json({ rules: data ?? [] });
@@ -95,19 +91,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const payload = notificationRuleCreateSchema.parse(body);
@@ -137,10 +129,7 @@ export async function POST(request: NextRequest) {
         },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to create notification rule' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create notification rule' }, { status: 500 });
     }
 
     logger.info('Notification rule created', {
@@ -163,11 +152,6 @@ export async function POST(request: NextRequest) {
       { component: 'admin-notification-rules', action: 'create_unexpected' },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

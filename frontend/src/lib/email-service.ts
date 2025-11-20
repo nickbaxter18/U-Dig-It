@@ -6,15 +6,50 @@ import sgMail from '@sendgrid/mail';
 
 import { escapeHtml, getEmailLogoImgSrc, renderEmailLayout } from './email-template';
 import { logger } from './logger';
+import { getSendGridApiKey } from './secrets/email';
 
-// Initialize SendGrid with API key from environment
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  logger.warn('SENDGRID_API_KEY not found in environment variables', {
-    component: 'email-service',
-    action: 'init_warning',
-  });
+let apiKeyConfigured = false;
+let cachedApiKey: string | null = null;
+
+async function ensureApiKeyConfigured() {
+  if (apiKeyConfigured && cachedApiKey) return;
+
+  try {
+    // Use the proper secrets loader that checks Supabase Edge Functions and system_config
+    const apiKey = await getSendGridApiKey();
+
+    if (!apiKey || apiKey.trim().length === 0) {
+      logger.error('SendGrid API key is empty', {
+        component: 'email-service',
+        action: 'api_key_empty',
+      });
+      throw new Error(
+        'SendGrid API key is empty. Please set a valid EMAIL_API_KEY in Supabase Edge Function secrets, .env.local, or system_config table.'
+      );
+    }
+
+    sgMail.setApiKey(apiKey);
+    cachedApiKey = apiKey;
+    apiKeyConfigured = true;
+    logger.info('SendGrid API key configured successfully', {
+      component: 'email-service',
+      action: 'api_key_configured',
+      metadata: {
+        keyLength: apiKey.length,
+        source: 'secrets-loader', // The getSendGridApiKey function logs the actual source
+      },
+    });
+  } catch (error) {
+    logger.error(
+      'Failed to configure SendGrid API key',
+      {
+        component: 'email-service',
+        action: 'api_key_configure_failed',
+      },
+      error as Error
+    );
+    throw error;
+  }
 }
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
@@ -226,6 +261,7 @@ export async function sendBookingConfirmationEmail(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Booking confirmation email sent', {
       component: 'email-service',
@@ -235,17 +271,28 @@ export async function sendBookingConfirmationEmail(
 
     return { success: true, messageId: 'sent' };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails =
+      error instanceof Error && 'response' in error ? (error as any).response?.body : undefined;
+
     logger.error(
       'Failed to send booking confirmation email',
       {
         component: 'email-service',
         action: 'booking_confirmation_error',
+        metadata: {
+          to: customer.email,
+          bookingNumber: booking.bookingNumber,
+          error: errorMessage,
+          errorDetails,
+          errorType: error?.constructor?.name,
+        },
       },
       error as Error
     );
 
     throw new Error(
-      `Failed to send booking confirmation email: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to send booking confirmation email: ${errorMessage}${errorDetails ? ` - ${JSON.stringify(errorDetails)}` : ''}`
     );
   }
 }
@@ -430,6 +477,7 @@ export async function sendPaymentReceiptEmail(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Payment receipt email sent', {
       component: 'email-service',
@@ -543,6 +591,7 @@ export async function sendSpinWinnerEmail(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Spin-to-Win winner email sent', {
       component: 'email-service',
@@ -653,6 +702,7 @@ export async function sendSpinExpiryReminder(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Spin-to-Win expiry reminder sent', {
       component: 'email-service',
@@ -800,6 +850,7 @@ The U-Dig It Rentals Team
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Lead magnet email sent', {
       component: 'email-service',
@@ -947,6 +998,7 @@ export async function sendAdminBookingNotification(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Admin booking notification sent', {
       component: 'email-service',
@@ -1072,6 +1124,7 @@ export async function sendBookingCompletionEmail(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Booking completion email sent to customer', {
       component: 'email-service',
@@ -1206,6 +1259,7 @@ export async function sendAdminBookingCompletedNotification(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Admin booking completed notification sent', {
       component: 'email-service',
@@ -1683,6 +1737,7 @@ export async function sendInvoicePaymentConfirmation(
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
 
     logger.info('Invoice payment confirmation sent', {
@@ -1803,7 +1858,7 @@ export async function sendSecurityHoldReminderEmail(params: {
     '- The hold will be placed automatically 48 hours before pickup',
     '- This is an authorization hold, not a charge',
     '- The hold will be released when equipment is returned clean',
-    '- If there\'s damage or fees, we\'ll only charge what\'s needed',
+    "- If there's damage or fees, we'll only charge what's needed",
     '',
     `Booking Number: ${params.bookingNumber}`,
     `Pickup Date: ${startDateText}`,
@@ -1828,6 +1883,7 @@ export async function sendSecurityHoldReminderEmail(params: {
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Security hold reminder email sent', {
       component: 'email-service',
@@ -1863,7 +1919,10 @@ export async function sendSecurityHoldReleaseEmail(params: {
   amountReleased: number;
 }): Promise<void> {
   const greetingName = params.firstName ? escapeHtml(params.firstName) : 'there';
-  const formattedAmount = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(params.amountReleased);
+  const formattedAmount = new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+  }).format(params.amountReleased);
   const safeAmount = escapeHtml(formattedAmount);
   const safeBookingNumber = escapeHtml(params.bookingNumber);
   const appUrl =
@@ -1943,6 +2002,7 @@ export async function sendSecurityHoldReleaseEmail(params: {
   };
 
   try {
+    await ensureApiKeyConfigured();
     await sgMail.send(msg);
     logger.info('Security hold release email sent', {
       component: 'email-service',
@@ -1988,6 +2048,7 @@ export async function sendTestEmail(toEmail: string) {
   };
 
   try {
+    ensureApiKeyConfigured();
     const response = await sgMail.send(msg);
     logger.info('Test email sent successfully', {
       component: 'email-service',

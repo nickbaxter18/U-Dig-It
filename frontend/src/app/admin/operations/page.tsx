@@ -1,11 +1,17 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client'; // Added Supabase import
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import { AlertTriangle, Calendar, CheckCircle, MapPin, Truck, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+
 import { useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { PermissionGate } from '@/components/admin/PermissionGate';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+// Added Supabase import
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface Delivery {
   id: string;
@@ -49,7 +55,7 @@ export default function OperationsManagement() {
   const [assigningDelivery, setAssigningDelivery] = useState<Delivery | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
-  const router = useRouter();
+  const _router = useRouter(); // Reserved for future navigation
 
   useEffect(() => {
     fetchOperationsData();
@@ -98,55 +104,57 @@ export default function OperationsManagement() {
       if (bookingsError) throw bookingsError;
 
       // Transform bookings to Delivery format
-      const deliveriesData: Delivery[] = ((bookingsData || []) as any[]).map((booking: any) => {
-        const firstName = booking.customer?.firstName || '';
-        const lastName = booking.customer?.lastName || '';
-        const customerName =
-          `${firstName} ${lastName}`.trim() || booking.customer?.email || 'Unknown Customer';
+      const deliveriesData: Delivery[] = ((bookingsData || []) as unknown[]).map(
+        (booking: unknown) => {
+          const firstName = booking.customer?.firstName || '';
+          const lastName = booking.customer?.lastName || '';
+          const customerName =
+            `${firstName} ${lastName}`.trim() || booking.customer?.email || 'Unknown Customer';
 
-        // Map booking status to delivery status
-        let deliveryStatus: Delivery['status'] = 'scheduled';
-        switch (booking.status) {
-          case 'confirmed':
-          case 'paid':
-          case 'insurance_verified':
-          case 'ready_for_pickup':
-            deliveryStatus = 'scheduled';
-            break;
-          case 'delivered':
-            deliveryStatus = 'delivered';
-            break;
-          case 'in_progress':
-            deliveryStatus = 'in_transit';
-            break;
-          case 'completed':
-            deliveryStatus = 'completed';
-            break;
-          case 'cancelled':
-            deliveryStatus = 'cancelled';
-            break;
+          // Map booking status to delivery status
+          let deliveryStatus: Delivery['status'] = 'scheduled';
+          switch (booking.status) {
+            case 'confirmed':
+            case 'paid':
+            case 'insurance_verified':
+            case 'ready_for_pickup':
+              deliveryStatus = 'scheduled';
+              break;
+            case 'delivered':
+              deliveryStatus = 'delivered';
+              break;
+            case 'in_progress':
+              deliveryStatus = 'in_transit';
+              break;
+            case 'completed':
+              deliveryStatus = 'completed';
+              break;
+            case 'cancelled':
+              deliveryStatus = 'cancelled';
+              break;
+          }
+
+          const fullAddress =
+            `${booking.deliveryAddress || ''}, ${booking.deliveryCity || ''}, ${booking.deliveryProvince || 'NB'} ${booking.deliveryPostalCode || ''}`.trim();
+
+          return {
+            id: booking.id,
+            bookingId: booking.id,
+            bookingNumber: booking.bookingNumber,
+            customerName,
+            customerPhone: booking.customer?.phone || 'N/A',
+            equipmentName: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
+            deliveryAddress: fullAddress,
+            scheduledDate: new Date(booking.startDate),
+            status: deliveryStatus,
+            estimatedDuration: 45, // Default estimation
+            specialInstructions: booking.specialInstructions || undefined,
+            deliveryNotes: booking.internalNotes || undefined,
+            pickupDate: new Date(booking.endDate),
+            pickupAddress: fullAddress, // Same address for pickup
+          };
         }
-
-        const fullAddress =
-          `${booking.deliveryAddress || ''}, ${booking.deliveryCity || ''}, ${booking.deliveryProvince || 'NB'} ${booking.deliveryPostalCode || ''}`.trim();
-
-        return {
-          id: booking.id,
-          bookingId: booking.id,
-          bookingNumber: booking.bookingNumber,
-          customerName,
-          customerPhone: booking.customer?.phone || 'N/A',
-          equipmentName: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
-          deliveryAddress: fullAddress,
-          scheduledDate: new Date(booking.startDate),
-          status: deliveryStatus,
-          estimatedDuration: 45, // Default estimation
-          specialInstructions: booking.specialInstructions || undefined,
-          deliveryNotes: booking.internalNotes || undefined,
-          pickupDate: new Date(booking.endDate),
-          pickupAddress: fullAddress, // Same address for pickup
-        };
-      });
+      );
 
       setDeliveries(deliveriesData);
 
@@ -165,23 +173,29 @@ export default function OperationsManagement() {
         setDrivers([]);
       } else {
         // Transform to Driver format
-        const transformedDrivers: Driver[] = ((driversData || []) as any[]).map((driver: any) => ({
-          id: driver.id,
-          name: driver.name,
-          phone: driver.phone || 'N/A',
-          licenseNumber: driver.license_number || 'N/A',
-          isAvailable: driver.is_available,
-          currentLocation: driver.current_location || undefined,
-          activeDeliveries: driver.active_deliveries || 0,
-        }));
+        const transformedDrivers: Driver[] = ((driversData || []) as unknown[]).map(
+          (driver: unknown) => ({
+            id: driver.id,
+            name: driver.name,
+            phone: driver.phone || 'N/A',
+            licenseNumber: driver.license_number || 'N/A',
+            isAvailable: driver.is_available,
+            currentLocation: driver.current_location || undefined,
+            activeDeliveries: driver.active_deliveries || 0,
+          })
+        );
         setDrivers(transformedDrivers);
       }
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch operations data:', {
-          component: 'app-page',
-          action: 'error',
-        }, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          'Failed to fetch operations data:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to fetch operations data');
       setDeliveries([]);
@@ -210,12 +224,12 @@ export default function OperationsManagement() {
         driver_id: selectedDriverId,
         assigned_by: user.id,
         status: 'assigned',
-      } as any);
+      });
 
       if (assignError) throw assignError;
 
       // Update driver's active deliveries count
-      const currentDriver = drivers.find(d => d.id === selectedDriverId);
+      const currentDriver = drivers.find((d) => d.id === selectedDriverId);
       if (currentDriver) {
         await fetchWithAuth(`/api/admin/drivers/${selectedDriverId}`, {
           method: 'PATCH',
@@ -315,14 +329,14 @@ export default function OperationsManagement() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: newStatus,
-            message: `Your delivery status has been updated to ${newStatus.replace('_', ' ')}`
-          })
+            message: `Your delivery status has been updated to ${newStatus.replace('_', ' ')}`,
+          }),
         });
-      } catch (notifyError) {
+      } catch {
         logger.warn('Failed to send delivery notification', {
           component: 'OperationsManagement',
           action: 'notification_error',
-          metadata: { deliveryId, newStatus }
+          metadata: { deliveryId, newStatus },
         });
         // Don't fail the status update if notification fails
       }
@@ -377,18 +391,18 @@ export default function OperationsManagement() {
     }
   };
 
-  const filteredDeliveries = deliveries.filter(delivery => {
+  const filteredDeliveries = deliveries.filter((delivery) => {
     const deliveryDate = new Date(delivery.scheduledDate).toISOString().split('T')[0];
     return deliveryDate === selectedDate;
   });
 
-  const todaysDeliveries = deliveries.filter(delivery => {
+  const todaysDeliveries = deliveries.filter((delivery) => {
     const today = new Date().toISOString().split('T')[0];
     const deliveryDate = new Date(delivery.scheduledDate).toISOString().split('T')[0];
     return deliveryDate === today;
   });
 
-  const overdueDeliveries = todaysDeliveries.filter(delivery => {
+  const overdueDeliveries = todaysDeliveries.filter((delivery) => {
     const now = new Date();
     const scheduledTime = new Date(delivery.scheduledDate);
     return now > scheduledTime && delivery.status === 'scheduled';
@@ -490,7 +504,7 @@ export default function OperationsManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Available Drivers</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {drivers.filter(d => d.isAvailable).length}
+                {drivers.filter((d) => d.isAvailable).length}
               </p>
             </div>
           </div>
@@ -505,8 +519,9 @@ export default function OperationsManagement() {
               <p className="text-sm font-medium text-gray-500">Completed Today</p>
               <p className="text-2xl font-semibold text-gray-900">
                 {
-                  todaysDeliveries.filter(d => d.status === 'completed' || d.status === 'delivered')
-                    .length
+                  todaysDeliveries.filter(
+                    (d) => d.status === 'completed' || d.status === 'delivered'
+                  ).length
                 }
               </p>
             </div>
@@ -521,7 +536,7 @@ export default function OperationsManagement() {
           <input
             type="date"
             value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
+            onChange={(e) => setSelectedDate(e.target.value)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
           />
           <button
@@ -542,76 +557,80 @@ export default function OperationsManagement() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Booking
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:table-cell md:px-6">
                   Equipment
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell lg:px-6">
                   Address
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Time
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:table-cell md:px-6">
                   Driver
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Status
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredDeliveries.map(delivery => (
+              {filteredDeliveries.map((delivery) => (
                 <tr key={delivery.id} className="hover:bg-gray-50">
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="px-3 py-4 sm:px-4 md:px-6">
                     <div className="text-sm font-medium text-gray-900">
                       {delivery.bookingNumber}
                     </div>
-                    <div className="text-sm text-gray-500">ID: {delivery.id}</div>
+                    <div className="text-xs text-gray-500 sm:text-sm">
+                      ID: {delivery.id.slice(0, 6)}
+                    </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="px-3 py-4 sm:px-4 md:px-6">
                     <div className="text-sm text-gray-900">{delivery.customerName}</div>
-                    <div className="text-sm text-gray-500">{delivery.customerPhone}</div>
+                    <div className="text-xs text-gray-500 sm:text-sm">{delivery.customerPhone}</div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <td className="hidden px-3 py-4 text-sm text-gray-900 sm:px-4 md:table-cell md:px-6">
                     {delivery.equipmentName}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="hidden px-3 py-4 lg:table-cell lg:px-6">
                     <div className="max-w-xs truncate text-sm text-gray-900">
                       {delivery.deliveryAddress}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="px-3 py-4 sm:px-4 md:px-6">
                     <div className="text-sm text-gray-900">
                       {new Date(delivery.scheduledDate).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </div>
-                    <div className="text-sm text-gray-500">{delivery.estimatedDuration} min</div>
+                    <div className="text-xs text-gray-500 sm:text-sm">
+                      {delivery.estimatedDuration} min
+                    </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="hidden px-3 py-4 sm:px-4 md:table-cell md:px-6">
                     {delivery.driverName ? (
                       <div>
                         <div className="text-sm text-gray-900">{delivery.driverName}</div>
-                        <div className="text-sm text-gray-500">Assigned</div>
+                        <div className="text-xs text-gray-500 sm:text-sm">Assigned</div>
                       </div>
                     ) : (
                       <div className="text-sm text-gray-500">Unassigned</div>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4">
+                  <td className="px-3 py-4 sm:px-4 md:px-6">
                     <div className="flex items-center">
                       {getStatusIcon(delivery.status)}
                       <span
@@ -621,35 +640,41 @@ export default function OperationsManagement() {
                       </span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                  <td className="px-3 py-4 text-right text-sm font-medium sm:px-4 md:px-6">
                     <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => setSelectedDelivery(delivery)}
-                        className="text-kubota-orange hover:text-orange-600"
-                        title="View Details"
-                      >
-                        View
-                      </button>
-                      {!delivery.driverId && (
+                      <PermissionGate permission="operations:read:all">
                         <button
-                          onClick={() => {
-                            setAssigningDelivery(delivery);
-                            setShowAssignModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Assign Driver"
+                          onClick={() => setSelectedDelivery(delivery)}
+                          className="text-kubota-orange hover:text-orange-600"
+                          title="View Details"
                         >
-                          Assign
+                          View
                         </button>
+                      </PermissionGate>
+                      {!delivery.driverId && (
+                        <PermissionGate permission="operations:manage:all">
+                          <button
+                            onClick={() => {
+                              setAssigningDelivery(delivery);
+                              setShowAssignModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Assign Driver"
+                          >
+                            Assign
+                          </button>
+                        </PermissionGate>
                       )}
                       {delivery.status === 'scheduled' && (
-                        <button
-                          onClick={() => handleUpdateDeliveryStatus(delivery.id, 'in_transit')}
-                          className="text-green-600 hover:text-green-800"
-                          title="Start Delivery"
-                        >
-                          Start
-                        </button>
+                        <PermissionGate permission="operations:update:all">
+                          <button
+                            onClick={() => handleUpdateDeliveryStatus(delivery.id, 'in_transit')}
+                            className="text-green-600 hover:text-green-800"
+                            title="Start Delivery"
+                          >
+                            Start
+                          </button>
+                        </PermissionGate>
                       )}
                     </div>
                   </td>
@@ -668,7 +693,7 @@ export default function OperationsManagement() {
 
         <div className="p-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {drivers.map(driver => (
+            {drivers.map((driver) => (
               <div
                 key={driver.id}
                 className={`rounded-lg border p-4 ${
@@ -823,7 +848,9 @@ export default function OperationsManagement() {
                     )}
                     {selectedDelivery.status === 'scheduled' && (
                       <button
-                        onClick={() => handleUpdateDeliveryStatus(selectedDelivery.id, 'in_transit')}
+                        onClick={() =>
+                          handleUpdateDeliveryStatus(selectedDelivery.id, 'in_transit')
+                        }
                         className="rounded-md bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                       >
                         Start Delivery
@@ -849,7 +876,9 @@ export default function OperationsManagement() {
                       onClick={() => {
                         // Open Google Maps with route from rental yard to delivery address
                         const rentalYardAddress = 'Saint John, NB, Canada'; // Default rental yard location
-                        const deliveryAddress = encodeURIComponent(selectedDelivery.deliveryAddress);
+                        const deliveryAddress = encodeURIComponent(
+                          selectedDelivery.deliveryAddress
+                        );
                         const mapsUrl = `https://www.google.com/maps/dir/${encodeURIComponent(rentalYardAddress)}/${deliveryAddress}`;
                         window.open(mapsUrl, '_blank');
                       }}
@@ -870,9 +899,7 @@ export default function OperationsManagement() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
             <div className="p-6">
-              <h3 className="mb-4 text-lg font-medium text-gray-900">
-                Assign Driver to Delivery
-              </h3>
+              <h3 className="mb-4 text-lg font-medium text-gray-900">Assign Driver to Delivery</h3>
 
               <div className="mb-4">
                 <p className="text-sm text-gray-600">
@@ -896,20 +923,19 @@ export default function OperationsManagement() {
                 </label>
                 <select
                   value={selectedDriverId}
-                  onChange={e => setSelectedDriverId(e.target.value)}
+                  onChange={(e) => setSelectedDriverId(e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="">-- Select a driver --</option>
                   {drivers
-                    .filter(d => d.isAvailable)
-                    .map(driver => (
+                    .filter((d) => d.isAvailable)
+                    .map((driver) => (
                       <option key={driver.id} value={driver.id}>
-                        {driver.name} - {driver.phone} (
-                        {driver.activeDeliveries} active)
+                        {driver.name} - {driver.phone} ({driver.activeDeliveries} active)
                       </option>
                     ))}
                 </select>
-                {drivers.filter(d => d.isAvailable).length === 0 && (
+                {drivers.filter((d) => d.isAvailable).length === 0 && (
                   <p className="mt-2 text-sm text-yellow-600">
                     ⚠️ No available drivers. All drivers are currently busy.
                   </p>

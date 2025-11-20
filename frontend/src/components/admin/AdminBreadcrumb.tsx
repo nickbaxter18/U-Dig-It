@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronRight, Home } from 'lucide-react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -29,14 +30,14 @@ export function AdminBreadcrumb() {
 
     // Build breadcrumbs from remaining segments
     let currentPath = '/admin';
-    relevantSegments.forEach((segment: any, index: any) => {
+    relevantSegments.forEach((segment: unknown, index: unknown) => {
       currentPath += `/${segment}`;
       const isLast = index === relevantSegments.length - 1;
 
       // Convert segment to readable name
       const name = segment
         .split('-')
-        .map((word: any) => word.charAt(0).toUpperCase() + word.slice(1))
+        .map((word: unknown) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
       breadcrumbs.push({
@@ -61,7 +62,7 @@ export function AdminBreadcrumb() {
           </Link>
         </li>
 
-        {breadcrumbs.map((breadcrumb: any, index: any) => (
+        {breadcrumbs.map((breadcrumb: unknown, index: unknown) => (
           <li key={breadcrumb.href} className="flex items-center">
             <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
             {breadcrumb.current ? (

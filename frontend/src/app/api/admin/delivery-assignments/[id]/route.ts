@@ -1,10 +1,12 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
-import { createClient as createServerClient } from '@/lib/supabase/server';
+// Removed unused import: createServerClient
 import { createClient } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 // Schema for delivery assignment update
 const deliveryAssignmentUpdateSchema = z.object({
@@ -18,10 +20,7 @@ const deliveryAssignmentUpdateSchema = z.object({
  * PATCH /api/admin/delivery-assignments/[id]
  * Update delivery assignment details (admin only)
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -29,19 +28,15 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // Parse and validate request body
     const body = await request.json();
@@ -59,11 +54,15 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      logger.error('Failed to update delivery assignment', {
-        component: 'admin-delivery-assignments-api',
-        action: 'update_error',
-        metadata: { bookingId: params.id, adminId: user?.id || 'unknown' },
-      }, updateError);
+      logger.error(
+        'Failed to update delivery assignment',
+        {
+          component: 'admin-delivery-assignments-api',
+          action: 'update_error',
+          metadata: { bookingId: params.id, adminId: user?.id || 'unknown' },
+        },
+        updateError
+      );
       return NextResponse.json(
         { error: 'Failed to update delivery assignment', details: updateError.message },
         { status: 500 }
@@ -89,15 +88,15 @@ export async function PATCH(
       );
     }
 
-    logger.error('Unexpected error in admin delivery assignments API', {
-      component: 'admin-delivery-assignments-api',
-      action: 'unexpected_error',
-    }, error instanceof Error ? error : new Error(String(error)));
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    logger.error(
+      'Unexpected error in admin delivery assignments API',
+      {
+        component: 'admin-delivery-assignments-api',
+        action: 'unexpected_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
     );
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

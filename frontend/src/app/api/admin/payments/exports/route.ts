@@ -3,23 +3,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
-import {
-  exportCreateSchema,
-  exportQuerySchema,
-} from '@/lib/validators/admin/payments';
+import { exportCreateSchema, exportQuerySchema } from '@/lib/validators/admin/payments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const BUCKET_ID = 'financial-exports';
 
-async function ensureBucket(
-  serviceClient: NonNullable<ReturnType<typeof createServiceClient>>
-) {
+async function ensureBucket(serviceClient: NonNullable<ReturnType<typeof createServiceClient>>) {
   try {
     const { data } = await serviceClient.storage.getBucket(BUCKET_ID);
     if (data) return;
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error?.statusCode !== '404' && error?.status !== 404) {
       throw error;
     }
@@ -32,9 +27,9 @@ async function ensureBucket(
 }
 
 function buildCsv(headers: string[], rows: (string | number | null | undefined)[][]) {
-  const escapedRows = rows.map(row =>
+  const escapedRows = rows.map((row) =>
     row
-      .map((value: any) => {
+      .map((value: unknown) => {
         if (value === null || value === undefined) return '';
         const cell = String(value);
         return /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
@@ -52,12 +47,8 @@ export async function GET(request: NextRequest) {
 
   const supabase = adminResult.supabase;
 
-
-
   if (!supabase) {
-
     return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
   }
 
   const searchParams = Object.fromEntries(new URL(request.url).searchParams);
@@ -79,13 +70,11 @@ export async function GET(request: NextRequest) {
     .limit(parsed.data.limit);
 
   if (fetchError) {
-    logger.error(
-      'Failed to fetch financial exports',
-      { component: 'admin-finance-exports', action: 'fetch_failed' });
-    return NextResponse.json(
-      { error: 'Unable to load financial exports' },
-      { status: 500 }
-    );
+    logger.error('Failed to fetch financial exports', {
+      component: 'admin-finance-exports',
+      action: 'fetch_failed',
+    });
+    return NextResponse.json({ error: 'Unable to load financial exports' }, { status: 500 });
   }
 
   return NextResponse.json({ exports: data ?? [] });
@@ -98,19 +87,15 @@ export async function POST(request: NextRequest) {
 
   const supabase = adminResult.supabase;
 
-
-
   if (!supabase) {
-
     return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
   }
-
-
 
   // Get user for logging
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   let body: unknown = {};
   try {
@@ -134,10 +119,8 @@ export async function POST(request: NextRequest) {
     const nowIso = new Date().toISOString();
 
     if (exportType === 'payments_summary') {
-      const { data, error: paymentsError } = await supabase
-        .from('payments')
-        .select(
-          `
+      const { data, error: paymentsError } = await supabase.from('payments').select(
+        `
           id,
           amount,
           amountRefunded,
@@ -155,13 +138,15 @@ export async function POST(request: NextRequest) {
             )
           )
         `
-        );
+      );
 
       if (paymentsError) throw paymentsError;
 
-      const rows = (data ?? []).map((payment: any) => {
-        const booking = (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
-        const customer = (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
+      const rows = (data ?? []).map((payment: unknown) => {
+        const booking =
+          (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
+        const customer =
+          (Array.isArray(booking.customer) ? booking.customer[0] : booking.customer) ?? {};
 
         return [
           payment.id,
@@ -215,8 +200,9 @@ export async function POST(request: NextRequest) {
 
       if (manualError) throw manualError;
 
-      const rows = (data ?? []).map((payment: any) => {
-        const booking = (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
+      const rows = (data ?? []).map((payment: unknown) => {
+        const booking =
+          (Array.isArray(payment.booking) ? payment.booking[0] : payment.booking) ?? {};
 
         return [
           payment.id,
@@ -248,13 +234,15 @@ export async function POST(request: NextRequest) {
     } else if (exportType === 'accounts_receivable') {
       const { data, error: arError } = await supabase
         .from('bookings')
-        .select('id, bookingNumber, customerId, balanceAmount:balance_amount, billingStatus:billing_status, balanceDueAt:balance_due_at')
+        .select(
+          'id, bookingNumber, customerId, balanceAmount:balance_amount, billingStatus:billing_status, balanceDueAt:balance_due_at'
+        )
         .neq('billingStatus', 'balance_paid');
 
       if (arError) throw arError;
 
       const customerIds = Array.from(
-        new Set((data ?? []).map(booking => booking.customerId).filter(Boolean))
+        new Set((data ?? []).map((booking) => booking.customerId).filter(Boolean))
       );
       let customerMap = new Map<string, { firstName?: string; lastName?: string }>();
 
@@ -266,12 +254,12 @@ export async function POST(request: NextRequest) {
 
         if (customers) {
           customerMap = new Map(
-            customers.map(customer => [customer.id as string, customer as Record<string, string>])
+            customers.map((customer) => [customer.id as string, customer as Record<string, string>])
           );
         }
       }
 
-      const rows = (data ?? []).map((booking: any) => {
+      const rows = (data ?? []).map((booking: unknown) => {
         const customer = booking.customerId
           ? customerMap.get(booking.customerId as string)
           : undefined;
@@ -296,7 +284,7 @@ export async function POST(request: NextRequest) {
 
       if (payoutError) throw payoutError;
 
-      const rows = (data ?? []).map(payout => [
+      const rows = (data ?? []).map((payout) => [
         payout.stripe_payout_id,
         Number(payout.amount ?? 0),
         payout.currency ?? 'CAD',
@@ -339,13 +327,11 @@ export async function POST(request: NextRequest) {
     const filePath = `${user?.id || 'unknown'}/${fileName}`;
     const csvBuffer = Buffer.from(csvContent, 'utf-8');
 
-    const uploadResult = await serviceClient.storage
-      .from(BUCKET_ID)
-      .upload(filePath, csvBuffer, {
-        cacheControl: '3600',
-        contentType: 'text/csv',
-        upsert: true,
-      });
+    const uploadResult = await serviceClient.storage.from(BUCKET_ID).upload(filePath, csvBuffer, {
+      cacheControl: '3600',
+      contentType: 'text/csv',
+      upsert: true,
+    });
 
     if (uploadResult.error) {
       throw uploadResult.error;
@@ -389,11 +375,6 @@ export async function POST(request: NextRequest) {
       { component: 'admin-finance-exports', action: 'export_failed', metadata: { exportType } },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json(
-      { error: 'Unable to generate financial export' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Unable to generate financial export' }, { status: 500 });
   }
 }
-
-

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { supabase } from '@/lib/supabase/client';
 
 interface UseEquipmentParams {
@@ -23,20 +24,29 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
             `make.ilike.%${searchTerm}%,model.ilike.%${searchTerm}%,unitId.ilike.%${searchTerm}%,serialNumber.ilike.%${searchTerm}%`
           );
         }
-        const { data: fallbackData, error: fallbackError } = await query.order('createdAt', { ascending: false });
+        const { data: fallbackData, error: fallbackError } = await query.order('createdAt', {
+          ascending: false,
+        });
         if (fallbackError) throw fallbackError;
 
         // Get stats for each equipment
         const equipmentWithStats = await Promise.all(
-          ((fallbackData || []) as any[]).map(async (eq: any) => {
+          ((fallbackData || []) as unknown[]).map(async (eq: unknown) => {
             const { data: bookingData } = await supabase
               .from('bookings')
               .select('totalAmount, status')
               .eq('equipmentId', eq.id);
 
-            const totalBookings = (bookingData as any[])?.length || 0;
-            const totalRevenue = (bookingData as any[])?.reduce((sum: number, b: any) => sum + parseFloat(b.totalAmount || '0'), 0) || 0;
-            const activeBookings = (bookingData as any[])?.filter((b: any) => ['confirmed', 'paid', 'in_progress'].includes(b.status)).length || 0;
+            const totalBookings = (bookingData as unknown[])?.length || 0;
+            const totalRevenue =
+              (bookingData as unknown[])?.reduce(
+                (sum: number, b: unknown) => sum + parseFloat(b.totalAmount || '0'),
+                0
+              ) || 0;
+            const activeBookings =
+              (bookingData as unknown[])?.filter((b: unknown) =>
+                ['confirmed', 'paid', 'in_progress'].includes(b.status)
+              ).length || 0;
             const utilizationRate = totalBookings > 0 ? (activeBookings / totalBookings) * 100 : 0;
 
             return {
@@ -51,7 +61,9 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
               monthlyRate: parseFloat(eq.monthlyRate),
               isAvailable: (eq.status || 'available').toLowerCase() === 'available',
               maintenanceDue: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
-              lastMaintenance: eq.lastMaintenanceDate ? new Date(eq.lastMaintenanceDate) : undefined,
+              lastMaintenance: eq.lastMaintenanceDate
+                ? new Date(eq.lastMaintenanceDate)
+                : undefined,
               totalBookings,
               totalRevenue,
               utilizationRate,
@@ -67,7 +79,7 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
       }
 
       // Transform RPC function results
-      let filteredEquipment = ((data || []) as any[]).map((eq: any) => ({
+      let filteredEquipment = ((data || []) as unknown[]).map((eq: unknown) => ({
         id: eq.id,
         name: `${eq.make || ''} ${eq.model || ''}`.trim() || 'Equipment',
         model: eq.model || '',
@@ -91,12 +103,12 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
 
       // Apply client-side filters
       if (statusFilter !== 'all') {
-        filteredEquipment = filteredEquipment.filter(eq => eq.status === statusFilter);
+        filteredEquipment = filteredEquipment.filter((eq) => eq.status === statusFilter);
       }
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         filteredEquipment = filteredEquipment.filter(
-          eq =>
+          (eq) =>
             eq.make?.toLowerCase().includes(searchLower) ||
             eq.model?.toLowerCase().includes(searchLower) ||
             eq.unitId?.toLowerCase().includes(searchLower) ||
@@ -110,5 +122,3 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
-
-

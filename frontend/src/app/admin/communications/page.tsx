@@ -1,19 +1,16 @@
 'use client';
 
+import { BarChart, CheckCircle, FileText, Mail, Send, XCircle } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
 import { EmailDeliveryDashboard } from '@/components/admin/EmailDeliveryDashboard';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import {
-    BarChart,
-    CheckCircle,
-    FileText,
-    Mail,
-    Send,
-    XCircle
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface EmailCampaign {
   id: string;
@@ -62,7 +59,7 @@ export default function CommunicationsPage() {
     totalEmailsSent: 0,
     averageOpenRate: 0,
     averageClickRate: 0,
-    totalRecipients: 0
+    totalRecipients: 0,
   });
 
   // Filter state
@@ -74,18 +71,7 @@ export default function CommunicationsPage() {
   const [activeTab, setActiveTab] = useState<'campaigns' | 'templates' | 'delivery'>('campaigns');
 
   // Fetch campaigns and templates
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/auth/signin');
-      return;
-    }
-
-    if (user) {
-      fetchData();
-    }
-  }, [user, authLoading, router, dateRange]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -97,7 +83,7 @@ export default function CommunicationsPage() {
       const campaignsData = await campaignsRes.json();
 
       setCampaigns(campaignsData.campaigns || []);
-      setStats(campaignsData.stats || stats);
+      setStats((prev) => campaignsData.stats || prev);
 
       // Fetch templates
       const templatesRes = await fetchWithAuth('/api/admin/communications/templates');
@@ -109,22 +95,38 @@ export default function CommunicationsPage() {
       logger.info('Communications data fetched successfully', {
         component: 'CommunicationsPage',
         action: 'fetch_data',
-        metadata: { campaignCount: campaignsData.campaigns?.length || 0 }
+        metadata: { campaignCount: campaignsData.campaigns?.length || 0 },
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Failed to fetch communications data', {
-        component: 'CommunicationsPage',
-        action: 'fetch_data_error',
-        metadata: { error: errorMessage }
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to fetch communications data',
+        {
+          component: 'CommunicationsPage',
+          action: 'fetch_data_error',
+          metadata: { error: errorMessage },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  // Fetch campaigns and templates
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    if (user) {
+      fetchData();
+    }
+  }, [user, authLoading, router, dateRange, fetchData]);
 
   // Filter campaigns
-  const filteredCampaigns = campaigns.filter(campaign => {
+  const filteredCampaigns = campaigns.filter((campaign) => {
     const matchesSearch =
       campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       campaign.subject.toLowerCase().includes(searchTerm.toLowerCase());
@@ -137,14 +139,22 @@ export default function CommunicationsPage() {
   // Calculate status badge color
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      case 'sending': return 'bg-yellow-100 text-yellow-800';
-      case 'scheduled': return 'bg-purple-100 text-purple-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800';
+      case 'sending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'scheduled':
+        return 'bg-purple-100 text-purple-800';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -181,7 +191,9 @@ export default function CommunicationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Emails Sent</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalEmailsSent.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.totalEmailsSent.toLocaleString()}
+                </p>
               </div>
               <Send className="h-10 w-10 text-blue-600" />
             </div>
@@ -191,7 +203,9 @@ export default function CommunicationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Avg. Open Rate</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.averageOpenRate.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.averageOpenRate.toFixed(1)}%
+                </p>
               </div>
               <Mail className="h-10 w-10 text-green-600" />
             </div>
@@ -201,7 +215,9 @@ export default function CommunicationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Avg. Click Rate</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stats.averageClickRate.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.averageClickRate.toFixed(1)}%
+                </p>
               </div>
               <BarChart className="h-10 w-10 text-purple-600" />
             </div>
@@ -272,13 +288,13 @@ export default function CommunicationsPage() {
                   type="text"
                   placeholder="Search campaigns..."
                   value={searchTerm}
-                  onChange={(e: any) => setSearchTerm(e.target.value)}
+                  onChange={(e: unknown) => setSearchTerm(e.target.value)}
                   className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-kubota-orange focus:border-kubota-orange"
                 />
 
                 <select
                   value={statusFilter}
-                  onChange={(e: any) => setStatusFilter(e.target.value)}
+                  onChange={(e: unknown) => setStatusFilter(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-kubota-orange"
                 >
                   <option value="all">All Status</option>
@@ -293,7 +309,7 @@ export default function CommunicationsPage() {
 
                 <select
                   value={dateRange}
-                  onChange={(e: any) => setDateRange(e.target.value)}
+                  onChange={(e: unknown) => setDateRange(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-kubota-orange"
                 >
                   <option value="7d">Last 7 Days</option>
@@ -308,14 +324,30 @@ export default function CommunicationsPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opened</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicked</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Campaign
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Recipients
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sent
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Opened
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Clicked
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -326,7 +358,7 @@ export default function CommunicationsPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredCampaigns.map((campaign: any) => (
+                      filteredCampaigns.map((campaign: unknown) => (
                         <tr key={campaign.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4">
                             <div>
@@ -335,7 +367,9 @@ export default function CommunicationsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(campaign.status)}`}>
+                            <span
+                              className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(campaign.status)}`}
+                            >
                               {campaign.status}
                             </span>
                           </td>
@@ -348,26 +382,25 @@ export default function CommunicationsPage() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {campaign.emailsSent > 0
                               ? `${((campaign.emailsOpened / campaign.emailsSent) * 100).toFixed(1)}%`
-                              : '—'
-                            }
+                              : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             {campaign.emailsSent > 0
                               ? `${((campaign.emailsClicked / campaign.emailsSent) * 100).toFixed(1)}%`
-                              : '—'
-                            }
+                              : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {campaign.sentAt
                               ? new Date(campaign.sentAt).toLocaleDateString()
                               : campaign.scheduledAt
-                              ? `Scheduled: ${new Date(campaign.scheduledAt).toLocaleDateString()}`
-                              : new Date(campaign.createdAt).toLocaleDateString()
-                            }
+                                ? `Scheduled: ${new Date(campaign.scheduledAt).toLocaleDateString()}`
+                                : new Date(campaign.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <button
-                              onClick={() => router.push(`/admin/communications/campaign/${campaign.id}`)}
+                              onClick={() =>
+                                router.push(`/admin/communications/campaign/${campaign.id}`)
+                              }
                               className="text-kubota-orange hover:text-kubota-orange-dark font-medium"
                             >
                               View Details
@@ -398,8 +431,11 @@ export default function CommunicationsPage() {
                     No templates found. Create your first template to get started!
                   </div>
                 ) : (
-                  templates.map((template: any) => (
-                    <div key={template.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  templates.map((template: unknown) => (
+                    <div
+                      key={template.id}
+                      className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                    >
                       <div className="flex items-start justify-between mb-4">
                         <FileText className="h-8 w-8 text-kubota-orange" />
                         {template.isActive ? (
@@ -415,13 +451,19 @@ export default function CommunicationsPage() {
                       </span>
                       <div className="mt-4 flex gap-2">
                         <button
-                          onClick={() => router.push(`/admin/communications/template/${template.id}`)}
+                          onClick={() =>
+                            router.push(`/admin/communications/template/${template.id}`)
+                          }
                           className="flex-1 text-center px-4 py-2 bg-kubota-orange text-white rounded-lg hover:bg-kubota-orange-dark transition-colors text-sm font-medium"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => router.push(`/admin/communications/new-campaign?template=${template.id}`)}
+                          onClick={() =>
+                            router.push(
+                              `/admin/communications/new-campaign?template=${template.id}`
+                            )
+                          }
                           className="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
                         >
                           Use

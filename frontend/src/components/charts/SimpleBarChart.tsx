@@ -7,7 +7,6 @@
  * @see QUICK_WIN_3_BUNDLE_OPTIMIZATION.md
  */
 
-
 export interface BarChartData {
   label: string;
   value: number;
@@ -36,13 +35,11 @@ export function SimpleBarChart({
   showGrid = true,
   animated = true,
 }: SimpleBarChartProps) {
-  const maxValue = Math.max(...data.map(d => d.value), 1); // Avoid division by zero
+  const maxValue = Math.max(...data.map((d) => d.value), 1); // Avoid division by zero
 
   return (
     <div className="w-full" aria-label={title || 'Bar chart'} role="img">
-      {title && (
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>
-      )}
+      {title && <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>}
 
       <div
         className="relative w-full"
@@ -52,19 +49,15 @@ export function SimpleBarChart({
         {/* Grid lines (optional) */}
         {showGrid && (
           <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-            {[0, 25, 50, 75, 100].map((percent: any) => (
-              <div
-                key={percent}
-                className="border-t border-gray-200"
-                aria-hidden="true"
-              />
+            {[0, 25, 50, 75, 100].map((percent: unknown) => (
+              <div key={percent} className="border-t border-gray-200" aria-hidden="true" />
             ))}
           </div>
         )}
 
         {/* Bars */}
         <div className="absolute inset-0 flex items-end justify-around gap-2 px-4">
-          {data.map((item: any, index: any) => {
+          {data.map((item: unknown, index: unknown) => {
             const barHeight = (item.value / maxValue) * 100;
             const barColor = item.color || '#3B82F6'; // Default blue
 
@@ -81,7 +74,9 @@ export function SimpleBarChart({
                     className="text-sm font-semibold text-gray-900 mb-2"
                     aria-label={`Value: ${valuePrefix}${item.value}${valueSuffix}`}
                   >
-                    {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
+                    {valuePrefix}
+                    {item.value.toLocaleString()}
+                    {valueSuffix}
                   </div>
                 )}
 
@@ -96,7 +91,9 @@ export function SimpleBarChart({
                       backgroundColor: barColor,
                       minHeight: barHeight > 0 ? '4px' : '0',
                     }}
-                    title={item.description || `${item.label}: ${valuePrefix}${item.value}${valueSuffix}`}
+                    title={
+                      item.description || `${item.label}: ${valuePrefix}${item.value}${valueSuffix}`
+                    }
                     role="graphics-symbol"
                     aria-label={`Bar for ${item.label}`}
                   />
@@ -119,9 +116,11 @@ export function SimpleBarChart({
       {/* Screen reader summary */}
       <div className="sr-only" role="status">
         Chart showing {data.length} bars.
-        {data.map((item: any, i: any) => (
+        {data.map((item: unknown, i: unknown) => (
           <span key={i}>
-            {item.label}: {valuePrefix}{item.value}{valueSuffix}.
+            {item.label}: {valuePrefix}
+            {item.value}
+            {valueSuffix}.
           </span>
         ))}
       </div>
@@ -141,19 +140,14 @@ export function SimpleHorizontalBarChart({
   showValues = true,
   animated = true,
 }: SimpleBarChartProps) {
-  const maxValue = Math.max(...data.map(d => d.value), 1);
+  const maxValue = Math.max(...data.map((d) => d.value), 1);
 
   return (
     <div className="w-full" aria-label={title || 'Horizontal bar chart'} role="img">
-      {title && (
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>
-      )}
+      {title && <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>}
 
-      <div
-        className="space-y-4"
-        style={{ maxHeight: `${height}px`, overflowY: 'auto' }}
-      >
-        {data.map((item: any, index: any) => {
+      <div className="space-y-4" style={{ maxHeight: `${height}px`, overflowY: 'auto' }}>
+        {data.map((item: unknown, index: unknown) => {
           const barWidth = (item.value / maxValue) * 100;
           const barColor = item.color || '#3B82F6';
 
@@ -180,7 +174,9 @@ export function SimpleHorizontalBarChart({
                     backgroundColor: barColor,
                     minWidth: barWidth > 0 ? '20px' : '0',
                   }}
-                  title={item.description || `${item.label}: ${valuePrefix}${item.value}${valueSuffix}`}
+                  title={
+                    item.description || `${item.label}: ${valuePrefix}${item.value}${valueSuffix}`
+                  }
                   role="graphics-symbol"
                 />
               </div>
@@ -188,7 +184,9 @@ export function SimpleHorizontalBarChart({
               {/* Value */}
               {showValues && (
                 <div className="w-24 text-right font-semibold text-gray-900">
-                  {valuePrefix}{item.value.toLocaleString()}{valueSuffix}
+                  {valuePrefix}
+                  {item.value.toLocaleString()}
+                  {valueSuffix}
                 </div>
               )}
             </div>
@@ -199,9 +197,11 @@ export function SimpleHorizontalBarChart({
       {/* Screen reader summary */}
       <div className="sr-only" role="status">
         Horizontal bar chart with {data.length} items.
-        {data.map((item: any, i: any) => (
+        {data.map((item: unknown, i: unknown) => (
           <span key={i}>
-            {item.label}: {valuePrefix}{item.value}{valueSuffix}.
+            {item.label}: {valuePrefix}
+            {item.value}
+            {valueSuffix}.
           </span>
         ))}
       </div>
@@ -224,6 +224,3 @@ export function SimpleHorizontalBarChart({
  *   animated
  * />
  */
-
-
-

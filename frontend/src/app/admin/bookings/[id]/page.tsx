@@ -1,11 +1,15 @@
 'use client';
 
+import { ArrowLeft, Calendar, DollarSign, Package, Truck, User } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
 import { BookingFinancePanel } from '@/components/admin/finance/BookingFinancePanel';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-import { ArrowLeft, Calendar, DollarSign, Package, Truck, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface Booking {
   id: string;
@@ -49,19 +53,15 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'finance'>('overview');
 
-  useEffect(() => {
-    if (!params.id) return;
-    fetchBookingDetails(params.id);
-  }, [params.id]);
-
-  const fetchBookingDetails = async (bookingId: string) => {
+  const fetchBookingDetails = useCallback(async (bookingId: string) => {
     try {
       setLoading(true);
       setError(null);
 
       const { data, error: fetchError } = await supabase
         .from('bookings')
-        .select(`
+        .select(
+          `
           id,
           bookingNumber,
           customerId,
@@ -94,7 +94,8 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
             make,
             model
           )
-        `)
+        `
+        )
         .eq('id', bookingId)
         .single();
 
@@ -102,7 +103,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
       if (!data) throw new Error('Booking not found');
 
       // Type assertion needed due to complex query with joins
-      const bookingData = data as any;
+      const bookingData = data as unknown as Record<string, unknown>;
 
       const normalized: Booking = {
         id: bookingData.id,
@@ -140,7 +141,12 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!params.id) return;
+    fetchBookingDetails(params.id);
+  }, [params.id, fetchBookingDetails]);
 
   if (loading) {
     return (
@@ -396,4 +402,3 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
     </div>
   );
 }
-

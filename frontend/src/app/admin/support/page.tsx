@@ -1,14 +1,10 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import {
   AlertCircle,
-  Download,
   CheckCircle,
   Clock,
-  Filter,
+  Download,
   MessageSquare,
   Search,
   User,
@@ -16,7 +12,12 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface SupportTicket {
   id: string;
@@ -55,15 +56,12 @@ export default function SupportPage() {
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
   const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
   const [bulkAssignTo, setBulkAssignTo] = useState<string>('');
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: string; firstName: string; lastName: string; email: string }>>([]);
+  const [adminUsers, setAdminUsers] = useState<
+    Array<{ id: string; firstName: string; lastName: string; email: string }>
+  >([]);
   const selectAllRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchTickets();
-    fetchAdminUsers();
-  }, [statusFilter, priorityFilter, assignToMe]);
-
-  const fetchAdminUsers = async () => {
+  const fetchAdminUsers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -75,11 +73,15 @@ export default function SupportPage() {
       if (error) throw error;
       setAdminUsers((data || []) as any);
     } catch (err) {
-      logger.error('Failed to fetch admin users', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to fetch admin users',
+        { component: 'SupportPage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
     }
-  };
+  }, []);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -141,16 +143,16 @@ export default function SupportPage() {
       if (queryError) throw queryError;
 
       // Transform data
-      const ticketsData: SupportTicket[] = (data || []).map((ticket: any) => {
+      const ticketsData: SupportTicket[] = (data || []).map((ticket: unknown) => {
         const customer = ticket.customer || {};
         const booking = ticket.booking || {};
         const equipment = ticket.equipment || {};
         const assignedUser = ticket.assignedUser || {};
 
-        const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
-        const equipmentName = equipment.make && equipment.model
-          ? `${equipment.make} ${equipment.model}`
-          : undefined;
+        const customerName =
+          `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
+        const equipmentName =
+          equipment.make && equipment.model ? `${equipment.make} ${equipment.model}` : undefined;
         const assignedToName =
           assignedUser.firstName && assignedUser.lastName
             ? `${assignedUser.firstName} ${assignedUser.lastName}`
@@ -183,19 +185,30 @@ export default function SupportPage() {
           assignedToName,
           createdAt: new Date(ticket.created_at),
           resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : undefined,
-          firstResponseAt: ticket.first_response_at ? new Date(ticket.first_response_at) : undefined,
+          firstResponseAt: ticket.first_response_at
+            ? new Date(ticket.first_response_at)
+            : undefined,
           responseTime,
         };
       });
 
       setTickets(ticketsData);
     } catch (err) {
-      logger.error('Failed to fetch support tickets', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to fetch support tickets',
+        { component: 'SupportPage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to fetch support tickets');
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, priorityFilter, assignToMe]);
+
+  useEffect(() => {
+    fetchTickets();
+    fetchAdminUsers();
+  }, [fetchTickets, fetchAdminUsers]);
 
   const handleAssignTicket = async (ticketId: string, adminId?: string) => {
     try {
@@ -219,7 +232,11 @@ export default function SupportPage() {
       await fetchTickets();
       alert('✅ Ticket assigned successfully!');
     } catch (err) {
-      logger.error('Failed to assign ticket', {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to assign ticket',
+        {},
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to assign ticket');
     }
   };
@@ -236,7 +253,7 @@ export default function SupportPage() {
       }
 
       // Add first_response_at if responding for first time
-      const ticket = tickets.find(t => t.id === ticketId);
+      const ticket = tickets.find((t) => t.id === ticketId);
       if (ticket && !ticket.firstResponseAt && newStatus === 'in_progress') {
         updateData.first_response_at = new Date().toISOString();
       }
@@ -254,7 +271,11 @@ export default function SupportPage() {
       setSelectedTicket(null);
       alert(`✅ Ticket status updated to ${newStatus}!`);
     } catch (err) {
-      logger.error('Failed to update ticket status', {}, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to update ticket status',
+        {},
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to update ticket status');
     }
   };
@@ -277,7 +298,9 @@ export default function SupportPage() {
       }
 
       const queryString = params.toString();
-      const response = await fetchWithAuth(`/api/admin/support/export${queryString ? `?${queryString}` : ''}`);
+      const response = await fetchWithAuth(
+        `/api/admin/support/export${queryString ? `?${queryString}` : ''}`
+      );
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
         throw new Error(errorBody?.error || 'Failed to export support tickets');
@@ -318,7 +341,7 @@ export default function SupportPage() {
     if (selectedTicketIds.size === filteredTickets.length) {
       setSelectedTicketIds(new Set());
     } else {
-      setSelectedTicketIds(new Set(filteredTickets.map(t => t.id)));
+      setSelectedTicketIds(new Set(filteredTickets.map((t) => t.id)));
     }
   };
 
@@ -352,7 +375,11 @@ export default function SupportPage() {
       setBulkAssignTo('');
       fetchTickets();
     } catch (err) {
-      logger.error('Failed to bulk assign tickets', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to bulk assign tickets',
+        { component: 'SupportPage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert(err instanceof Error ? err.message : 'Failed to assign tickets');
     }
   };
@@ -387,7 +414,11 @@ export default function SupportPage() {
       setBulkActionStatus('');
       fetchTickets();
     } catch (err) {
-      logger.error('Failed to bulk update ticket status', { component: 'SupportPage' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to bulk update ticket status',
+        { component: 'SupportPage' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert(err instanceof Error ? err.message : 'Failed to update ticket status');
     }
   };
@@ -438,7 +469,7 @@ export default function SupportPage() {
     }
   };
 
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
       ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -448,13 +479,17 @@ export default function SupportPage() {
     return matchesSearch;
   });
 
-  const openTickets = tickets.filter(t => t.status === 'open').length;
-  const inProgressTickets = tickets.filter(t => t.status === 'in_progress').length;
-  const resolvedTickets = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+  const openTickets = tickets.filter((t) => t.status === 'open').length;
+  const inProgressTickets = tickets.filter((t) => t.status === 'in_progress').length;
+  const resolvedTickets = tickets.filter(
+    (t) => t.status === 'resolved' || t.status === 'closed'
+  ).length;
   const avgResponseTime =
-    tickets.filter(t => t.responseTime).length > 0
-      ? tickets.filter(t => t.responseTime).reduce((sum: any, t: any) => sum + (t.responseTime || 0), 0) /
-        tickets.filter(t => t.responseTime).length
+    tickets.filter((t) => t.responseTime).length > 0
+      ? tickets
+          .filter((t) => t.responseTime)
+          .reduce((sum: unknown, t: unknown) => sum + (t.responseTime || 0), 0) /
+        tickets.filter((t) => t.responseTime).length
       : 0;
 
   if (loading) {
@@ -542,7 +577,7 @@ export default function SupportPage() {
             type="text"
             placeholder="Search tickets..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -550,7 +585,7 @@ export default function SupportPage() {
 
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
@@ -563,7 +598,7 @@ export default function SupportPage() {
 
         <select
           value={priorityFilter}
-          onChange={e => setPriorityFilter(e.target.value)}
+          onChange={(e) => setPriorityFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Priority</option>
@@ -577,7 +612,7 @@ export default function SupportPage() {
           <input
             type="checkbox"
             checked={assignToMe}
-            onChange={e => setAssignToMe(e.target.checked)}
+            onChange={(e) => setAssignToMe(e.target.checked)}
             className="text-kubota-orange focus:ring-kubota-orange rounded"
           />
           <span>Assigned to Me</span>
@@ -607,11 +642,11 @@ export default function SupportPage() {
               <UserPlus className="h-4 w-4 text-gray-500" />
               <select
                 value={bulkAssignTo}
-                onChange={e => setBulkAssignTo(e.target.value)}
+                onChange={(e) => setBulkAssignTo(e.target.value)}
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
               >
                 <option value="">Select admin...</option>
-                {adminUsers.map(admin => (
+                {adminUsers.map((admin) => (
                   <option key={admin.id} value={admin.id}>
                     {admin.firstName} {admin.lastName} ({admin.email})
                   </option>
@@ -628,7 +663,7 @@ export default function SupportPage() {
             <div className="flex items-center space-x-2">
               <select
                 value={bulkActionStatus}
-                onChange={e => setBulkActionStatus(e.target.value)}
+                onChange={(e) => setBulkActionStatus(e.target.value)}
                 className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
               >
                 <option value="">Select status...</option>
@@ -662,7 +697,10 @@ export default function SupportPage() {
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
                     aria-label="Select all tickets"
-                    checked={selectedTicketIds.size === filteredTickets.length && filteredTickets.length > 0}
+                    checked={
+                      selectedTicketIds.size === filteredTickets.length &&
+                      filteredTickets.length > 0
+                    }
                     onChange={handleToggleSelectAll}
                   />
                 </th>
@@ -693,86 +731,91 @@ export default function SupportPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredTickets.map(ticket => {
+              {filteredTickets.map((ticket) => {
                 const isSelected = selectedTicketIds.has(ticket.id);
                 return (
-                <tr key={ticket.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
-                      checked={isSelected}
-                      onChange={() => handleToggleTicketSelection(ticket.id)}
-                      aria-label={`Select ticket ${ticket.ticketNumber}`}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{ticket.ticketNumber}</div>
-                    {ticket.bookingNumber && (
-                      <div className="text-sm text-gray-500">Booking: {ticket.bookingNumber}</div>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center">
-                      <User className="mr-2 h-4 w-4 text-gray-400" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{ticket.customerName}</div>
-                        <div className="text-sm text-gray-500">{ticket.customerEmail}</div>
+                  <tr
+                    key={ticket.id}
+                    className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
+                  >
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                        checked={isSelected}
+                        onChange={() => handleToggleTicketSelection(ticket.id)}
+                        aria-label={`Select ticket ${ticket.ticketNumber}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{ticket.ticketNumber}</div>
+                      {ticket.bookingNumber && (
+                        <div className="text-sm text-gray-500">Booking: {ticket.bookingNumber}</div>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="flex items-center">
+                        <User className="mr-2 h-4 w-4 text-gray-400" />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {ticket.customerName}
+                          </div>
+                          <div className="text-sm text-gray-500">{ticket.customerEmail}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="max-w-xs truncate text-sm font-medium text-gray-900">
-                      {ticket.subject}
-                    </div>
-                    {ticket.equipmentName && (
-                      <div className="text-sm text-gray-500">Re: {ticket.equipmentName}</div>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPriorityColor(ticket.priority)}`}
-                    >
-                      {ticket.priority}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center">
-                      {getStatusIcon(ticket.status)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="max-w-xs truncate text-sm font-medium text-gray-900">
+                        {ticket.subject}
+                      </div>
+                      {ticket.equipmentName && (
+                        <div className="text-sm text-gray-500">Re: {ticket.equipmentName}</div>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
                       <span
-                        className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(ticket.status)}`}
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPriorityColor(ticket.priority)}`}
                       >
-                        {ticket.status.replace('_', ' ')}
+                        {ticket.priority}
                       </span>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {ticket.assignedToName || (
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="flex items-center">
+                        {getStatusIcon(ticket.status)}
+                        <span
+                          className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(ticket.status)}`}
+                        >
+                          {ticket.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      {ticket.assignedToName || (
+                        <button
+                          onClick={() => handleAssignTicket(ticket.id)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          Assign to me
+                        </button>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      {ticket.createdAt.toLocaleDateString()}
+                      <div className="text-xs">{ticket.createdAt.toLocaleTimeString()}</div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       <button
-                        onClick={() => handleAssignTicket(ticket.id)}
-                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => {
+                          setSelectedTicket(ticket);
+                          setShowDetails(true);
+                        }}
+                        className="text-kubota-orange hover:text-orange-600"
                       >
-                        Assign to me
+                        View
                       </button>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                    {ticket.createdAt.toLocaleDateString()}
-                    <div className="text-xs">{ticket.createdAt.toLocaleTimeString()}</div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(ticket);
-                        setShowDetails(true);
-                      }}
-                      className="text-kubota-orange hover:text-orange-600"
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -861,7 +904,8 @@ export default function SupportPage() {
                       )}
                       {selectedTicket.responseTime && (
                         <div>
-                          <strong>Response Time:</strong> {selectedTicket.responseTime.toFixed(1)} hours
+                          <strong>Response Time:</strong> {selectedTicket.responseTime.toFixed(1)}{' '}
+                          hours
                         </div>
                       )}
                     </div>

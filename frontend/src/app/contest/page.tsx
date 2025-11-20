@@ -1,11 +1,14 @@
 'use client';
 
-import Footer from '@/components/Footer';
-import Navigation from '@/components/Navigation';
-import { logger } from '@/lib/logger';
+import { useState } from 'react';
+
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+
+import Footer from '@/components/Footer';
+import Navigation from '@/components/Navigation';
+
+import { logger } from '@/lib/logger';
 
 export default function ContestPage() {
   const router = useRouter();
@@ -31,7 +34,7 @@ export default function ContestPage() {
       const params = new URLSearchParams(window.location.search);
       const refCode = params.get('ref');
       if (refCode) {
-        setFormData((prev: any) => ({ ...prev, referralCode: refCode.toUpperCase() }));
+        setFormData((prev: unknown) => ({ ...prev, referralCode: refCode.toUpperCase() }));
       }
     }
   });
@@ -84,12 +87,16 @@ export default function ContestPage() {
         action: 'entry_submitted',
         metadata: { email: formData.email },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('Something went wrong. Please try again.');
-      logger.error('Contest entry error', {
-        component: 'contest-page',
-        action: 'entry_error',
-      }, err);
+      logger.error(
+        'Contest entry error',
+        {
+          component: 'contest-page',
+          action: 'entry_error',
+        },
+        err
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -142,33 +149,286 @@ export default function ContestPage() {
           <div className="pointer-events-none absolute inset-0">
             {/* Desktop Watermarks - Original (hidden on mobile) */}
             <div className="hidden md:block">
-              <div className="absolute left-12 top-8 rotate-[8deg] opacity-10"><div className="relative h-56 w-56"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals Contest - Win Free Equipment Rental" fill className="object-contain" sizes="56px" unoptimized /></div></div>
-              <div className="absolute right-16 top-12 rotate-[-10deg] opacity-10"><div className="relative h-60 w-60"><Image src="/images/udigit-logo.png" alt="Saint John Equipment Rental Contest - Monthly Giveaway" fill className="object-contain" sizes="60px" unoptimized /></div></div>
-              <div className="absolute left-[15%] top-[22%] rotate-[-6deg] opacity-10"><div className="relative h-48 w-48"><Image src="/images/udigit-logo.png" alt="Win Kubota Equipment - Professional Rental Contest" fill className="object-contain" sizes="48px" unoptimized /></div></div>
-              <div className="absolute right-[18%] top-[24%] rotate-[12deg] opacity-10"><div className="relative h-52 w-52"><Image src="/images/udigit-logo.png" alt="U-Dig It Monthly Contest - Free Machine Giveaway" fill className="object-contain" sizes="52px" unoptimized /></div></div>
-              <div className="absolute right-0 top-[45%] translate-x-[35%] rotate-[15deg] transform opacity-10"><div className="relative h-80 w-80"><Image src="/images/udigit-logo.png" alt="Community Contest - U-Dig It Rentals Gives Back" fill className="object-contain" sizes="80px" unoptimized /></div></div>
-              <div className="absolute left-0 top-[48%] -translate-x-[35%] rotate-[-12deg] transform opacity-10"><div className="relative h-76 w-76"><Image src="/images/udigit-logo.png" alt="Win Equipment Rental - Saint John Contest" fill className="object-contain" sizes="76px" unoptimized /></div></div>
-              <div className="absolute bottom-[12%] left-[20%] rotate-[4deg] opacity-10"><div className="relative h-44 w-44"><Image src="/images/udigit-logo.png" alt="Free Kubota Rental Contest - U-Dig It Giveaway" fill className="object-contain" sizes="44px" unoptimized /></div></div>
-              <div className="absolute bottom-[10%] right-[22%] rotate-[-7deg] opacity-10"><div className="relative h-48 w-48"><Image src="/images/udigit-logo.png" alt="Enter to Win - Monthly Equipment Rental Contest" fill className="object-contain" sizes="48px" unoptimized /></div></div>
-              <div className="absolute left-[30%] top-[11%] rotate-[5deg] opacity-10"><div className="relative h-40 w-40"><Image src="/images/udigit-logo.png" alt="Contest Giveaway - U-Dig It Equipment Rental" fill className="object-contain" sizes="40px" unoptimized /></div></div>
+              <div className="absolute left-12 top-8 rotate-[8deg] opacity-10">
+                <div className="relative h-56 w-56">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals Contest - Win Free Equipment Rental"
+                    fill
+                    className="object-contain"
+                    sizes="56px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-16 top-12 rotate-[-10deg] opacity-10">
+                <div className="relative h-60 w-60">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Saint John Equipment Rental Contest - Monthly Giveaway"
+                    fill
+                    className="object-contain"
+                    sizes="60px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[15%] top-[22%] rotate-[-6deg] opacity-10">
+                <div className="relative h-48 w-48">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Win Kubota Equipment - Professional Rental Contest"
+                    fill
+                    className="object-contain"
+                    sizes="48px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[18%] top-[24%] rotate-[12deg] opacity-10">
+                <div className="relative h-52 w-52">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Monthly Contest - Free Machine Giveaway"
+                    fill
+                    className="object-contain"
+                    sizes="52px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-0 top-[45%] translate-x-[35%] rotate-[15deg] transform opacity-10">
+                <div className="relative h-80 w-80">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Community Contest - U-Dig It Rentals Gives Back"
+                    fill
+                    className="object-contain"
+                    sizes="80px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-0 top-[48%] -translate-x-[35%] rotate-[-12deg] transform opacity-10">
+                <div className="relative h-76 w-76">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Win Equipment Rental - Saint John Contest"
+                    fill
+                    className="object-contain"
+                    sizes="76px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[12%] left-[20%] rotate-[4deg] opacity-10">
+                <div className="relative h-44 w-44">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Free Kubota Rental Contest - U-Dig It Giveaway"
+                    fill
+                    className="object-contain"
+                    sizes="44px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[10%] right-[22%] rotate-[-7deg] opacity-10">
+                <div className="relative h-48 w-48">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Enter to Win - Monthly Equipment Rental Contest"
+                    fill
+                    className="object-contain"
+                    sizes="48px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[30%] top-[11%] rotate-[5deg] opacity-10">
+                <div className="relative h-40 w-40">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Contest Giveaway - U-Dig It Equipment Rental"
+                    fill
+                    className="object-contain"
+                    sizes="40px"
+                    unoptimized
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Mobile Only - More Watermarks for better coverage */}
             <div className="md:hidden">
-              <div className="absolute left-[2%] top-[3%] opacity-10"><div className="relative h-20 w-20"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="20px" unoptimized /></div></div>
-              <div className="absolute right-[2%] top-[5%] rotate-12 opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
-              <div className="absolute left-[20%] top-[12%] rotate-[-8deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute right-[15%] top-[15%] rotate-[10deg] opacity-10"><div className="relative h-14 w-14"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="14px" unoptimized /></div></div>
-              <div className="absolute left-1/2 top-[2%] -translate-x-1/2 rotate-3 opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute left-[5%] top-1/3 -rotate-6 opacity-10"><div className="relative h-24 w-24"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="24px" unoptimized /></div></div>
-              <div className="absolute right-[5%] top-[45%] rotate-[8deg] opacity-10"><div className="relative h-24 w-24"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="24px" unoptimized /></div></div>
-              <div className="absolute left-[10%] top-[50%] rotate-[5deg] opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
-              <div className="absolute right-[12%] top-[55%] -rotate-[7deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute bottom-[8%] left-[8%] rotate-6 opacity-10"><div className="relative h-20 w-20"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="20px" unoptimized /></div></div>
-              <div className="absolute bottom-[3%] right-[3%] -rotate-6 opacity-10"><div className="relative h-22 w-22"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="22px" unoptimized /></div></div>
-              <div className="absolute bottom-[15%] left-[25%] rotate-[4deg] opacity-10"><div className="relative h-14 w-14"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="14px" unoptimized /></div></div>
-              <div className="absolute bottom-[12%] right-[20%] -rotate-[5deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute bottom-[2%] left-1/3 -rotate-3 opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
+              <div className="absolute left-[2%] top-[3%] opacity-10">
+                <div className="relative h-20 w-20">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="20px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[2%] top-[5%] rotate-12 opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[20%] top-[12%] rotate-[-8deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[15%] top-[15%] rotate-[10deg] opacity-10">
+                <div className="relative h-14 w-14">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="14px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-1/2 top-[2%] -translate-x-1/2 rotate-3 opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[5%] top-1/3 -rotate-6 opacity-10">
+                <div className="relative h-24 w-24">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="24px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[5%] top-[45%] rotate-[8deg] opacity-10">
+                <div className="relative h-24 w-24">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="24px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[10%] top-[50%] rotate-[5deg] opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[12%] top-[55%] -rotate-[7deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[8%] left-[8%] rotate-6 opacity-10">
+                <div className="relative h-20 w-20">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="20px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[3%] right-[3%] -rotate-6 opacity-10">
+                <div className="relative h-22 w-22">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="22px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[15%] left-[25%] rotate-[4deg] opacity-10">
+                <div className="relative h-14 w-14">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="14px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[12%] right-[20%] -rotate-[5deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[2%] left-1/3 -rotate-3 opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -189,15 +449,20 @@ export default function ContestPage() {
                 </span>
               </h1>
               <p className="mx-auto mb-4 max-w-3xl text-xl leading-relaxed text-gray-200 md:text-2xl">
-                Enter & Refer a Friend for <span className="font-bold text-[#E1BC56]">TWO</span> Chances to Win
+                Enter & Refer a Friend for <span className="font-bold text-[#E1BC56]">TWO</span>{' '}
+                Chances to Win
               </p>
 
               {/* Total Prize Pool Banner */}
               <div className="mx-auto mb-8 max-w-2xl">
                 <div className="rounded-full border-2 border-[#E1BC56] bg-gradient-to-r from-[#E1BC56]/20 via-[#F4D03F]/20 to-[#E1BC56]/20 px-8 py-3 backdrop-blur-md">
                   <div className="text-center">
-                    <div className="text-sm font-semibold text-[#E1BC56] uppercase tracking-wide">Total Monthly Prize Pool</div>
-                    <div className="text-3xl font-black text-white md:text-4xl">$1,200 in Prizes</div>
+                    <div className="text-sm font-semibold text-[#E1BC56] uppercase tracking-wide">
+                      Total Monthly Prize Pool
+                    </div>
+                    <div className="text-3xl font-black text-white md:text-4xl">
+                      $1,200 in Prizes
+                    </div>
                     <div className="text-xs text-gray-300 mt-1">Two winners • $600 each</div>
                   </div>
                 </div>
@@ -291,7 +556,9 @@ export default function ContestPage() {
                       type="text"
                       required
                       value={formData.firstName}
-                      onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })}
+                      onChange={(e: unknown) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
                       className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                       placeholder="John"
                     />
@@ -304,7 +571,9 @@ export default function ContestPage() {
                       type="text"
                       required
                       value={formData.lastName}
-                      onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value })}
+                      onChange={(e: unknown) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
                       className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                       placeholder="Doe"
                     />
@@ -320,7 +589,7 @@ export default function ContestPage() {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e: any) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e: unknown) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                     placeholder="john@example.com"
                   />
@@ -334,7 +603,7 @@ export default function ContestPage() {
                   <input
                     type="tel"
                     value={formData.phone}
-                    onChange={(e: any) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e: unknown) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                     placeholder="(506) 555-1234"
                   />
@@ -343,13 +612,11 @@ export default function ContestPage() {
                 {/* Location */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700">
-                      City
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">City</label>
                     <input
                       type="text"
                       value={formData.city}
-                      onChange={(e: any) => setFormData({ ...formData, city: e.target.value })}
+                      onChange={(e: unknown) => setFormData({ ...formData, city: e.target.value })}
                       className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                       placeholder="Saint John"
                     />
@@ -362,7 +629,9 @@ export default function ContestPage() {
                       type="text"
                       required
                       value={formData.postalCode}
-                      onChange={(e: any) => setFormData({ ...formData, postalCode: e.target.value })}
+                      onChange={(e: unknown) =>
+                        setFormData({ ...formData, postalCode: e.target.value })
+                      }
                       className="w-full rounded-lg border border-gray-300 px-4 py-3 focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                       placeholder="E2L 0A1"
                     />
@@ -377,7 +646,9 @@ export default function ContestPage() {
                   <input
                     type="text"
                     value={formData.referralCode}
-                    onChange={(e: any) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
+                    onChange={(e: unknown) =>
+                      setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })
+                    }
                     className="w-full rounded-lg border border-gray-300 px-4 py-3 uppercase focus:border-transparent focus:ring-2 focus:ring-yellow-500"
                     placeholder="Enter friend's referral code"
                   />
@@ -393,12 +664,18 @@ export default function ContestPage() {
                       type="checkbox"
                       required
                       checked={formData.rulesAccepted}
-                      onChange={(e: any) => setFormData({ ...formData, rulesAccepted: e.target.checked })}
+                      onChange={(e: unknown) =>
+                        setFormData({ ...formData, rulesAccepted: e.target.checked })
+                      }
                       className="mt-1 h-5 w-5 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                     />
                     <span className="ml-3 text-sm text-gray-700">
                       I agree to the{' '}
-                      <a href="/contest/rules" target="_blank" className="text-yellow-600 hover:underline">
+                      <a
+                        href="/contest/rules"
+                        target="_blank"
+                        className="text-yellow-600 hover:underline"
+                      >
                         contest rules
                       </a>{' '}
                       <span className="text-red-500">*</span>
@@ -409,11 +686,14 @@ export default function ContestPage() {
                     <input
                       type="checkbox"
                       checked={formData.marketingConsent}
-                      onChange={(e: any) => setFormData({ ...formData, marketingConsent: e.target.checked })}
+                      onChange={(e: unknown) =>
+                        setFormData({ ...formData, marketingConsent: e.target.checked })
+                      }
                       className="mt-1 h-5 w-5 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
                     />
                     <span className="ml-3 text-sm text-gray-700">
-                      Yes, I want to receive equipment rental offers from U-Dig It Rentals (optional)
+                      Yes, I want to receive equipment rental offers from U-Dig It Rentals
+                      (optional)
                     </span>
                   </label>
                 </div>
@@ -424,7 +704,7 @@ export default function ContestPage() {
                   disabled={isSubmitting}
                   className="w-full rounded-lg bg-yellow-600 px-6 py-4 text-lg font-bold text-white transition-colors hover:bg-yellow-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Enter Now - It\'s Free! 🎉'}
+                  {isSubmitting ? 'Submitting...' : "Enter Now - It's Free! 🎉"}
                 </button>
               </form>
 
@@ -448,7 +728,9 @@ export default function ContestPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Complete the Entry Form</h3>
-                    <p className="text-gray-600">Fill out your details above - takes less than 2 minutes!</p>
+                    <p className="text-gray-600">
+                      Fill out your details above - takes less than 2 minutes!
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -457,7 +739,9 @@ export default function ContestPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Verify Your Email</h3>
-                    <p className="text-gray-600">Check your inbox and click the verification link</p>
+                    <p className="text-gray-600">
+                      Check your inbox and click the verification link
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -467,8 +751,9 @@ export default function ContestPage() {
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Share Your Referral Link</h3>
                     <p className="text-gray-600">
-                      Get a unique link to share with friends. Each friend who enters using your code gives you
-                      an additional entry in Grand Prize #2! Plus, they get entered too. More referrals = more chances to win!
+                      Get a unique link to share with friends. Each friend who enters using your
+                      code gives you an additional entry in Grand Prize #2! Plus, they get entered
+                      too. More referrals = more chances to win!
                     </p>
                   </div>
                 </div>
@@ -493,9 +778,7 @@ export default function ContestPage() {
                 <div className="rounded-lg bg-white p-6">
                   <div className="mb-3 text-4xl">🏆</div>
                   <h3 className="mb-2 text-lg font-bold">Grand Prize #1</h3>
-                  <p className="mb-2 text-gray-700">
-                    One winner from ALL verified entries
-                  </p>
+                  <p className="mb-2 text-gray-700">One winner from ALL verified entries</p>
                   <div className="rounded-lg bg-yellow-100 px-4 py-2">
                     <div className="font-semibold text-yellow-900">Prize Value: $600</div>
                     <div className="text-sm text-yellow-800">4-hour machine + operator</div>
@@ -504,9 +787,7 @@ export default function ContestPage() {
                 <div className="rounded-lg bg-white p-6">
                   <div className="mb-3 text-4xl">🎁</div>
                   <h3 className="mb-2 text-lg font-bold">Grand Prize #2 (Referral)</h3>
-                  <p className="mb-2 text-gray-700">
-                    One winner from referral-validated entries
-                  </p>
+                  <p className="mb-2 text-gray-700">One winner from referral-validated entries</p>
                   <div className="rounded-lg bg-yellow-100 px-4 py-2">
                     <div className="font-semibold text-yellow-900">Prize Value: $600</div>
                     <div className="text-sm text-yellow-800">4-hour machine + operator</div>
@@ -517,7 +798,8 @@ export default function ContestPage() {
                 <p className="text-sm text-gray-600">
                   <strong>Includes:</strong> Kubota SVL-75 Compact Track Loader with professional
                   operator for 4 hours within our service area. Winner schedules service (subject to
-                  availability). Blackout dates apply. Voucher valid 6 months. Cannot be exchanged for cash.
+                  availability). Blackout dates apply. Voucher valid 6 months. Cannot be exchanged
+                  for cash.
                 </p>
               </div>
             </div>
@@ -531,8 +813,8 @@ export default function ContestPage() {
                     Who can enter?
                   </summary>
                   <p className="ml-4 mt-2 text-gray-600">
-                    New Brunswick residents, 18 years or older. Employees and immediate family of U-Dig It
-                    Rentals are not eligible. See full rules for details.
+                    New Brunswick residents, 18 years or older. Employees and immediate family of
+                    U-Dig It Rentals are not eligible. See full rules for details.
                   </p>
                 </details>
                 <details className="group">
@@ -540,9 +822,10 @@ export default function ContestPage() {
                     How does the referral work?
                   </summary>
                   <p className="ml-4 mt-2 text-gray-600">
-                    After you verify your email, you'll get a unique referral link. Share it with friends.
-                    Each friend who enters and verifies using your link earns you an additional entry in Grand Prize #2!
-                    Plus, they get entered in both prize draws too. The more friends you refer, the more entries you get!
+                    After you verify your email, you'll get a unique referral link. Share it with
+                    friends. Each friend who enters and verifies using your link earns you an
+                    additional entry in Grand Prize #2! Plus, they get entered in both prize draws
+                    too. The more friends you refer, the more entries you get!
                   </p>
                 </details>
                 <details className="group">
@@ -550,8 +833,8 @@ export default function ContestPage() {
                     When are winners selected?
                   </summary>
                   <p className="ml-4 mt-2 text-gray-600">
-                    Winners are drawn on the last day of each month. Winners will be notified by email and
-                    phone within 24 hours.
+                    Winners are drawn on the last day of each month. Winners will be notified by
+                    email and phone within 24 hours.
                   </p>
                 </details>
                 <details className="group">
@@ -559,9 +842,9 @@ export default function ContestPage() {
                     What do I win?
                   </summary>
                   <p className="ml-4 mt-2 text-gray-600">
-                    A voucher for 4 hours of Kubota SVL-75 service with a professional operator (value:
-                    $600). Perfect for excavation, landscaping, or construction projects. Voucher valid 6
-                    months from issue date.
+                    A voucher for 4 hours of Kubota SVL-75 service with a professional operator
+                    (value: $600). Perfect for excavation, landscaping, or construction projects.
+                    Voucher valid 6 months from issue date.
                   </p>
                 </details>
               </div>
@@ -586,8 +869,8 @@ export default function ContestPage() {
               <div className="mb-6 rounded-lg border-2 border-yellow-200 bg-yellow-50 p-6">
                 <h3 className="mb-3 text-lg font-bold">🎁 Want Another Chance to Win?</h3>
                 <p className="mb-4 text-sm text-gray-700">
-                  Share your referral link! When friends enter using your code, you BOTH get entered in
-                  the Referral Grand Prize draw.
+                  Share your referral link! When friends enter using your code, you BOTH get entered
+                  in the Referral Grand Prize draw.
                 </p>
                 <div className="mb-3 rounded border border-gray-300 bg-white px-4 py-2 font-mono text-sm">
                   {referralInfo.code}

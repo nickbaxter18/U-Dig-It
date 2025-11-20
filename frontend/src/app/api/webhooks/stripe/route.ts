@@ -17,13 +17,13 @@ import { checkAndCompleteBookingIfReady } from '@/lib/check-and-complete-booking
 import { sendInvoicePaymentConfirmation } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
 import {
-    broadcastInAppNotificationToAdmins,
-    createInAppNotification,
+  broadcastInAppNotificationToAdmins,
+  createInAppNotification,
 } from '@/lib/notification-service';
 import {
-    createStripeClient,
-    getStripeSecretKey,
-    getStripeWebhookSecret,
+  createStripeClient,
+  getStripeSecretKey,
+  getStripeWebhookSecret,
 } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
 import { formatCurrency } from '@/lib/utils';
@@ -75,7 +75,7 @@ const normalizeEquipmentRecord = (raw: unknown): EquipmentRecord | null => {
 const CONTRACT_SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour validity for evidence links
 
 async function generateSignedContractUrl(
-  supabase: any,
+  supabase: unknown,
   path: string | null | undefined,
   fallbackUrl: string | null | undefined
 ): Promise<string | null> {
@@ -88,23 +88,20 @@ async function generateSignedContractUrl(
       return data.signedUrl;
     }
 
-    logger.warn(
-      'Failed to generate signed URL for contract evidence',
-      {
-        component: 'stripe-webhook',
-        action: 'evidence_signed_url_warning',
-        metadata: {
-          path,
-          error: error?.message,
-        },
-      }
-    );
+    logger.warn('Failed to generate signed URL for contract evidence', {
+      component: 'stripe-webhook',
+      action: 'evidence_signed_url_warning',
+      metadata: {
+        path,
+        error: error?.message,
+      },
+    });
   }
 
   return fallbackUrl ?? null;
 }
 
-async function getBookingNotificationContext(supabase: any, bookingId: string) {
+async function getBookingNotificationContext(supabase: unknown, bookingId: string) {
   const { data, error } = await supabase
     .from('bookings')
     .select('id, bookingNumber, customerId')
@@ -152,7 +149,7 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Webhook signature verification failed', {
         component: 'stripe-webhook',
         action: 'verification_failed',
@@ -228,7 +225,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Webhook processing failed',
       {
@@ -247,7 +244,7 @@ export async function POST(request: NextRequest) {
  * Handle checkout.session.completed
  * Payment completed successfully via Stripe Checkout
  */
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: any) {
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: unknown) {
   const bookingId = session.metadata?.bookingId;
   const paymentId = session.metadata?.paymentId;
   const paymentType = session.metadata?.paymentType || 'payment';
@@ -327,10 +324,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     .eq('bookingId', bookingId);
 
   const paymentCompleted = allPayments?.some(
-    (p: any) => p.type === 'payment' && p.status === 'completed'
+    (p: unknown) => p.type === 'payment' && p.status === 'completed'
   );
   const depositCompleted = allPayments?.some(
-    (p: any) => p.type === 'deposit' && p.status === 'completed'
+    (p: unknown) => p.type === 'deposit' && p.status === 'completed'
   );
 
   // Update booking status if payment (not deposit) is completed
@@ -496,7 +493,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
  * Handle setup_intent.succeeded
  * Save payment method ID to booking for future off_session charges
  */
-async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supabase: any) {
+async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supabase: unknown) {
   const bookingId = setupIntent.metadata?.bookingId;
 
   if (!bookingId) {
@@ -528,7 +525,10 @@ async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supab
  * Handle payment_intent.succeeded
  * Hold authorized successfully (either $50 verify or $500 security)
  */
-async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent, supabase: any) {
+async function handlePaymentIntentSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+  supabase: unknown
+) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
 
@@ -593,7 +593,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent,
  * Handle payment_intent.canceled
  * Hold released (either $50 voided or $500 released)
  */
-async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, supabase: any) {
+async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, supabase: unknown) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
 
@@ -652,7 +652,7 @@ async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, 
  * Handle payment_intent.payment_failed
  * Hold authorization failed (card declined, insufficient funds, etc.)
  */
-async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, supabase: any) {
+async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, supabase: unknown) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
 
@@ -750,7 +750,10 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, su
  * Handle payment_intent.amount_capturable_updated
  * Hold is ready for capture (edge case logging)
  */
-async function handleAmountCapturableUpdated(paymentIntent: Stripe.PaymentIntent, supabase: any) {
+async function handleAmountCapturableUpdated(
+  paymentIntent: Stripe.PaymentIntent,
+  supabase: unknown
+) {
   const bookingId = paymentIntent.metadata.bookingId;
 
   logger.info('Hold ready for capture', {
@@ -768,7 +771,7 @@ async function handleAmountCapturableUpdated(paymentIntent: Stripe.PaymentIntent
  * Handle charge.dispute.created
  * Customer filed a dispute - attach evidence kit
  */
-async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: any) {
+async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: unknown) {
   const paymentIntentId = dispute.payment_intent as string;
 
   // Find booking from payment intent ID
@@ -849,7 +852,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: any) {
       action: 'evidence_submitted',
       metadata: { disputeId: dispute.id, bookingId },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to submit dispute evidence', {
       component: 'stripe-webhook',
       action: 'evidence_failed',
@@ -887,7 +890,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: any) {
  * Handle charge.dispute.updated
  * Dispute status changed (won, lost, under review)
  */
-async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: any) {
+async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: unknown) {
   logger.info('Dispute updated', {
     component: 'stripe-webhook',
     action: 'dispute_updated',
@@ -923,7 +926,7 @@ async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: any) {
  * Handle payout.paid
  * Payout successfully transferred to bank account
  */
-async function handlePayoutPaid(payout: Stripe.Payout, supabase: any) {
+async function handlePayoutPaid(payout: Stripe.Payout, supabase: unknown) {
   logger.info('Payout paid', {
     component: 'stripe-webhook',
     action: 'payout_paid',
@@ -936,26 +939,24 @@ async function handlePayoutPaid(payout: Stripe.Payout, supabase: any) {
   });
 
   // Update or create payout reconciliation record
-  const { error: upsertError } = await supabase
-    .from('payout_reconciliations')
-    .upsert(
-      {
-        stripe_payout_id: payout.id,
-        amount: payout.amount / 100,
-        currency: payout.currency?.toUpperCase() ?? 'CAD',
-        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
-        status: 'pending', // Will be reconciled manually or via cron
-        details: {
-          stripeStatus: payout.status,
-          automatic: payout.automatic,
-          balanceTransaction: payout.balance_transaction,
-          method: payout.method,
-          metadata: payout.metadata ?? {},
-        },
-        updated_at: new Date().toISOString(),
+  const { error: upsertError } = await supabase.from('payout_reconciliations').upsert(
+    {
+      stripe_payout_id: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency?.toUpperCase() ?? 'CAD',
+      arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+      status: 'pending', // Will be reconciled manually or via cron
+      details: {
+        stripeStatus: payout.status,
+        automatic: payout.automatic,
+        balanceTransaction: payout.balance_transaction,
+        method: payout.method,
+        metadata: payout.metadata ?? {},
       },
-      { onConflict: 'stripe_payout_id' }
-    );
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'stripe_payout_id' }
+  );
 
   if (upsertError) {
     logger.error(
@@ -990,7 +991,7 @@ async function handlePayoutPaid(payout: Stripe.Payout, supabase: any) {
  * Handle payout.failed
  * Payout failed to transfer
  */
-async function handlePayoutFailed(payout: Stripe.Payout, supabase: any) {
+async function handlePayoutFailed(payout: Stripe.Payout, supabase: unknown) {
   logger.error('Payout failed', {
     component: 'stripe-webhook',
     action: 'payout_failed',
@@ -1004,28 +1005,26 @@ async function handlePayoutFailed(payout: Stripe.Payout, supabase: any) {
   });
 
   // Update payout reconciliation record
-  const { error: upsertError } = await supabase
-    .from('payout_reconciliations')
-    .upsert(
-      {
-        stripe_payout_id: payout.id,
-        amount: payout.amount / 100,
-        currency: payout.currency?.toUpperCase() ?? 'CAD',
-        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
-        status: 'discrepancy', // Failed payouts are discrepancies
-        details: {
-          stripeStatus: payout.status,
-          automatic: payout.automatic,
-          balanceTransaction: payout.balance_transaction,
-          failureCode: payout.failure_code,
-          failureMessage: payout.failure_message,
-          method: payout.method,
-          metadata: payout.metadata ?? {},
-        },
-        updated_at: new Date().toISOString(),
+  const { error: upsertError } = await supabase.from('payout_reconciliations').upsert(
+    {
+      stripe_payout_id: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency?.toUpperCase() ?? 'CAD',
+      arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+      status: 'discrepancy', // Failed payouts are discrepancies
+      details: {
+        stripeStatus: payout.status,
+        automatic: payout.automatic,
+        balanceTransaction: payout.balance_transaction,
+        failureCode: payout.failure_code,
+        failureMessage: payout.failure_message,
+        method: payout.method,
+        metadata: payout.metadata ?? {},
       },
-      { onConflict: 'stripe_payout_id' }
-    );
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'stripe_payout_id' }
+  );
 
   if (upsertError) {
     logger.error(
@@ -1061,7 +1060,7 @@ async function handlePayoutFailed(payout: Stripe.Payout, supabase: any) {
  * Handle payout.created
  * New payout created (scheduled or manual)
  */
-async function handlePayoutCreated(payout: Stripe.Payout, supabase: any) {
+async function handlePayoutCreated(payout: Stripe.Payout, supabase: unknown) {
   logger.info('Payout created', {
     component: 'stripe-webhook',
     action: 'payout_created',
@@ -1075,26 +1074,24 @@ async function handlePayoutCreated(payout: Stripe.Payout, supabase: any) {
   });
 
   // Create payout reconciliation record
-  const { error: upsertError } = await supabase
-    .from('payout_reconciliations')
-    .upsert(
-      {
-        stripe_payout_id: payout.id,
-        amount: payout.amount / 100,
-        currency: payout.currency?.toUpperCase() ?? 'CAD',
-        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
-        status: 'pending',
-        details: {
-          stripeStatus: payout.status,
-          automatic: payout.automatic,
-          balanceTransaction: payout.balance_transaction,
-          method: payout.method,
-          metadata: payout.metadata ?? {},
-        },
-        updated_at: new Date().toISOString(),
+  const { error: upsertError } = await supabase.from('payout_reconciliations').upsert(
+    {
+      stripe_payout_id: payout.id,
+      amount: payout.amount / 100,
+      currency: payout.currency?.toUpperCase() ?? 'CAD',
+      arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+      status: 'pending',
+      details: {
+        stripeStatus: payout.status,
+        automatic: payout.automatic,
+        balanceTransaction: payout.balance_transaction,
+        method: payout.method,
+        metadata: payout.metadata ?? {},
       },
-      { onConflict: 'stripe_payout_id' }
-    );
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'stripe_payout_id' }
+  );
 
   if (upsertError) {
     logger.error(

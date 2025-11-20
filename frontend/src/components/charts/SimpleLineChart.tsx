@@ -7,7 +7,6 @@
  * @see QUICK_WIN_3_BUNDLE_OPTIMIZATION.md
  */
 
-
 export interface LineChartDataPoint {
   label: string;
   value: number;
@@ -39,8 +38,8 @@ export function SimpleLineChart({
   fillArea = false,
   animated = true,
 }: SimpleLineChartProps) {
-  const maxValue = Math.max(...data.map(d => d.value), 1);
-  const minValue = Math.min(...data.map(d => d.value), 0);
+  const maxValue = Math.max(...data.map((d) => d.value), 1);
+  const minValue = Math.min(...data.map((d) => d.value), 0);
   const range = maxValue - minValue || 1;
 
   // Calculate SVG path
@@ -48,15 +47,16 @@ export function SimpleLineChart({
   const chartHeight = height - 60; // Reserve space for labels
   const padding = 40;
 
-  const points = data.map((point: any, index: any) => {
+  const points = data.map((point: unknown, index: unknown) => {
     const x = (index / (data.length - 1 || 1)) * (width - padding * 2) + padding;
-    const y = chartHeight - ((point.value - minValue) / range) * (chartHeight - padding) + padding / 2;
+    const y =
+      chartHeight - ((point.value - minValue) / range) * (chartHeight - padding) + padding / 2;
     return { x, y, ...point };
   });
 
   // Create SVG path for line
   const linePath = points
-    .map((point: any, index: any) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`)
+    .map((point: unknown, index: unknown) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`)
     .join(' ');
 
   // Create SVG path for area fill
@@ -66,9 +66,7 @@ export function SimpleLineChart({
 
   return (
     <div className="w-full" aria-label={title || 'Line chart'} role="img">
-      {title && (
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>
-      )}
+      {title && <h3 className="text-lg font-semibold mb-4 text-gray-900">{title}</h3>}
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -80,7 +78,7 @@ export function SimpleLineChart({
         {/* Grid lines */}
         {showGrid && (
           <g aria-hidden="true">
-            {[0, 25, 50, 75, 100].map((percent: any) => {
+            {[0, 25, 50, 75, 100].map((percent: unknown) => {
               const y = chartHeight - (percent / 100) * (chartHeight - padding) + padding / 2;
               return (
                 <line
@@ -122,27 +120,35 @@ export function SimpleLineChart({
         />
 
         {/* Data points */}
-        {showDots && points.map((point: any, index: any) => (
-          <g key={index} role="graphics-symbol" aria-label={`${point.label}: ${valuePrefix}${point.value}${valueSuffix}`}>
-            <circle
-              cx={point.x}
-              cy={point.y}
-              r="6"
-              fill="white"
-              stroke={color}
-              strokeWidth="3"
-              className={`transition-all duration-300 hover:r-8 cursor-pointer ${
-                animated ? 'animate-scaleIn' : ''
-              }`}
-              style={{ animationDelay: `${index * 0.05}s` }}
+        {showDots &&
+          points.map((point: unknown, index: unknown) => (
+            <g
+              key={index}
+              role="graphics-symbol"
+              aria-label={`${point.label}: ${valuePrefix}${point.value}${valueSuffix}`}
             >
-              <title>{point.description || `${point.label}: ${valuePrefix}${point.value}${valueSuffix}`}</title>
-            </circle>
-          </g>
-        ))}
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="6"
+                fill="white"
+                stroke={color}
+                strokeWidth="3"
+                className={`transition-all duration-300 hover:r-8 cursor-pointer ${
+                  animated ? 'animate-scaleIn' : ''
+                }`}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <title>
+                  {point.description ||
+                    `${point.label}: ${valuePrefix}${point.value}${valueSuffix}`}
+                </title>
+              </circle>
+            </g>
+          ))}
 
         {/* X-axis labels */}
-        {points.map((point: any, index: any) => (
+        {points.map((point: unknown, index: unknown) => (
           <text
             key={index}
             x={point.x}
@@ -159,9 +165,11 @@ export function SimpleLineChart({
       {/* Screen reader summary */}
       <div className="sr-only" role="status">
         Line chart with {data.length} data points showing trend.
-        {data.map((item: any, i: any) => (
+        {data.map((item: unknown, i: unknown) => (
           <span key={i}>
-            {item.label}: {valuePrefix}{item.value}{valueSuffix}.
+            {item.label}: {valuePrefix}
+            {item.value}
+            {valueSuffix}.
           </span>
         ))}
       </div>
@@ -186,6 +194,3 @@ export function SimpleLineChart({
  *   animated
  * />
  */
-
-
-

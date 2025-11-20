@@ -2,10 +2,10 @@
  * Contract Generation API Tests
  * Ensures authentication, authorization, and Supabase RPC behaviors are enforced.
  */
-
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST } from '../generate/route';
 import { createMockRequest, expectErrorResponse, expectSuccessResponse } from '@/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { POST } from '../generate/route';
 
 const { mockSupabaseClient } = vi.hoisted(() => ({
   mockSupabaseClient: {
@@ -36,7 +36,7 @@ describe('API Route: /api/contracts/generate', () => {
     user_metadata: {},
   };
 
-  const createBookingChain = (booking: any, error: any = null) => {
+  const createBookingChain = (booking: unknown, error: any = null) => {
     const chain = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -159,22 +159,3 @@ describe('API Route: /api/contracts/generate', () => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

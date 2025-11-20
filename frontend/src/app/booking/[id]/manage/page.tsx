@@ -6,15 +6,16 @@
  * - Upload driver's license
  * - Pay invoice
  */
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 import BookingManagementDashboard from '@/components/BookingManagementDashboard';
 import BookingCompletionTrigger from '@/components/booking/BookingCompletionTrigger';
 import PaymentSuccessHandler from '@/components/booking/PaymentSuccessHandler';
 import QuickActionsBar from '@/components/booking/QuickActionsBar';
+
 import { createClient } from '@/lib/supabase/server';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
 
 // Import Navigation and Footer dynamically to avoid SSR issues
 const Navigation = dynamic(() => import('@/components/Navigation'), { ssr: true });
@@ -140,8 +141,8 @@ export default async function ManageBookingPage({ params }: { params: Promise<{ 
 
   // Calculate completion status
   const contract = booking.contracts?.[0];
-  const payment = booking.payments?.find((p: any) => p.type === 'payment');
-  const deposit = booking.payments?.find((p: any) => p.type === 'deposit');
+  const payment = booking.payments?.find((p: unknown) => p.type === 'payment');
+  const _deposit = booking.payments?.find((p: unknown) => p.type === 'deposit'); // Reserved for future deposit handling
   const hasInsurance = booking.insurance_documents && booking.insurance_documents.length > 0;
   const hasApprovedVerification = Array.isArray(booking.id_verification_requests)
     ? booking.id_verification_requests.some(
@@ -282,7 +283,6 @@ export default async function ManageBookingPage({ params }: { params: Promise<{ 
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
-
           </div>
 
           {/* Booking Completion Trigger - Shows when all 5 steps are complete */}

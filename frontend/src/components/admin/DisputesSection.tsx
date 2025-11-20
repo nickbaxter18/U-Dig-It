@@ -1,8 +1,10 @@
 'use client';
 
-import { logger } from '@/lib/logger';
 import { AlertTriangle, CheckCircle, Shield } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface Dispute {
@@ -47,11 +49,15 @@ export function DisputesSection() {
 
       const data = await response.json();
       setDisputes(data.disputes || []);
-    } catch (err: any) {
-      logger.error('Failed to fetch disputes', {
-        component: 'DisputesSection',
-        action: 'fetch_error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Failed to fetch disputes',
+        {
+          component: 'DisputesSection',
+          action: 'fetch_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message);
     } finally {
       setLoading(false);
@@ -98,11 +104,8 @@ export function DisputesSection() {
       )}
 
       <div className="space-y-4">
-        {disputes.map((dispute: any) => (
-          <div
-            key={dispute.id}
-            className="rounded-md border border-red-200 bg-red-50 p-4"
-          >
+        {disputes.map((dispute: unknown) => (
+          <div key={dispute.id} className="rounded-md border border-red-200 bg-red-50 p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center">
@@ -115,7 +118,8 @@ export function DisputesSection() {
                 </div>
                 <div className="mt-2 space-y-1 text-sm">
                   <div>
-                    <strong>Amount:</strong> ${(dispute.amount / 100).toFixed(2)} {dispute.currency.toUpperCase()}
+                    <strong>Amount:</strong> ${(dispute.amount / 100).toFixed(2)}{' '}
+                    {dispute.currency.toUpperCase()}
                   </div>
                   <div>
                     <strong>Reason:</strong> {dispute.reason.replace('_', ' ')}
@@ -159,12 +163,3 @@ export function DisputesSection() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

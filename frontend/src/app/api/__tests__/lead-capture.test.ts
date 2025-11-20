@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createMockRequest, expectErrorResponse } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { POST } from '../lead-capture/route';
-import { createMockRequest, expectSuccessResponse, expectErrorResponse } from '@/test-utils';
 
 const mockSupabase = {
   from: vi.fn(),
@@ -87,4 +88,3 @@ describe('POST /api/lead-capture', () => {
     expect(response.status).toBeLessThan(500);
   });
 });
-

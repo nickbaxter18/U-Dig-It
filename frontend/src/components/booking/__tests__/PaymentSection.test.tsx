@@ -1,8 +1,9 @@
+import { createTestBooking } from '@/test-utils';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { PaymentSection } from '../PaymentSection';
-import { createTestBooking } from '@/test-utils';
 
 const mockElements = vi.fn();
 const mockCreatePaymentMethod = vi.fn();
@@ -12,7 +13,7 @@ const mockStripe = {
 };
 
 vi.mock('@stripe/react-stripe-js', () => ({
-  Elements: ({ children }: any) => <div data-testid="stripe-elements">{children}</div>,
+  Elements: ({ children }: unknown) => <div data-testid="stripe-elements">{children}</div>,
   CardElement: () => <div data-testid="card-element">Card Input</div>,
   useStripe: () => mockStripe,
   useElements: () => mockElements,
@@ -54,7 +55,9 @@ describe('PaymentSection', () => {
   describe('Payment Amount Display', () => {
     it('should show deposit amount if deposit required', () => {
       const bookingWithDeposit = createTestBooking({ totalAmount: 1000, depositAmount: 500 });
-      render(<PaymentSection booking={bookingWithDeposit} onPaymentComplete={mockOnPaymentComplete} />);
+      render(
+        <PaymentSection booking={bookingWithDeposit} onPaymentComplete={mockOnPaymentComplete} />
+      );
 
       expect(screen.getByText(/\$500/)).toBeInTheDocument();
       expect(screen.getByText(/deposit/i)).toBeInTheDocument();
@@ -62,7 +65,9 @@ describe('PaymentSection', () => {
 
     it('should format large amounts correctly', () => {
       const expensiveBooking = createTestBooking({ totalAmount: 12345.67 });
-      render(<PaymentSection booking={expensiveBooking} onPaymentComplete={mockOnPaymentComplete} />);
+      render(
+        <PaymentSection booking={expensiveBooking} onPaymentComplete={mockOnPaymentComplete} />
+      );
 
       expect(screen.getByText(/\$12,345\.67/)).toBeInTheDocument();
     });
@@ -78,7 +83,9 @@ describe('PaymentSection', () => {
   describe('Payment Submission', () => {
     it('should show loading state when processing payment', async () => {
       const user = userEvent.setup();
-      mockCreatePaymentMethod.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 1000)));
+      mockCreatePaymentMethod.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 1000))
+      );
 
       render(<PaymentSection booking={booking} onPaymentComplete={mockOnPaymentComplete} />);
 
@@ -177,5 +184,3 @@ describe('PaymentSection', () => {
     });
   });
 });
-
-

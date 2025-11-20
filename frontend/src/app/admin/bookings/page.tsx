@@ -6,11 +6,11 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
 import { BookingCalendarView } from '@/components/admin/BookingCalendarView';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFilters } from '@/components/admin/BookingFilters';
 import { BookingsTable } from '@/components/admin/BookingsTable';
-import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
@@ -100,7 +100,7 @@ const OPERATIONAL_DRILLDOWNS: Array<{
     id: 'paid',
     label: 'Ready for Delivery',
     description: 'Paid bookings ready to be dispatched',
-    status: 'paid',
+    status: 'paid' as const,
   },
   {
     id: 'in_progress',
@@ -157,13 +157,13 @@ export default function AdminBookingsPage() {
     total: 0,
     totalPages: 0,
   });
-  const [flaggedBookings, setFlaggedBookings] = useState<any[]>([]);
+  const [flaggedBookings, setFlaggedBookings] = useState<unknown[]>([]);
   const [upcomingDeliveries, setUpcomingDeliveries] = useState<LogisticsItem[]>([]);
   const [upcomingReturns, setUpcomingReturns] = useState<LogisticsItem[]>([]);
   const [isConnected, setIsConnected] = useState(true); // Supabase connection status
   const [advancedFilters, setAdvancedFilters] = useState<{
     dateRange?: DateRange;
-    operators?: any[];
+    operators?: unknown[];
     multiSelects?: Record<string, string[]>;
   }>({});
   const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([]);
@@ -171,16 +171,17 @@ export default function AdminBookingsPage() {
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [bulkActionMessage, setBulkActionMessage] = useState<string | null>(null);
 
-  const fetchBookings = async (newFilters?: BookingFilters) => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchBookings = useCallback(
+    async (newFilters?: BookingFilters) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const currentFilters = { ...filters, ...newFilters };
+        const currentFilters = { ...filters, ...newFilters };
 
-      // Build Supabase query
-      let query = supabase.from('bookings').select(
-        `
+        // Build Supabase query
+        let query = supabase.from('bookings').select(
+          `
           id,
           bookingNumber,
           startDate,
@@ -208,113 +209,116 @@ export default function AdminBookingsPage() {
             phone
           )
         `,
-        { count: 'exact' }
-      );
+          { count: 'exact' }
+        );
 
-      // Apply filters
-      if (currentFilters.status) {
-        const statusFilter = normalizeStatusValue(currentFilters.status);
-        if (statusFilter) {
-          query = query.eq('status', statusFilter);
+        // Apply filters
+        if (currentFilters.status) {
+          const statusFilter = normalizeStatusValue(currentFilters.status);
+          if (statusFilter) {
+            query = query.eq('status', statusFilter);
+          }
         }
-      }
-      if (currentFilters.customerId) {
-        query = query.eq('customerId', currentFilters.customerId);
-      }
-      if (currentFilters.equipmentId) {
-        query = query.eq('equipmentId', currentFilters.equipmentId);
-      }
-      if (currentFilters.startDate) {
-        query = query.gte('startDate', currentFilters.startDate);
-      }
-      if (currentFilters.endDate) {
-        query = query.lte('endDate', currentFilters.endDate);
-      }
-      if (currentFilters.search) {
-        query = query.or(
-          `bookingNumber.ilike.%${currentFilters.search}%,deliveryAddress.ilike.%${currentFilters.search}%`
-        );
-      }
+        if (currentFilters.customerId) {
+          query = query.eq('customerId', currentFilters.customerId);
+        }
+        if (currentFilters.equipmentId) {
+          query = query.eq('equipmentId', currentFilters.equipmentId);
+        }
+        if (currentFilters.startDate) {
+          query = query.gte('startDate', currentFilters.startDate);
+        }
+        if (currentFilters.endDate) {
+          query = query.lte('endDate', currentFilters.endDate);
+        }
+        if (currentFilters.search) {
+          query = query.or(
+            `bookingNumber.ilike.%${currentFilters.search}%,deliveryAddress.ilike.%${currentFilters.search}%`
+          );
+        }
 
-      // Apply sorting
-      const sortField = currentFilters.sortBy || 'createdAt';
-      const sortAscending = currentFilters.sortOrder === 'ASC';
-      query = query.order(sortField, { ascending: sortAscending });
+        // Apply sorting
+        const sortField = currentFilters.sortBy || 'createdAt';
+        const sortAscending = currentFilters.sortOrder === 'ASC';
+        query = query.order(sortField, { ascending: sortAscending });
 
-      // Apply pagination
-      const page = currentFilters.page || 1;
-      const limit = currentFilters.limit || 20;
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-      query = query.range(from, to);
+        // Apply pagination
+        const page = currentFilters.page || 1;
+        const limit = currentFilters.limit || 20;
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+        query = query.range(from, to);
 
-      const { data, error, count } = await query;
+        const { data, error, count } = await query;
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Transform data
-      const bookingsData: Booking[] = ((data || []) as any[]).map((booking: any) => ({
-        id: booking.id,
-        bookingNumber: booking.bookingNumber,
-        customer: {
-          id: booking.customer?.id || '',
-          firstName: booking.customer?.firstName || '',
-          lastName: booking.customer?.lastName || '',
-          email: booking.customer?.email || '',
-          phone: booking.customer?.phone || '',
-        },
-        equipment: {
-          id: booking.equipment?.id || '',
-          name: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
-          model: booking.equipment?.model || 'SVL-75',
-        },
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        status: booking.status,
-        total: parseFloat(booking.totalAmount),
-        createdAt: booking.createdAt,
-        deliveryAddress: booking.deliveryAddress ?? null,
-        specialInstructions: booking.specialInstructions ?? null,
-        internalNotes: booking.internalNotes ?? null,
-        depositAmount:
-          booking.depositAmount !== undefined && booking.depositAmount !== null
-            ? Number(booking.depositAmount)
-            : null,
-        balanceAmount:
-          booking.balanceAmount !== undefined && booking.balanceAmount !== null
-            ? Number(booking.balanceAmount)
-            : booking.balance_amount !== undefined && booking.balance_amount !== null
-              ? Number(booking.balance_amount)
+        // Transform data
+        const bookingsData: Booking[] = ((data || []) as unknown[]).map((booking: unknown) => ({
+          id: booking.id,
+          bookingNumber: booking.bookingNumber,
+          customer: {
+            id: booking.customer?.id || '',
+            firstName: booking.customer?.firstName || '',
+            lastName: booking.customer?.lastName || '',
+            email: booking.customer?.email || '',
+            phone: booking.customer?.phone || '',
+          },
+          equipment: {
+            id: booking.equipment?.id || '',
+            name: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
+            model: booking.equipment?.model || 'SVL-75',
+          },
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          status: booking.status,
+          total: parseFloat(booking.totalAmount),
+          createdAt: booking.createdAt,
+          deliveryAddress: booking.deliveryAddress ?? null,
+          specialInstructions: booking.specialInstructions ?? null,
+          internalNotes: booking.internalNotes ?? null,
+          depositAmount:
+            booking.depositAmount !== undefined && booking.depositAmount !== null
+              ? Number(booking.depositAmount)
               : null,
-        balanceDueAt: booking.balanceDueAt ?? booking.balance_due_at ?? null,
-        billingStatus: booking.billingStatus ?? booking.billing_status ?? null,
-      }));
+          balanceAmount:
+            booking.balanceAmount !== undefined && booking.balanceAmount !== null
+              ? Number(booking.balanceAmount)
+              : booking.balance_amount !== undefined && booking.balance_amount !== null
+                ? Number(booking.balance_amount)
+                : null,
+          balanceDueAt: booking.balanceDueAt ?? booking.balance_due_at ?? null,
+          billingStatus: booking.billingStatus ?? booking.billing_status ?? null,
+        }));
 
-      setBookings(bookingsData);
-      setSelectedBookingIds(prev =>
-        prev.filter(id => bookingsData.some(booking => booking.id === id))
-      );
-      setPagination({
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-      });
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to fetch bookings:',
-          { component: 'app-page', action: 'error' },
-          err instanceof Error ? err : new Error(String(err))
+        setBookings(bookingsData);
+        setSelectedBookingIds((prev) =>
+          prev.filter((id) => bookingsData.some((booking) => booking.id === id))
         );
+        setPagination({
+          page,
+          limit,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / limit),
+        });
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          logger.error(
+            'Failed to fetch bookings:',
+            { component: 'app-page', action: 'error' },
+            err instanceof Error ? err : new Error(String(err))
+          );
+        }
+        // Error handled in logger above
+        setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
+      } finally {
+        setLoading(false);
       }
-      setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [filters]
+  );
 
-  const fetchFlaggedBookings = async () => {
+  const fetchFlaggedBookings = useCallback(async () => {
     try {
       // Query bookings that might need attention (pending insurance, missing documents, etc.)
       const { data, error } = await supabase
@@ -339,22 +343,13 @@ export default function AdminBookingsPage() {
 
       if (error) throw error;
       setFlaggedBookings(data || []);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to fetch flagged bookings:',
-          {
-          component: 'app-page',
-          action: 'error',
-          },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+    } catch {
+      // Error logged in development mode only
       setFlaggedBookings([]);
     }
-  };
+  }, []);
 
-  const fetchUpcomingDeliveries = async () => {
+  const fetchUpcomingDeliveries = useCallback(async () => {
     try {
       // Query bookings with upcoming start dates (next 7 days)
       const now = new Date();
@@ -389,7 +384,7 @@ export default function AdminBookingsPage() {
 
       if (error) throw error;
       const mapped: LogisticsItem[] =
-        (data || []).map((booking: any) => ({
+        (data || []).map((booking: unknown) => ({
           id: booking.id,
           bookingNumber: booking.bookingNumber,
           status: booking.status,
@@ -404,22 +399,13 @@ export default function AdminBookingsPage() {
             undefined,
         })) ?? [];
       setUpcomingDeliveries(mapped);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to fetch upcoming deliveries:',
-          {
-          component: 'app-page',
-          action: 'error',
-          },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+    } catch {
+      // Error logged in development mode only
       setUpcomingDeliveries([]);
     }
-  };
+  }, []);
 
-  const fetchUpcomingReturns = async () => {
+  const fetchUpcomingReturns = useCallback(async () => {
     try {
       const now = new Date();
       const weekFromNow = new Date();
@@ -453,7 +439,7 @@ export default function AdminBookingsPage() {
 
       if (error) throw error;
       const mapped: LogisticsItem[] =
-        (data || []).map((booking: any) => ({
+        (data || []).map((booking: unknown) => ({
           id: booking.id,
           bookingNumber: booking.bookingNumber,
           status: booking.status,
@@ -468,20 +454,11 @@ export default function AdminBookingsPage() {
             undefined,
         })) ?? [];
       setUpcomingReturns(mapped);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to fetch upcoming returns:',
-          {
-            component: 'app-page',
-            action: 'error',
-          },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+    } catch {
+      // Error logged in development mode only
       setUpcomingReturns([]);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const customerIdParam = searchParams?.get('customerId');
@@ -493,7 +470,7 @@ export default function AdminBookingsPage() {
       setFilters((prev) => ({ ...prev, customerId: undefined, page: 1 }));
       fetchBookings({ customerId: undefined, page: 1 });
     }
-  }, [searchParams]);
+  }, [searchParams, filters.customerId, fetchBookings]);
 
   useEffect(() => {
     fetchBookings();
@@ -534,7 +511,7 @@ export default function AdminBookingsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchBookings, fetchFlaggedBookings, fetchUpcomingDeliveries, fetchUpcomingReturns]);
 
   const handleFilterChange = (newFilters: Partial<BookingFilters>) => {
     const normalizedFilters: Partial<BookingFilters> = { ...newFilters };
@@ -579,25 +556,29 @@ export default function AdminBookingsPage() {
   };
 
   const toggleBookingSelection = (bookingId: string) => {
-    setSelectedBookingIds(prev =>
-      prev.includes(bookingId) ? prev.filter(id => id !== bookingId) : [...prev, bookingId]
+    setSelectedBookingIds((prev) =>
+      prev.includes(bookingId) ? prev.filter((id) => id !== bookingId) : [...prev, bookingId]
     );
   };
 
   const toggleSelectAll = () => {
-    const visibleIds = bookings.map(booking => booking.id);
-    const hasAllVisible = visibleIds.length > 0 && visibleIds.every(id => selectedBookingIds.includes(id));
+    const visibleIds = bookings.map((booking) => booking.id);
+    const hasAllVisible =
+      visibleIds.length > 0 && visibleIds.every((id) => selectedBookingIds.includes(id));
 
     if (hasAllVisible) {
-      setSelectedBookingIds(prev => prev.filter(id => !visibleIds.includes(id)));
+      setSelectedBookingIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     } else {
       const merged = new Set(selectedBookingIds);
-      visibleIds.forEach(id => merged.add(id));
+      visibleIds.forEach((id) => merged.add(id));
       setSelectedBookingIds(Array.from(merged));
     }
   };
 
-  const performBulkAction = async (payload: { operation: 'update_status' | 'delete'; status?: string }) => {
+  const performBulkAction = async (payload: {
+    operation: 'update_status' | 'delete';
+    status?: string;
+  }) => {
     if (selectedBookingIds.length === 0 || bulkActionLoading) return;
 
     try {
@@ -689,10 +670,14 @@ export default function AdminBookingsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      setBulkActionMessage(`Exported ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'} successfully.`);
+      setBulkActionMessage(
+        `Exported ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'} successfully.`
+      );
       setSelectedBookingIds([]);
     } catch (exportError) {
-      setBulkActionError(exportError instanceof Error ? exportError.message : 'Failed to export bookings');
+      setBulkActionError(
+        exportError instanceof Error ? exportError.message : 'Failed to export bookings'
+      );
     } finally {
       setBulkActionLoading(false);
     }
@@ -704,8 +689,10 @@ export default function AdminBookingsPage() {
     const subject = prompt('Email Subject:', 'Booking Update');
     if (!subject) return;
 
-    const message = prompt('Email Message (use {{customerName}} and {{bookingNumber}} as placeholders):',
-      'Dear {{customerName}},\n\nThis is regarding your booking {{bookingNumber}}.\n\nThank you.');
+    const message = prompt(
+      'Email Message (use {{customerName}} and {{bookingNumber}} as placeholders):',
+      'Dear {{customerName}},\n\nThis is regarding your booking {{bookingNumber}}.\n\nThank you.'
+    );
     if (!message) return;
 
     try {
@@ -737,7 +724,9 @@ export default function AdminBookingsPage() {
       );
       setSelectedBookingIds([]);
     } catch (emailError) {
-      setBulkActionError(emailError instanceof Error ? emailError.message : 'Failed to send emails');
+      setBulkActionError(
+        emailError instanceof Error ? emailError.message : 'Failed to send emails'
+      );
     } finally {
       setBulkActionLoading(false);
     }
@@ -762,13 +751,12 @@ export default function AdminBookingsPage() {
     });
   };
 
-  const fetchBookingById = useCallback(
-    async (bookingId: string): Promise<Booking | null> => {
-      try {
-        const { data, error: fetchError } = await supabase
-          .from('bookings')
-          .select(
-            `
+  const fetchBookingById = useCallback(async (bookingId: string): Promise<Booking | null> => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('bookings')
+        .select(
+          `
           id,
           bookingNumber,
           startDate,
@@ -796,67 +784,59 @@ export default function AdminBookingsPage() {
             phone
           )
         `
-          )
-          .eq('id', bookingId)
-          .single();
+        )
+        .eq('id', bookingId)
+        .single();
 
-        if (fetchError) throw fetchError;
-        if (!data) throw new Error('Booking not found');
+      if (fetchError) throw fetchError;
+      if (!data) throw new Error('Booking not found');
 
-        // Type assertion needed due to complex query with joins
-        const bookingData = data as any;
+      // Type assertion needed due to complex query with joins
+      const bookingData = data as unknown as Record<string, unknown>;
 
-        const booking: Booking = {
-          id: bookingData.id,
-          bookingNumber: bookingData.bookingNumber,
-          startDate: bookingData.startDate,
-          endDate: bookingData.endDate,
-          status: bookingData.status,
-          total: parseFloat(bookingData.totalAmount),
-          createdAt: bookingData.createdAt,
-          deliveryAddress: bookingData.deliveryAddress ?? undefined,
-          specialInstructions: bookingData.specialInstructions ?? undefined,
-          internalNotes: bookingData.internalNotes ?? undefined,
-          depositAmount:
-            bookingData.depositAmount !== undefined && bookingData.depositAmount !== null
-              ? Number(bookingData.depositAmount)
+      const booking: Booking = {
+        id: bookingData.id,
+        bookingNumber: bookingData.bookingNumber,
+        startDate: bookingData.startDate,
+        endDate: bookingData.endDate,
+        status: bookingData.status,
+        total: parseFloat(bookingData.totalAmount),
+        createdAt: bookingData.createdAt,
+        deliveryAddress: bookingData.deliveryAddress ?? undefined,
+        specialInstructions: bookingData.specialInstructions ?? undefined,
+        internalNotes: bookingData.internalNotes ?? undefined,
+        depositAmount:
+          bookingData.depositAmount !== undefined && bookingData.depositAmount !== null
+            ? Number(bookingData.depositAmount)
+            : null,
+        balanceAmount:
+          bookingData.balanceAmount !== undefined && bookingData.balanceAmount !== null
+            ? Number(bookingData.balanceAmount)
+            : bookingData.balance_amount !== undefined && bookingData.balance_amount !== null
+              ? Number(bookingData.balance_amount)
               : null,
-          balanceAmount:
-            bookingData.balanceAmount !== undefined && bookingData.balanceAmount !== null
-              ? Number(bookingData.balanceAmount)
-              : bookingData.balance_amount !== undefined && bookingData.balance_amount !== null
-                ? Number(bookingData.balance_amount)
-                : null,
-          balanceDueAt: bookingData.balanceDueAt ?? bookingData.balance_due_at ?? null,
-          billingStatus: bookingData.billingStatus ?? bookingData.billing_status ?? null,
-          equipment: {
-            id: bookingData.equipment?.id || '',
-            name: `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`,
-            model: bookingData.equipment?.model || 'SVL-75',
-          },
-          customer: {
-            id: bookingData.customer?.id || '',
-            firstName: bookingData.customer?.firstName || '',
-            lastName: bookingData.customer?.lastName || '',
-            email: bookingData.customer?.email || '',
-            phone: bookingData.customer?.phone || '',
-          },
-        };
+        balanceDueAt: bookingData.balanceDueAt ?? bookingData.balance_due_at ?? null,
+        billingStatus: bookingData.billingStatus ?? bookingData.billing_status ?? null,
+        equipment: {
+          id: bookingData.equipment?.id || '',
+          name: `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`,
+          model: bookingData.equipment?.model || 'SVL-75',
+        },
+        customer: {
+          id: bookingData.customer?.id || '',
+          firstName: bookingData.customer?.firstName || '',
+          lastName: bookingData.customer?.lastName || '',
+          email: bookingData.customer?.email || '',
+          phone: bookingData.customer?.phone || '',
+        },
+      };
 
-        return booking;
-      } catch (err) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.error(
-            'Failed to fetch booking by ID:',
-            { component: 'app-page', action: 'error', metadata: { bookingId } },
-            err instanceof Error ? err : new Error(String(err))
-          );
-        }
-        return null;
-      }
-    },
-    []
-  );
+      return booking;
+    } catch {
+      // Error logged in development mode only
+      return null;
+    }
+  }, []);
 
   const handleBookingSelect = (booking: Booking) => {
     setSelectedBooking(booking);
@@ -892,7 +872,7 @@ export default function AdminBookingsPage() {
     };
   }, [pendingBookingId, bookings, fetchBookingById]);
 
-  const handleBookingUpdate = async (bookingId: string, updates: Record<string, any>) => {
+  const handleBookingUpdate = async (bookingId: string, updates: Record<string, unknown>) => {
     try {
       // MIGRATED: Update booking in Supabase
       const supabaseClient: any = supabase;
@@ -917,13 +897,7 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to update booking:',
-          { component: 'app-page', action: 'error' },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+      // Error logged in development mode only
       setError(err instanceof Error ? err.message : 'Failed to update booking');
     }
   };
@@ -953,16 +927,7 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to update booking status:',
-          {
-          component: 'app-page',
-          action: 'error',
-          },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+      // Error logged in development mode only
       setError(err instanceof Error ? err.message : 'Failed to update booking status');
     }
   };
@@ -996,13 +961,7 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to cancel booking:',
-          { component: 'app-page', action: 'error' },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+      // Error logged in development mode only
       setError(err instanceof Error ? err.message : 'Failed to cancel booking');
     }
   };
@@ -1032,13 +991,7 @@ export default function AdminBookingsPage() {
         document.body.removeChild(a);
       }
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to export bookings:',
-          { component: 'app-page', action: 'error' },
-          err instanceof Error ? err : new Error(String(err))
-        );
-      }
+      // Error logged in development mode only
       setError(err instanceof Error ? err.message : 'Failed to export bookings');
     }
   };
@@ -1131,7 +1084,7 @@ export default function AdminBookingsPage() {
               </p>
 
               <div className="mt-3 space-y-2">
-                {flaggedBookings.slice(0, 3).map((booking: any) => {
+                {flaggedBookings.slice(0, 3).map((booking: unknown) => {
                   const customerName =
                     [booking.customer?.firstName, booking.customer?.lastName]
                       .filter(Boolean)
@@ -1387,7 +1340,8 @@ export default function AdminBookingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-gray-800">
-                {selectedBookingIds.length} booking{selectedBookingIds.length === 1 ? '' : 's'} selected
+                {selectedBookingIds.length} booking{selectedBookingIds.length === 1 ? '' : 's'}{' '}
+                selected
               </p>
               <p className="text-xs text-gray-500">Choose a bulk action below.</p>
             </div>

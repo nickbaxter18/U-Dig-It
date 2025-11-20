@@ -1,11 +1,18 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
-import { fetchEquipmentMedia, createEquipmentMedia, deleteEquipmentMedia } from '@/lib/api/admin/equipment';
+import { Camera, Eye, Image as ImageIcon, Loader2, Star, Trash2, Upload, X } from 'lucide-react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import {
+  createEquipmentMedia,
+  deleteEquipmentMedia,
+  fetchEquipmentMedia,
+} from '@/lib/api/admin/equipment';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Camera, Image as ImageIcon, Upload, X, Star, Trash2, Loader2, Eye } from 'lucide-react';
-import { useEffect, useState, useRef } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface EquipmentMedia {
   id: string;
@@ -13,7 +20,7 @@ interface EquipmentMedia {
   media_type: 'image' | 'video' | 'document';
   storage_path: string;
   caption?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   is_primary: boolean;
   uploaded_by: string;
   uploaded_at: string;
@@ -36,18 +43,14 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useAdminToast();
 
-  useEffect(() => {
-    fetchMedia();
-  }, [equipmentId]);
-
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async () => {
     try {
       setLoading(true);
       const mediaData = await fetchEquipmentMedia(equipmentId);
 
       // Generate signed URLs for each media item
       const mediaWithUrls = await Promise.all(
-        mediaData.map(async (item: any) => {
+        mediaData.map(async (item: unknown) => {
           try {
             const { data } = await supabase.storage
               .from('equipment-media')
@@ -60,19 +63,30 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       );
 
       setMedia(mediaWithUrls);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load media', 'Unable to fetch equipment media');
     } finally {
       setLoading(false);
     }
-  };
+  }, [equipmentId, toast]);
+
+  useEffect(() => {
+    fetchMedia();
+  }, [fetchMedia]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
+    const validTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'video/webm',
+    ];
     if (!validTypes.includes(file.type)) {
       toast.error('Invalid file type', 'Please select an image or video file');
       return;
@@ -125,7 +139,10 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       await fetchMedia();
       onMediaChange?.();
     } catch (error) {
-      toast.error('Upload failed', error instanceof Error ? error.message : 'Failed to upload media');
+      toast.error(
+        'Upload failed',
+        error instanceof Error ? error.message : 'Failed to upload media'
+      );
     } finally {
       setUploading(false);
     }
@@ -140,7 +157,10 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       await fetchMedia();
       onMediaChange?.();
     } catch (error) {
-      toast.error('Delete failed', error instanceof Error ? error.message : 'Failed to delete media');
+      toast.error(
+        'Delete failed',
+        error instanceof Error ? error.message : 'Failed to delete media'
+      );
     }
   };
 
@@ -161,7 +181,10 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       toast.success('Primary image updated', 'Primary image set successfully');
       onMediaChange?.();
     } catch (error) {
-      toast.error('Failed to set primary', error instanceof Error ? error.message : 'Unable to update primary image');
+      toast.error(
+        'Failed to set primary',
+        error instanceof Error ? error.message : 'Unable to update primary image'
+      );
     }
   };
 
@@ -328,4 +351,3 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
     </div>
   );
 }
-

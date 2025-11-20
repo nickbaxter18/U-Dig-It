@@ -7,13 +7,14 @@
  * Example cron setup:
  *   Every 5 minutes: curl -X POST https://yourdomain.com/api/jobs/process
  */
-
 import { createClient } from '@supabase/supabase-js';
-import Stripe from 'stripe';
+import _Stripe from 'stripe';
+
+// Reserved for future Stripe type usage
 import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
-import { broadcastInAppNotificationToAdmins } from './notification-service';
 import { logger } from './logger';
+import { broadcastInAppNotificationToAdmins } from './notification-service';
 
 const INTERNAL_SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY!;
 
@@ -33,7 +34,8 @@ export async function processScheduledJobs() {
     // 1. Query pending jobs that are due
     const { data: jobs, error: jobsError } = await supabase
       .from('schedules')
-      .select(`
+      .select(
+        `
         id,
         booking_id,
         job_type,
@@ -41,7 +43,8 @@ export async function processScheduledJobs() {
         retry_count,
         max_retries,
         metadata
-      `)
+      `
+      )
       .eq('status', 'pending')
       .lte('run_at_utc', new Date().toISOString())
       .order('run_at_utc')
@@ -71,13 +74,11 @@ export async function processScheduledJobs() {
     });
 
     // 2. Process each job
-    const results = await Promise.allSettled(
-      jobs.map(job => processJob(job, supabase))
-    );
+    const results = await Promise.allSettled(jobs.map((job) => processJob(job, supabase)));
 
     // 3. Count successes and failures
-    const successes = results.filter(r => r.status === 'fulfilled').length;
-    const failures = results.filter(r => r.status === 'rejected').length;
+    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const failures = results.filter((r) => r.status === 'rejected').length;
 
     logger.info('Job processing completed', {
       component: 'job-scheduler',
@@ -95,13 +96,16 @@ export async function processScheduledJobs() {
       successes,
       failures,
     };
-
-  } catch (error: any) {
-    logger.error('Job scheduler failed', {
-      component: 'job-scheduler',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Job scheduler failed',
+      {
+        component: 'job-scheduler',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return { success: false, error: error.message };
   }
@@ -110,7 +114,7 @@ export async function processScheduledJobs() {
 /**
  * Process a single job
  */
-async function processJob(job: any, supabase: any) {
+async function processJob(job: unknown, supabase: unknown) {
   logger.info('Processing job', {
     component: 'job-scheduler',
     action: 'process_job',
@@ -123,10 +127,7 @@ async function processJob(job: any, supabase: any) {
 
   try {
     // Mark job as processing
-    await supabase
-      .from('schedules')
-      .update({ status: 'processing' })
-      .eq('id', job.id);
+    await supabase.from('schedules').update({ status: 'processing' }).eq('id', job.id);
 
     // Route to appropriate handler
     switch (job.job_type) {
@@ -164,17 +165,20 @@ async function processJob(job: any, supabase: any) {
       action: 'job_completed',
       metadata: { jobId: job.id, jobType: job.job_type },
     });
-
-  } catch (error: any) {
-    logger.error('Job processing failed', {
-      component: 'job-scheduler',
-      action: 'job_failed',
-      metadata: {
-        jobId: job.id,
-        jobType: job.job_type,
-        error: error.message,
+  } catch (error: unknown) {
+    logger.error(
+      'Job processing failed',
+      {
+        component: 'job-scheduler',
+        action: 'job_failed',
+        metadata: {
+          jobId: job.id,
+          jobType: job.job_type,
+          error: error.message,
+        },
       },
-    }, error);
+      error
+    );
 
     // Handle retry logic
     if (job.retry_count < job.max_retries) {
@@ -245,7 +249,8 @@ async function processJob(job: any, supabase: any) {
 /**
  * Process place_hold job (T-48 security hold)
  */
-async function processPlaceHoldJob(job: any, supabase: any) {
+async function processPlaceHoldJob(job: unknown, _supabase: unknown) {
+  // Reserved for future Supabase usage
   const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   logger.info('Placing security hold via API', {
@@ -285,7 +290,7 @@ async function processPlaceHoldJob(job: any, supabase: any) {
 /**
  * Process release_hold job (automated release after return)
  */
-async function processReleaseHoldJob(job: any, supabase: any) {
+async function processReleaseHoldJob(job: unknown, supabase: unknown) {
   const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const bookingId = job.booking_id;
 
@@ -313,7 +318,10 @@ async function processReleaseHoldJob(job: any, supabase: any) {
       action: 'hold_release_skipped',
       metadata: { bookingId, status: booking.status },
     });
-    return { skipped: true, reason: `Booking status is ${booking.status}, not returned_ok or completed` };
+    return {
+      skipped: true,
+      reason: `Booking status is ${booking.status}, not returned_ok or completed`,
+    };
   }
 
   // Check if hold was already released
@@ -358,7 +366,7 @@ async function processReleaseHoldJob(job: any, supabase: any) {
 /**
  * Process send_reminder job (remind customer about upcoming hold)
  */
-async function processSendReminderJob(job: any, supabase: any) {
+async function processSendReminderJob(job: unknown, supabase: unknown) {
   const bookingId = job.booking_id;
   const reminderType = job.metadata?.reminderType || 'hold_reminder'; // 'hold_reminder' or 'insurance_reminder'
 
@@ -371,13 +379,15 @@ async function processSendReminderJob(job: any, supabase: any) {
   // Fetch booking with customer info
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select(`
+    .select(
+      `
       id,
       bookingNumber,
       startDate,
       customerId,
       customer:customerId(email, firstName, lastName)
-    `)
+    `
+    )
     .eq('id', bookingId)
     .single();
 
@@ -413,11 +423,15 @@ async function processSendReminderJob(job: any, supabase: any) {
 
     return { success: true, emailSent: true };
   } catch (error) {
-    logger.error('Failed to send reminder email', {
-      component: 'job-scheduler',
-      action: 'reminder_error',
-      metadata: { bookingId },
-    }, error as Error);
+    logger.error(
+      'Failed to send reminder email',
+      {
+        component: 'job-scheduler',
+        action: 'reminder_error',
+        metadata: { bookingId },
+      },
+      error as Error
+    );
     throw error;
   }
 }
@@ -425,7 +439,7 @@ async function processSendReminderJob(job: any, supabase: any) {
 /**
  * Process check_insurance job (verify insurance still valid)
  */
-async function processCheckInsuranceJob(job: any, supabase: any) {
+async function processCheckInsuranceJob(job: unknown, supabase: unknown) {
   const bookingId = job.booking_id;
 
   logger.info('Checking insurance via job', {
@@ -437,13 +451,15 @@ async function processCheckInsuranceJob(job: any, supabase: any) {
   // Fetch booking with insurance documents
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
-    .select(`
+    .select(
+      `
       id,
       bookingNumber,
       startDate,
       customerId,
       insurance_documents(id, status, expiresAt, type)
-    `)
+    `
+    )
     .eq('id', bookingId)
     .single();
 
@@ -455,22 +471,24 @@ async function processCheckInsuranceJob(job: any, supabase: any) {
   const now = new Date();
 
   // Check for expired or expiring soon insurance
-  const expiredDocs = insuranceDocs.filter((doc: any) => {
+  const expiredDocs = insuranceDocs.filter((doc: unknown) => {
     if (!doc.expiresAt) return false;
     const expiryDate = new Date(doc.expiresAt);
     return expiryDate < now;
   });
 
-  const expiringSoonDocs = insuranceDocs.filter((doc: any) => {
+  const expiringSoonDocs = insuranceDocs.filter((doc: unknown) => {
     if (!doc.expiresAt) return false;
     const expiryDate = new Date(doc.expiresAt);
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0; // Expiring within 30 days
   });
 
   // Check if any approved insurance exists
   const hasApprovedInsurance = insuranceDocs.some(
-    (doc: any) => doc.status === 'approved' && (!doc.expiresAt || new Date(doc.expiresAt) > now)
+    (doc: unknown) => doc.status === 'approved' && (!doc.expiresAt || new Date(doc.expiresAt) > now)
   );
 
   if (expiredDocs.length > 0) {
@@ -480,7 +498,7 @@ async function processCheckInsuranceJob(job: any, supabase: any) {
       metadata: {
         bookingId,
         expiredCount: expiredDocs.length,
-        expiredIds: expiredDocs.map((d: any) => d.id),
+        expiredIds: expiredDocs.map((d: unknown) => d.id),
       },
     });
 
@@ -519,9 +537,3 @@ async function processCheckInsuranceJob(job: any, supabase: any) {
     expiringSoonCount: expiringSoonDocs.length,
   };
 }
-
-
-
-
-
-

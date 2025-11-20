@@ -1,7 +1,7 @@
 import { buildInvoicePaymentReceiptEmail } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
-import { createServiceClient } from '@/lib/supabase/service';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
+import { createServiceClient } from '@/lib/supabase/service';
 
 const DEFAULT_ALLOWED_STRIPE_LOOKUP = true;
 
@@ -167,11 +167,11 @@ export async function generatePaymentReceiptHtml(
         null,
     },
     {
-      email: (customer as any).email ?? 'customer@udigit.ca',
-      firstName: (customer as any).firstName ?? '',
-      lastName: (customer as any).lastName ?? '',
-      company: (customer as any).companyName ?? '',
-      phone: (customer as any).phone ?? '',
+      email: (customer as { email?: string } | null)?.email ?? 'customer@udigit.ca',
+      firstName: (customer as { firstName?: string } | null)?.firstName ?? '',
+      lastName: (customer as { lastName?: string } | null)?.lastName ?? '',
+      company: (customer as { companyName?: string } | null)?.companyName ?? '',
+      phone: (customer as { phone?: string } | null)?.phone ?? '',
     }
   );
 
@@ -196,7 +196,9 @@ export async function generatePaymentReceiptHtml(
           expand: ['charges.data'],
         });
 
-        const charge = (paymentIntent as any).charges?.data?.[0];
+        const charge = (
+          paymentIntent as { charges?: { data?: Array<{ receipt_url?: string }> } } | null
+        )?.charges?.data?.[0];
         if (charge?.receipt_url) {
           const receiptResponse = await fetch(charge.receipt_url, {
             method: 'GET',
@@ -234,4 +236,3 @@ export async function generatePaymentReceiptHtml(
 }
 
 export { ReceiptGenerationError };
-

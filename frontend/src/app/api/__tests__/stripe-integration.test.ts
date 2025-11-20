@@ -2,9 +2,8 @@
  * Stripe Integration Tests
  * Validates Stripe payment configuration and security holds
  */
-
-import { describe, it, expect, beforeAll } from 'vitest';
 import Stripe from 'stripe';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 // Check if we have required environment variables
 const hasStripeConfig =
@@ -33,7 +32,8 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
   describe('Configuration', () => {
     it('should have Stripe publishable key configured', () => {
-      const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLIC_TEST_KEY;
+      const publishableKey =
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLIC_TEST_KEY;
       expect(publishableKey).toBeTruthy();
       // Allow placeholder keys for testing
       if (!publishableKey.includes('placeholder')) {
@@ -61,21 +61,27 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
     it('should report configured Stripe mode', () => {
       const secretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_TEST_KEY;
-      const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLIC_TEST_KEY;
+      const publishableKey =
+        process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLIC_TEST_KEY;
       const secretMode = asStripeMode(secretKey);
       const publishableMode = asStripeMode(publishableKey);
       expect(['test', 'live', 'unknown']).toContain(secretMode);
       expect(['test', 'live', 'unknown']).toContain(publishableMode);
       // In test environment with placeholders, modes may be unknown - that's okay
       if (secretMode !== 'unknown' && publishableMode !== 'unknown') {
-        expect(secretMode === 'unknown' ? publishableMode : secretMode).toBe(publishableMode === 'unknown' ? secretMode : publishableMode);
+        expect(secretMode === 'unknown' ? publishableMode : secretMode).toBe(
+          publishableMode === 'unknown' ? secretMode : publishableMode
+        );
       }
     });
   });
 
   describe('Stripe Client Initialization', () => {
     it('should create Stripe client without errors', () => {
-      const secretKey = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_TEST_KEY || 'sk_test_placeholder_key_for_testing';
+      const secretKey =
+        process.env.STRIPE_SECRET_KEY ||
+        process.env.STRIPE_SECRET_TEST_KEY ||
+        'sk_test_placeholder_key_for_testing';
       expect(() => {
         const stripe = createStripeClient(secretKey);
         expect(stripe).toBeDefined();
@@ -109,7 +115,7 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
         // Should return 401 (unauthorized), 400 (validation), or 429 (rate limited)
         expect([400, 401, 429]).toContain(response.status);
-      } catch (error) {
+      } catch {
         // Network error - server not running, skip test
         expect(true).toBe(true);
       }
@@ -135,7 +141,7 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
         // Should return 401 (unauthorized) or 400 (validation error)
         expect([400, 401]).toContain(response.status);
-      } catch (error) {
+      } catch {
         // Network error - server not running, skip test
         expect(true).toBe(true);
       }
@@ -159,7 +165,7 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
         // Should return 401 (unauthorized) or 400 (validation error)
         expect([400, 401]).toContain(response.status);
-      } catch (error) {
+      } catch {
         // Network error - server not running, skip test
         expect(true).toBe(true);
       }
@@ -183,7 +189,7 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
         // Should return 401 (unauthorized) or 400 (validation error)
         expect([400, 401]).toContain(response.status);
-      } catch (error) {
+      } catch {
         // Network error - server not running, skip test
         expect(true).toBe(true);
       }
@@ -207,12 +213,10 @@ describe.skipIf(skipStripeTests)('Stripe Integration', () => {
 
         // Webhook will fail signature verification, but endpoint should exist
         expect([400, 500]).toContain(response.status);
-      } catch (error) {
+      } catch {
         // Network error - server not running, skip test
         expect(true).toBe(true);
       }
     });
   });
 });
-
-

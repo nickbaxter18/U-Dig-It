@@ -5,11 +5,14 @@
 
 'use client';
 
-import EquipmentRiderViewer from '@/components/contracts/EquipmentRiderViewer';
-import { supabase } from '@/lib/supabase/client';
 import { AlertCircle, CheckCircle, Download, FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import EquipmentRiderViewer from '@/components/contracts/EquipmentRiderViewer';
+
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 interface EquipmentRiderSectionProps {
   bookingId: string;
@@ -30,12 +33,7 @@ export default function EquipmentRiderSection({
   const [error, setError] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
 
-  useEffect(() => {
-    checkRiderRequirement();
-    fetchRiderData();
-  }, [bookingId]);
-
-  const checkRiderRequirement = async () => {
+  const checkRiderRequirement = useCallback(async () => {
     try {
       const response = await fetch(`/api/contracts/equipment-rider?bookingId=${bookingId}`);
 
@@ -46,15 +44,19 @@ export default function EquipmentRiderSection({
         setRequiresRider(false);
       }
     } catch (err) {
-      logger.error('Error checking rider requirement:', {
-        component: 'EquipmentRiderSection',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Error checking rider requirement:',
+        {
+          component: 'EquipmentRiderSection',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setRequiresRider(false);
     }
-  };
+  }, [bookingId]);
 
-  const fetchRiderData = async () => {
+  const fetchRiderData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -125,15 +127,19 @@ export default function EquipmentRiderSection({
       }
 
       setLoading(false);
-    } catch (err: any) {
-      logger.error('Error fetching rider data:', {
-        component: 'EquipmentRiderSection',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Error fetching rider data:',
+        {
+          component: 'EquipmentRiderSection',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message);
       setLoading(false);
     }
-  };
+  }, [bookingId, supabase]);
 
   const handleDownloadRider = async () => {
     try {
@@ -156,11 +162,15 @@ export default function EquipmentRiderSection({
       link.download = `SVL75-3-Equipment-Rider-${bookingId}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      logger.error('Error downloading rider:', {
-        component: 'EquipmentRiderSection',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Error downloading rider:',
+        {
+          component: 'EquipmentRiderSection',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to download equipment rider. Please try again.');
     }
   };
@@ -228,7 +238,7 @@ export default function EquipmentRiderSection({
             type="checkbox"
             id="rider-acknowledgment"
             checked={acknowledged}
-            onChange={e => setAcknowledged(e.target.checked)}
+            onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <label htmlFor="rider-acknowledgment" className="ml-3 flex-1">

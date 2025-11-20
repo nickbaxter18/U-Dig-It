@@ -1,5 +1,5 @@
 // Performance helpers for admin E2E tests
-import { Page, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
 
 export interface PerformanceMetrics {
   loadTime: number;
@@ -19,7 +19,7 @@ export class PerformanceHelper {
    */
   async measurePageLoad(url: string): Promise<PerformanceMetrics> {
     const startTime = Date.now();
-    
+
     // Start performance monitoring
     const performancePromise = this.page.evaluate(() => {
       return new Promise<PerformanceMetrics>((resolve) => {
@@ -28,8 +28,8 @@ export class PerformanceHelper {
           const paintEntries = entries.filter(
             (e): e is PerformancePaintTiming => e.entryType === 'paint'
           );
-          
-          const fcp = paintEntries.find(e => e.name === 'first-contentful-paint');
+
+          const fcp = paintEntries.find((e) => e.name === 'first-contentful-paint');
           const lcp = entries.find(
             (e): e is PerformanceEntry & { renderTime?: number; loadTime?: number } =>
               e.entryType === 'largest-contentful-paint'
@@ -37,7 +37,7 @@ export class PerformanceHelper {
 
           resolve({
             firstContentfulPaint: fcp ? fcp.startTime : undefined,
-            largestContentfulPaint: lcp ? (lcp.renderTime || lcp.loadTime || 0) : undefined,
+            largestContentfulPaint: lcp ? lcp.renderTime || lcp.loadTime || 0 : undefined,
           } as PerformanceMetrics);
         });
 
@@ -117,13 +117,19 @@ export class PerformanceHelper {
       );
     }
 
-    if (metrics.firstContentfulPaint && metrics.firstContentfulPaint > limits.maxFirstContentfulPaint!) {
+    if (
+      metrics.firstContentfulPaint &&
+      metrics.firstContentfulPaint > limits.maxFirstContentfulPaint!
+    ) {
       throw new Error(
         `First Contentful Paint ${metrics.firstContentfulPaint}ms exceeds target ${limits.maxFirstContentfulPaint}ms`
       );
     }
 
-    if (metrics.largestContentfulPaint && metrics.largestContentfulPaint > limits.maxLargestContentfulPaint!) {
+    if (
+      metrics.largestContentfulPaint &&
+      metrics.largestContentfulPaint > limits.maxLargestContentfulPaint!
+    ) {
       throw new Error(
         `Largest Contentful Paint ${metrics.largestContentfulPaint}ms exceeds target ${limits.maxLargestContentfulPaint}ms`
       );
@@ -135,7 +141,10 @@ export class PerformanceHelper {
    */
   async checkMemoryLeaks(): Promise<void> {
     const initialMemory = await this.page.evaluate(() => {
-      return (performance as any).memory?.usedJSHeapSize || 0;
+      return (
+        (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+          ?.usedJSHeapSize || 0
+      );
     });
 
     // Perform some actions
@@ -143,7 +152,10 @@ export class PerformanceHelper {
     await this.page.waitForLoadState('networkidle');
 
     const afterReloadMemory = await this.page.evaluate(() => {
-      return (performance as any).memory?.usedJSHeapSize || 0;
+      return (
+        (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+          ?.usedJSHeapSize || 0
+      );
     });
 
     // Memory should not grow excessively (allow 50% growth for initial load)
@@ -160,15 +172,17 @@ export class PerformanceHelper {
   /**
    * Monitor API call performance
    */
-  async monitorApiCalls(pattern: string | RegExp): Promise<Array<{ url: string; duration: number; status: number }>> {
+  async monitorApiCalls(
+    pattern: string | RegExp
+  ): Promise<Array<{ url: string; duration: number; status: number }>> {
     const apiCalls: Array<{ url: string; duration: number; status: number }> = [];
 
     this.page.on('response', async (response) => {
       const url = response.url();
       const matches = typeof pattern === 'string' ? url.includes(pattern) : pattern.test(url);
-      
+
       if (matches) {
-        const request = response.request();
+        const _request = response.request();
         const timing = response.timing();
         const duration = timing ? timing.responseEnd - timing.requestStart : 0;
 
@@ -183,4 +197,3 @@ export class PerformanceHelper {
     return apiCalls;
   }
 }
-

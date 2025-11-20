@@ -1,0 +1,308 @@
+---
+description: "Intelligent context window management for long sessions - prioritization, pruning, and refresh strategies"
+alwaysApply: true
+---
+
+# Context Optimization & Management
+
+## 🎯 Purpose
+Intelligently manage context window to maintain performance in long sessions, prioritize important information, and prevent context degradation.
+
+---
+
+## Context Prioritization Strategy
+
+When context window fills (>80%), I will prioritize information:
+
+### Tier 1: Keep (High Priority - Always Retain)
+- **Active file being edited** - Current focus
+- **Related component/API files** - Directly related to current work
+- **Core patterns** - API route pattern, RLS pattern, Coding Savant patterns
+- **Current task context** - What we're working on right now
+- **Critical reference docs** - RULE_SYSTEM_MAP, AI_CODING_REFERENCE, CODING_SAVANT_CHEAT_SHEET
+
+### Tier 2: Summarize (Medium Priority - Condense)
+- **Previous implementations** - Summarize key decisions
+- **Related database schema** - Keep structure, summarize details
+- **Test files** - Keep test patterns, summarize test cases
+- **Similar components** - Keep patterns, summarize differences
+
+### Tier 3: Drop (Low Priority - Remove)
+- **Historical conversation** - Summarize key points, drop details
+- **Completed tasks** - Summarize outcomes, drop implementation details
+- **Audit reports** - Not needed for coding
+- **Old migration files** - Only keep recent migrations
+- **Large documentation** - Reference docs indexed, don't need full content
+
+---
+
+## Context Refresh Strategy
+
+### Refresh Triggers
+
+**Every 50K tokens** (or when context >80% full):
+1. **Summarize key decisions** made in session
+2. **List active TODOs** and current tasks
+3. **Note important constraints** and requirements
+4. **Refresh with current file state** (re-read active files)
+5. **Drop old file versions** (keep only latest)
+
+### Refresh Process
+
+```
+Context >80% Full
+    ↓
+Summarize Session So Far
+    ↓
+Extract Key Decisions
+    ↓
+List Active TODOs
+    ↓
+Refresh Active Files
+    ↓
+Drop Low-Priority Content
+    ↓
+Continue with Optimized Context
+```
+
+---
+
+## Proactive Context Management
+
+### Monitoring
+
+I will monitor context usage and notify when:
+- **Context >80% full** → "Context window 80% full, optimizing..."
+- **About to drop important info** → "Dropping low-priority content, keeping critical files"
+- **Need to refresh** → "Refreshing context window, summarizing session..."
+
+### Optimization Actions
+
+**When Context >80%**:
+1. **Summarize completed tasks** → "Completed: Created BookingCard component, added cancel API"
+2. **Condense file history** → Keep latest version, summarize changes
+3. **Remove redundant info** → Drop duplicate patterns, keep single source
+4. **Prioritize active work** → Keep files related to current task
+
+---
+
+## Context Prioritization Matrix
+
+### File Priority Levels
+
+| Priority | File Types | Action |
+|----------|------------|--------|
+| **Critical** | Active file, core patterns, critical docs | Always keep |
+| **High** | Related files, current task context | Keep, summarize if needed |
+| **Medium** | Previous implementations, similar code | Summarize key points |
+| **Low** | Historical conversation, completed tasks | Drop after summarizing |
+
+### Pattern Priority
+
+| Pattern Type | Priority | Action |
+|--------------|----------|--------|
+| **Coding Savant patterns** | Critical | Always keep |
+| **API route pattern** | Critical | Always keep |
+| **RLS policy pattern** | Critical | Always keep |
+| **Component patterns** | High | Keep, summarize if needed |
+| **Test patterns** | Medium | Summarize, keep key examples |
+
+---
+
+## Context Pruning Rules
+
+### What to Prune
+
+**Always Prune**:
+- Old file versions (keep only latest)
+- Duplicate information (keep single source)
+- Completed task details (keep summary)
+- Historical conversation (keep key decisions)
+
+**Conditionally Prune**:
+- Large documentation (reference indexed docs instead)
+- Test fixtures (keep patterns, drop data)
+- Migration history (keep recent, summarize old)
+
+**Never Prune**:
+- Active file being edited
+- Core patterns (Coding Savant, API route, RLS)
+- Critical reference docs
+- Current task context
+
+---
+
+## Smart Context Loading
+
+### Load Order
+
+1. **Critical files first** (from `.cursor/indexing.json`)
+   - RULE_SYSTEM_MAP.md
+   - AI_CODING_REFERENCE.md
+   - CODING_SAVANT_CHEAT_SHEET.md
+   - supabase/types.ts
+
+2. **Active work files**
+   - File being edited
+   - Related components/APIs
+   - Current task context
+
+3. **Supporting files**
+   - Similar patterns
+   - Reference implementations
+   - Related utilities
+
+### Load Strategy
+
+```
+Session Start
+    ↓
+Load Critical Files (indexing.json priorities)
+    ↓
+Load Active Work Files
+    ↓
+Load Supporting Files (as needed)
+    ↓
+Monitor Context Usage
+    ↓
+Optimize When >80% Full
+```
+
+---
+
+## Context Window Budget
+
+### Allocation Strategy
+
+**150K token budget**:
+- **Always-Applied Rules**: ~25K (17%)
+- **Critical Reference Docs**: ~15K (10%)
+- **Active Work Files**: ~40K (27%)
+- **Supporting Context**: ~30K (20%)
+- **Buffer for Growth**: ~40K (27%)
+
+**When >120K tokens (80%)**:
+- Summarize supporting context
+- Drop low-priority content
+- Refresh active files
+- Maintain buffer
+
+---
+
+## Context Refresh Examples
+
+### Example 1: Long Session
+
+```
+Session Start (0K tokens)
+    ↓
+Work on Feature A (40K tokens)
+    ↓
+Work on Feature B (80K tokens)
+    ↓
+Context >80% (120K tokens)
+    ↓
+Refresh:
+  - Summarize Feature A: "Created BookingCard component with cancel action"
+  - Keep Feature B context active
+  - Drop Feature A implementation details
+    ↓
+Continue with Feature B (80K tokens available)
+```
+
+### Example 2: Multiple Files
+
+```
+Editing 5 related files (100K tokens)
+    ↓
+Context >80% (120K tokens)
+    ↓
+Refresh:
+  - Keep active file (highest priority)
+  - Summarize other 4 files: "Related components use similar patterns"
+  - Keep core patterns
+    ↓
+Continue with active file (100K tokens available)
+```
+
+---
+
+## Notification Protocol
+
+### When Optimizing Context
+
+I will notify user:
+```
+🔄 Context Optimization
+
+Context window: 85% full (127K/150K tokens)
+Optimizing context:
+  ✓ Summarized completed tasks
+  ✓ Refreshed active files
+  ✓ Dropped low-priority content
+  → Context now: 75% full (112K/150K tokens)
+  → Ready to continue
+```
+
+### When Refresh Needed
+
+I will notify user:
+```
+🔄 Context Refresh
+
+Refreshing context window:
+  → Summarizing session progress
+  → Extracting key decisions
+  → Refreshing active files
+  → Context optimized for continued work
+```
+
+---
+
+## Performance Targets
+
+### Context Management Goals
+
+- **Context Load Time**: <1s for critical files
+- **Refresh Time**: <2s for context optimization
+- **Context Efficiency**: >80% of tokens used for active work
+- **Refresh Frequency**: Every 50K tokens or when >80% full
+
+---
+
+## ✅ Success Criteria
+
+Context is optimized when:
+- ✅ Critical files always available
+- ✅ Active work has sufficient context
+- ✅ Context window stays <90% full
+- ✅ No important information lost
+- ✅ Performance maintained in long sessions
+
+---
+
+## 🎯 Usage
+
+### For AI Model (Automatic)
+
+I will automatically:
+1. Monitor context usage
+2. Prioritize important information
+3. Summarize when needed
+4. Refresh proactively
+5. Notify when optimizing
+
+### For Developers
+
+You'll see notifications like:
+```
+🔄 Context Optimization: Summarized completed tasks, refreshed active files
+```
+
+This means I'm managing context to maintain performance.
+
+---
+
+**Status**: ✅ Active Context Management System
+**Refresh Strategy**: Every 50K tokens or >80% full
+**Priority System**: 3-tier (Critical/High/Medium/Low)

@@ -10,21 +10,22 @@
  *   5. Update booking status to 'verify_hold_ok'
  *   6. Record transaction in booking_payments
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
 
-const VERIFY_HOLD_AMOUNT_CENTS = 5000; // $50
-const CURRENCY = 'cad';
+// import Stripe from 'stripe'; // Reserved for future type usage
+
+const _VERIFY_HOLD_AMOUNT_CENTS = 5000; // $50 - Reserved for future use
+const _CURRENCY = 'cad'; // Reserved for future use
 
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
-  
+
   try {
     // 1. Request validation
     const validation = await validateRequest(request, {
@@ -44,7 +45,10 @@ export async function POST(request: NextRequest) {
 
     // 3. Auth verification
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized verify hold attempt', {
         component: 'verify-hold-api',
@@ -58,10 +62,7 @@ export async function POST(request: NextRequest) {
     const { bookingId } = body;
 
     if (!bookingId) {
-      return NextResponse.json(
-        { error: 'Missing bookingId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
     }
 
     logger.info('Starting verification hold', {
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
     });
 
     // 5. Check if this is a temporary booking (not yet persisted to database)
-    const isTemporaryBooking = bookingId === 'temporary' || bookingId === 'pending' || bookingId.startsWith('temp-');
+    const isTemporaryBooking =
+      bookingId === 'temporary' || bookingId === 'pending' || bookingId.startsWith('temp-');
 
     if (!isTemporaryBooking) {
       // For real bookings, verify booking ownership
@@ -139,10 +141,7 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = customer.id;
 
       // Save Stripe Customer ID to database
-      await supabase
-        .from('users')
-        .update({ stripeCustomerId })
-        .eq('id', user.id);
+      await supabase.from('users').update({ stripeCustomerId }).eq('id', user.id);
 
       logger.info('Stripe customer created', {
         component: 'verify-hold-api',
@@ -181,13 +180,16 @@ export async function POST(request: NextRequest) {
       idempotencyKey,
       message: 'Ready to collect payment method',
     });
-
-  } catch (error: any) {
-    logger.error('Verification hold failed', {
-      component: 'verify-hold-api',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Verification hold failed',
+      {
+        component: 'verify-hold-api',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Failed to process verification hold', details: error.message },
@@ -195,4 +197,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

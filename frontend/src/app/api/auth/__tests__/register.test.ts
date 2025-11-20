@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createMockRequest, expectErrorResponse } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { POST } from '../register/route.ts';
-import { createMockRequest, expectSuccessResponse, expectErrorResponse } from '@/test-utils';
 
 const mockSupabase = {
   auth: {
@@ -134,7 +135,7 @@ describe('POST /api/auth/register', () => {
       };
 
       const request = createMockRequest('POST', userData);
-      const response = await POST(request);
+      await POST(request);
 
       expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
         email: userData.email,
@@ -210,4 +211,3 @@ describe('POST /api/auth/register', () => {
     });
   });
 });
-

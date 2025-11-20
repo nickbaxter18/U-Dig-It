@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 const SUPABASE_PROJECT = '127.0.0.1:54321';
 const STORAGE_KEY = `sb-${SUPABASE_PROJECT}-auth-token`;
@@ -221,9 +221,12 @@ const bookingAttachments = [
 ];
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(([key, value]) => {
-    window.localStorage.setItem(key, value);
-  }, [STORAGE_KEY, JSON.stringify(adminSession)]);
+  await page.addInitScript(
+    ([key, value]) => {
+      window.localStorage.setItem(key, value);
+    },
+    [STORAGE_KEY, JSON.stringify(adminSession)]
+  );
 
   const maintenanceRecords: {
     id: string;
@@ -237,7 +240,7 @@ test.beforeEach(async ({ page }) => {
     nextDueDate?: string;
   }[] = [];
 
-  await page.route('http://127.0.0.1:54321/rest/v1/users', async route => {
+  await page.route('http://127.0.0.1:54321/rest/v1/users', async (route) => {
     const method = route.request().method();
     if (method === 'HEAD') {
       await route.fulfill({
@@ -256,7 +259,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route('http://127.0.0.1:54321/rest/v1/equipment', async route => {
+  await page.route('http://127.0.0.1:54321/rest/v1/equipment', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -264,7 +267,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route('http://127.0.0.1:54321/rest/v1/bookings', async route => {
+  await page.route('http://127.0.0.1:54321/rest/v1/bookings', async (route) => {
     const url = new URL(route.request().url());
     const equipmentFilter = url.searchParams.get('equipmentId');
     const customerFilter = url.searchParams.get('customerId');
@@ -273,12 +276,12 @@ test.beforeEach(async ({ page }) => {
 
     if (equipmentFilter?.startsWith('eq.')) {
       const id = equipmentFilter.slice(3);
-      filtered = filtered.filter(item => item.equipmentId === id);
+      filtered = filtered.filter((item) => item.equipmentId === id);
     }
 
     if (customerFilter?.startsWith('eq.')) {
       const id = customerFilter.slice(3);
-      filtered = filtered.filter(item => item.customerId === id);
+      filtered = filtered.filter((item) => item.customerId === id);
     }
 
     await route.fulfill({
@@ -288,7 +291,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route('http://127.0.0.1:54321/rest/v1/equipment_attachments', async route => {
+  await page.route('http://127.0.0.1:54321/rest/v1/equipment_attachments', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -296,7 +299,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route('http://127.0.0.1:54321/rest/v1/booking_attachments', async route => {
+  await page.route('http://127.0.0.1:54321/rest/v1/booking_attachments', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -304,8 +307,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route('**/api/admin/equipment/*/maintenance', async route => {
-    const url = new URL(route.request().url());
+  await page.route('**/api/admin/equipment/*/maintenance', async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,
@@ -376,7 +378,10 @@ test('schedule maintenance from equipment page', async ({ page }) => {
   await page.locator('button[title="Schedule Maintenance"]').first().click();
   await expect(page.getByText('Casey Technician')).toBeVisible();
   await expect(page.getByText('$275.00')).toBeVisible();
-  await page.getByRole('button', { name: 'Close maintenance modal' }).click({ force: true }).catch(() => {});
+  await page
+    .getByRole('button', { name: 'Close maintenance modal' })
+    .click({ force: true })
+    .catch(() => {});
 });
 
 test('dashboard and growth metrics render analytics data', async ({ page }) => {
@@ -396,5 +401,3 @@ test('dashboard and growth metrics render analytics data', async ({ page }) => {
   await expect(page.getByText('Hydraulic Breaker')).toBeVisible();
   await expect(page.getByText('Times Rented (6 mo)').locator('xpath=..')).toContainText('5');
 });
-
-

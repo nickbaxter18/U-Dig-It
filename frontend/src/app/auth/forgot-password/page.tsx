@@ -1,10 +1,12 @@
 'use client';
 
-import { supabase } from '@/lib/supabase/client';
-import { logger } from '@/lib/logger';
-import Link from 'next/link';
 import { useState } from 'react';
+
 import Image from 'next/image';
+import Link from 'next/link';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -31,11 +33,15 @@ export default function ForgotPasswordPage() {
         metadata: { email },
       });
     } catch (err) {
-      logger.error('Password reset error', {
-        component: 'forgot-password',
-        action: 'reset_error',
-      }, err instanceof Error ? err : undefined);
-      
+      logger.error(
+        'Password reset error',
+        {
+          component: 'forgot-password',
+          action: 'reset_error',
+        },
+        err instanceof Error ? err : undefined
+      );
+
       setError('Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
@@ -48,8 +54,18 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
           <div className="text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500">
-              <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="h-8 w-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <h2 className="mb-2 text-2xl font-bold text-green-900">Check Your Email!</h2>
@@ -98,9 +114,7 @@ export default function ForgotPasswordPage() {
               </span>
             </div>
           </Link>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            Reset Your Password
-          </h2>
+          <h2 className="text-center text-3xl font-extrabold text-gray-900">Reset Your Password</h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Enter your email and we'll send you a reset link
           </p>
@@ -125,7 +139,7 @@ export default function ForgotPasswordPage() {
                   required
                   autoComplete="email"
                   value={email}
-                  onChange={(e: any) => setEmail(e.target.value)}
+                  onChange={(e: unknown) => setEmail(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-red-500"
                   placeholder="you@example.com"
                 />
@@ -154,4 +168,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

@@ -2,14 +2,17 @@
  * Generate Signed Contract PDF API Route
  * Creates a PDF with the customer's signature and uploads to Supabase Storage
  */
+import { renderToBuffer } from '@react-pdf/renderer';
+
+import React from 'react';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import SVL75EquipmentRiderDocument from '@/components/contracts/SVL75EquipmentRider';
+
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { renderToBuffer } from '@react-pdf/renderer';
-import { NextRequest, NextResponse } from 'next/server';
-import React from 'react';
 
 export async function POST(req: NextRequest) {
   try {
@@ -175,14 +178,11 @@ export async function POST(req: NextRequest) {
       .createSignedUrl(fileName, SIGNED_URL_TTL_SECONDS);
 
     if (signedError) {
-      logger.warn(
-        'Unable to create signed URL with session client',
-        {
-          component: 'api-generate-signed-pdf',
-          action: 'signed_url_warning',
-          metadata: { error: signedError.message },
-        }
-      );
+      logger.warn('Unable to create signed URL with session client', {
+        component: 'api-generate-signed-pdf',
+        action: 'signed_url_warning',
+        metadata: { error: signedError.message },
+      });
     } else {
       signedUrl = signedData?.signedUrl ?? null;
     }
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
       contractUrl: signedUrl,
       fileName,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Error generating signed PDF',
       {

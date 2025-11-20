@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { createServiceClient } from '@/lib/supabase/service';
-import { sendAdminEmail } from '@/lib/sendgrid';
 import { createInAppNotification } from '@/lib/notification-service';
+import { sendAdminEmail } from '@/lib/sendgrid';
+import { createServiceClient } from '@/lib/supabase/service';
 
 const JOB_NAME = 'process_notifications';
 
@@ -91,10 +91,7 @@ export async function GET(request: NextRequest) {
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Failed to fetch queued notifications' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch queued notifications' }, { status: 500 });
     }
 
     if (!queuedNotifications || queuedNotifications.length === 0) {
@@ -112,11 +109,11 @@ export async function GET(request: NextRequest) {
     });
 
     const results = await Promise.allSettled(
-      queuedNotifications.map(notification => processNotification(notification, supabaseAdmin))
+      queuedNotifications.map((notification) => processNotification(notification, supabaseAdmin))
     );
 
-    const successes = results.filter(r => r.status === 'fulfilled').length;
-    const failures = results.filter(r => r.status === 'rejected').length;
+    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const failures = results.filter((r) => r.status === 'rejected').length;
 
     logger.info('Notification processing completed', {
       component: 'cron-process-notifications',
@@ -177,7 +174,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function processNotification(notification: any, supabaseAdmin: any) {
+async function processNotification(notification: unknown, supabaseAdmin: unknown) {
   try {
     // Mark as processing
     await supabaseAdmin
@@ -264,7 +261,10 @@ async function processNotification(notification: any, supabaseAdmin: any) {
   }
 }
 
-async function processEmailNotification(notification: any, supabaseAdmin: any): Promise<boolean> {
+async function processEmailNotification(
+  notification: unknown,
+  supabaseAdmin: unknown
+): Promise<boolean> {
   try {
     const to = notification.to;
     let emailAddress: string;
@@ -312,7 +312,7 @@ async function processEmailNotification(notification: any, supabaseAdmin: any): 
     // If template data is provided, you could render a template here
     if (payload.templateData) {
       // Simple template replacement
-      Object.keys(payload.templateData).forEach(key => {
+      Object.keys(payload.templateData).forEach((key) => {
         htmlBody = htmlBody.replace(new RegExp(`{{${key}}}`, 'g'), payload.templateData[key]);
       });
     }
@@ -342,7 +342,10 @@ async function processEmailNotification(notification: any, supabaseAdmin: any): 
   }
 }
 
-async function processInAppNotification(notification: any, supabaseAdmin: any): Promise<boolean> {
+async function processInAppNotification(
+  notification: unknown,
+  supabaseAdmin: unknown
+): Promise<boolean> {
   try {
     const to = notification.to;
     let userId: string;
@@ -398,4 +401,3 @@ async function processInAppNotification(notification: any, supabaseAdmin: any): 
     return false;
   }
 }
-

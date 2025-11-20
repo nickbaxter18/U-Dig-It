@@ -1,6 +1,5 @@
 'use client';
 
-import { formatDate } from '@/lib/utils';
 import {
   CheckCircle,
   Download,
@@ -12,10 +11,14 @@ import {
   User,
   XCircle,
 } from 'lucide-react';
+
 import { useEffect, useMemo, useState } from 'react';
+
+import { useSearchParams } from 'next/navigation';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { useSearchParams } from 'next/navigation';
+import { formatDate } from '@/lib/utils';
 
 interface Contract {
   id: string;
@@ -102,17 +105,21 @@ export default function AdminContractsPage() {
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch contracts:', {
-          component: 'app-page',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to fetch contracts:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredContracts = contracts.filter(contract => {
+  const filteredContracts = contracts.filter((contract) => {
     const matchesSearch =
       contract.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,7 +132,7 @@ export default function AdminContractsPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const handleStatusUpdate = async (contractId: string, newStatus: string) => {
+  const _handleStatusUpdate = async (contractId: string, newStatus: string) => {
     try {
       const response = await fetchWithAuth(`/api/admin/contracts/${contractId}/status`, {
         method: 'PATCH',
@@ -141,16 +148,20 @@ export default function AdminContractsPage() {
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to update contract status:', {
-          component: 'app-page',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to update contract status:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
   };
 
   const handleSendContract = async (contractId: string) => {
-    const contract = contracts.find(c => c.id === contractId);
+    const contract = contracts.find((c) => c.id === contractId);
     if (!contract) {
       return;
     }
@@ -193,7 +204,7 @@ export default function AdminContractsPage() {
         throw new Error(errorBody?.error || 'Failed to download contract');
       }
 
-      const contract = contracts.find(c => c.id === contractId);
+      const contract = contracts.find((c) => c.id === contractId);
       const suggestedFilename = contract
         ? `${contract.contractNumber || contractId}.pdf`
         : `contract-${contractId}.pdf`;
@@ -225,10 +236,14 @@ export default function AdminContractsPage() {
       document.body.removeChild(a);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to download contract:', {
-          component: 'app-page',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to download contract:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
       alert('Unable to download the contract PDF right now. Please try again later.');
     }
@@ -252,7 +267,9 @@ export default function AdminContractsPage() {
       }
 
       const queryString = params.toString();
-      const response = await fetchWithAuth(`/api/admin/contracts/export${queryString ? `?${queryString}` : ''}`);
+      const response = await fetchWithAuth(
+        `/api/admin/contracts/export${queryString ? `?${queryString}` : ''}`
+      );
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
         throw new Error(errorBody?.error || 'Failed to export contracts');
@@ -325,7 +342,7 @@ export default function AdminContractsPage() {
                 className="focus:ring-kubota-orange focus:border-kubota-orange block w-full rounded-md border-gray-300 pl-10 sm:text-sm"
                 placeholder="Search contracts..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
@@ -338,7 +355,7 @@ export default function AdminContractsPage() {
               id="status"
               className="focus:ring-kubota-orange focus:border-kubota-orange mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:outline-none sm:text-sm"
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="all">All Statuses</option>
               <option value="draft">Draft</option>
@@ -356,7 +373,7 @@ export default function AdminContractsPage() {
               id="type"
               className="focus:ring-kubota-orange focus:border-kubota-orange mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:outline-none sm:text-sm"
               value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
+              onChange={(e) => setTypeFilter(e.target.value)}
             >
               <option value="all">All Types</option>
               <option value="rental_agreement">Rental Agreement</option>
@@ -369,7 +386,7 @@ export default function AdminContractsPage() {
       {/* Contracts Table */}
       <div className="overflow-hidden bg-white shadow sm:rounded-md">
         <ul className="divide-y divide-gray-200">
-          {filteredContracts.map(contract => {
+          {filteredContracts.map((contract) => {
             const StatusIcon = statusIcons[contract.status];
             return (
               <li key={contract.id}>

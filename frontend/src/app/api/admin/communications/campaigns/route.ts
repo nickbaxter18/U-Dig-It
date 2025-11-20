@@ -1,7 +1,8 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { sendAdminEmail } from '@/lib/sendgrid';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { sendAdminEmail } from '@/lib/sendgrid';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const MAX_RECIPIENTS = Number(process.env.COMMUNICATIONS_MAX_RECIPIENTS ?? '500');
 
@@ -30,7 +31,7 @@ async function getBookingCustomerIds(
   if (error) throw error;
 
   const ids = new Set<string>();
-  (data ?? []).forEach(row => {
+  (data ?? []).forEach((row) => {
     if (row.customerId) {
       ids.add(row.customerId);
     }
@@ -39,7 +40,7 @@ async function getBookingCustomerIds(
 }
 
 function buildNotInList(ids: string[]) {
-  return `(${ids.map(id => `"${id}"`).join(',')})`;
+  return `(${ids.map((id) => `"${id}"`).join(',')})`;
 }
 
 async function buildRecipientCountQuery(
@@ -125,12 +126,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // Get date range parameter
@@ -166,7 +163,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ✅ Transform data to match frontend interface
-    const transformedCampaigns = (campaigns || []).map((campaign: any) => ({
+    const transformedCampaigns = (campaigns || []).map((campaign: unknown) => ({
       id: campaign.id,
       name: campaign.name,
       subject: campaign.subject,
@@ -179,52 +176,61 @@ export async function GET(request: NextRequest) {
       emailsFailed: campaign.emails_failed || 0,
       scheduledAt: campaign.scheduled_at,
       sentAt: campaign.sent_at,
-      createdAt: campaign.created_at
+      createdAt: campaign.created_at,
     }));
 
     // ✅ Calculate stats
     const stats = {
       totalCampaigns: transformedCampaigns.length,
-      activeCampaigns: transformedCampaigns.filter(c =>
+      activeCampaigns: transformedCampaigns.filter((c) =>
         ['scheduled', 'sending', 'sent'].includes(c.status)
       ).length,
-      totalEmailsSent: transformedCampaigns.reduce((sum: any, c: any) => sum + c.emailsSent, 0),
-      averageOpenRate: transformedCampaigns.length > 0
-        ? transformedCampaigns.reduce((sum: any, c: any) => {
-            const rate = c.emailsSent > 0 ? (c.emailsOpened / c.emailsSent) * 100 : 0;
-            return sum + rate;
-          }, 0) / transformedCampaigns.length
-        : 0,
-      averageClickRate: transformedCampaigns.length > 0
-        ? transformedCampaigns.reduce((sum: any, c: any) => {
-            const rate = c.emailsSent > 0 ? (c.emailsClicked / c.emailsSent) * 100 : 0;
-            return sum + rate;
-          }, 0) / transformedCampaigns.length
-        : 0,
-      totalRecipients: transformedCampaigns.reduce((sum: any, c: any) => sum + c.recipientCount, 0)
+      totalEmailsSent: transformedCampaigns.reduce(
+        (sum: unknown, c: unknown) => sum + c.emailsSent,
+        0
+      ),
+      averageOpenRate:
+        transformedCampaigns.length > 0
+          ? transformedCampaigns.reduce((sum: unknown, c: unknown) => {
+              const rate = c.emailsSent > 0 ? (c.emailsOpened / c.emailsSent) * 100 : 0;
+              return sum + rate;
+            }, 0) / transformedCampaigns.length
+          : 0,
+      averageClickRate:
+        transformedCampaigns.length > 0
+          ? transformedCampaigns.reduce((sum: unknown, c: unknown) => {
+              const rate = c.emailsSent > 0 ? (c.emailsClicked / c.emailsSent) * 100 : 0;
+              return sum + rate;
+            }, 0) / transformedCampaigns.length
+          : 0,
+      totalRecipients: transformedCampaigns.reduce(
+        (sum: unknown, c: unknown) => sum + c.recipientCount,
+        0
+      ),
     };
 
     logger.info('Campaigns fetched successfully', {
       component: 'communications-api',
       action: 'fetch_campaigns',
-      metadata: { count: transformedCampaigns.length, dateRange }
+      metadata: { count: transformedCampaigns.length, dateRange },
     });
 
     return NextResponse.json({
       campaigns: transformedCampaigns,
-      stats
+      stats,
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch campaigns', {
-      component: 'communications-api',
-      action: 'fetch_campaigns_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch campaigns' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch campaigns',
+      {
+        component: 'communications-api',
+        action: 'fetch_campaigns_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
   }
 }
 
@@ -243,7 +249,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const {
@@ -254,15 +262,12 @@ export async function POST(request: NextRequest) {
       textContent,
       recipientFilter,
       scheduledAt,
-      sendImmediately = false
+      sendImmediately = false,
     } = body;
 
     // Validate required fields
     if (!name || !subject) {
-      return NextResponse.json(
-        { error: 'Name and subject are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name and subject are required' }, { status: 400 });
     }
 
     const countQuery = await buildRecipientCountQuery(supabase, recipientFilter);
@@ -335,7 +340,7 @@ export async function POST(request: NextRequest) {
       let recipientsResult;
       try {
         recipientsResult = await fetchRecipients(supabase, recipientFilter);
-      } catch (recipientError: any) {
+      } catch (recipientError: unknown) {
         logger.warn('Failed to resolve recipients', {
           component: 'communications-api',
           action: 'recipient_resolution_failed',
@@ -413,9 +418,8 @@ export async function POST(request: NextRequest) {
               })
               .eq('id', emailLog.id);
           }
-        } catch (sendError: any) {
-          const message =
-            sendError?.message || `Failed to send to ${recipient.email}`;
+        } catch (sendError: unknown) {
+          const message = sendError?.message || `Failed to send to ${recipient.email}`;
           failures.push(`${recipient.email}: ${message}`);
 
           if (emailLog?.id) {
@@ -473,31 +477,35 @@ export async function POST(request: NextRequest) {
     logger.info('Campaign created successfully', {
       component: 'communications-api',
       action: 'create_campaign',
-      metadata: { campaignId: newCampaign.id, name, status }
+      metadata: { campaignId: newCampaign.id, name, status },
     });
 
-    return NextResponse.json({
-      campaign: {
-        id: newCampaign.id,
-        name: newCampaign.name,
-        subject: newCampaign.subject,
-        status: responseStatus,
-        recipientCount,
-        scheduledAt: newCampaign.scheduled_at,
-        createdAt: newCampaign.created_at,
-      },
-      delivery: deliverySummary,
-    }, { status: 201 });
-  } catch (error: any) {
-    logger.error('Failed to create campaign', {
-      component: 'communications-api',
-      action: 'create_campaign_error',
-      metadata: { error: error.message }
-    }, error);
-
     return NextResponse.json(
-      { error: 'Failed to create campaign' },
-      { status: 500 }
+      {
+        campaign: {
+          id: newCampaign.id,
+          name: newCampaign.name,
+          subject: newCampaign.subject,
+          status: responseStatus,
+          recipientCount,
+          scheduledAt: newCampaign.scheduled_at,
+          createdAt: newCampaign.created_at,
+        },
+        delivery: deliverySummary,
+      },
+      { status: 201 }
     );
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to create campaign',
+      {
+        component: 'communications-api',
+        action: 'create_campaign_error',
+        metadata: { error: error.message },
+      },
+      error
+    );
+
+    return NextResponse.json({ error: 'Failed to create campaign' }, { status: 500 });
   }
 }

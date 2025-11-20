@@ -18,14 +18,13 @@
  * 11. coupon_expired - Coupon expired unused
  * 12. fraud_flagged - Suspicious activity detected
  */
-
 import { logger } from '@/lib/logger';
 
 // Google Tag Manager / Google Analytics
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
-    dataLayer?: any[];
+    dataLayer?: unknown[];
   }
 }
 
@@ -38,7 +37,7 @@ interface SpinEventData {
   discountPercent?: number;
   couponCode?: string;
   value?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -72,11 +71,15 @@ export function trackSpinEvent(eventName: string, data: SpinEventData = {}) {
     });
   } catch (error) {
     // Don't let analytics failures break the app
-    logger.error('[Analytics] Failed to track event', {
-      component: 'spin-analytics',
-      action: 'event_track_failed',
-      metadata: { eventName },
-    }, error as Error);
+    logger.error(
+      '[Analytics] Failed to track event',
+      {
+        component: 'spin-analytics',
+        action: 'event_track_failed',
+        metadata: { eventName },
+      },
+      error as Error
+    );
   }
 }
 
@@ -163,11 +166,7 @@ export function trackSpinCompleted(
 /**
  * 7. Coupon Issued (prize won)
  */
-export function trackCouponIssued(
-  sessionId: string,
-  couponCode: string,
-  discountPercent: number
-) {
+export function trackCouponIssued(sessionId: string, couponCode: string, discountPercent: number) {
   trackSpinEvent('coupon_issued', {
     sessionId,
     couponCode,

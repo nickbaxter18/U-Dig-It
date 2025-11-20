@@ -1,9 +1,11 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
-import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { config } from 'dotenv';
 import path from 'path';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 
+// Setup custom matchers
+import { setupCustomMatchers } from '../test-utils/test-utils';
 // Import MSW server for API mocking
 import { server } from './mocks/server';
 
@@ -13,13 +15,18 @@ config({ path: path.resolve(__dirname, '../../.env.local') });
 // Set fallback test environment variables if not already set
 // These are used by integration tests that need real Supabase connections
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_URL || 'https://test.supabase.co';
+  process.env.NEXT_PUBLIC_SUPABASE_URL =
+    process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_URL || 'https://test.supabase.co';
 }
 if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0NTc5ODAwMCwiZXhwIjoxOTYxMzc0MDAwfQ.test';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+    process.env.NEXT_PUBLIC_SUPABASE_FALLBACK_ANON_KEY ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY0NTc5ODAwMCwiZXhwIjoxOTYxMzc0MDAwfQ.test';
 }
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ1Nzk4MDAwLCJleHAiOjE5NjEzNzQwMDB9.test';
+  process.env.SUPABASE_SERVICE_ROLE_KEY =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjQ1Nzk4MDAwLCJleHAiOjE5NjEzNzQwMDB9.test';
 }
 if (!process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_TEST_KEY) {
   process.env.STRIPE_SECRET_TEST_KEY = 'sk_test_placeholder_key_for_testing';
@@ -34,8 +41,6 @@ if (!process.env.SENDGRID_API_KEY) {
   process.env.SENDGRID_API_KEY = 'SG.test_placeholder_key';
 }
 
-// Setup custom matchers
-import { setupCustomMatchers } from '../test-utils/test-utils';
 setupCustomMatchers();
 
 // Mock Next.js router
@@ -63,7 +68,7 @@ vi.mock('next/navigation', () => ({
 // Mock Next.js image component
 vi.mock('next/image', () => ({
   default: (props: unknown) => {
-    const { src, alt, ...rest } = props as any;
+    const { src: _src, alt: _alt, ..._rest } = props as any;
     return null;
   },
 }));
@@ -140,7 +145,7 @@ global.IntersectionObserver = MockIntersectionObserver as unknown as typeof Inte
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,

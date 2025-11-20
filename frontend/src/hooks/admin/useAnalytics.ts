@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+
 import { supabase } from '@/lib/supabase/client';
 
 type DateRange = 'week' | 'month' | 'quarter' | 'year';
@@ -41,7 +42,7 @@ export function useAnalytics(dateRange: DateRange = 'month') {
 
       return {
         revenue: {
-          data: revenueData.map((item: any) => ({
+          data: revenueData.map((item: unknown) => ({
             date: item.date,
             revenue: parseFloat(item.revenue || '0'),
             bookings: parseInt(item.bookings || '0', 10),
@@ -51,7 +52,7 @@ export function useAnalytics(dateRange: DateRange = 'month') {
           averageDailyRevenue: parseFloat(data.revenue?.average_daily_revenue || '0'),
         },
         bookings: {
-          data: bookingsData.map((item: any) => ({
+          data: bookingsData.map((item: unknown) => ({
             date: item.date,
             bookings: parseInt(item.total || '0', 10),
             completed: parseInt(item.completed || '0', 10),
@@ -62,22 +63,26 @@ export function useAnalytics(dateRange: DateRange = 'month') {
           cancellationRate: 0,
         },
         equipment: {
-          data: equipmentData.map((item: any) => ({
+          data: equipmentData.map((item: unknown) => ({
             equipmentId: item.equipment_id,
             equipmentName: item.equipment_name,
             utilizationRate: parseFloat(item.utilization_rate || '0'),
             revenue: parseFloat(item.revenue || '0'),
           })),
           averageUtilization: parseFloat(data.equipment?.average_utilization || '0'),
-          topPerformer: equipmentData.length > 0
-            ? equipmentData.reduce((max: any, e: any) =>
-                parseFloat(e.utilization_rate || '0') > parseFloat(max.utilization_rate || '0') ? e : max,
-                equipmentData[0]
-              )
-            : { equipmentId: '', equipmentName: 'N/A', utilizationRate: 0 },
+          topPerformer:
+            equipmentData.length > 0
+              ? equipmentData.reduce(
+                  (max: unknown, e: unknown) =>
+                    parseFloat(e.utilization_rate || '0') > parseFloat(max.utilization_rate || '0')
+                      ? e
+                      : max,
+                  equipmentData[0]
+                )
+              : { equipmentId: '', equipmentName: 'N/A', utilizationRate: 0 },
         },
         customers: {
-          data: customersData.map((item: any) => ({
+          data: customersData.map((item: unknown) => ({
             date: item.date,
             newCustomers: parseInt(item.new_customers || '0', 10),
             returningCustomers: parseInt(item.returning_customers || '0', 10),
@@ -93,5 +98,3 @@ export function useAnalytics(dateRange: DateRange = 'month') {
     gcTime: 5 * 60 * 1000, // 5 minutes
   });
 }
-
-

@@ -1,0 +1,87 @@
+---
+description: "Automatically reference testing documentation when writing or debugging tests"
+globs:
+  - "**/*.test.{ts,tsx,js,jsx}"
+  - "**/*.spec.{ts,tsx,js,jsx}"
+  - "**/tests/**/*.{ts,tsx,js,jsx}"
+  - "**/e2e/**/*.{ts,tsx,js,jsx}"
+  - "**/playwright.config.{ts,js}"
+  - "**/vitest.config.{ts,js}"
+  - "**/test-utils/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Testing Documentation Auto-Reference
+
+When writing or debugging tests, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## End-to-End Testing
+- Use **@https://playwright.dev/docs/intro** when:
+  - Writing Playwright tests
+  - Setting up browser automation
+  - Implementing page object models
+  - Debugging flaky tests
+  - Configuring test environments
+  - Working with selectors
+  - Handling async operations
+
+## Unit & Integration Testing
+- Use **@https://vitest.dev/guide/** when:
+  - Writing Vitest tests
+  - Configuring test suites
+  - Using test utilities (describe, it, expect)
+  - Mocking modules
+  - Testing async code
+  - Measuring code coverage
+  - Setting up test watchers
+
+## Component Testing
+- Use **@https://testing-library.com/docs/react-testing-library/intro** when:
+  - Testing React components
+  - Using testing-library queries
+  - Implementing user-centric tests
+  - Testing accessibility
+  - Debugging component tests
+  - Using waitFor and async utilities
+
+## API Mocking
+- Use **@mock service worker** when:
+  - Mocking API calls in tests
+  - Setting up MSW handlers
+  - Testing error states
+  - Implementing test fixtures
+  - Debugging mock issues
+
+## TanStack Query Testing
+- Use **@tanstack query docs** when:
+  - Testing components using React Query
+  - Mocking query clients
+  - Testing loading/error states
+  - Testing cache behavior
+  - Testing mutations
+
+## Example Usage Pattern
+
+```typescript
+// For E2E tests:
+// @https://playwright.dev/docs/intro for browser automation patterns
+// Use test account: aitest2@udigit.ca / TestAI2024!@#$
+
+// For unit tests:
+// @https://vitest.dev/guide/ for test structure
+// @mock service worker for API mocking
+
+// For component tests:
+// @https://testing-library.com/docs/react-testing-library/intro
+// for user-centric testing patterns
+```
+
+## Testing Best Practices
+- **Use test account credentials**: `aitest2@udigit.ca` / `TestAI2024!@#$`
+- **ALWAYS mock external APIs** using MSW
+- **Test user behavior, not implementation details**
+- **Maintain 80% minimum code coverage**
+- **Write tests BEFORE code** (TDD when appropriate)
+
+## Reminder
+**Reference testing docs FIRST** to ensure you're following best practices and using the correct testing patterns for your use case.

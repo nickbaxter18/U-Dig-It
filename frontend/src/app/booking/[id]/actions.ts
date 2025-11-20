@@ -130,7 +130,7 @@ export async function cancelBooking(
     const totalPaid =
       booking.payments
         ?.filter((p) => p.status === 'completed')
-        .reduce((sum: any, p: any) => sum + Number(p.amount), 0) || 0;
+        .reduce((sum: unknown, p: unknown) => sum + Number(p.amount), 0) || 0;
 
     const refundAmount = Math.max(0, totalPaid - cancellationFee);
 
@@ -291,7 +291,7 @@ export async function cancelBooking(
           : cancellationPolicy
       }`,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Unexpected error during cancellation',
       {
@@ -353,7 +353,7 @@ export async function getCancellationPreview(bookingId: string): Promise<{
     const totalPaid =
       booking.payments
         ?.filter((p) => p.status === 'completed')
-        .reduce((sum: any, p: any) => sum + Number(p.amount), 0) || 0;
+        .reduce((sum: unknown, p: unknown) => sum + Number(p.amount), 0) || 0;
 
     const refundAmount = Math.max(0, totalPaid - cancellationFee);
 

@@ -4,8 +4,8 @@
  * Demonstrates component development in isolation with Storybook.
  * Stories show all component states and variations.
  */
+import type { Meta, StoryObj } from '@storybook/nextjs';
 
-import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '@/components/Button';
 
 /**
@@ -157,18 +157,8 @@ export const WithIcon: Story = {
   args: {
     children: (
       <>
-        <svg
-          className="mr-2 h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
+        <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         Add Equipment
       </>
@@ -187,4 +177,3 @@ export const ButtonGroup: Story = {
     </div>
   ),
 };
-

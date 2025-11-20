@@ -1,12 +1,13 @@
-import { NextRequest } from 'next/server';
 import { vi } from 'vitest';
+
+import { NextRequest } from 'next/server';
 
 /**
  * Create a mock NextRequest for API route testing
  */
 export const createMockRequest = (
   method: string,
-  body?: any,
+  body?: unknown,
   options?: {
     headers?: Record<string, string>;
     url?: string;
@@ -76,7 +77,7 @@ export const expectErrorResponse = async (
 /**
  * Mock Supabase client for API route tests
  */
-export const createMockSupabaseClient = (overrides?: any) => {
+export const createMockSupabaseClient = (overrides?: unknown) => {
   return {
     auth: {
       getUser: vi.fn().mockResolvedValue({
@@ -101,7 +102,7 @@ export const createMockSupabaseClient = (overrides?: any) => {
 /**
  * Create mock API response
  */
-export const createMockResponse = (data: any, status: number = 200) => {
+export const createMockResponse = (data: unknown, status: number = 200) => {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' },
@@ -136,7 +137,7 @@ export const expectValidationError = async (response: Response) => {
  */
 export const createAuthenticatedRequest = (
   method: string,
-  body?: any,
+  body?: unknown,
   userId: string = 'test-user-id'
 ) => {
   return createMockRequest(method, body, {
@@ -149,7 +150,7 @@ export const createAuthenticatedRequest = (
 /**
  * Mock admin request
  */
-export const createAdminRequest = (method: string, body?: any) => {
+export const createAdminRequest = (method: string, body?: unknown) => {
   return createMockRequest(method, body, {
     headers: {
       Authorization: 'Bearer mock-admin-token',
@@ -195,7 +196,7 @@ export const createRateLimiterModuleMock = (result?: Partial<RateLimitResult>) =
 export const createRequestValidatorModuleMock = (options?: {
   valid?: boolean;
   errorStatus?: number;
-  errorBody?: any;
+  errorBody?: unknown;
 }) => {
   const {
     valid = true,
@@ -222,5 +223,3 @@ export const createRequestValidatorModuleMock = (options?: {
 
   return moduleMock;
 };
-
-

@@ -1,9 +1,11 @@
 'use client';
 
-import { supabase } from '@/lib/supabase/client';
 import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 type EquipmentStatusKey =
   | 'AVAILABLE'
@@ -82,7 +84,7 @@ export function EquipmentStatus() {
           schema: 'public',
           table: 'equipment',
         },
-        payload => {
+        (payload) => {
           if (process.env.NODE_ENV === 'development') {
             logger.debug('[EquipmentStatus] Equipment change detected:', {
               component: 'EquipmentStatus',
@@ -113,12 +115,12 @@ export function EquipmentStatus() {
       if (error) throw error;
 
       // Transform Supabase data to component format
-      const equipmentData: any[] = data || [];
-      const transformed: EquipmentItem[] = equipmentData.map((eq: any) => {
+      const equipmentData: unknown[] = data || [];
+      const transformed: EquipmentItem[] = equipmentData.map((eq: unknown) => {
         const rawStatus = (eq.status || 'unavailable').toString().toUpperCase();
-        const normalizedStatus: EquipmentStatusKey = (statusConfig[rawStatus as EquipmentStatusKey]
-          ? rawStatus
-          : 'UNAVAILABLE') as EquipmentStatusKey;
+        const normalizedStatus: EquipmentStatusKey = (
+          statusConfig[rawStatus as EquipmentStatusKey] ? rawStatus : 'UNAVAILABLE'
+        ) as EquipmentStatusKey;
 
         return {
           id: eq.id,
@@ -134,10 +136,14 @@ export function EquipmentStatus() {
       setEquipment(transformed);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch equipment status:', {
-          component: 'EquipmentStatus',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to fetch equipment status:',
+          {
+            component: 'EquipmentStatus',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
       setEquipment([]);
     } finally {
@@ -155,7 +161,7 @@ export function EquipmentStatus() {
 
   // Calculate status counts
   const statusCounts = equipment.reduce(
-    (acc: any, item: any) => {
+    (acc: unknown, item: unknown) => {
       acc[item.status] = (acc[item.status] || 0) + 1;
       return acc;
     },
@@ -166,7 +172,7 @@ export function EquipmentStatus() {
     <div className="space-y-4">
       {/* Status summary */}
       <div className="grid grid-cols-2 gap-4">
-        {(Object.keys(statusConfig) as EquipmentStatusKey[]).map(status => {
+        {(Object.keys(statusConfig) as EquipmentStatusKey[]).map((status) => {
           const config = statusConfig[status];
           const count = statusCounts[status] || 0;
           const Icon = config.icon;
@@ -189,7 +195,7 @@ export function EquipmentStatus() {
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-gray-900">Equipment Details</h4>
         <div className="max-h-48 space-y-2 overflow-y-auto">
-          {equipment.map(item => {
+          {equipment.map((item) => {
             const config = statusConfig[item.status] ?? statusConfig.UNAVAILABLE;
             const Icon = config.icon;
 

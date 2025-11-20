@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createMockRequest, createTestBooking, expectErrorResponse } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { POST } from '../capture-security-hold/route';
-import { createMockRequest, expectErrorResponse, createTestBooking } from '@/test-utils';
 
 const mockSupabase = {
   auth: { getUser: vi.fn() },
@@ -27,7 +28,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/stripe/config', () => ({
   createStripeClient: vi.fn(() => {
     const MockStripe = class {
-      paymentIntents: any;
+      paymentIntents: unknown;
       constructor() {
         this.paymentIntents = mockStripe.paymentIntents;
       }
@@ -40,7 +41,7 @@ vi.mock('@/lib/stripe/config', () => ({
 // Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
   default: class MockStripe {
-    paymentIntents: any;
+    paymentIntents: unknown;
 
     constructor() {
       this.paymentIntents = mockStripe.paymentIntents;
@@ -133,4 +134,3 @@ describe('POST /api/stripe/capture-security-hold', () => {
     await expectErrorResponse(response, 500);
   });
 });
-

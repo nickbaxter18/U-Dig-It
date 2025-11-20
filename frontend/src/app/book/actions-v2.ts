@@ -1,16 +1,22 @@
 'use server';
 
+import { z } from 'zod';
+
+// Server client for RLS
+import { revalidatePath } from 'next/cache';
+
 import {
-    availabilityService,
-    type AvailabilityResult,
-    type SmartSuggestion,
+  type AvailabilityResult,
+  type SmartSuggestion,
+  availabilityService,
 } from '@/lib/availability-service';
 import { logger } from '@/lib/logger';
-import { broadcastInAppNotificationToAdmins, createInAppNotification } from '@/lib/notification-service';
+import {
+  broadcastInAppNotificationToAdmins,
+  createInAppNotification,
+} from '@/lib/notification-service';
 import { supabaseApi } from '@/lib/supabase/api-client';
-import { createClient } from '@/lib/supabase/server'; // Server client for RLS
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
+import { createClient } from '@/lib/supabase/server';
 
 // Enhanced validation schema for booking form
 const bookingSchema = z.object({
@@ -25,18 +31,32 @@ const bookingSchema = z.object({
   specialInstructions: z
     .string()
     .nullish()
-    .transform(val => val ?? ''),
+    .transform((val) => val ?? ''),
   customerId: z.string().uuid('Valid user ID is required'),
   // Distance-based delivery fee from LocationPicker
   calculatedDeliveryFee: z.coerce.number().optional(),
   distanceKm: z.coerce.number().optional(),
   // Coupon code fields - store metadata for dynamic calculation
-  couponCode: z.string().optional().nullable().transform(val => !val || val === '' ? null : val),
-  couponType: z.string().optional().nullable().transform(val => !val || val === '' ? null : val).refine(
-    (val: any) => val === null || val === 'percentage' || val === 'fixed' || val === 'fixed_amount',
-    { message: 'Coupon type must be percentage, fixed, or fixed_amount' }
-  ),
-  couponValue: z.string().optional().nullable().transform(val => !val || val === '' ? null : (val ? Number(val) : null)), // percentage (10) or fixed amount (50)
+  couponCode: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => (!val || val === '' ? null : val)),
+  couponType: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => (!val || val === '' ? null : val))
+    .refine(
+      (val: unknown) =>
+        val === null || val === 'percentage' || val === 'fixed' || val === 'fixed_amount',
+      { message: 'Coupon type must be percentage, fixed, or fixed_amount' }
+    ),
+  couponValue: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((val) => (!val || val === '' ? null : val ? Number(val) : null)), // percentage (10) or fixed amount (50)
   // Damage waiver fields
   waiverSelected: z.coerce.boolean().default(false),
   waiverRateCents: z.coerce.number().default(2900),
@@ -99,7 +119,7 @@ export async function checkAvailabilityEnhanced(
       };
     }
 
-    const equipmentId = (equipment as any[])[0].id;
+    const equipmentId = (equipment as unknown[])[0].id;
 
     // Check availability for the selected dates
     const availabilityResponse = await supabaseApi.checkAvailability(
@@ -118,10 +138,14 @@ export async function checkAvailabilityEnhanced(
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Enhanced availability check failed:', {
-        component: 'app-actions-v2',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Enhanced availability check failed:',
+        {
+          component: 'app-actions-v2',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     return {
       available: false,
@@ -146,10 +170,14 @@ export async function getSmartSuggestions(
     return await availabilityService.generateSmartSuggestions(preferences);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Failed to generate smart suggestions:', {
-        component: 'app-actions-v2',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to generate smart suggestions:',
+        {
+          component: 'app-actions-v2',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     return [];
   }
@@ -281,7 +309,7 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
       };
     }
 
-    const equipmentItem = (equipment as any[])[0];
+    const equipmentItem = (equipment as unknown[])[0];
     const equipmentId = equipmentItem.id;
 
     // Enhanced availability check with alternatives
@@ -311,7 +339,7 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
     }
 
     // Calculate enhanced pricing
-    const equipmentDetails = Array.isArray(equipment) ? (equipment as any[])[0] : equipment;
+    const equipmentDetails = Array.isArray(equipment) ? (equipment as unknown[])[0] : equipment;
     const dailyRate = (equipmentDetails as any)?.dailyRate || 450;
     const subtotal = dailyRate * diffDays;
 
@@ -330,13 +358,13 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
           calculatedDeliveryFee: validatedData.calculatedDeliveryFee,
           distanceKm: validatedData.distanceKm,
           deliveryCity: validatedData.deliveryCity,
-          finalFloatFee: floatFee
-        }
+          finalFloatFee: floatFee,
+        },
       });
     }
 
     // Calculate waiver cost - itemized and added to subtotal BEFORE taxes
-    const waiverCost = validatedData.waiverTotalCents ? (validatedData.waiverTotalCents / 100) : 0;
+    const waiverCost = validatedData.waiverTotalCents ? validatedData.waiverTotalCents / 100 : 0;
 
     // Calculate subtotal INCLUDING waiver BEFORE discount (equipment + transport + waiver)
     const subtotalBeforeDiscount = subtotal + floatFee + waiverCost;
@@ -367,7 +395,7 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
         .single();
 
       if (spinSession && spinSession.user_id && spinSession.user_id !== serverUser.id) {
-        logger.warn('[createBookingEnhanced] Attempt to use someone else\'s Spin to Win code', {
+        logger.warn("[createBookingEnhanced] Attempt to use someone else's Spin to Win code", {
           component: 'app-actions-v2',
           action: 'unauthorized_code_use',
           metadata: {
@@ -503,11 +531,15 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
         .eq('code', validatedData.couponCode.toUpperCase());
 
       if (couponError) {
-        logger.error('[Server Action] Failed to increment coupon usage', {
-          component: 'app-actions-v2',
-          action: 'coupon_increment_error',
-          metadata: { code: validatedData.couponCode },
-        }, couponError);
+        logger.error(
+          '[Server Action] Failed to increment coupon usage',
+          {
+            component: 'app-actions-v2',
+            action: 'coupon_increment_error',
+            metadata: { code: validatedData.couponCode },
+          },
+          couponError
+        );
         // Don't fail the booking if coupon increment fails
       } else {
         logger.info('[Server Action] Coupon usage incremented', {
@@ -516,7 +548,7 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
           metadata: {
             code: validatedData.couponCode,
             discount: couponDiscount,
-            bookingId: booking.id
+            bookingId: booking.id,
           },
         });
       }
@@ -540,11 +572,15 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
           .eq('id', spinSession.id);
 
         if (spinError) {
-          logger.error('[Server Action] Failed to mark spin session as redeemed', {
-            component: 'app-actions-v2',
-            action: 'spin_redemption_error',
-            metadata: { spinSessionId: spinSession.id, bookingId: booking.id },
-          }, spinError);
+          logger.error(
+            '[Server Action] Failed to mark spin session as redeemed',
+            {
+              component: 'app-actions-v2',
+              action: 'spin_redemption_error',
+              metadata: { spinSessionId: spinSession.id, bookingId: booking.id },
+            },
+            spinError
+          );
         } else {
           logger.info('🎉 [Server Action] Spin-to-Win code redeemed!', {
             component: 'app-actions-v2',
@@ -601,11 +637,17 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
         },
       });
     } catch (notificationError) {
-      logger.error('[createBookingEnhanced] Failed to queue customer booking notification', {
-        component: 'app-actions-v2',
-        action: 'booking_notification_error',
-        metadata: { bookingId: booking.id },
-      }, notificationError instanceof Error ? notificationError : new Error(String(notificationError)));
+      logger.error(
+        '[createBookingEnhanced] Failed to queue customer booking notification',
+        {
+          component: 'app-actions-v2',
+          action: 'booking_notification_error',
+          metadata: { bookingId: booking.id },
+        },
+        notificationError instanceof Error
+          ? notificationError
+          : new Error(String(notificationError))
+      );
     }
 
     try {
@@ -632,11 +674,17 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
         },
       });
     } catch (adminNotificationError) {
-      logger.error('[createBookingEnhanced] Failed to broadcast admin booking notification', {
-        component: 'app-actions-v2',
-        action: 'admin_booking_notification_error',
-        metadata: { bookingId: booking.id },
-      }, adminNotificationError instanceof Error ? adminNotificationError : new Error(String(adminNotificationError)));
+      logger.error(
+        '[createBookingEnhanced] Failed to broadcast admin booking notification',
+        {
+          component: 'app-actions-v2',
+          action: 'admin_booking_notification_error',
+          metadata: { bookingId: booking.id },
+        },
+        adminNotificationError instanceof Error
+          ? adminNotificationError
+          : new Error(String(adminNotificationError))
+      );
     }
 
     // Revalidate paths to update availability
@@ -662,14 +710,20 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Enhanced booking creation error:', {
-        component: 'app-actions-v2',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Enhanced booking creation error:',
+        {
+          component: 'app-actions-v2',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
 
     if (error instanceof z.ZodError) {
-      const errorMessages = error.issues.map((err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`);
+      const errorMessages = error.issues.map(
+        (err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`
+      );
       return {
         success: false,
         error: `Validation errors: ${errorMessages.join(', ')}`,
@@ -744,10 +798,14 @@ export async function getAvailabilityCalendar(
     return calendar;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Failed to get availability calendar:', {
-        component: 'app-actions-v2',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to get availability calendar:',
+        {
+          component: 'app-actions-v2',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     return [];
   }
@@ -826,10 +884,14 @@ export async function validateBookingDates(
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Date validation failed:', {
-        component: 'app-actions-v2',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Date validation failed:',
+        {
+          component: 'app-actions-v2',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
     return {
       valid: false,

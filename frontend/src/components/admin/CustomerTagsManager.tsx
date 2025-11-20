@@ -1,9 +1,12 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import { Edit2, Loader2, Plus, Tag, Trash2, X } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Plus, Tag, X, Edit2, Trash2, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface CustomerTag {
   id: string;
@@ -20,7 +23,11 @@ interface CustomerTagsManagerProps {
   showCreateButton?: boolean;
 }
 
-export function CustomerTagsManager({ customerId, onTagChange, showCreateButton = true }: CustomerTagsManagerProps) {
+export function CustomerTagsManager({
+  customerId,
+  onTagChange,
+  showCreateButton = true,
+}: CustomerTagsManagerProps) {
   const [tags, setTags] = useState<CustomerTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,11 +41,7 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
     description: '',
   });
 
-  useEffect(() => {
-    fetchTags();
-  }, [customerId]);
-
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     try {
       setLoading(true);
       const endpoint = customerId
@@ -54,17 +57,24 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       // Handle different response formats
       if (customerId) {
         // Customer tags endpoint returns { tags: [{ tag: {...} }] }
-        setTags(data.tags?.map((item: any) => item.tag || item) || []);
+        setTags(data.tags?.map((item: unknown) => item.tag || item) || []);
       } else {
         // All tags endpoint returns { tags: [...] }
         setTags(data.tags || []);
       }
     } catch (error) {
-      toast.error('Failed to load tags', error instanceof Error ? error.message : 'Unable to fetch customer tags');
+      toast.error(
+        'Failed to load tags',
+        error instanceof Error ? error.message : 'Unable to fetch customer tags'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId, toast]);
+
+  useEffect(() => {
+    fetchTags();
+  }, [fetchTags]);
 
   const handleCreateTag = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +106,10 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       await fetchTags();
       onTagChange?.();
     } catch (error) {
-      toast.error('Failed to create tag', error instanceof Error ? error.message : 'Unable to create tag');
+      toast.error(
+        'Failed to create tag',
+        error instanceof Error ? error.message : 'Unable to create tag'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -132,14 +145,19 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       await fetchTags();
       onTagChange?.();
     } catch (error) {
-      toast.error('Failed to update tag', error instanceof Error ? error.message : 'Unable to update tag');
+      toast.error(
+        'Failed to update tag',
+        error instanceof Error ? error.message : 'Unable to update tag'
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteTag = async (tagId: string) => {
-    if (!confirm('Are you sure you want to delete this tag? This will remove it from all customers.')) {
+    if (
+      !confirm('Are you sure you want to delete this tag? This will remove it from all customers.')
+    ) {
       return;
     }
 
@@ -157,7 +175,10 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       await fetchTags();
       onTagChange?.();
     } catch (error) {
-      toast.error('Failed to delete tag', error instanceof Error ? error.message : 'Unable to delete tag');
+      toast.error(
+        'Failed to delete tag',
+        error instanceof Error ? error.message : 'Unable to delete tag'
+      );
     }
   };
 
@@ -180,7 +201,10 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       await fetchTags();
       onTagChange?.();
     } catch (error) {
-      toast.error('Failed to assign tag', error instanceof Error ? error.message : 'Unable to assign tag');
+      toast.error(
+        'Failed to assign tag',
+        error instanceof Error ? error.message : 'Unable to assign tag'
+      );
     }
   };
 
@@ -203,7 +227,10 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
       await fetchTags();
       onTagChange?.();
     } catch (error) {
-      toast.error('Failed to remove tag', error instanceof Error ? error.message : 'Unable to remove tag');
+      toast.error(
+        'Failed to remove tag',
+        error instanceof Error ? error.message : 'Unable to remove tag'
+      );
     }
   };
 
@@ -327,13 +354,16 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
               </button>
             </div>
 
-            <form onSubmit={editingTag ? handleUpdateTag : handleCreateTag} className="p-6 space-y-4">
+            <form
+              onSubmit={editingTag ? handleUpdateTag : handleCreateTag}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Tag Name</label>
                 <input
                   type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="e.g., VIP, High Value, New Customer"
                   required
@@ -346,13 +376,13 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
                   <input
                     type="color"
                     value={formData.color}
-                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
                     className="h-10 w-20 rounded border border-gray-300"
                   />
                   <input
                     type="text"
                     value={formData.color}
-                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
                     placeholder="#3B82F6"
                   />
@@ -360,10 +390,14 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Description (Optional)</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Description (Optional)
+                </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
                   rows={3}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="Describe what this tag represents..."
@@ -391,8 +425,10 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
                     </>
+                  ) : editingTag ? (
+                    'Update Tag'
                   ) : (
-                    editingTag ? 'Update Tag' : 'Create Tag'
+                    'Create Tag'
                   )}
                 </button>
               </div>
@@ -403,4 +439,3 @@ export function CustomerTagsManager({ customerId, onTagChange, showCreateButton 
     </div>
   );
 }
-

@@ -1,13 +1,27 @@
 'use client';
 
 import { Calendar, Filter, X } from 'lucide-react';
+
 import { useState } from 'react';
-import { FilterPresets, FilterPreset } from './FilterPresets';
+
 import { useFilterPresets } from '@/hooks/useFilterPresets';
+
+import { FilterPresets } from './FilterPresets';
 
 export interface FilterOperator {
   field: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'starts_with' | 'ends_with' | 'greater_than' | 'less_than' | 'between' | 'in' | 'not_in';
+  operator:
+    | 'equals'
+    | 'not_equals'
+    | 'contains'
+    | 'not_contains'
+    | 'starts_with'
+    | 'ends_with'
+    | 'greater_than'
+    | 'less_than'
+    | 'between'
+    | 'in'
+    | 'not_in';
   value: string | string[] | number | [number, number] | [string, string];
 }
 
@@ -141,17 +155,19 @@ export function AdvancedFilters({
   };
 
   const getFieldType = (fieldValue: string) => {
-    return availableFields.find(f => f.value === fieldValue)?.type || 'text';
+    return availableFields.find((f) => f.value === fieldValue)?.type || 'text';
   };
 
   const getFieldOptions = (fieldValue: string) => {
-    return availableFields.find(f => f.value === fieldValue)?.options || [];
+    return availableFields.find((f) => f.value === fieldValue)?.options || [];
   };
 
   const hasActiveFilters =
-    (localFilters.dateRange?.start || localFilters.dateRange?.end) ||
+    localFilters.dateRange?.start ||
+    localFilters.dateRange?.end ||
     (localFilters.operators && localFilters.operators.length > 0) ||
-    (localFilters.multiSelects && Object.values(localFilters.multiSelects).some(v => v.length > 0));
+    (localFilters.multiSelects &&
+      Object.values(localFilters.multiSelects).some((v) => v.length > 0));
 
   return (
     <div className={className}>
@@ -170,7 +186,7 @@ export function AdvancedFilters({
             {[
               localFilters.dateRange?.start || localFilters.dateRange?.end ? 1 : 0,
               localFilters.operators?.length || 0,
-              Object.values(localFilters.multiSelects || {}).filter(v => v.length > 0).length,
+              Object.values(localFilters.multiSelects || {}).filter((v) => v.length > 0).length,
             ].reduce((a, b) => a + b, 0)}
           </span>
         )}
@@ -185,19 +201,27 @@ export function AdvancedFilters({
                 presets={presets}
                 currentFilters={{
                   ...localFilters,
-                  dateRange: localFilters.dateRange ? {
-                    start: localFilters.dateRange.start ? localFilters.dateRange.start.toISOString() : null,
-                    end: localFilters.dateRange.end ? localFilters.dateRange.end.toISOString() : null,
-                  } : undefined,
+                  dateRange: localFilters.dateRange
+                    ? {
+                        start: localFilters.dateRange.start
+                          ? localFilters.dateRange.start.toISOString()
+                          : null,
+                        end: localFilters.dateRange.end
+                          ? localFilters.dateRange.end.toISOString()
+                          : null,
+                      }
+                    : undefined,
                 }}
                 onLoadPreset={(preset) => {
                   const loaded = loadPreset(preset);
                   const converted = {
                     ...loaded,
-                    dateRange: loaded.dateRange ? {
-                      start: loaded.dateRange.start ? new Date(loaded.dateRange.start) : null,
-                      end: loaded.dateRange.end ? new Date(loaded.dateRange.end) : null,
-                    } : undefined,
+                    dateRange: loaded.dateRange
+                      ? {
+                          start: loaded.dateRange.start ? new Date(loaded.dateRange.start) : null,
+                          end: loaded.dateRange.end ? new Date(loaded.dateRange.end) : null,
+                        }
+                      : undefined,
                   } as typeof localFilters;
                   setLocalFilters(converted);
                   onFiltersChange(converted);
@@ -241,7 +265,7 @@ export function AdvancedFilters({
                         ? localFilters.dateRange.start.toISOString().split('T')[0]
                         : ''
                     }
-                    onChange={e => handleDateRangeChange('start', e.target.value)}
+                    onChange={(e) => handleDateRangeChange('start', e.target.value)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                   />
                 </div>
@@ -254,7 +278,7 @@ export function AdvancedFilters({
                         ? localFilters.dateRange.end.toISOString().split('T')[0]
                         : ''
                     }
-                    onChange={e => handleDateRangeChange('end', e.target.value)}
+                    onChange={(e) => handleDateRangeChange('end', e.target.value)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                   />
                 </div>
@@ -268,28 +292,29 @@ export function AdvancedFilters({
                   Quick Filters
                 </label>
                 <div className="space-y-2">
-                  {multiSelectFields.map(field => (
+                  {multiSelectFields.map((field) => (
                     <div key={field.value}>
                       <label className="mb-1 block text-xs text-gray-600">{field.label}</label>
                       <select
                         multiple
                         value={localFilters.multiSelects?.[field.value] || []}
-                        onChange={e => {
-                          const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        onChange={(e) => {
+                          const selected = Array.from(
+                            e.target.selectedOptions,
+                            (option) => option.value
+                          );
                           handleMultiSelectChange(field.value, selected);
                         }}
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                         size={Math.min(field.options.length, 4)}
                       >
-                        {field.options.map(option => (
+                        {field.options.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Hold Ctrl/Cmd to select multiple
-                      </p>
+                      <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple</p>
                     </div>
                   ))}
                 </div>
@@ -300,9 +325,7 @@ export function AdvancedFilters({
             {availableFields.length > 0 && (
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Custom Filters
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Custom Filters</label>
                   <button
                     onClick={handleAddOperator}
                     className="text-xs text-kubota-orange hover:text-orange-600"
@@ -317,13 +340,18 @@ export function AdvancedFilters({
                     const operatorOptions = OPERATORS[fieldType] || OPERATORS.text;
 
                     return (
-                      <div key={index} className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 p-2"
+                      >
                         <select
                           value={operator.field}
-                          onChange={e => handleOperatorChange(index, { field: e.target.value, value: '' })}
+                          onChange={(e) =>
+                            handleOperatorChange(index, { field: e.target.value, value: '' })
+                          }
                           className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                         >
-                          {availableFields.map(field => (
+                          {availableFields.map((field) => (
                             <option key={field.value} value={field.value}>
                               {field.label}
                             </option>
@@ -332,7 +360,7 @@ export function AdvancedFilters({
 
                         <select
                           value={operator.operator}
-                          onChange={e =>
+                          onChange={(e) =>
                             handleOperatorChange(index, {
                               operator: e.target.value as FilterOperator['operator'],
                               value: '',
@@ -340,7 +368,7 @@ export function AdvancedFilters({
                           }
                           className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                         >
-                          {operatorOptions.map(op => (
+                          {operatorOptions.map((op) => (
                             <option key={op.value} value={op.value}>
                               {op.label}
                             </option>
@@ -350,16 +378,23 @@ export function AdvancedFilters({
                         {operator.operator === 'between' ? (
                           <div className="flex flex-1 items-center gap-2">
                             <input
-                              type={fieldType === 'date' ? 'date' : fieldType === 'number' ? 'number' : 'text'}
-                              value={
-                                Array.isArray(operator.value) ? operator.value[0] || '' : ''
+                              type={
+                                fieldType === 'date'
+                                  ? 'date'
+                                  : fieldType === 'number'
+                                    ? 'number'
+                                    : 'text'
                               }
-                              onChange={e => {
+                              value={Array.isArray(operator.value) ? operator.value[0] || '' : ''}
+                              onChange={(e) => {
                                 const currentValue = Array.isArray(operator.value)
                                   ? operator.value
                                   : ['', ''];
                                 handleOperatorChange(index, {
-                                  value: [e.target.value, String(currentValue[1] || '')] as [string, string],
+                                  value: [e.target.value, String(currentValue[1] || '')] as [
+                                    string,
+                                    string,
+                                  ],
                                 });
                               }}
                               className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
@@ -367,16 +402,23 @@ export function AdvancedFilters({
                             />
                             <span className="text-gray-500">to</span>
                             <input
-                              type={fieldType === 'date' ? 'date' : fieldType === 'number' ? 'number' : 'text'}
-                              value={
-                                Array.isArray(operator.value) ? operator.value[1] || '' : ''
+                              type={
+                                fieldType === 'date'
+                                  ? 'date'
+                                  : fieldType === 'number'
+                                    ? 'number'
+                                    : 'text'
                               }
-                              onChange={e => {
+                              value={Array.isArray(operator.value) ? operator.value[1] || '' : ''}
+                              onChange={(e) => {
                                 const currentValue = Array.isArray(operator.value)
                                   ? operator.value
                                   : ['', ''];
                                 handleOperatorChange(index, {
-                                  value: [String(currentValue[0] || ''), e.target.value] as [string, string],
+                                  value: [String(currentValue[0] || ''), e.target.value] as [
+                                    string,
+                                    string,
+                                  ],
                                 });
                               }}
                               className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
@@ -386,15 +428,23 @@ export function AdvancedFilters({
                         ) : operator.operator === 'in' || operator.operator === 'not_in' ? (
                           <select
                             multiple
-                            value={(Array.isArray(operator.value) && typeof operator.value[0] === 'string' ? operator.value : []) as string[]}
-                            onChange={e => {
-                              const selected = Array.from(e.target.selectedOptions, option => option.value);
+                            value={
+                              (Array.isArray(operator.value) &&
+                              typeof operator.value[0] === 'string'
+                                ? operator.value
+                                : []) as string[]
+                            }
+                            onChange={(e) => {
+                              const selected = Array.from(
+                                e.target.selectedOptions,
+                                (option) => option.value
+                              );
                               handleOperatorChange(index, { value: selected });
                             }}
                             className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                             size={Math.min(fieldOptions.length, 3)}
                           >
-                            {fieldOptions.map(option => (
+                            {fieldOptions.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
@@ -403,11 +453,11 @@ export function AdvancedFilters({
                         ) : fieldOptions.length > 0 ? (
                           <select
                             value={typeof operator.value === 'string' ? operator.value : ''}
-                            onChange={e => handleOperatorChange(index, { value: e.target.value })}
+                            onChange={(e) => handleOperatorChange(index, { value: e.target.value })}
                             className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
                           >
                             <option value="">Select...</option>
-                            {fieldOptions.map(option => (
+                            {fieldOptions.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>
@@ -415,11 +465,25 @@ export function AdvancedFilters({
                           </select>
                         ) : (
                           <input
-                            type={fieldType === 'date' ? 'date' : fieldType === 'number' ? 'number' : 'text'}
-                            value={typeof operator.value === 'string' || typeof operator.value === 'number' ? String(operator.value) : ''}
-                            onChange={e =>
+                            type={
+                              fieldType === 'date'
+                                ? 'date'
+                                : fieldType === 'number'
+                                  ? 'number'
+                                  : 'text'
+                            }
+                            value={
+                              typeof operator.value === 'string' ||
+                              typeof operator.value === 'number'
+                                ? String(operator.value)
+                                : ''
+                            }
+                            onChange={(e) =>
                               handleOperatorChange(index, {
-                                value: fieldType === 'number' ? parseFloat(e.target.value) || 0 : e.target.value,
+                                value:
+                                  fieldType === 'number'
+                                    ? parseFloat(e.target.value) || 0
+                                    : e.target.value,
                               })
                             }
                             className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
@@ -446,5 +510,3 @@ export function AdvancedFilters({
     </div>
   );
 }
-
-

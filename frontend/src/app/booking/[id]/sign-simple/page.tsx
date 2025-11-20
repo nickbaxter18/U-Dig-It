@@ -5,12 +5,15 @@
 
 'use client';
 
-import { logger } from '@/lib/logger';
-import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
-import { supabase } from '@/lib/supabase/client';
 import { CheckCircle } from 'lucide-react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
 
 export default function SimpleSignPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -23,11 +26,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
   const [submitting, setSubmitting] = useState(false);
   const [booking, setBooking] = useState<any>(null);
 
-  useEffect(() => {
-    fetchBooking();
-  }, [params.id]);
-
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     const { data } = await supabase
       .from('bookings')
       .select(
@@ -47,7 +46,11 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
         setName(`${customer.firstName} ${customer.lastName}`);
       }
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchBooking();
+  }, [fetchBooking]);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -155,21 +158,29 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
           });
         }
       } catch (completionError) {
-        logger.error('Error checking completion after contract signing', {
-          component: 'sign-simple-page',
-          action: 'completion_check_error',
-        }, completionError as Error);
+        logger.error(
+          'Error checking completion after contract signing',
+          {
+            component: 'sign-simple-page',
+            action: 'completion_check_error',
+          },
+          completionError as Error
+        );
         // Don't fail contract signing if completion check fails
       }
 
       // Redirect to manage page
       router.push(`/booking/${params.id}/manage`);
-    } catch (error: any) {
-      logger.error('Signing error', {
-        component: 'app-page',
-        action: 'error',
-        metadata: { error: error instanceof Error ? error.message : String(error) }
-      }, error instanceof Error ? error : undefined);
+    } catch (error: unknown) {
+      logger.error(
+        'Signing error',
+        {
+          component: 'app-page',
+          action: 'error',
+          metadata: { error: error instanceof Error ? error.message : String(error) },
+        },
+        error instanceof Error ? error : undefined
+      );
       alert('Failed to sign contract. Please try again.');
     } finally {
       setSubmitting(false);
@@ -266,7 +277,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
             <input
               type="text"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
               placeholder="Your full name"
             />
@@ -278,7 +289,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
             <input
               type="date"
               value={date}
-              onChange={e => setDate(e.target.value)}
+              onChange={(e) => setDate(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -317,7 +328,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
               <input
                 type="checkbox"
                 checked={agreed}
-                onChange={e => setAgreed(e.target.checked)}
+                onChange={(e) => setAgreed(e.target.checked)}
                 className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="ml-3 text-sm text-gray-700">

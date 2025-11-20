@@ -1,8 +1,8 @@
 /**
  * Enhanced availability service with real-time updates and smart suggestions
  */
-
 import { logger } from '@/lib/logger';
+
 import { supabaseApi } from './supabase/api-client';
 import { supabase } from './supabase/client';
 
@@ -138,10 +138,14 @@ class AvailabilityService {
       return result;
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Availability check failed:', {
-          component: 'availability-service',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Availability check failed:',
+          {
+            component: 'availability-service',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
       return {
         available: false,
@@ -195,7 +199,7 @@ class AvailabilityService {
               savings: this.calculateSavings(offset, 'earlier'),
             });
           }
-        } catch (error) {
+        } catch {
           // Continue if availability check fails
         }
       }
@@ -221,7 +225,7 @@ class AvailabilityService {
             savings: this.calculateSavings(offset, 'later'),
           });
         }
-      } catch (error) {
+      } catch {
         // Continue if availability check fails
       }
     }
@@ -260,7 +264,7 @@ class AvailabilityService {
         if (isAvailable.available) {
           return testStart.toISOString().split('T')[0];
         }
-      } catch (error) {
+      } catch {
         // Continue if availability check fails
       }
     }
@@ -366,7 +370,7 @@ class AvailabilityService {
         if (availability.available) {
           availableSuggestions.push(suggestion);
         }
-      } catch (error) {
+      } catch {
         // If we can't check availability, include the suggestion anyway
         availableSuggestions.push(suggestion);
       }
@@ -374,7 +378,7 @@ class AvailabilityService {
 
     // Sort by priority and confidence
     return availableSuggestions
-      .sort((a: any, b: any) => {
+      .sort((a: unknown, b: unknown) => {
         const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
         const aPriority = priorityOrder[a.priority] || 0;
         const bPriority = priorityOrder[b.priority] || 0;

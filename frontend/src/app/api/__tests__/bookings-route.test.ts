@@ -2,12 +2,21 @@
  * Booking API Route Tests
  * Verifies validation, availability checks, pricing math, and Supabase integrations.
  */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { NextRequest } from 'next/server';
+
 import { POST } from '../bookings/route';
 
-const { mockSupabaseClient, mockFrom, mockSelect, mockEq, mockSingle, mockInsert, bookingsCallCounter } = vi.hoisted(() => {
+const {
+  mockSupabaseClient,
+  mockFrom,
+  mockSelect,
+  _mockEq,
+  _mockSingle,
+  mockInsert,
+  bookingsCallCounter,
+} = vi.hoisted(() => {
   const mockFromFn = vi.fn();
   const mockSelectFn = vi.fn();
   const mockEqFn = vi.fn();
@@ -24,10 +33,19 @@ const { mockSupabaseClient, mockFrom, mockSelect, mockEq, mockSingle, mockInsert
     },
     mockFrom: mockFromFn,
     mockSelect: mockSelectFn,
-    mockEq: mockEqFn,
-    mockSingle: mockSingleFn,
+    _mockEq: mockEqFn,
+    _mockSingle: mockSingleFn,
     mockInsert: mockInsertFn,
-    bookingsCallCounter: { count: callCount, reset: () => { callCount = 0; }, increment: () => { callCount++; return callCount; } },
+    bookingsCallCounter: {
+      count: callCount,
+      reset: () => {
+        callCount = 0;
+      },
+      increment: () => {
+        callCount++;
+        return callCount;
+      },
+    },
   };
 });
 

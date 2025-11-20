@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle,
@@ -13,10 +12,18 @@ import {
   XCircle,
 } from 'lucide-react';
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 
-type VerificationStatus = 'all' | 'processing' | 'manual_review' | 'approved' | 'rejected' | 'failed';
+type VerificationStatus =
+  | 'all'
+  | 'processing'
+  | 'manual_review'
+  | 'approved'
+  | 'rejected'
+  | 'failed';
 
 interface VerificationResult {
   documentStatus?: string | null;
@@ -64,7 +71,11 @@ export default function IdVerificationAdminPage() {
   const [selected, setSelected] = useState<VerificationRequest | null>(null);
   const [overrideNotes, setOverrideNotes] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
-  const [artefactUrls, setArtefactUrls] = useState<{ front?: string; back?: string; selfie?: string }>({});
+  const [artefactUrls, setArtefactUrls] = useState<{
+    front?: string;
+    back?: string;
+    selfie?: string;
+  }>({});
   const [artefactError, setArtefactError] = useState<string | null>(null);
   const [loadingArtefacts, setLoadingArtefacts] = useState(false);
   const selectedMetadata = selected?.metadata ?? null;
@@ -72,7 +83,7 @@ export default function IdVerificationAdminPage() {
     if (!selectedMetadata || typeof selectedMetadata !== 'object') {
       return null;
     }
-    const raw = (selectedMetadata as any).localAutomation;
+    const raw = (selectedMetadata as { localAutomation?: unknown } | null)?.localAutomation;
     if (!raw || typeof raw !== 'object') {
       return null;
     }
@@ -88,10 +99,119 @@ export default function IdVerificationAdminPage() {
     };
   }, [selectedMetadata]);
 
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const query = supabase
+        .from('id_verification_requests')
+        .select(
+          `
+          id,
+          booking_id,
+          user_id,
+          status,
+          attempt_number,
+          created_at,
+          consent_method,
+          consent_recorded_at,
+          metadata,
+          result:id_verification_results(
+            document_status,
+            document_liveness_score,
+            face_match_score,
+            face_liveness_score,
+            failure_reasons,
+            processed_at,
+            extracted_fields
+          ),
+          booking:booking_id(
+            bookingNumber,
+            status,
+            startDate,
+            endDate
+          ),
+          customer:user_id(
+            firstName,
+            lastName,
+            email,
+            phone,
+            drivers_license_number,
+            drivers_license_expiry,
+            drivers_license_province
+          )
+        `
+        )
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      const { data, error: queryError } = await query;
+      if (queryError) throw queryError;
+
+      const mapped: VerificationRequest[] = (data || []).map((item: unknown) => {
+        const booking = item.booking ?? {};
+        const customer = item.customer ?? {};
+        const result = item.result ?? null;
+        const customerName =
+          `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Unknown';
+
+        return {
+          id: item.id,
+          bookingId: item.booking_id,
+          bookingNumber: booking.bookingNumber ?? 'N/A',
+          bookingStatus: booking.status ?? 'unknown',
+          userId: item.user_id,
+          customerName,
+          customerEmail: customer.email ?? 'N/A',
+          customerPhone: customer.phone ?? null,
+          status: item.status ?? 'processing',
+          attemptNumber: item.attempt_number ?? 1,
+          createdAt: item.created_at ? new Date(item.created_at) : new Date(),
+          consentMethod: item.consent_method ?? null,
+          consentRecordedAt: item.consent_recorded_at ? new Date(item.consent_recorded_at) : null,
+          metadata: item.metadata ?? {},
+          result: result
+            ? {
+                documentStatus: result.document_status ?? null,
+                documentLivenessScore:
+                  typeof result.document_liveness_score === 'number'
+                    ? result.document_liveness_score
+                    : Number(result.document_liveness_score) || null,
+                faceMatchScore:
+                  typeof result.face_match_score === 'number'
+                    ? result.face_match_score
+                    : Number(result.face_match_score) || null,
+                faceLivenessScore:
+                  typeof result.face_liveness_score === 'number'
+                    ? result.face_liveness_score
+                    : Number(result.face_liveness_score) || null,
+                failureReasons: Array.isArray(result.failure_reasons) ? result.failure_reasons : [],
+                processedAt: result.processed_at ? new Date(result.processed_at) : null,
+                extractedFields: result.extracted_fields ?? undefined,
+              }
+            : undefined,
+        };
+      });
+
+      setRequests(mapped);
+    } catch (fetchError) {
+      logger.error(
+        'Failed to load ID verification requests',
+        { component: 'IdVerificationAdminPage' },
+        fetchError instanceof Error ? fetchError : new Error(String(fetchError))
+      );
+      setError(
+        fetchError instanceof Error ? fetchError.message : 'Failed to load verification requests'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []); // supabase is a stable client, doesn't need to be in deps
+
   useEffect(() => {
     fetchRequests();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter]);
+  }, [statusFilter, fetchRequests]);
 
   useEffect(() => {
     let isActive = true;
@@ -105,13 +225,15 @@ export default function IdVerificationAdminPage() {
 
       const metadata = selected.metadata ?? {};
       const documentPath =
-        typeof (metadata as any).documentPath === 'string'
-          ? ((metadata as any).documentPath as string)
-          : Array.isArray((metadata as any).documentPaths)
-            ? ((metadata as any).documentPaths as string[])[0] ?? null
+        typeof (metadata as { documentPath?: string } | null)?.documentPath === 'string'
+          ? (metadata as { documentPath: string }).documentPath
+          : Array.isArray((metadata as { documentPaths?: string[] } | null)?.documentPaths)
+            ? ((metadata as { documentPaths: string[] }).documentPaths[0] ?? null)
             : null;
       const selfiePath =
-        typeof (metadata as any).selfiePath === 'string' ? ((metadata as any).selfiePath as string) : null;
+        typeof (metadata as { selfiePath?: string } | null)?.selfiePath === 'string'
+          ? (metadata as { selfiePath: string }).selfiePath
+          : null;
 
       if (!documentPath && !selfiePath) {
         setArtefactUrls({});
@@ -171,10 +293,11 @@ export default function IdVerificationAdminPage() {
             <Clock className="h-5 w-5 animate-spin" />
           </div>
         ) : url ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt={`${label} preview`} className="h-full w-full object-contain" />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">No preview</div>
+          <div className="flex h-full items-center justify-center text-xs text-gray-400">
+            No preview
+          </div>
         )}
       </div>
       {url && (
@@ -208,111 +331,6 @@ export default function IdVerificationAdminPage() {
     });
   }, [requests, statusFilter, searchTerm]);
 
-  const fetchRequests = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const query = supabase
-        .from('id_verification_requests')
-        .select(
-          `
-          id,
-          booking_id,
-          user_id,
-          status,
-          attempt_number,
-          created_at,
-          consent_method,
-          consent_recorded_at,
-          metadata,
-          result:id_verification_results(
-            document_status,
-            document_liveness_score,
-            face_match_score,
-            face_liveness_score,
-            failure_reasons,
-            processed_at,
-            extracted_fields
-          ),
-          booking:booking_id(
-            bookingNumber,
-            status,
-            startDate,
-            endDate
-          ),
-          customer:user_id(
-            firstName,
-            lastName,
-            email,
-            phone,
-            drivers_license_number,
-            drivers_license_expiry,
-            drivers_license_province
-          )
-        `
-        )
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      const { data, error: queryError } = await query;
-      if (queryError) throw queryError;
-
-      const mapped: VerificationRequest[] = (data || []).map((item: any) => {
-        const booking = item.booking ?? {};
-        const customer = item.customer ?? {};
-        const result = item.result ?? null;
-        const customerName = `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Unknown';
-
-        return {
-          id: item.id,
-          bookingId: item.booking_id,
-          bookingNumber: booking.bookingNumber ?? 'N/A',
-          bookingStatus: booking.status ?? 'unknown',
-          userId: item.user_id,
-          customerName,
-          customerEmail: customer.email ?? 'N/A',
-          customerPhone: customer.phone ?? null,
-          status: item.status ?? 'processing',
-          attemptNumber: item.attempt_number ?? 1,
-          createdAt: item.created_at ? new Date(item.created_at) : new Date(),
-          consentMethod: item.consent_method ?? null,
-          consentRecordedAt: item.consent_recorded_at ? new Date(item.consent_recorded_at) : null,
-          metadata: item.metadata ?? {},
-          result: result
-            ? {
-                documentStatus: result.document_status ?? null,
-                documentLivenessScore:
-                  typeof result.document_liveness_score === 'number'
-                    ? result.document_liveness_score
-                    : Number(result.document_liveness_score) || null,
-                faceMatchScore:
-                  typeof result.face_match_score === 'number' ? result.face_match_score : Number(result.face_match_score) || null,
-                faceLivenessScore:
-                  typeof result.face_liveness_score === 'number'
-                    ? result.face_liveness_score
-                    : Number(result.face_liveness_score) || null,
-                failureReasons: Array.isArray(result.failure_reasons) ? result.failure_reasons : [],
-                processedAt: result.processed_at ? new Date(result.processed_at) : null,
-                extractedFields: result.extracted_fields ?? undefined,
-              }
-            : undefined,
-        };
-      });
-
-      setRequests(mapped);
-    } catch (fetchError) {
-      logger.error(
-        'Failed to load ID verification requests',
-        { component: 'IdVerificationAdminPage' },
-        fetchError instanceof Error ? fetchError : new Error(String(fetchError))
-      );
-      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load verification requests');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleApprove = async () => {
     if (!selected) return;
 
@@ -336,8 +354,8 @@ export default function IdVerificationAdminPage() {
       };
 
       // Type assertion needed due to Supabase type inference
-      await (supabase
-        .from('id_verification_requests') as any)
+      await supabase
+        .from('id_verification_requests')
         .update({
           status: 'approved',
           metadata,
@@ -345,7 +363,7 @@ export default function IdVerificationAdminPage() {
         .eq('id', selected.id);
 
       // Type assertion needed due to Supabase type inference
-      await (supabase.from('id_verification_audits') as any).insert({
+      await supabase.from('id_verification_audits').insert({
         request_id: selected.id,
         action: 'override_approved',
         performed_by: user.id,
@@ -385,7 +403,7 @@ export default function IdVerificationAdminPage() {
 
         if (Object.keys(updates).length > 0) {
           // Type assertion needed due to Supabase type inference
-          await (supabase.from('users') as any).update(updates).eq('id', selected.userId);
+          await supabase.from('users').update(updates).eq('id', selected.userId);
         }
       }
 
@@ -431,8 +449,8 @@ export default function IdVerificationAdminPage() {
       };
 
       // Type assertion needed due to Supabase type inference
-      await (supabase
-        .from('id_verification_requests') as any)
+      await supabase
+        .from('id_verification_requests')
         .update({
           status: 'rejected',
           metadata,
@@ -440,7 +458,7 @@ export default function IdVerificationAdminPage() {
         .eq('id', selected.id);
 
       // Type assertion needed due to Supabase type inference
-      await (supabase.from('id_verification_audits') as any).insert({
+      await supabase.from('id_verification_audits').insert({
         request_id: selected.id,
         action: 'override_rejected',
         performed_by: user.id,
@@ -478,7 +496,9 @@ export default function IdVerificationAdminPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <ShieldCheck className="h-5 w-5 text-blue-600" />
-            <span>Automated verifications reduce fraud. Manual overrides are logged for compliance.</span>
+            <span>
+              Automated verifications reduce fraud. Manual overrides are logged for compliance.
+            </span>
           </div>
           <button
             type="button"
@@ -544,11 +564,16 @@ export default function IdVerificationAdminPage() {
       ) : (
         <div className="grid gap-4">
           {filteredRequests.map((request) => (
-            <article key={request.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <article
+              key={request.id}
+              className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+            >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-semibold text-gray-500">Booking #{request.bookingNumber}</span>
+                    <span className="text-sm font-semibold text-gray-500">
+                      Booking #{request.bookingNumber}
+                    </span>
                     <StatusBadge status={request.status} />
                     <span className="text-xs text-gray-400">
                       Attempt #{request.attemptNumber} · {request.createdAt.toLocaleString()}
@@ -601,7 +626,8 @@ export default function IdVerificationAdminPage() {
                   <div>
                     <p className="font-semibold text-gray-800">Document sharpness</p>
                     <p className="mt-1">
-                      {request.result?.documentLivenessScore != null && typeof request.result?.documentLivenessScore === 'number'
+                      {request.result?.documentLivenessScore != null &&
+                      typeof request.result?.documentLivenessScore === 'number'
                         ? `${((request.result?.documentLivenessScore ?? 0) * 100).toFixed(1)}%`
                         : 'N/A'}
                     </p>
@@ -662,7 +688,9 @@ export default function IdVerificationAdminPage() {
                   <p className="font-semibold text-gray-900">Customer</p>
                   <p>{selected.customerName}</p>
                   <p className="text-gray-500">{selected.customerEmail}</p>
-                  {selected.customerPhone && <p className="text-gray-500">{selected.customerPhone}</p>}
+                  {selected.customerPhone && (
+                    <p className="text-gray-500">{selected.customerPhone}</p>
+                  )}
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">Consent</p>
@@ -682,11 +710,17 @@ export default function IdVerificationAdminPage() {
                     <p className="font-semibold text-gray-900">Automation summary</p>
                     <div className="grid gap-3 rounded-md border border-gray-100 bg-gray-50 p-3 text-sm text-gray-700 sm:grid-cols-2">
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-500">Document status</dt>
-                        <dd className="font-semibold capitalize">{selected.result.documentStatus ?? 'unknown'}</dd>
+                        <dt className="text-xs uppercase tracking-wide text-gray-500">
+                          Document status
+                        </dt>
+                        <dd className="font-semibold capitalize">
+                          {selected.result.documentStatus ?? 'unknown'}
+                        </dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-500">Face match score</dt>
+                        <dt className="text-xs uppercase tracking-wide text-gray-500">
+                          Face match score
+                        </dt>
                         <dd className="font-semibold">
                           {typeof selected.result.faceMatchScore === 'number'
                             ? `${(selected.result.faceMatchScore * 100).toFixed(1)}%`
@@ -694,7 +728,9 @@ export default function IdVerificationAdminPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-500">Document sharpness</dt>
+                        <dt className="text-xs uppercase tracking-wide text-gray-500">
+                          Document sharpness
+                        </dt>
                         <dd className="font-semibold">
                           {typeof selected.result.documentLivenessScore === 'number'
                             ? `${(selected.result.documentLivenessScore * 100).toFixed(1)}%`
@@ -702,7 +738,9 @@ export default function IdVerificationAdminPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-500">Selfie sharpness</dt>
+                        <dt className="text-xs uppercase tracking-wide text-gray-500">
+                          Selfie sharpness
+                        </dt>
                         <dd className="font-semibold">
                           {typeof selected.result.faceLivenessScore === 'number'
                             ? `${(selected.result.faceLivenessScore * 100).toFixed(1)}%`
@@ -713,42 +751,48 @@ export default function IdVerificationAdminPage() {
                   </div>
                 )}
 
-              {automationScores && (
-                <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
-                  <p className="font-semibold text-blue-900">Local automation details</p>
-                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <dt className="text-xs uppercase tracking-wide text-blue-700">Face match</dt>
-                      <dd className="font-semibold">
-                        {typeof automationScores.faceMatchScore === 'number'
-                          ? `${(automationScores.faceMatchScore * 100).toFixed(1)}%`
-                          : 'N/A'}
-                      </dd>
+                {automationScores && (
+                  <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
+                    <p className="font-semibold text-blue-900">Local automation details</p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                      <div>
+                        <dt className="text-xs uppercase tracking-wide text-blue-700">
+                          Face match
+                        </dt>
+                        <dd className="font-semibold">
+                          {typeof automationScores.faceMatchScore === 'number'
+                            ? `${(automationScores.faceMatchScore * 100).toFixed(1)}%`
+                            : 'N/A'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-wide text-blue-700">
+                          Document sharpness
+                        </dt>
+                        <dd className="font-semibold">
+                          {typeof automationScores.documentSharpnessScore === 'number'
+                            ? `${(automationScores.documentSharpnessScore * 100).toFixed(1)}%`
+                            : 'N/A'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-wide text-blue-700">
+                          Selfie sharpness
+                        </dt>
+                        <dd className="font-semibold">
+                          {typeof automationScores.selfieSharpnessScore === 'number'
+                            ? `${(automationScores.selfieSharpnessScore * 100).toFixed(1)}%`
+                            : 'N/A'}
+                        </dd>
+                      </div>
                     </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-wide text-blue-700">Document sharpness</dt>
-                      <dd className="font-semibold">
-                        {typeof automationScores.documentSharpnessScore === 'number'
-                          ? `${(automationScores.documentSharpnessScore * 100).toFixed(1)}%`
-                          : 'N/A'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-wide text-blue-700">Selfie sharpness</dt>
-                      <dd className="font-semibold">
-                        {typeof automationScores.selfieSharpnessScore === 'number'
-                          ? `${(automationScores.selfieSharpnessScore * 100).toFixed(1)}%`
-                          : 'N/A'}
-                      </dd>
-                    </div>
+                    {localAutomationInfo.processedAt && (
+                      <p className="mt-2 text-xs text-blue-700">
+                        Processed {new Date(localAutomationInfo.processedAt).toLocaleString()}
+                      </p>
+                    )}
                   </div>
-                  {localAutomationInfo.processedAt && (
-                    <p className="mt-2 text-xs text-blue-700">
-                      Processed {new Date(localAutomationInfo.processedAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
               </div>
 
               {selected.result?.failureReasons.length ? (
@@ -827,7 +871,8 @@ export default function IdVerificationAdminPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const normalized = status?.toLowerCase();
-  const baseClasses = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold';
+  const baseClasses =
+    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold';
 
   switch (normalized) {
     case 'approved':
@@ -862,4 +907,3 @@ function StatusBadge({ status }: { status: string }) {
       );
   }
 }
-

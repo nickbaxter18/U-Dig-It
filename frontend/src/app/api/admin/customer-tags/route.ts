@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ZodError } from 'zod';
+
+// import { ZodError } from 'zod'; // Reserved for future validation error handling
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import {
-  customerTagCreateSchema,
-  customerTagUpdateSchema,
-} from '@/lib/validators/admin/customers';
+import { customerTagCreateSchema } from '@/lib/validators/admin/customers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,12 +14,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data, error: fetchError } = await supabase
@@ -30,13 +24,11 @@ export async function GET(request: NextRequest) {
       .order('name', { ascending: true });
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch customer tags',
-        { component: 'admin-customer-tags', action: 'fetch_failed' });
-      return NextResponse.json(
-        { error: 'Unable to fetch customer tags' },
-        { status: 500 }
-      );
+      logger.error('Failed to fetch customer tags', {
+        component: 'admin-customer-tags',
+        action: 'fetch_failed',
+      });
+      return NextResponse.json({ error: 'Unable to fetch customer tags' }, { status: 500 });
     }
 
     return NextResponse.json({ tags: data ?? [] });
@@ -58,19 +50,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const payload = customerTagCreateSchema.parse(await request.json());
 
@@ -95,10 +83,7 @@ export async function POST(request: NextRequest) {
         },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to create customer tag' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create customer tag' }, { status: 500 });
     }
 
     logger.info('Customer tag created', {
@@ -121,10 +106,6 @@ export async function POST(request: NextRequest) {
       { component: 'admin-customer-tags', action: 'create_unexpected' },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

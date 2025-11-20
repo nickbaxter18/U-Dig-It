@@ -1,10 +1,13 @@
 'use client';
 
-import { supabase } from '@/lib/supabase/client';
 import { Eye } from 'lucide-react';
-import Link from 'next/link';
+
 import { useEffect, useState } from 'react';
+
+import Link from 'next/link';
+
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 interface Booking {
   id: string;
@@ -68,7 +71,7 @@ export function RecentBookings() {
         if (error) throw error;
 
         // Transform data to match Booking interface
-        const bookingsData = (data || [] as any[]).map((booking: any) => {
+        const bookingsData = (data || ([] as unknown[])).map((booking: unknown) => {
           const firstName = booking.customer?.firstName || '';
           const lastName = booking.customer?.lastName || '';
           const customerName =
@@ -90,10 +93,14 @@ export function RecentBookings() {
         setBookings(bookingsData);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to fetch recent bookings:', {
-            component: 'RecentBookings',
-            action: 'error',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to fetch recent bookings:',
+            {
+              component: 'RecentBookings',
+              action: 'error',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
         // Set empty array on error instead of showing mock data
         setBookings([]);
@@ -159,7 +166,7 @@ export function RecentBookings() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {bookings.map(booking => (
+            {bookings.map((booking) => (
               <tr key={booking.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-6 py-4">
                   <div>

@@ -1,9 +1,22 @@
 'use client';
 
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Plus,
+  User,
+  Wrench,
+  X,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { createMaintenanceLog, fetchMaintenanceLogs } from '@/lib/api/admin/equipment';
+
 import { useAdminToast } from './AdminToastProvider';
-import { fetchMaintenanceLogs, createMaintenanceLog } from '@/lib/api/admin/equipment';
-import { Calendar, Clock, DollarSign, Plus, Wrench, User, X, AlertTriangle, CheckCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface MaintenancePart {
   id?: string;
@@ -55,45 +68,55 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
     parts: [] as MaintenancePart[],
   });
 
-  useEffect(() => {
-    fetchLogs();
-  }, [equipmentId]);
-
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchMaintenanceLogs(equipmentId);
       setLogs(data || []);
     } catch (error) {
-      toast.error('Failed to load maintenance logs', error instanceof Error ? error.message : 'Unable to fetch maintenance history');
+      toast.error(
+        'Failed to load maintenance logs',
+        error instanceof Error ? error.message : 'Unable to fetch maintenance history'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [equipmentId, toast]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   const handleAddPart = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       parts: [...prev.parts, { partName: '', quantity: 1, costPerUnit: 0, supplier: '' }],
     }));
   };
 
   const handleRemovePart = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       parts: prev.parts.filter((_, i) => i !== index),
     }));
   };
 
-  const handlePartChange = (index: number, field: keyof MaintenancePart, value: string | number) => {
-    setFormData(prev => ({
+  const handlePartChange = (
+    index: number,
+    field: keyof MaintenancePart,
+    value: string | number
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       parts: prev.parts.map((part, i) => (i === index ? { ...part, [field]: value } : part)),
     }));
   };
 
   const calculateTotalCost = () => {
-    const partsCost = formData.parts.reduce((sum, part) => sum + (part.quantity * part.costPerUnit), 0);
+    const partsCost = formData.parts.reduce(
+      (sum, part) => sum + part.quantity * part.costPerUnit,
+      0
+    );
     const laborCost = parseFloat(formData.cost) || 0;
     return partsCost + laborCost;
   };
@@ -133,7 +156,10 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
       await fetchLogs();
       onLogChange?.();
     } catch (error) {
-      toast.error('Failed to create log', error instanceof Error ? error.message : 'Unable to save maintenance record');
+      toast.error(
+        'Failed to create log',
+        error instanceof Error ? error.message : 'Unable to save maintenance record'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -200,22 +226,29 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
       ) : (
         <div className="space-y-3">
           {logs.map((log) => {
-            const partsCost = (log.parts || []).reduce((sum: number, part: any) => {
+            const partsCost = (log.parts || []).reduce((sum: number, part: unknown) => {
               const costPerUnit = part.cost_per_unit || part.costPerUnit || 0;
               const quantity = part.quantity || 0;
-              return sum + (quantity * costPerUnit);
+              return sum + quantity * costPerUnit;
             }, 0);
             const laborCost = (log.cost || 0) - partsCost;
 
             return (
-              <div key={log.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div
+                key={log.id}
+                className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+              >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
                     <div className="mt-1">{getTypeIcon(log.maintenance_type)}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-gray-900 capitalize">{log.maintenance_type} Maintenance</h4>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusColor(log.status)}`}>
+                        <h4 className="font-medium text-gray-900 capitalize">
+                          {log.maintenance_type} Maintenance
+                        </h4>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusColor(log.status)}`}
+                        >
                           {log.status}
                         </span>
                       </div>
@@ -246,17 +279,24 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
 
                       {log.parts && log.parts.length > 0 && (
                         <div className="mt-3 rounded-md bg-gray-50 p-3">
-                          <p className="mb-2 text-xs font-semibold text-gray-700 uppercase">Parts Used</p>
+                          <p className="mb-2 text-xs font-semibold text-gray-700 uppercase">
+                            Parts Used
+                          </p>
                           <div className="space-y-1">
-                            {log.parts.map((part: any, idx) => {
+                            {log.parts.map((part: unknown, idx) => {
                               const partName = part.part_name || part.partName || '';
                               const costPerUnit = part.cost_per_unit || part.costPerUnit || 0;
                               const quantity = part.quantity || 0;
                               return (
-                                <div key={idx} className="flex items-center justify-between text-xs">
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between text-xs"
+                                >
                                   <span className="text-gray-700">
                                     {partName} × {quantity}
-                                    {part.supplier && <span className="text-gray-500"> ({part.supplier})</span>}
+                                    {part.supplier && (
+                                      <span className="text-gray-500"> ({part.supplier})</span>
+                                    )}
                                   </span>
                                   <span className="font-medium text-gray-900">
                                     ${(quantity * costPerUnit).toFixed(2)}
@@ -267,16 +307,16 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                             {laborCost > 0 && (
                               <div className="flex items-center justify-between border-t border-gray-200 pt-1 text-xs">
                                 <span className="text-gray-700">Labor</span>
-                                <span className="font-medium text-gray-900">${laborCost.toFixed(2)}</span>
+                                <span className="font-medium text-gray-900">
+                                  ${laborCost.toFixed(2)}
+                                </span>
                               </div>
                             )}
                           </div>
                         </div>
                       )}
 
-                      {log.notes && (
-                        <p className="mt-2 text-sm text-gray-600">{log.notes}</p>
-                      )}
+                      {log.notes && <p className="mt-2 text-sm text-gray-600">{log.notes}</p>}
 
                       {log.next_due_at && (
                         <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
@@ -310,10 +350,14 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Maintenance Type</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Maintenance Type
+                  </label>
                   <select
                     value={formData.maintenanceType}
-                    onChange={(e) => setFormData(prev => ({ ...prev, maintenanceType: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, maintenanceType: e.target.value }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     required
                   >
@@ -327,7 +371,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                   <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     required
                   >
@@ -340,11 +384,15 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Performed At</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Performed At
+                  </label>
                   <input
                     type="datetime-local"
                     value={formData.performedAt}
-                    onChange={(e) => setFormData(prev => ({ ...prev, performedAt: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, performedAt: e.target.value }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     required
                   />
@@ -355,7 +403,9 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                   <input
                     type="text"
                     value={formData.technician}
-                    onChange={(e) => setFormData(prev => ({ ...prev, technician: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, technician: e.target.value }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     placeholder="Optional"
                   />
@@ -364,24 +414,30 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Labor Cost (CAD)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Labor Cost (CAD)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.cost}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cost: e.target.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     placeholder="0.00"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Duration (hours)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                    Duration (hours)
+                  </label>
                   <input
                     type="number"
                     step="0.5"
                     value={formData.durationHours}
-                    onChange={(e) => setFormData(prev => ({ ...prev, durationHours: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, durationHours: e.target.value }))
+                    }
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                     placeholder="Optional"
                   />
@@ -389,11 +445,13 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Next Due Date</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Next Due Date
+                </label>
                 <input
                   type="date"
                   value={formData.nextDueAt}
-                  onChange={(e) => setFormData(prev => ({ ...prev, nextDueAt: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, nextDueAt: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
@@ -425,7 +483,9 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                           type="number"
                           placeholder="Qty"
                           value={part.quantity}
-                          onChange={(e) => handlePartChange(index, 'quantity', parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            handlePartChange(index, 'quantity', parseInt(e.target.value) || 0)
+                          }
                           className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
                           min="1"
                           required
@@ -435,7 +495,9 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                           step="0.01"
                           placeholder="Cost"
                           value={part.costPerUnit}
-                          onChange={(e) => handlePartChange(index, 'costPerUnit', parseFloat(e.target.value) || 0)}
+                          onChange={(e) =>
+                            handlePartChange(index, 'costPerUnit', parseFloat(e.target.value) || 0)
+                          }
                           className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
                           required
                         />
@@ -466,7 +528,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                 <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   rows={3}
                   placeholder="Additional notes about this maintenance..."
@@ -496,4 +558,3 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
     </div>
   );
 }
-

@@ -1,27 +1,34 @@
 'use client';
 
+import {
+  AlertTriangle,
+  Bell,
+  CheckCircle,
+  DollarSign,
+  FileText,
+  Globe,
+  Key,
+  RefreshCw,
+  Save,
+  Settings,
+  Shield,
+  Users,
+  XCircle,
+} from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+
 import { AdminUserModal, type AdminUserSummary } from '@/components/admin/AdminUserModal';
 import { JobsMonitor } from '@/components/admin/JobsMonitor';
 import { NotificationRulesManager } from '@/components/admin/NotificationRulesManager';
+import { PermissionAuditLog } from '@/components/admin/PermissionAuditLog';
+import { PermissionGate } from '@/components/admin/PermissionGate';
+import { PermissionManager } from '@/components/admin/PermissionManager';
 import { ScheduledReportsManager } from '@/components/admin/ScheduledReportsManager';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import {
-    AlertTriangle,
-    Bell,
-    CheckCircle,
-    DollarSign,
-    FileText,
-    Globe,
-    RefreshCw,
-    Save,
-    Settings,
-    Shield,
-    Users,
-    XCircle,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface SystemSettings {
   general: {
@@ -101,7 +108,11 @@ export function SettingsPageClient() {
   // Debug: Log tabs to console in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[SettingsPage] Tabs count:', 9, 'Expected tabs: reports, notification-rules, jobs, general, pricing, notifications, integrations, security, admins');
+      console.log(
+        '[SettingsPage] Tabs count:',
+        8,
+        'Expected tabs: reports, jobs, general, pricing, notifications, integrations, security, admins'
+      );
     }
   }, []);
 
@@ -119,7 +130,7 @@ export function SettingsPageClient() {
 
       // Transform array of settings into SystemSettings object
       const settingsMap: any = {};
-      (settingsData || [] as any[]).forEach((item: any) => {
+      (settingsData || ([] as unknown[])).forEach((item: unknown) => {
         settingsMap[item.category] = item.settings;
       });
 
@@ -168,7 +179,11 @@ export function SettingsPageClient() {
       setSettings(loadedSettings);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch settings:', { component: 'app-page', action: 'error' }, err as Error);
+        logger.error(
+          'Failed to fetch settings:',
+          { component: 'app-page', action: 'error' },
+          err as Error
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to fetch settings');
     } finally {
@@ -188,7 +203,7 @@ export function SettingsPageClient() {
       if (error) throw error;
 
       // Transform to AdminUser format
-      const transformed: AdminUser[] = (data || [] as any[]).map((user: any) => {
+      const transformed: AdminUser[] = (data || ([] as unknown[])).map((user: unknown) => {
         const roleValue = (user.role as AdminRoleValue) || 'admin';
         const statusValue = (user.status as AdminUserStatus) || 'inactive';
 
@@ -209,10 +224,14 @@ export function SettingsPageClient() {
       setAdminUsers(transformed);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch admin users:', {
-          component: 'app-page',
-          action: 'error',
-        }, err as Error);
+        logger.error(
+          'Failed to fetch admin users:',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          err as Error
+        );
       }
       setAdminUsers([]);
     }
@@ -291,7 +310,9 @@ export function SettingsPageClient() {
 
       // ✅ BULLETPROOF: Save settings to Supabase system_settings table
       // Get current user ID for audit trail
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
         throw new Error('Not authenticated');
@@ -340,7 +361,7 @@ export function SettingsPageClient() {
         component: 'SettingsPage',
         action: 'settings_saved',
         metadata: {
-          categories: settingsToSave.map(s => s.category),
+          categories: settingsToSave.map((s) => s.category),
           updatedBy: user.id,
         },
       });
@@ -352,7 +373,11 @@ export function SettingsPageClient() {
       await fetchSettings();
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to save settings:', { component: 'app-page', action: 'error' }, err as Error);
+        logger.error(
+          'Failed to save settings:',
+          { component: 'app-page', action: 'error' },
+          err as Error
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to save settings');
     } finally {
@@ -374,15 +399,15 @@ export function SettingsPageClient() {
 
   // DEBUG: Force all tabs to be visible - check if this array is being modified
   const tabs = [
-    { id: 'reports', name: '📊 Scheduled Reports', icon: FileText },
-    { id: 'notification-rules', name: '🔔 Notification Rules', icon: Bell },
-    { id: 'jobs', name: '⚙️ Background Jobs', icon: RefreshCw },
-    { id: 'general', name: 'General', icon: Settings },
-    { id: 'pricing', name: 'Pricing', icon: DollarSign },
-    { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'integrations', name: 'Integrations', icon: Globe },
-    { id: 'security', name: 'Security', icon: Shield },
-    { id: 'admins', name: 'Admin Users', icon: Users },
+    { id: 'reports', name: 'Reports', shortName: 'Reports', icon: FileText },
+    { id: 'jobs', name: 'Jobs', shortName: 'Jobs', icon: RefreshCw },
+    { id: 'general', name: 'General', shortName: 'General', icon: Settings },
+    { id: 'pricing', name: 'Pricing', shortName: 'Pricing', icon: DollarSign },
+    { id: 'notifications', name: 'Notifications', shortName: 'Notifications', icon: Bell },
+    { id: 'integrations', name: 'Integrations', shortName: 'Integrations', icon: Globe },
+    { id: 'security', name: 'Security', shortName: 'Security', icon: Shield },
+    { id: 'permissions', name: 'Permissions', shortName: 'Permissions', icon: Key },
+    { id: 'admins', name: 'Admins', shortName: 'Admins', icon: Users },
   ];
 
   if (loading) {
@@ -404,7 +429,7 @@ export function SettingsPageClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-h-0">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -447,22 +472,25 @@ export function SettingsPageClient() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+      <div className="border-b border-gray-200 w-full overflow-hidden">
+        <nav
+          className="-mb-px flex space-x-0.5 overflow-x-auto sm:space-x-1 md:space-x-2 lg:space-x-3 scrollbar-hide w-full min-w-0 max-w-full"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 border-b-2 px-1 py-2 text-sm font-medium whitespace-nowrap ${
+                className={`flex items-center space-x-0.5 border-b-2 px-1.5 py-2 text-xs font-medium whitespace-nowrap sm:space-x-1 sm:px-2 sm:text-sm flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'border-kubota-orange text-kubota-orange'
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                <span>{tab.name}</span>
+                <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
+                <span className="truncate max-w-[80px] sm:max-w-none">{tab.shortName}</span>
               </button>
             );
           })}
@@ -470,7 +498,7 @@ export function SettingsPageClient() {
       </div>
 
       {/* Tab Content */}
-      <div className="rounded-lg bg-white p-6 shadow">
+      <div className="rounded-lg bg-white p-3 shadow sm:p-4 md:p-6 w-full max-w-full overflow-x-hidden">
         {activeTab === 'general' && (
           <div className="space-y-6">
             <h3 className="text-lg font-medium text-gray-900">General Settings</h3>
@@ -481,7 +509,7 @@ export function SettingsPageClient() {
                 <input
                   type="text"
                   value={settings.general.siteName}
-                  onChange={e => handleSettingChange('general', 'siteName', e.target.value)}
+                  onChange={(e) => handleSettingChange('general', 'siteName', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
@@ -492,7 +520,9 @@ export function SettingsPageClient() {
                 </label>
                 <select
                   value={settings.general.defaultCurrency}
-                  onChange={e => handleSettingChange('general', 'defaultCurrency', e.target.value)}
+                  onChange={(e) =>
+                    handleSettingChange('general', 'defaultCurrency', e.target.value)
+                  }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="CAD">CAD - Canadian Dollar</option>
@@ -505,7 +535,7 @@ export function SettingsPageClient() {
                 <label className="mb-2 block text-sm font-medium text-gray-700">Timezone</label>
                 <select
                   value={settings.general.timezone}
-                  onChange={e => handleSettingChange('general', 'timezone', e.target.value)}
+                  onChange={(e) => handleSettingChange('general', 'timezone', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="America/Moncton">America/Moncton (Atlantic Time)</option>
@@ -521,7 +551,7 @@ export function SettingsPageClient() {
                 <input
                   type="number"
                   value={settings.general.maxBookingsPerDay}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('general', 'maxBookingsPerDay', parseInt(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -535,7 +565,7 @@ export function SettingsPageClient() {
               </label>
               <textarea
                 value={settings.general.siteDescription}
-                onChange={e => handleSettingChange('general', 'siteDescription', e.target.value)}
+                onChange={(e) => handleSettingChange('general', 'siteDescription', e.target.value)}
                 rows={3}
                 className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
               />
@@ -546,7 +576,9 @@ export function SettingsPageClient() {
                 type="checkbox"
                 id="maintenanceMode"
                 checked={settings.general.maintenanceMode}
-                onChange={e => handleSettingChange('general', 'maintenanceMode', e.target.checked)}
+                onChange={(e) =>
+                  handleSettingChange('general', 'maintenanceMode', e.target.checked)
+                }
                 className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
               />
               <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-900">
@@ -569,7 +601,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.01"
                   value={settings.pricing.baseDailyRate}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('pricing', 'baseDailyRate', parseFloat(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -584,7 +616,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.1"
                   value={settings.pricing.weekendMultiplier}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('pricing', 'weekendMultiplier', parseFloat(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -599,7 +631,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.1"
                   value={settings.pricing.holidayMultiplier}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('pricing', 'holidayMultiplier', parseFloat(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -614,7 +646,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.01"
                   value={settings.pricing.longTermDiscount * 100}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange(
                       'pricing',
                       'longTermDiscount',
@@ -633,7 +665,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.01"
                   value={settings.pricing.depositPercentage * 100}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange(
                       'pricing',
                       'depositPercentage',
@@ -652,7 +684,7 @@ export function SettingsPageClient() {
                   type="number"
                   step="0.01"
                   value={settings.pricing.lateFeePerDay}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('pricing', 'lateFeePerDay', parseFloat(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -663,83 +695,113 @@ export function SettingsPageClient() {
         )}
 
         {activeTab === 'notifications' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900">Notification Settings</h3>
-
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="emailEnabled"
-                  checked={settings.notifications.emailEnabled}
-                  onChange={e =>
-                    handleSettingChange('notifications', 'emailEnabled', e.target.checked)
-                  }
-                  className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="emailEnabled" className="ml-2 block text-sm text-gray-900">
-                  Enable email notifications
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="smsEnabled"
-                  checked={settings.notifications.smsEnabled}
-                  onChange={e =>
-                    handleSettingChange('notifications', 'smsEnabled', e.target.checked)
-                  }
-                  className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="smsEnabled" className="ml-2 block text-sm text-gray-900">
-                  Enable SMS notifications
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="adminNotifications"
-                  checked={settings.notifications.adminNotifications}
-                  onChange={e =>
-                    handleSettingChange('notifications', 'adminNotifications', e.target.checked)
-                  }
-                  className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="adminNotifications" className="ml-2 block text-sm text-gray-900">
-                  Enable admin notifications
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="customerNotifications"
-                  checked={settings.notifications.customerNotifications}
-                  onChange={e =>
-                    handleSettingChange('notifications', 'customerNotifications', e.target.checked)
-                  }
-                  className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
-                />
-                <label htmlFor="customerNotifications" className="ml-2 block text-sm text-gray-900">
-                  Enable customer notifications
-                </label>
-              </div>
-
+          <div className="space-y-8">
+            {/* Basic Notification Settings */}
+            <div className="space-y-6">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Reminder Days Before Booking
-                </label>
-                <input
-                  type="number"
-                  value={settings.notifications.reminderDays}
-                  onChange={e =>
-                    handleSettingChange('notifications', 'reminderDays', parseInt(e.target.value))
-                  }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
-                />
+                <h3 className="text-lg font-medium text-gray-900">Notification Settings</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Configure basic notification preferences and delivery methods.
+                </p>
               </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="emailEnabled"
+                    checked={settings.notifications.emailEnabled}
+                    onChange={(e) =>
+                      handleSettingChange('notifications', 'emailEnabled', e.target.checked)
+                    }
+                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="emailEnabled" className="ml-2 block text-sm text-gray-900">
+                    Enable email notifications
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="smsEnabled"
+                    checked={settings.notifications.smsEnabled}
+                    onChange={(e) =>
+                      handleSettingChange('notifications', 'smsEnabled', e.target.checked)
+                    }
+                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="smsEnabled" className="ml-2 block text-sm text-gray-900">
+                    Enable SMS notifications
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="adminNotifications"
+                    checked={settings.notifications.adminNotifications}
+                    onChange={(e) =>
+                      handleSettingChange('notifications', 'adminNotifications', e.target.checked)
+                    }
+                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                  />
+                  <label htmlFor="adminNotifications" className="ml-2 block text-sm text-gray-900">
+                    Enable admin notifications
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="customerNotifications"
+                    checked={settings.notifications.customerNotifications}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        'notifications',
+                        'customerNotifications',
+                        e.target.checked
+                      )
+                    }
+                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                  />
+                  <label
+                    htmlFor="customerNotifications"
+                    className="ml-2 block text-sm text-gray-900"
+                  >
+                    Enable customer notifications
+                  </label>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Reminder Days Before Booking
+                  </label>
+                  <input
+                    type="number"
+                    value={settings.notifications.reminderDays}
+                    onChange={(e) =>
+                      handleSettingChange('notifications', 'reminderDays', parseInt(e.target.value))
+                    }
+                    className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200"></div>
+
+            {/* Automated Notification Rules */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Automated Notification Rules</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Configure automated notification rules for bookings, maintenance, payments, and
+                  more.
+                </p>
+              </div>
+              <NotificationRulesManager />
             </div>
           </div>
         )}
@@ -759,7 +821,7 @@ export function SettingsPageClient() {
                       type="checkbox"
                       id="stripeEnabled"
                       checked={settings.integrations.stripeEnabled}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleSettingChange('integrations', 'stripeEnabled', e.target.checked)
                       }
                       className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
@@ -775,7 +837,7 @@ export function SettingsPageClient() {
                     <input
                       type="text"
                       value={settings.integrations.stripePublicKey}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleSettingChange('integrations', 'stripePublicKey', e.target.value)
                       }
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -788,7 +850,7 @@ export function SettingsPageClient() {
                     <input
                       type="password"
                       value={settings.integrations.stripeSecretKey}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleSettingChange('integrations', 'stripeSecretKey', e.target.value)
                       }
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -807,7 +869,7 @@ export function SettingsPageClient() {
                       type="checkbox"
                       id="docusignEnabled"
                       checked={settings.integrations.docusignEnabled}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleSettingChange('integrations', 'docusignEnabled', e.target.checked)
                       }
                       className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
@@ -823,7 +885,7 @@ export function SettingsPageClient() {
                     <input
                       type="text"
                       value={settings.integrations.docusignClientId}
-                      onChange={e =>
+                      onChange={(e) =>
                         handleSettingChange('integrations', 'docusignClientId', e.target.value)
                       }
                       className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -841,7 +903,7 @@ export function SettingsPageClient() {
                   <input
                     type="text"
                     value={settings.integrations.googleMapsApiKey}
-                    onChange={e =>
+                    onChange={(e) =>
                       handleSettingChange('integrations', 'googleMapsApiKey', e.target.value)
                     }
                     className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -864,7 +926,7 @@ export function SettingsPageClient() {
                 <input
                   type="number"
                   value={settings.security.sessionTimeout}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('security', 'sessionTimeout', parseInt(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -878,7 +940,7 @@ export function SettingsPageClient() {
                 <input
                   type="number"
                   value={settings.security.maxLoginAttempts}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('security', 'maxLoginAttempts', parseInt(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -892,7 +954,7 @@ export function SettingsPageClient() {
                 <input
                   type="number"
                   value={settings.security.passwordMinLength}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('security', 'passwordMinLength', parseInt(e.target.value))
                   }
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
@@ -904,7 +966,7 @@ export function SettingsPageClient() {
                   type="checkbox"
                   id="requireTwoFactor"
                   checked={settings.security.requireTwoFactor}
-                  onChange={e =>
+                  onChange={(e) =>
                     handleSettingChange('security', 'requireTwoFactor', e.target.checked)
                   }
                   className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
@@ -921,11 +983,11 @@ export function SettingsPageClient() {
               </label>
               <textarea
                 value={(settings.security.allowedIpRanges || []).join('\n')}
-                onChange={e =>
+                onChange={(e) =>
                   handleSettingChange(
                     'security',
                     'allowedIpRanges',
-                    e.target.value.split('\n').filter(ip => ip.trim())
+                    e.target.value.split('\n').filter((ip) => ip.trim())
                   )
                 }
                 rows={4}
@@ -948,27 +1010,29 @@ export function SettingsPageClient() {
           </div>
         )}
 
-        {activeTab === 'notification-rules' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Automated Notifications</h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Configure automated notification rules for bookings, maintenance, payments, and more.
-              </p>
-            </div>
-            <NotificationRulesManager />
-          </div>
-        )}
-
         {activeTab === 'jobs' && (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Background Jobs</h2>
               <p className="mt-1 text-sm text-gray-600">
-                Monitor and manage background job executions, view status, and trigger jobs manually.
+                Monitor and manage background job executions, view status, and trigger jobs
+                manually.
               </p>
             </div>
             <JobsMonitor />
+          </div>
+        )}
+
+        {activeTab === 'permissions' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Permission Management</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Manage permissions, roles, and user role assignments. View audit logs for all
+                permission changes.
+              </p>
+            </div>
+            <PermissionManager />
           </div>
         )}
 
@@ -976,12 +1040,14 @@ export function SettingsPageClient() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Admin Users</h3>
-              <button
-                onClick={handleAddAdminUser}
-                className="bg-kubota-orange rounded-md px-4 py-2 text-white hover:bg-orange-600"
-              >
-                Add Admin User
-              </button>
+              <PermissionGate permission="admin_users:create:all">
+                <button
+                  onClick={handleAddAdminUser}
+                  className="bg-kubota-orange rounded-md px-4 py-2 text-white hover:bg-orange-600"
+                >
+                  Add Admin User
+                </button>
+              </PermissionGate>
             </div>
 
             {adminActionError && (
@@ -991,46 +1057,48 @@ export function SettingsPageClient() {
             )}
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:table-cell md:px-6">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 lg:table-cell lg:px-6">
                       Last Login
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {adminUsers.map(user => (
+                  {adminUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-3 py-4 sm:px-4 md:px-6">
                         <div className="text-sm font-medium text-gray-900">
                           {user.firstName} {user.lastName}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="text-sm text-gray-900">{user.email}</div>
+                      <td className="px-3 py-4 sm:px-4 md:px-6">
+                        <div className="text-sm text-gray-900 truncate max-w-[200px] sm:max-w-none">
+                          {user.email}
+                        </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="px-3 py-4 sm:px-4 md:px-6">
                         <span className="inline-flex rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">
                           {user.role}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="hidden px-3 py-4 sm:px-4 md:table-cell md:px-6">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                             user.isActive
@@ -1041,25 +1109,29 @@ export function SettingsPageClient() {
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                      <td className="hidden px-3 py-4 text-sm text-gray-500 sm:px-4 lg:table-cell lg:px-6">
                         {user.lastLogin.toLocaleDateString()}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                        <button
-                          type="button"
-                          onClick={() => handleEditAdminUser(user)}
-                          className="text-kubota-orange mr-3 hover:text-orange-600"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeactivateAdminUser(user)}
-                          disabled={adminActionLoading}
-                          className="text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Deactivate
-                        </button>
+                      <td className="px-3 py-4 text-right text-sm font-medium sm:px-4 md:px-6">
+                        <PermissionGate permission="admin_users:update:all">
+                          <button
+                            type="button"
+                            onClick={() => handleEditAdminUser(user)}
+                            className="text-kubota-orange mr-3 hover:text-orange-600"
+                          >
+                            Edit
+                          </button>
+                        </PermissionGate>
+                        <PermissionGate permission="admin_users:update:all">
+                          <button
+                            type="button"
+                            onClick={() => handleDeactivateAdminUser(user)}
+                            disabled={adminActionLoading}
+                            className="text-red-600 hover:text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Deactivate
+                          </button>
+                        </PermissionGate>
                       </td>
                     </tr>
                   ))}
@@ -1079,4 +1151,3 @@ export function SettingsPageClient() {
     </div>
   );
 }
-

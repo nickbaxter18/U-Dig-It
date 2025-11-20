@@ -1,21 +1,32 @@
 {
   "priorities": {
+    "critical": [
+      ".cursor/rules/RULE_SYSTEM_MAP.md",
+      "docs/reference/AI_CODING_REFERENCE.md",
+      "docs/reference/COMPONENT_INDEX.md",
+      "docs/reference/CODING_SAVANT_CHEAT_SHEET.md",
+      "docs/reference/PERFORMANCE_BENCHMARKS.md",
+      "docs/reference/CODEBASE_VISUAL_MAPS.md",
+      "supabase/types.ts"
+    ],
     "high": [
-      "frontend/src/**/*.{ts,tsx}",
-      "supabase/**/*.sql",
-      ".cursor/rules/**/*.mdc",
       "frontend/src/lib/**/*.{ts,tsx}",
-      "frontend/src/app/**/*.{ts,tsx}"
+      "frontend/src/app/api/**/*.ts",
+      ".cursor/rules/**/*.mdc",
+      "supabase/**/*.sql",
+      "frontend/src/components/**/*.{ts,tsx}"
     ],
     "medium": [
+      "frontend/src/app/**/*.{ts,tsx}",
       "**/*.test.{ts,tsx}",
       "**/*.spec.{ts,tsx}",
-      "docs/**/*.md",
+      "docs/reference/**/*.md",
       "**/*.config.{ts,js}",
       "scripts/**/*.{ts,js}"
     ],
     "low": [
-      "**/*.md",
+      "docs/architecture/**/*.md",
+      "docs/guides/**/*.md",
       "**/README*",
       "**/CHANGELOG*"
     ],
@@ -27,7 +38,11 @@
       "**/.git/**",
       "**/build/**",
       "**/*.log",
-      "**/*.cache"
+      "**/*.cache",
+      "docs/audits/**",
+      "docs/plans/**",
+      "docs/status/**",
+      "backend/**"
     ]
   },
   "incremental": true,

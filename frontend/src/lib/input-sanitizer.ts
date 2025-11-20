@@ -2,7 +2,6 @@
  * Input Sanitization Utilities
  * Comprehensive input validation and sanitization to prevent XSS, injection attacks, and malicious inputs
  */
-
 import { logger } from '@/lib/logger';
 
 /**
@@ -19,6 +18,7 @@ export function sanitizeTextInput(input: string, maxLength: number = 1000): stri
   sanitized = sanitized.replace(/\0/g, '');
 
   // Remove control characters except newlines and tabs
+  // eslint-disable-next-line no-control-regex
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
   // Remove potentially dangerous Unicode characters
@@ -283,10 +283,10 @@ function getObjectDepth(obj: unknown, currentDepth: number = 0): number {
   }
 
   if (Array.isArray(obj)) {
-    return Math.max(currentDepth, ...obj.map(item => getObjectDepth(item, currentDepth + 1)));
+    return Math.max(currentDepth, ...obj.map((item) => getObjectDepth(item, currentDepth + 1)));
   }
 
-  const depths = Object.values(obj).map(value => getObjectDepth(value, currentDepth + 1));
+  const depths = Object.values(obj).map((value) => getObjectDepth(value, currentDepth + 1));
   return depths.length > 0 ? Math.max(...depths) : currentDepth;
 }
 
@@ -592,7 +592,7 @@ export function validateContentType(contentType: string, allowed: string[]): boo
 
   const normalizedType = contentType.toLowerCase().split(';')[0].trim();
 
-  return allowed.some(type => normalizedType === type.toLowerCase());
+  return allowed.some((type) => normalizedType === type.toLowerCase());
 }
 
 /**

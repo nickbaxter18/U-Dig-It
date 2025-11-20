@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 type CustomerRecord = {
   id: string;
@@ -44,16 +45,14 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') ?? 'all';
     const searchTerm = (searchParams.get('search') ?? '').trim().toLowerCase();
@@ -73,9 +72,11 @@ export async function GET(request: NextRequest) {
 
       if (usersError) throw usersError;
 
-      const userIds = (usersData ?? []).map(user => user?.id || 'unknown');
-      let bookingsByCustomer: Record<string, Array<{ totalAmount: number; createdAt: string; status: string }>> =
-        {};
+      const userIds = (usersData ?? []).map((user) => user?.id || 'unknown');
+      let bookingsByCustomer: Record<
+        string,
+        Array<{ totalAmount: number; createdAt: string; status: string }>
+      > = {};
 
       if (userIds.length > 0) {
         const { data: bookingsData, error: bookingsError } = await supabase
@@ -85,30 +86,35 @@ export async function GET(request: NextRequest) {
 
         if (bookingsError) throw bookingsError;
 
-        bookingsByCustomer = (bookingsData ?? []).reduce((acc, booking: any) => {
-          if (!booking.customerId) {
+        bookingsByCustomer = (bookingsData ?? []).reduce(
+          (acc, booking: unknown) => {
+            if (!booking.customerId) {
+              return acc;
+            }
+            if (!acc[booking.customerId]) {
+              acc[booking.customerId] = [];
+            }
+            acc[booking.customerId].push({
+              totalAmount: Number(booking.totalAmount ?? 0),
+              createdAt: booking.createdAt,
+              status: booking.status,
+            });
             return acc;
-          }
-          if (!acc[booking.customerId]) {
-            acc[booking.customerId] = [];
-          }
-          acc[booking.customerId].push({
-            totalAmount: Number(booking.totalAmount ?? 0),
-            createdAt: booking.createdAt,
-            status: booking.status,
-          });
-          return acc;
-        }, {} as Record<string, Array<{ totalAmount: number; createdAt: string; status: string }>>);
+          },
+          {} as Record<string, Array<{ totalAmount: number; createdAt: string; status: string }>>
+        );
       }
 
-      customersData = (usersData ?? []).map((user: any) => {
+      customersData = (usersData ?? []).map((user: unknown) => {
         const customerBookings = bookingsByCustomer[user?.id || 'unknown'] ?? [];
         const totalBookings = customerBookings.length;
         const totalSpent = customerBookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
         const lastBooking =
           customerBookings.length > 0
             ? new Date(
-                Math.max(...customerBookings.map(booking => new Date(booking.createdAt).getTime()))
+                Math.max(
+                  ...customerBookings.map((booking) => new Date(booking.createdAt).getTime())
+                )
               )
             : null;
         const status =
@@ -136,11 +142,13 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const filteredCustomers = (customersData ?? []).filter(customer => {
+    const filteredCustomers = (customersData ?? []).filter((customer) => {
       const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
       const matchesSearch =
         !searchTerm ||
-        `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.toLowerCase().includes(searchTerm) ||
+        `${customer.firstName ?? ''} ${customer.lastName ?? ''}`
+          .toLowerCase()
+          .includes(searchTerm) ||
         (customer.email ?? '').toLowerCase().includes(searchTerm) ||
         (customer.phone ?? '').toLowerCase().includes(searchTerm) ||
         (customer.company ?? '').toLowerCase().includes(searchTerm);
@@ -160,7 +168,7 @@ export async function GET(request: NextRequest) {
       'Registered At',
     ];
 
-    const rows = filteredCustomers.map(customer => [
+    const rows = filteredCustomers.map((customer) => [
       `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'N/A',
       customer.email ?? 'N/A',
       customer.phone ?? '',
@@ -173,7 +181,7 @@ export async function GET(request: NextRequest) {
       customer.registrationDate ? new Date(customer.registrationDate).toLocaleDateString() : '',
     ]);
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `customers-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {

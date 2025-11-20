@@ -2,7 +2,7 @@
 
 import { cancelBooking, getCancellationPreview } from '@/app/booking/[id]/actions';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
@@ -21,7 +21,7 @@ interface Booking {
   equipment: {
     make: string;
     model: string;
-    images?: any;
+    images?: unknown;
   };
   startDate: string;
   endDate: string;
@@ -46,11 +46,73 @@ export default function UserDashboard() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const isLoading = authLoading || loading;
 
+  const fetchUserData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user's bookings using Supabase
+      const userBookings: any = await supabaseApi.getBookings({
+        userId: user.id,
+        limit: 10,
+      });
+
+      // Transform the bookings data to match the component interface
+      const transformedBookings: Booking[] = (userBookings || []).map((booking: unknown) => ({
+        id: booking.id,
+        bookingNumber: booking.bookingNumber,
+        equipment: {
+          make: (booking.equipment as { make?: string } | null)?.make || 'Equipment',
+          model: (booking.equipment as { model?: string } | null)?.model || 'Model',
+          images: (booking.equipment as { images?: unknown } | null)?.images,
+        },
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        status: booking.status as string,
+        totalAmount: Number(booking.totalAmount) || 0,
+        deliveryAddress: booking.deliveryAddress || '',
+      }));
+
+      // Calculate stats from the bookings
+      const stats: UserStats = {
+        totalBookings: transformedBookings.length,
+        totalSpent: transformedBookings.reduce(
+          (sum: unknown, booking: unknown) => sum + (booking.totalAmount || 0),
+          0
+        ),
+        upcomingBookings: transformedBookings.filter((b) =>
+          ['pending', 'confirmed', 'paid', 'in_progress'].includes(b.status)
+        ).length,
+        completedBookings: transformedBookings.filter((b) => b.status === 'completed').length,
+      };
+
+      setBookings(transformedBookings);
+      setStats(stats);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        logger.error(
+          'Failed to fetch user data:',
+          {
+            component: 'UserDashboard',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchUserData();
     }
-  }, [user]);
+  }, [user, fetchUserData]);
 
   const handleCancelBooking = async (bookingId: string) => {
     if (cancellingId) return; // Prevent double-clicks
@@ -82,7 +144,7 @@ export default function UserDashboard() {
           alert(`Cancellation failed: ${result.error || result.message}`);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
         'Error cancelling booking:',
         {
@@ -94,68 +156,6 @@ export default function UserDashboard() {
       alert('An error occurred while cancelling the booking');
     } finally {
       setCancellingId(null);
-    }
-  };
-
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      // Fetch user's bookings using Supabase
-      const userBookings: any = await supabaseApi.getBookings({
-        userId: user.id,
-        limit: 10,
-      });
-
-      // Transform the bookings data to match the component interface
-      const transformedBookings: Booking[] = (userBookings || []).map((booking: any) => ({
-        id: booking.id,
-        bookingNumber: booking.bookingNumber,
-        equipment: {
-          make: (booking.equipment as any)?.make || 'Equipment',
-          model: (booking.equipment as any)?.model || 'Model',
-          images: (booking.equipment as any)?.images,
-        },
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        status: booking.status as any,
-        totalAmount: Number(booking.totalAmount) || 0,
-        deliveryAddress: booking.deliveryAddress || '',
-      }));
-
-      // Calculate stats from the bookings
-      const stats: UserStats = {
-        totalBookings: transformedBookings.length,
-        totalSpent: transformedBookings.reduce(
-          (sum: any, booking: any) => sum + (booking.totalAmount || 0),
-          0
-        ),
-        upcomingBookings: transformedBookings.filter((b) =>
-          ['pending', 'confirmed', 'paid', 'in_progress'].includes(b.status)
-        ).length,
-        completedBookings: transformedBookings.filter((b) => b.status === 'completed').length,
-      };
-
-      setBookings(transformedBookings);
-      setStats(stats);
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Failed to fetch user data:',
-          {
-            component: 'UserDashboard',
-            action: 'error',
-          },
-          error instanceof Error ? error : new Error(String(error))
-        );
-      }
-    } finally {
-      setLoading(false);
     }
   };
 

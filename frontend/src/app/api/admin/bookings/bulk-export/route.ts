@@ -1,7 +1,9 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const bulkExportSchema = z.object({
   bookingIds: z.array(z.string().uuid()).min(1),
@@ -16,19 +18,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
@@ -89,12 +87,16 @@ export async function POST(request: NextRequest) {
         'Created At',
       ];
 
-      const rows = bookings.map((booking: any) => [
+      const rows = bookings.map((booking: unknown) => [
         booking.bookingNumber || '',
-        booking.customer ? `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim() : '',
+        booking.customer
+          ? `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim()
+          : '',
         booking.customer?.email || '',
         booking.customer?.phone || '',
-        booking.equipment ? `${booking.equipment.make || ''} ${booking.equipment.model || ''}`.trim() : '',
+        booking.equipment
+          ? `${booking.equipment.make || ''} ${booking.equipment.model || ''}`.trim()
+          : '',
         booking.startDate ? new Date(booking.startDate).toLocaleDateString() : '',
         booking.endDate ? new Date(booking.endDate).toLocaleDateString() : '',
         booking.status || '',
@@ -102,7 +104,9 @@ export async function POST(request: NextRequest) {
         booking.createdAt ? new Date(booking.createdAt).toLocaleString() : '',
       ]);
 
-      const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
 
       logger.info('Bulk booking export completed', {
         component: 'admin-bookings-bulk-export',
@@ -126,7 +130,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body', details: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body', details: err.issues },
+        { status: 400 }
+      );
     }
 
     logger.error(
@@ -138,5 +145,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to perform bulk export' }, { status: 500 });
   }
 }
-
-

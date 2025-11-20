@@ -1,7 +1,8 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * GET /api/admin/payments/disputes
@@ -32,25 +33,15 @@ export async function GET(request: NextRequest) {
       disputes: disputes.data,
       hasMore: disputes.has_more,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Disputes API error',
       {
         component: 'admin-disputes-api',
         action: 'error',
       },
-      error,
+      error
     );
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-

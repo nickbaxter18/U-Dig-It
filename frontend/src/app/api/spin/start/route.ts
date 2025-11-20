@@ -12,13 +12,14 @@
  * - session: SpinSession object
  * - rateLimitInfo: Remaining attempts info
  */
+import crypto from 'crypto';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
 import { createClient } from '@/lib/supabase/server';
-import crypto from 'crypto';
-import { NextRequest, NextResponse } from 'next/server';
 
 interface StartSpinRequest {
   email?: string;
@@ -90,34 +91,34 @@ export async function POST(request: NextRequest) {
     // 3. AUTHENTICATION
     // ========================================================================
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: _authError,
+    } = await supabase.auth.getUser();
 
     const body: StartSpinRequest = await request.json();
 
     // For guests, email is required
     if (!user && !body.email) {
-      return NextResponse.json(
-        { error: 'Email is required for guest users' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email is required for guest users' }, { status: 400 });
     }
 
     // ========================================================================
     // 4. EXTRACT IDENTIFIERS FOR FRAUD DETECTION
     // ========================================================================
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-               || request.headers.get('x-real-ip')
-               || '0.0.0.0';
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      '0.0.0.0';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     const email = user?.email || body.email;
     const phone = body.phone;
 
     // Generate device fingerprint hash
-    const deviceFingerprint = body.deviceFingerprint ||
-                             crypto.createHash('sha256')
-                               .update(`${ip}-${userAgent}`)
-                               .digest('hex');
+    const deviceFingerprint =
+      body.deviceFingerprint ||
+      crypto.createHash('sha256').update(`${ip}-${userAgent}`).digest('hex');
 
     // ========================================================================
     // 5. BUSINESS RULE: CHECK FOR EXISTING ACTIVE SESSION
@@ -126,11 +127,7 @@ export async function POST(request: NextRequest) {
       .from('spin_sessions')
       .select('*')
       .eq('completed', false)
-      .or(
-        user
-          ? `user_id.eq.${user.id}`
-          : `email.eq.${email}`
-      )
+      .or(user ? `user_id.eq.${user.id}` : `email.eq.${email}`)
       .maybeSingle();
 
     if (existingSessions && !checkError) {
@@ -156,7 +153,7 @@ export async function POST(request: NextRequest) {
       { type: 'device', value: deviceFingerprint },
       { type: 'ip', value: ip },
       ...(user ? [{ type: 'user_id', value: user.id }] : []),
-    ].filter(check => check.value);
+    ].filter((check) => check.value);
 
     for (const check of rateLimitChecks) {
       const { data: isLimited, error: rpcError } = await supabase.rpc('is_spin_rate_limited', {
@@ -197,7 +194,7 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     // 7. FRAUD DETECTION: CHECK FOR SUSPICIOUS PATTERNS (OPTIMIZED - NON-BLOCKING)
     // ========================================================================
-    const suspiciousFlags: Array<{type: string; severity: string}> = [];
+    const suspiciousFlags: Array<{ type: string; severity: string }> = [];
 
     // ⚡ OPTIMIZATION: Run fraud checks in parallel (don't block session creation)
     // These checks are logged but don't prevent spin from starting
@@ -215,20 +212,22 @@ export async function POST(request: NextRequest) {
         .select('id', { count: 'exact', head: true })
         .eq('ip_address', ip)
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-    ]).then(([deviceResult, ipResult]) => {
-      if (deviceResult.count && deviceResult.count > 2) {
-        suspiciousFlags.push({ type: 'duplicate_device', severity: 'medium' });
-      }
-      if (ipResult.count && ipResult.count > 3) {
-        suspiciousFlags.push({ type: 'duplicate_ip', severity: 'medium' });
-      }
-    }).catch((error: any) => {
-      logger.warn('[Spin API] Fraud check failed (non-fatal)', {
-        component: 'spin-start-api',
-        action: 'fraud_check_error',
-        metadata: { error: error instanceof Error ? error.message : String(error) },
+    ])
+      .then(([deviceResult, ipResult]) => {
+        if (deviceResult.count && deviceResult.count > 2) {
+          suspiciousFlags.push({ type: 'duplicate_device', severity: 'medium' });
+        }
+        if (ipResult.count && ipResult.count > 3) {
+          suspiciousFlags.push({ type: 'duplicate_ip', severity: 'medium' });
+        }
+      })
+      .catch((error: unknown) => {
+        logger.warn('[Spin API] Fraud check failed (non-fatal)', {
+          component: 'spin-start-api',
+          action: 'fraud_check_error',
+          metadata: { error: error instanceof Error ? error.message : String(error) },
+        });
       });
-    });
 
     // DON'T await fraud checks - they run in background
 
@@ -259,10 +258,14 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (createError || !session) {
-      logger.error('[Spin API] Failed to create session', {
-        component: 'spin-start-api',
-        action: 'create_error',
-      }, createError || new Error('No session returned'));
+      logger.error(
+        '[Spin API] Failed to create session',
+        {
+          component: 'spin-start-api',
+          action: 'create_error',
+        },
+        createError || new Error('No session returned')
+      );
 
       return NextResponse.json(
         { error: 'Failed to create spin session. Please try again.' },
@@ -275,45 +278,50 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     // Record attempts in background - don't block session creation
     for (const check of rateLimitChecks) {
-      supabase.rpc('record_spin_attempt', {
-        p_identifier_type: check.type,
-        p_identifier_value: check.value,
-        p_window_hours: 336, // 14 days
-      }).then(({ error }) => {
-        if (error) {
-          logger.warn('[Spin API] Failed to record rate limit attempt (non-fatal)', {
-            component: 'spin-start-api',
-            action: 'record_attempt_error',
-            metadata: { type: check.type, error: error.message },
-          });
-        }
-      });
+      supabase
+        .rpc('record_spin_attempt', {
+          p_identifier_type: check.type,
+          p_identifier_value: check.value,
+          p_window_hours: 336, // 14 days
+        })
+        .then(({ error }) => {
+          if (error) {
+            logger.warn('[Spin API] Failed to record rate limit attempt (non-fatal)', {
+              component: 'spin-start-api',
+              action: 'record_attempt_error',
+              metadata: { type: check.type, error: error.message },
+            });
+          }
+        });
     }
 
     // ========================================================================
     // 10. CREATE AUDIT LOG (NON-BLOCKING - OPTIMIZED)
     // ========================================================================
     // ⚡ OPTIMIZATION: Don't await audit log insert - let it complete in background
-    supabase.from('spin_audit_log').insert({
-      spin_session_id: session.id,
-      event_type: 'session_created',
-      ip_address: ip,
-      user_agent: userAgent,
-      device_fingerprint_hash: deviceFingerprint,
-      metadata: {
-        user_id: user?.id || null,
-        email: email || null,
-        phone: phone || null,
-      },
-    }).then(({ error }) => {
-      if (error) {
-        logger.warn('[Spin API] Audit log failed (non-fatal)', {
-          component: 'spin-start-api',
-          action: 'audit_log_error',
-          metadata: { error: error.message },
-        });
-      }
-    });
+    supabase
+      .from('spin_audit_log')
+      .insert({
+        spin_session_id: session.id,
+        event_type: 'session_created',
+        ip_address: ip,
+        user_agent: userAgent,
+        device_fingerprint_hash: deviceFingerprint,
+        metadata: {
+          user_id: user?.id || null,
+          email: email || null,
+          phone: phone || null,
+        },
+      })
+      .then(({ error }) => {
+        if (error) {
+          logger.warn('[Spin API] Audit log failed (non-fatal)', {
+            component: 'spin-start-api',
+            action: 'audit_log_error',
+            metadata: { error: error.message },
+          });
+        }
+      });
 
     // ========================================================================
     // 11. LOG FRAUD FLAGS IF SUSPICIOUS (NON-BLOCKING)
@@ -327,7 +335,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             sessionId: session.id,
             flags: suspiciousFlags,
-            note: 'Detected in background after session creation'
+            note: 'Detected in background after session creation',
           },
         });
       }
@@ -355,16 +363,18 @@ export async function POST(request: NextRequest) {
       session: session as SpinSession,
       isExisting: false,
       message: 'Spin session created successfully',
-      fraudWarning: suspiciousFlags.length > 0
-        ? 'Your session is being reviewed for security'
-        : null,
+      fraudWarning:
+        suspiciousFlags.length > 0 ? 'Your session is being reviewed for security' : null,
     });
-
   } catch (error) {
-    logger.error('[Spin API] Unexpected error', {
-      component: 'spin-start-api',
-      action: 'error',
-    }, error as Error);
+    logger.error(
+      '[Spin API] Unexpected error',
+      {
+        component: 'spin-start-api',
+        action: 'error',
+      },
+      error as Error
+    );
 
     return NextResponse.json(
       { error: 'An unexpected error occurred. Please try again.' },
@@ -372,4 +382,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

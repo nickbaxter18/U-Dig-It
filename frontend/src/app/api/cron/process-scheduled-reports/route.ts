@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { createServiceClient } from '@/lib/supabase/service';
 import { sendAdminEmail } from '@/lib/sendgrid';
+import { createServiceClient } from '@/lib/supabase/service';
 
 // Verify cron secret to prevent unauthorized runs
 const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
@@ -59,10 +59,7 @@ export async function GET(request: NextRequest) {
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Failed to fetch scheduled reports' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to fetch scheduled reports' }, { status: 500 });
     }
 
     if (!dueReports || dueReports.length === 0) {
@@ -80,11 +77,11 @@ export async function GET(request: NextRequest) {
     });
 
     const results = await Promise.allSettled(
-      dueReports.map(report => processScheduledReport(report, supabaseAdmin))
+      dueReports.map((report) => processScheduledReport(report, supabaseAdmin))
     );
 
-    const successes = results.filter(r => r.status === 'fulfilled').length;
-    const failures = results.filter(r => r.status === 'rejected').length;
+    const successes = results.filter((r) => r.status === 'fulfilled').length;
+    const failures = results.filter((r) => r.status === 'rejected').length;
 
     logger.info('Scheduled reports processing completed', {
       component: 'cron-scheduled-reports',
@@ -115,7 +112,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function processScheduledReport(report: any, supabaseAdmin: any) {
+async function processScheduledReport(report: unknown, supabaseAdmin: unknown) {
   try {
     logger.info('Processing scheduled report', {
       component: 'cron-scheduled-reports',
@@ -261,4 +258,3 @@ function calculateNextRunFallback(frequency: string, currentNextRun: string): st
 
   return nextRun.toISOString();
 }
-

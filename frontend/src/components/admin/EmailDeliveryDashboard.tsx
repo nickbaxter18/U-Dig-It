@@ -1,9 +1,23 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import {
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  Loader2,
+  Mail,
+  MousePointerClick,
+  RefreshCw,
+  TrendingDown,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Mail, TrendingUp, TrendingDown, AlertCircle, CheckCircle, XCircle, Eye, MousePointerClick, RefreshCw, Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface EmailDeliveryStats {
   total_sent: number;
@@ -50,12 +64,7 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const toast = useAdminToast();
 
-  useEffect(() => {
-    fetchStats();
-    fetchRecentLogs();
-  }, [dateRange]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       const startDate = getStartDate(dateRange);
@@ -72,13 +81,16 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
       const data = await response.json();
       setStats(data.stats);
     } catch (error) {
-      toast.error('Failed to load email delivery stats', error instanceof Error ? error.message : 'Unable to fetch email delivery statistics');
+      toast.error(
+        'Failed to load email delivery stats',
+        error instanceof Error ? error.message : 'Unable to fetch email delivery statistics'
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, toast]);
 
-  const fetchRecentLogs = async () => {
+  const fetchRecentLogs = useCallback(async () => {
     try {
       const response = await fetchWithAuth('/api/admin/email/delivery-logs?limit=20');
       if (!response.ok) {
@@ -88,9 +100,17 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
       const data = await response.json();
       setRecentLogs(data.logs || []);
     } catch (error) {
-      toast.error('Failed to load email delivery logs', error instanceof Error ? error.message : 'Unable to fetch email delivery logs');
+      toast.error(
+        'Failed to load email delivery logs',
+        error instanceof Error ? error.message : 'Unable to fetch email delivery logs'
+      );
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchRecentLogs();
+  }, [fetchStats, fetchRecentLogs]);
 
   const getStartDate = (range: string): Date | null => {
     const now = new Date();
@@ -157,7 +177,9 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
       <div className="flex items-center justify-between border-b border-gray-200 pb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Email Delivery Dashboard</h3>
-          <p className="mt-1 text-sm text-gray-600">Track email delivery, opens, clicks, and bounces</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Track email delivery, opens, clicks, and bounces
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <select
@@ -189,7 +211,9 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Sent</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{stats.total_sent.toLocaleString()}</p>
+                <p className="mt-1 text-2xl font-semibold text-gray-900">
+                  {stats.total_sent.toLocaleString()}
+                </p>
               </div>
               <Mail className="h-8 w-8 text-blue-500" />
             </div>
@@ -329,9 +353,7 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                       {log.to_email}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {log.subject || 'N/A'}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{log.subject || 'N/A'}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadge(log.status)}`}
@@ -359,4 +381,3 @@ export function EmailDeliveryDashboard({ onStatsChange }: EmailDeliveryDashboard
     </div>
   );
 }
-

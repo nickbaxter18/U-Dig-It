@@ -1,0 +1,75 @@
+---
+description: "Automatically reference UI/styling documentation when building components"
+globs:
+  - "**/components/**/*.{ts,tsx}"
+  - "**/app/**/*.tsx"
+  - "**/styles/**/*.{css,scss}"
+  - "**/tailwind.config.{ts,js}"
+  - "**/*.stories.{ts,tsx}"
+alwaysApply: false
+---
+
+# UI & Styling Documentation Auto-Reference
+
+When building UI components, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## React Development
+- Use **@React Dev** for:
+  - React 18+ features (Suspense, Transitions)
+  - Hooks patterns (useState, useEffect, custom hooks)
+  - Component composition
+  - Context API
+  - Performance optimization (memo, useMemo, useCallback)
+  - Error boundaries
+
+## Component Library (Radix UI)
+- Use **@Radix-UI** when:
+  - Building accessible components
+  - Implementing dialogs, dropdowns, popovers
+  - Working with form elements
+  - Setting up keyboard navigation
+  - Ensuring WCAG compliance
+  - Using unstyled primitives
+
+## Styling (Tailwind CSS)
+- Use **@Tailwind Css** when:
+  - Applying utility classes
+  - Customizing theme
+  - Creating responsive designs
+  - Using arbitrary values
+  - Implementing dark mode
+  - Optimizing for production
+
+## Storybook (Component Development)
+- Use **@storybook** when:
+  - Creating component stories
+  - Documenting component APIs
+  - Testing component variations
+  - Setting up addons
+  - Implementing accessibility testing
+  - Building design system
+
+## Example Usage Pattern
+
+```typescript
+// When building accessible components:
+// @Radix-UI for accessible primitives and ARIA patterns
+// @Tailwind Css for styling implementation
+
+// When optimizing React components:
+// @React Dev for hooks and performance patterns
+
+// When documenting components:
+// @storybook for story structure and best practices
+```
+
+## UI Best Practices
+- **ALWAYS ensure accessibility** (WCAG AA minimum)
+- **Use semantic HTML** elements
+- **Implement keyboard navigation**
+- **Test with screen readers**
+- **Provide focus indicators**
+- **Use proper ARIA attributes**
+
+## Reminder
+**Check Radix UI docs** for accessible component patterns, and **Tailwind docs** for optimal styling approaches before building new components.

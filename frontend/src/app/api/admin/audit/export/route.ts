@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { searchParams } = new URL(request.url);
     const format = searchParams.get('format') || 'csv';
@@ -91,7 +94,7 @@ export async function GET(request: NextRequest) {
         'Changes After',
       ];
 
-      const rows = auditLogs.map((log: any) => {
+      const rows = auditLogs.map((log: unknown) => {
         const adminName = log.users
           ? `${log.users.firstName || ''} ${log.users.lastName || ''}`.trim() || 'Unknown'
           : 'Unknown';
@@ -119,7 +122,7 @@ export async function GET(request: NextRequest) {
       });
 
       const csvContent = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
         .join('\n');
 
       logger.info('Audit log export completed', {

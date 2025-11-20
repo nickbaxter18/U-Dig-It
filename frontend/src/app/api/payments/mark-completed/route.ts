@@ -503,7 +503,7 @@ export async function POST(req: NextRequest) {
       bookingId,
       paymentType,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Error marking payment as completed',
       {

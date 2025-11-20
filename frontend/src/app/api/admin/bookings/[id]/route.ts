@@ -1,8 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { createClient } from '@supabase/supabase-js';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 // Schema for booking update
 const bookingUpdateSchema = z.object({
@@ -16,10 +18,7 @@ const bookingUpdateSchema = z.object({
  * PATCH /api/admin/bookings/[id]
  * Update booking details (admin only)
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -27,19 +26,15 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
 
     // Parse and validate request body
     const body = await request.json();
@@ -95,10 +90,6 @@ export async function PATCH(
     //   action: 'unexpected_error',
     // }, error instanceof Error ? error : new Error(String(error)));
 
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

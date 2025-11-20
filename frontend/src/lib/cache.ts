@@ -58,7 +58,7 @@ class MemoryCache {
     let valid = 0;
     let expired = 0;
 
-    for (const [key, item] of this.cache.entries()) {
+    for (const [_key, item] of this.cache.entries()) {
       if (now - item.timestamp > item.ttl) {
         expired++;
       } else {

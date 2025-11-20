@@ -1,4 +1,5 @@
 import { toast } from 'react-hot-toast';
+
 import { logger } from '@/lib/logger';
 
 // Error types for better error handling
@@ -6,7 +7,7 @@ export interface AppError {
   code: string;
   message: string;
   statusCode: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   timestamp: string;
   requestId?: string;
 }
@@ -69,7 +70,7 @@ class ErrorHandler {
       message: ERROR_MESSAGES[ERROR_CODES.UNKNOWN_ERROR],
       statusCode: 500,
       timestamp: new Date().toISOString(),
-      requestId: (error as any).requestId,
+      requestId: (error as { requestId?: string } | null)?.requestId,
     };
 
     // Handle plain Error objects
@@ -77,34 +78,58 @@ class ErrorHandler {
       appError.message = error.message || appError.message;
     }
     // Handle objects with message property
-    else if ((error as any)?.message && typeof (error as any).message === 'string') {
-      appError.message = (error as any).message;
+    else if (
+      (error as { message?: string } | null)?.message &&
+      typeof (error as { message?: string } | null)?.message === 'string'
+    ) {
+      appError.message = (error as { message: string }).message;
     }
     // Handle API errors
-    if ((error as any).statusCode && (error as any).code) {
-      appError.code = (error as any).code;
-      appError.statusCode = (error as any).statusCode;
-      appError.details = (error as any).details;
-      appError.message =
-        (error as any).message || ERROR_MESSAGES[(error as any).code] || appError.message;
+    if (
+      (error as { statusCode?: number; code?: string } | null)?.statusCode &&
+      (error as { statusCode?: number; code?: string } | null)?.code
+    ) {
+      const apiError = error as {
+        code: string;
+        statusCode: number;
+        details?: unknown;
+        message?: string;
+      };
+      appError.code = apiError.code;
+      appError.statusCode = apiError.statusCode;
+      appError.details = apiError.details;
+      appError.message = apiError.message || ERROR_MESSAGES[apiError.code] || appError.message;
     }
     // Handle network errors
-    else if ((error as any).code === 'ECONNREFUSED' || (error as any).code === 'ENOTFOUND') {
+    else if (
+      (error as { code?: string } | null)?.code === 'ECONNREFUSED' ||
+      (error as { code?: string } | null)?.code === 'ENOTFOUND'
+    ) {
       appError.code = ERROR_CODES.NETWORK_ERROR;
       appError.message = ERROR_MESSAGES[ERROR_CODES.NETWORK_ERROR];
     }
     // Handle timeout errors
-    else if ((error as any).code === 'ETIMEDOUT' || (error as any).message?.includes('timeout')) {
+    else if (
+      (error as { code?: string; message?: string } | null)?.code === 'ETIMEDOUT' ||
+      (error as { code?: string; message?: string } | null)?.message?.includes('timeout')
+    ) {
       appError.code = ERROR_CODES.TIMEOUT_ERROR;
       appError.message = ERROR_MESSAGES[ERROR_CODES.TIMEOUT_ERROR];
     }
     // Handle axios errors
-    else if ((error as any).response) {
-      appError.statusCode = (error as any).response.status;
-      appError.message = (error as any).response.data?.message || (error as any).message || appError.message;
+    else if (
+      (error as { response?: { status: number; data?: { message?: string } } } | null)?.response
+    ) {
+      const axiosError = error as {
+        response: { status: number; data?: { message?: string } };
+        message?: string;
+      };
+      appError.statusCode = axiosError.response.status;
+      appError.message =
+        axiosError.response.data?.message || axiosError.message || appError.message;
 
       // Map HTTP status codes to error codes
-      switch ((error as any).response.status) {
+      switch (axiosError.response.status) {
         case 400:
           appError.code = ERROR_CODES.VALIDATION_ERROR;
           break;
@@ -169,7 +194,11 @@ class ErrorHandler {
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Error handled:', { component: 'error-handler', action: 'error' }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Error handled:',
+          { component: 'error-handler', action: 'error' },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     }
 
@@ -247,7 +276,7 @@ class ErrorHandler {
       ERROR_CODES.INTERNAL_SERVER_ERROR,
     ];
 
-    return retryableCodes.includes(error.code as any);
+    return retryableCodes.includes(error.code as string);
   }
 
   // Get user-friendly error message

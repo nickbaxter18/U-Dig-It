@@ -1,7 +1,8 @@
-import { logger } from '@/lib/logger';
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
 
+import { type NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 
 export async function proxy(req: NextRequest) {
@@ -17,7 +18,7 @@ export async function proxy(req: NextRequest) {
       get(name: string) {
         return req.cookies.get(name)?.value;
       },
-      set(name: string, value: string, options: any) {
+      set(name: string, value: string, options: unknown) {
         // Set cookie on the request for subsequent calls
         req.cookies.set({
           name,
@@ -36,7 +37,7 @@ export async function proxy(req: NextRequest) {
           ...options,
         });
       },
-      remove(name: string, options: any) {
+      remove(name: string, options: unknown) {
         // Remove cookie from the request
         req.cookies.set({
           name,
@@ -138,7 +139,7 @@ export async function proxy(req: NextRequest) {
         "base-uri 'self'",
         "form-action 'self'",
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests",
+        'upgrade-insecure-requests',
       ].join('; ')
     );
 
@@ -216,8 +217,7 @@ export async function proxy(req: NextRequest) {
       return addSecurityHeaders(redirect);
     }
 
-    const isAdmin =
-      userData.role === 'admin' || userData.role === 'super_admin';
+    const isAdmin = userData.role === 'admin' || userData.role === 'super_admin';
 
     if (!isAdmin) {
       logger.warn('Admin access denied - insufficient privileges', {

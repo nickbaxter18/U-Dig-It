@@ -1,10 +1,13 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import { AlertTriangle, Bell, CheckCircle, Loader2, X } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { supabase } from '@/lib/supabase/client';
-import { AlertTriangle, CheckCircle, X, Loader2, Bell } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface DashboardAlert {
   id: string;
@@ -20,7 +23,7 @@ interface DashboardAlert {
   acknowledged_by: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 interface DashboardAlertsProps {
@@ -29,12 +32,42 @@ interface DashboardAlertsProps {
   onAlertChange?: () => void;
 }
 
-export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlertChange }: DashboardAlertsProps) {
+export function DashboardAlerts({
+  maxAlerts = 10,
+  showOnlyActive = true,
+  onAlertChange,
+}: DashboardAlertsProps) {
   const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [acknowledging, setAcknowledging] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const toast = useAdminToast();
+
+  const fetchAlerts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (showOnlyActive) {
+        params.append('status', 'open');
+      }
+      params.append('limit', maxAlerts.toString());
+
+      const response = await fetchWithAuth(`/api/admin/dashboard/alerts?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to load alerts');
+      }
+
+      const data = await response.json();
+      setAlerts(data.alerts || []);
+    } catch (error) {
+      toast.error(
+        'Failed to load alerts',
+        error instanceof Error ? error.message : 'Unable to fetch dashboard alerts'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [showOnlyActive, maxAlerts, toast]);
 
   useEffect(() => {
     fetchAlerts();
@@ -57,35 +90,12 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
-
-  const fetchAlerts = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (showOnlyActive) {
-        params.append('status', 'open');
-      }
-      params.append('limit', maxAlerts.toString());
-
-      const response = await fetchWithAuth(`/api/admin/dashboard/alerts?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error('Failed to load alerts');
-      }
-
-      const data = await response.json();
-      setAlerts(data.alerts || []);
-    } catch (error) {
-      toast.error('Failed to load alerts', error instanceof Error ? error.message : 'Unable to fetch dashboard alerts');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchAlerts]);
 
   const handleAcknowledge = async (alertId: string) => {
     if (acknowledging.has(alertId)) return;
 
-    setAcknowledging(prev => new Set(prev).add(alertId));
+    setAcknowledging((prev) => new Set(prev).add(alertId));
     try {
       const response = await fetchWithAuth(`/api/admin/dashboard/alerts/${alertId}/acknowledge`, {
         method: 'POST',
@@ -100,9 +110,12 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
       await fetchAlerts();
       onAlertChange?.();
     } catch (error) {
-      toast.error('Failed to acknowledge alert', error instanceof Error ? error.message : 'Unable to acknowledge alert');
+      toast.error(
+        'Failed to acknowledge alert',
+        error instanceof Error ? error.message : 'Unable to acknowledge alert'
+      );
     } finally {
-      setAcknowledging(prev => {
+      setAcknowledging((prev) => {
         const next = new Set(prev);
         next.delete(alertId);
         return next;
@@ -113,7 +126,7 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
   const handleResolve = async (alertId: string) => {
     if (acknowledging.has(alertId)) return;
 
-    setAcknowledging(prev => new Set(prev).add(alertId));
+    setAcknowledging((prev) => new Set(prev).add(alertId));
     try {
       const response = await fetchWithAuth(`/api/admin/dashboard/alerts/${alertId}/resolve`, {
         method: 'POST',
@@ -128,9 +141,12 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
       await fetchAlerts();
       onAlertChange?.();
     } catch (error) {
-      toast.error('Failed to resolve alert', error instanceof Error ? error.message : 'Unable to resolve alert');
+      toast.error(
+        'Failed to resolve alert',
+        error instanceof Error ? error.message : 'Unable to resolve alert'
+      );
     } finally {
-      setAcknowledging(prev => {
+      setAcknowledging((prev) => {
         const next = new Set(prev);
         next.delete(alertId);
         return next;
@@ -208,8 +224,8 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
     );
   }
 
-  const criticalAlerts = alerts.filter(a => a.severity === 'critical' && a.status === 'open');
-  const otherAlerts = alerts.filter(a => a.severity !== 'critical' || a.status !== 'open');
+  const criticalAlerts = alerts.filter((a) => a.severity === 'critical' && a.status === 'open');
+  const otherAlerts = alerts.filter((a) => a.severity !== 'critical' || a.status !== 'open');
 
   return (
     <div className="space-y-4">
@@ -222,7 +238,8 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
               <div className="flex-1">
                 <h4 className="font-semibold text-red-900">Critical Alerts</h4>
                 <p className="mt-1 text-sm text-red-800">
-                  {criticalAlerts.length} critical alert{criticalAlerts.length !== 1 ? 's' : ''} require immediate attention
+                  {criticalAlerts.length} critical alert{criticalAlerts.length !== 1 ? 's' : ''}{' '}
+                  require immediate attention
                 </p>
               </div>
             </div>
@@ -257,7 +274,8 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
                   )}
                   {alert.current_value !== null && alert.threshold_value !== null && (
                     <p className="mt-1 text-xs opacity-75">
-                      Current: {alert.current_value.toFixed(2)} | Threshold: {alert.threshold_value.toFixed(2)}
+                      Current: {alert.current_value.toFixed(2)} | Threshold:{' '}
+                      {alert.threshold_value.toFixed(2)}
                     </p>
                   )}
                   <p className="mt-1 text-xs opacity-60">
@@ -302,4 +320,3 @@ export function DashboardAlerts({ maxAlerts = 10, showOnlyActive = true, onAlert
     </div>
   );
 }
-

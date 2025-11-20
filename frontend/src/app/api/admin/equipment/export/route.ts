@@ -1,8 +1,15 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
-const ACTIVE_BOOKING_STATUSES = ['confirmed', 'paid', 'in_progress', 'ready_for_pickup', 'delivered'];
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+
+const ACTIVE_BOOKING_STATUSES = [
+  'confirmed',
+  'paid',
+  'in_progress',
+  'ready_for_pickup',
+  'delivered',
+];
 
 function formatCsvValue(value: unknown) {
   const asString = value === null || value === undefined ? '' : String(value);
@@ -17,12 +24,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { data: equipmentRows, error: equipmentError } = await equipmentQuery;
     if (equipmentError) throw equipmentError;
 
-    const equipmentIds = (equipmentRows ?? []).map(item => item.id);
+    const equipmentIds = (equipmentRows ?? []).map((item) => item.id);
     const bookingStats = new Map<
       string,
       { totalBookings: number; totalRevenue: number; activeBookings: number }
@@ -65,8 +68,11 @@ export async function GET(request: NextRequest) {
 
       for (const booking of bookingRows ?? []) {
         if (!booking.equipmentId) continue;
-        const entry =
-          bookingStats.get(booking.equipmentId) || { totalBookings: 0, totalRevenue: 0, activeBookings: 0 };
+        const entry = bookingStats.get(booking.equipmentId) || {
+          totalBookings: 0,
+          totalRevenue: 0,
+          activeBookings: 0,
+        };
         entry.totalBookings += 1;
         entry.totalRevenue += Number(booking.totalAmount ?? 0);
         if (booking.status && ACTIVE_BOOKING_STATUSES.includes(booking.status)) {
@@ -95,8 +101,12 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const rows = (equipmentRows ?? []).map((item: any) => {
-      const stats = bookingStats.get(item.id) ?? { totalBookings: 0, totalRevenue: 0, activeBookings: 0 };
+    const rows = (equipmentRows ?? []).map((item: unknown) => {
+      const stats = bookingStats.get(item.id) ?? {
+        totalBookings: 0,
+        totalRevenue: 0,
+        activeBookings: 0,
+      };
       const utilization =
         stats.totalBookings > 0 ? (stats.activeBookings / stats.totalBookings) * 100 : 0;
 
@@ -108,9 +118,15 @@ export async function GET(request: NextRequest) {
         item.serialNumber ?? 'N/A',
         (item.status ?? 'unknown').toString(),
         item.location ?? 'N/A',
-        item.dailyRate !== null && item.dailyRate !== undefined ? Number(item.dailyRate).toFixed(2) : '0.00',
-        item.weeklyRate !== null && item.weeklyRate !== undefined ? Number(item.weeklyRate).toFixed(2) : '0.00',
-        item.monthlyRate !== null && item.monthlyRate !== undefined ? Number(item.monthlyRate).toFixed(2) : '0.00',
+        item.dailyRate !== null && item.dailyRate !== undefined
+          ? Number(item.dailyRate).toFixed(2)
+          : '0.00',
+        item.weeklyRate !== null && item.weeklyRate !== undefined
+          ? Number(item.weeklyRate).toFixed(2)
+          : '0.00',
+        item.monthlyRate !== null && item.monthlyRate !== undefined
+          ? Number(item.monthlyRate).toFixed(2)
+          : '0.00',
         stats.totalBookings.toString(),
         stats.totalRevenue.toFixed(2),
         utilization.toFixed(2),
@@ -120,7 +136,7 @@ export async function GET(request: NextRequest) {
       ];
     });
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `equipment-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {

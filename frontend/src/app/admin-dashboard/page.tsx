@@ -1,8 +1,11 @@
 'use client';
 
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 
 export default function AdminDashboardPage() {
@@ -37,12 +40,12 @@ export default function AdminDashboardPage() {
         router.push('/admin/dashboard');
       } else {
         if (process.env.NODE_ENV === 'development') {
-          logger.debug('No admin access, redirecting to admin login...', {
+          logger.debug('No admin access, redirecting to sign in...', {
             component: 'app-page',
             action: 'debug',
           });
         }
-        router.push('/admin-login');
+        router.push('/auth/signin?redirect=/admin/settings&error=unauthorized');
       }
     }
   }, [user, role, loading, router]);
@@ -78,10 +81,10 @@ export default function AdminDashboardPage() {
             Go to Admin Dashboard
           </button>
           <button
-            onClick={() => router.push('/admin-login')}
+            onClick={() => router.push('/dashboard')}
             className="rounded-md bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
           >
-            Admin Login
+            Go to Dashboard
           </button>
         </div>
       </div>

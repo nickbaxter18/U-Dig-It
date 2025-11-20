@@ -96,7 +96,7 @@ export default function HowItWorksSection() {
           ></div>
 
           <div className="relative grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {steps.map((step: any, index: any) => (
+            {steps.map((step: unknown, index: unknown) => (
               <div key={index} className="relative">
                 {/* Step Card */}
                 <div className="h-full transform rounded-2xl border-2 border-gray-100 bg-white p-8 shadow-lg transition-all duration-300 hover:-translate-y-2 hover:border-[#E1BC56]/30 hover:shadow-2xl">

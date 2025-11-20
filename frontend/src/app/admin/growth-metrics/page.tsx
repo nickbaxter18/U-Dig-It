@@ -1,24 +1,23 @@
-import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { createClient } from '@/lib/supabase/server';
+
 export const metadata = {
   title: 'Growth Metrics - Admin Dashboard',
-  description: 'Monitor equipment performance, attachment revenue, and growth KPIs'
+  description: 'Monitor equipment performance, attachment revenue, and growth KPIs',
 };
 
 export default async function GrowthMetricsPage() {
   const supabase = await createClient();
 
   // Verify admin access
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect('/auth/signin');
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
 
   if (!userData || (userData.role !== 'admin' && userData.role !== 'super_admin')) {
     redirect('/dashboard');
@@ -27,7 +26,8 @@ export default async function GrowthMetricsPage() {
   // Fetch equipment performance data
   const { data: equipmentPerformance } = await supabase
     .from('equipment')
-    .select(`
+    .select(
+      `
       id,
       model,
       unitId,
@@ -38,23 +38,28 @@ export default async function GrowthMetricsPage() {
       revenue_generated,
       category:category_id (name),
       location:current_location_id (name, city)
-    `)
+    `
+    )
     .order('utilization_rate', { ascending: false, nullsFirst: false });
 
   // Fetch attachment performance
-  const { data: attachmentStats } = await supabase.rpc('get_attachment_performance' as any) as any;
+  const { data: _attachmentStats } = (await supabase.rpc(
+    'get_attachment_performance' as any
+  )) as any;
 
   // If RPC doesn't exist, fetch manually
   const { data: attachments } = await supabase
     .from('equipment_attachments')
-    .select(`
+    .select(
+      `
       id,
       name,
       attachment_type,
       daily_rate,
       quantity_available,
       quantity_in_use
-    `)
+    `
+    )
     .eq('is_active', true)
     .order('attachment_type');
 
@@ -69,20 +74,22 @@ export default async function GrowthMetricsPage() {
   // Fetch booking stats with attachments
   const { data: bookingStats } = await supabase
     .from('bookings')
-    .select(`
+    .select(
+      `
       id,
       bookingNumber,
       totalAmount,
       createdAt,
       startDate,
       endDate
-    `)
+    `
+    )
     .gte('createdAt', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
     .in('status', ['confirmed', 'completed'])
     .order('createdAt', { ascending: false });
 
   // Calculate rental duration breakdown
-  const durationBreakdown = bookingStats?.reduce((acc: any, booking: any) => {
+  const durationBreakdown = bookingStats?.reduce((acc: unknown, booking: unknown) => {
     const start = new Date(booking.startDate);
     const end = new Date(booking.endDate);
     const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -109,7 +116,7 @@ export default async function GrowthMetricsPage() {
 
   const attachmentUsageMap = new Map<string, { count: number; revenue: number; days: number }>();
 
-  (bookingAttachments ?? []).forEach(record => {
+  (bookingAttachments ?? []).forEach((record) => {
     if (!record.attachment_id) return;
     const usage = attachmentUsageMap.get(record.attachment_id) ?? { count: 0, revenue: 0, days: 0 };
     usage.count += record.quantity ?? 1;
@@ -118,7 +125,7 @@ export default async function GrowthMetricsPage() {
     attachmentUsageMap.set(record.attachment_id, usage);
   });
 
-  const attachmentsWithUsage = (attachments ?? []).map(att => {
+  const attachmentsWithUsage = (attachments ?? []).map((att) => {
     const usage = attachmentUsageMap.get(att.id) ?? { count: 0, revenue: 0, days: 0 };
     return {
       ...att,
@@ -132,10 +139,7 @@ export default async function GrowthMetricsPage() {
     (sum, att) => sum + att.revenueGenerated,
     0
   );
-  const totalAttachmentRentals = attachmentsWithUsage.reduce(
-    (sum, att) => sum + att.usageCount,
-    0
-  );
+  const totalAttachmentRentals = attachmentsWithUsage.reduce((sum, att) => sum + att.usageCount, 0);
   const averageAttachmentRevenue =
     totalAttachmentRentals > 0 ? totalAttachmentRevenue / totalAttachmentRentals : 0;
 
@@ -155,23 +159,40 @@ export default async function GrowthMetricsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipment</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Utilization</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Equipment
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Location
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Utilization
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Total Days
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Revenue
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {equipmentPerformance?.map((eq: any) => {
+              {equipmentPerformance?.map((eq: unknown) => {
                 const utilization = eq.utilization_rate || 0;
                 const utilizationClass =
-                  utilization >= 80 ? 'text-green-600 bg-green-100' :
-                  utilization >= 60 ? 'text-yellow-600 bg-yellow-100' :
-                  utilization >= 40 ? 'text-orange-600 bg-orange-100' :
-                  'text-red-600 bg-red-100';
+                  utilization >= 80
+                    ? 'text-green-600 bg-green-100'
+                    : utilization >= 60
+                      ? 'text-yellow-600 bg-yellow-100'
+                      : utilization >= 40
+                        ? 'text-orange-600 bg-orange-100'
+                        : 'text-red-600 bg-red-100';
 
                 return (
                   <tr key={eq.id}>
@@ -186,7 +207,9 @@ export default async function GrowthMetricsPage() {
                       {eq.location ? `${eq.location.name.substring(0, 20)}...` : 'No location'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${utilizationClass}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${utilizationClass}`}
+                      >
                         {utilization.toFixed(1)}%
                       </span>
                     </td>
@@ -197,11 +220,15 @@ export default async function GrowthMetricsPage() {
                       ${(eq.revenue_generated || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        eq.status === 'available' ? 'bg-green-100 text-green-800' :
-                        eq.status === 'rented' ? 'bg-blue-100 text-blue-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          eq.status === 'available'
+                            ? 'bg-green-100 text-green-800'
+                            : eq.status === 'rented'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
                         {eq.status}
                       </span>
                     </td>
@@ -221,9 +248,7 @@ export default async function GrowthMetricsPage() {
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
               Total Rentals (6 mo)
             </p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">
-              {totalAttachmentRentals}
-            </p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">{totalAttachmentRentals}</p>
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -243,7 +268,7 @@ export default async function GrowthMetricsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {attachmentsWithUsage.map(att => {
+          {attachmentsWithUsage.map((att) => {
             const available = (att.quantity_available || 0) - (att.quantity_in_use || 0);
             const isFree = att.daily_rate === 0;
 
@@ -271,7 +296,9 @@ export default async function GrowthMetricsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Available:</span>
-                    <span className={`font-medium ${available > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span
+                      className={`font-medium ${available > 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
                       {available} / {att.quantity_available}
                     </span>
                   </div>
@@ -286,9 +313,7 @@ export default async function GrowthMetricsPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Total Revenue</span>
-                      <span className="font-medium">
-                        ${att.revenueGenerated.toFixed(2)}
-                      </span>
+                      <span className="font-medium">${att.revenueGenerated.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Avg Duration</span>
@@ -349,7 +374,9 @@ export default async function GrowthMetricsPage() {
 
           <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Monthly (30+ days)</div>
-            <div className="text-3xl font-bold text-gray-900">{durationBreakdown?.monthly || 0}</div>
+            <div className="text-3xl font-bold text-gray-900">
+              {durationBreakdown?.monthly || 0}
+            </div>
             <div className="text-sm text-gray-500 mt-2">
               ${(durationBreakdown?.monthlyRevenue || 0).toFixed(2)} revenue
             </div>
@@ -366,17 +393,30 @@ export default async function GrowthMetricsPage() {
           <h4 className="font-medium text-blue-900 mb-2">💡 Insights & Opportunities</h4>
           <div className="space-y-1 text-sm text-blue-800">
             {(durationBreakdown?.hourly || 0) === 0 && (
-              <div>• 🎯 <strong>Opportunity:</strong> No hourly rentals yet! Market to contractors for 4-8 hour jobs.</div>
+              <div>
+                • 🎯 <strong>Opportunity:</strong> No hourly rentals yet! Market to contractors for
+                4-8 hour jobs.
+              </div>
             )}
             {totalBookings > 0 && (durationBreakdown?.weekly || 0) / totalBookings > 0.5 && (
-              <div>• ✅ <strong>Success:</strong> {((durationBreakdown.weekly / totalBookings) * 100).toFixed(0)}% of bookings are weekly! Great for revenue.</div>
+              <div>
+                • ✅ <strong>Success:</strong>{' '}
+                {((durationBreakdown.weekly / totalBookings) * 100).toFixed(0)}% of bookings are
+                weekly! Great for revenue.
+              </div>
             )}
             {totalBookings > 5 && (
-              <div>• 📊 Average rental: {(totalBookings > 0 ? (
-                (durationBreakdown?.daily || 0) * 3 +
-                (durationBreakdown?.weekly || 0) * 10 +
-                (durationBreakdown?.monthly || 0) * 30
-              ) / totalBookings : 0).toFixed(1)} days</div>
+              <div>
+                • 📊 Average rental:{' '}
+                {(totalBookings > 0
+                  ? ((durationBreakdown?.daily || 0) * 3 +
+                      (durationBreakdown?.weekly || 0) * 10 +
+                      (durationBreakdown?.monthly || 0) * 30) /
+                    totalBookings
+                  : 0
+                ).toFixed(1)}{' '}
+                days
+              </div>
             )}
           </div>
         </div>
@@ -389,9 +429,10 @@ export default async function GrowthMetricsPage() {
           <div className="space-y-4">
             {/* Will populate as you add locations */}
             <div className="text-sm text-gray-600">
-              <strong>Saint John HQ:</strong> {equipmentPerformance?.filter((eq: any) =>
-                eq.location?.city === 'Saint John'
-              ).length || 0} equipment units
+              <strong>Saint John HQ:</strong>{' '}
+              {equipmentPerformance?.filter((eq: unknown) => eq.location?.city === 'Saint John')
+                .length || 0}{' '}
+              equipment units
             </div>
             <div className="text-xs text-gray-500">
               Multi-location infrastructure ready! Add Moncton or Fredericton locations to expand.
@@ -434,7 +475,11 @@ export default async function GrowthMetricsPage() {
       <section className="mt-8 bg-gray-50 rounded-lg p-6 border border-gray-200">
         <h3 className="font-semibold text-gray-900 mb-2">📚 Need More Insights?</h3>
         <p className="text-sm text-gray-600">
-          Check <code className="bg-gray-200 px-2 py-1 rounded">ADMIN_DASHBOARD_QUERIES_NEW_FEATURES.md</code> for 15+ ready-to-use SQL queries:
+          Check{' '}
+          <code className="bg-gray-200 px-2 py-1 rounded">
+            ADMIN_DASHBOARD_QUERIES_NEW_FEATURES.md
+          </code>{' '}
+          for 15+ ready-to-use SQL queries:
         </p>
         <ul className="mt-2 text-sm text-gray-600 space-y-1 ml-4 list-disc">
           <li>Attachment revenue performance</li>
@@ -447,4 +492,3 @@ export default async function GrowthMetricsPage() {
     </div>
   );
 }
-

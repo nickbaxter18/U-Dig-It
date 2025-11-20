@@ -48,6 +48,33 @@ For all webhook endpoints in this codebase, ALWAYS use service role client (`cre
 
 **Why**: Webhooks are server-to-server calls with NO user session, so RLS blocks updates with regular client. This was the root cause of payment webhooks failing silently - they returned 200 OK but didn't update the database.
 
+### API Keys & Secrets Pattern
+For ALL API keys and secrets in this codebase, ALWAYS use the secrets loader functions, NEVER access `process.env` directly.
+
+**Email Service:**
+```typescript
+// ✅ CORRECT
+import { getSendGridApiKey } from '@/lib/secrets/email';
+const apiKey = await getSendGridApiKey();
+
+// ❌ WRONG
+const apiKey = process.env.SENDGRID_API_KEY || process.env.EMAIL_API_KEY;
+```
+
+**Stripe Service:**
+```typescript
+// ✅ CORRECT
+import { getStripeSecretKey } from '@/lib/stripe/config';
+const stripeKey = await getStripeSecretKey();
+
+// ❌ WRONG
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+```
+
+**Why**: This codebase uses Supabase Edge Function secrets and `system_config` table for secrets management. Direct `process.env` access bypasses the unified secrets system, causing emails and payments to fail when secrets are stored in Supabase or database. This was the root cause of emails not sending and payment buttons failing - we were checking wrong environment variables instead of using the secrets loaders that check all sources.
+
+**See**: `api-keys-secrets-management.mdc` for complete documentation.
+
 ### Frontend Startup Script
 ALWAYS use `bash start-frontend-clean.sh` to start the frontend. NEVER use `pnpm dev` directly.
 
@@ -78,6 +105,11 @@ Be careful with `setTimeout` cleanup in React `useEffect`. Don't clear timers pr
 Never use regular `createClient()` for webhook endpoints - always use service role client.
 
 **Why**: RLS blocks updates when there's no user session, causing webhooks to fail silently.
+
+### Direct process.env Access for Secrets
+Never access `process.env` directly for API keys or secrets - always use secrets loader functions.
+
+**Why**: This codebase uses Supabase Edge Function secrets and `system_config` table. Direct `process.env` access bypasses the unified secrets system, causing services to fail when secrets are stored in Supabase or database. This was the root cause of emails not sending and payment buttons failing.
 
 ### SELECT * Without Pagination
 Never use `SELECT *` without pagination - always specify columns and add `.range()` / `.limit()`.

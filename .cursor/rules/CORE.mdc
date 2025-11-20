@@ -8,6 +8,8 @@ alwaysApply: true
 ## 🎯 Purpose
 Provides foundational development standards, reasoning patterns, and AI coding optimization for the Kubota Rental Platform.
 
+**IMPORTANT**: For API keys and secrets management, see `api-keys-secrets-management.mdc` - Always use secrets loader functions, never access `process.env` directly!
+
 ---
 
 ## 1) AI Coding Assistance Optimization

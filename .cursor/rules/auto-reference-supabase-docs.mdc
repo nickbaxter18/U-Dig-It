@@ -1,0 +1,93 @@
+---
+description: "Automatically reference Supabase indexed documentation when working with database, auth, storage, or functions"
+globs:
+  - "**/*supabase*/**/*.{ts,tsx,js,jsx,sql}"
+  - "**/supabase/**/*.sql"
+  - "**/migrations/**/*.sql"
+  - "**/app/api/**/route.ts"
+  - "**/lib/supabase/**/*.{ts,tsx}"
+  - "**/hooks/*supabase*/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Supabase Documentation Auto-Reference
+
+When working with Supabase-related code, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## Database & SQL Operations
+- Use **@Supabase** for general Supabase features, PostgREST, and database operations
+- Reference specific sections when needed for accurate guidance
+
+## Row-Level Security (RLS)
+- Use **@Supabase RLS** when:
+  - Creating or modifying RLS policies
+  - Debugging permission issues
+  - Optimizing policy performance
+  - Setting up table-level security
+
+## Authentication
+- Use **@Supabase Auth** when:
+  - Implementing login/signup flows
+  - Managing user sessions
+  - Setting up OAuth providers
+  - Configuring MFA or magic links
+  - Troubleshooting auth errors
+
+## Storage & File Management
+- Use **@Supabase Storage** when:
+  - Uploading/downloading files
+  - Managing buckets
+  - Setting up storage RLS policies
+  - Generating signed URLs
+  - Working with file metadata
+
+## Edge Functions
+- Use **@Supabase Functions** when:
+  - Creating serverless functions
+  - Setting up cron jobs
+  - Managing function secrets
+  - Deploying edge functions
+  - Debugging function errors
+
+## CLI & Local Development
+- Use **@Supabase Cli** when:
+  - Running migrations
+  - Local development setup
+  - Type generation
+  - Project linking
+  - Database seeding
+
+## Performance & Security
+- Use **@Supabase Platform Advisors** when:
+  - Reviewing security vulnerabilities
+  - Optimizing database performance
+  - Checking for missing indexes
+  - Reviewing RLS policy performance
+
+## Security Best Practices
+- Use **@https://supabase.com/docs/guides/security** when:
+  - Implementing security best practices
+  - Reviewing security configurations
+  - Hardening authentication
+  - Protecting against common vulnerabilities
+
+## JavaScript Client
+- Use **@supabas javascript** when:
+  - Using the Supabase JavaScript/TypeScript client
+  - Working with queries and mutations
+  - Implementing real-time subscriptions
+
+## Example Usage Pattern
+
+```typescript
+// When creating RLS policies, reference:
+// @Supabase RLS for policy syntax and best practices
+// @Supabase Platform Advisors for performance optimization
+
+// When implementing auth:
+// @Supabase Auth for authentication patterns
+// @https://supabase.com/docs/guides/security for security hardening
+```
+
+## Reminder
+**ALWAYS start by checking the indexed documentation** before writing or modifying Supabase code. This ensures adherence to best practices and latest API patterns.

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 export default function Error({
-  error,
+  error: _error, // Reserved for future error display
   reset,
 }: {
   error: Error & { digest?: string };

@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { z } from 'zod';
 
 const scheduledReportUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  reportType: z.enum(['dashboard', 'analytics', 'bookings', 'customers', 'equipment', 'payments']).optional(),
+  reportType: z
+    .enum(['dashboard', 'analytics', 'bookings', 'customers', 'equipment', 'payments'])
+    .optional(),
   frequency: z.enum(['daily', 'weekly', 'monthly', 'custom']).optional(),
   frequencyConfig: z.record(z.string(), z.unknown()).optional().nullable(),
   dateRange: z.enum(['7d', '30d', '90d', 'ytd', 'all']).optional(),
@@ -17,10 +20,7 @@ const scheduledReportUpdateSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -28,24 +28,20 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const payload = scheduledReportUpdateSchema.parse(body);
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -63,7 +59,8 @@ export async function PATCH(
         updateData.next_run_at = nextRunData;
       }
     }
-    if (payload.frequencyConfig !== undefined) updateData.frequency_config = payload.frequencyConfig;
+    if (payload.frequencyConfig !== undefined)
+      updateData.frequency_config = payload.frequencyConfig;
     if (payload.dateRange !== undefined) updateData.date_range = payload.dateRange;
     if (payload.format !== undefined) updateData.format = payload.format;
     if (payload.recipients !== undefined) updateData.recipients = payload.recipients;
@@ -87,10 +84,7 @@ export async function PATCH(
         },
         updateError
       );
-      return NextResponse.json(
-        { error: 'Unable to update scheduled report' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to update scheduled report' }, { status: 500 });
     }
 
     logger.info('Scheduled report updated', {
@@ -121,10 +115,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -132,19 +123,15 @@ export async function DELETE(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { error: deleteError } = await supabase
       .from('scheduled_reports')
@@ -161,10 +148,7 @@ export async function DELETE(
         },
         deleteError
       );
-      return NextResponse.json(
-        { error: 'Unable to delete scheduled report' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to delete scheduled report' }, { status: 500 });
     }
 
     logger.info('Scheduled report deleted', {
@@ -187,5 +171,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

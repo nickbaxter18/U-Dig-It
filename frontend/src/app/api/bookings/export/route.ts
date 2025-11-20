@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/bookings/export
@@ -16,10 +17,15 @@ export async function GET(request: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 3. Fetch all bookings with customer and equipment data
-    const { data: bookingsData, error: bookingsError } = await supabase.from('bookings').select(`
+    const { data: bookingsData, error: bookingsError } = await supabase
+      .from('bookings')
+      .select(
+        `
         id,
         bookingNumber,
         startDate,
@@ -49,7 +55,9 @@ export async function GET(request: NextRequest) {
           phone,
           companyName
         )
-      `).order('createdAt', { ascending: false });
+      `
+      )
+      .order('createdAt', { ascending: false });
 
     if (bookingsError) throw bookingsError;
 
@@ -81,7 +89,7 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const csvRows = safeBookings.map((booking: any) => {
+    const csvRows = safeBookings.map((booking: unknown) => {
       const customer = booking.customer || {};
       const equipment = booking.equipment || {};
 
@@ -121,8 +129,8 @@ export async function GET(request: NextRequest) {
 
     // 5. Combine headers and rows
     const csvContent = [
-      csvHeaders.map(h => `"${h}"`).join(','),
-      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      csvHeaders.map((h) => `"${h}"`).join(','),
+      ...csvRows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
     ].join('\n');
 
     logger.info('Bookings exported', {
@@ -141,7 +149,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="bookings-export-${new Date().toISOString().split('T')[0]}.csv"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Bookings export error',
       {
@@ -151,9 +159,6 @@ export async function GET(request: NextRequest) {
       error
     );
 
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }

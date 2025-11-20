@@ -2,9 +2,9 @@
  * Request/Response Size and Timeout Validation
  * Prevents resource exhaustion attacks and ensures API responsiveness
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { NextRequest, NextResponse } from 'next/server';
 
 // Configuration constants
 export const REQUEST_LIMITS = {
@@ -47,7 +47,9 @@ export async function validateRequestSize(
           metadata: {
             size,
             maxSize,
-            path: (request as any).nextUrl?.pathname || request.url,
+            path:
+              (request as { nextUrl?: { pathname?: string }; url?: string } | null)?.nextUrl
+                ?.pathname || request.url,
           },
         });
 
@@ -158,7 +160,7 @@ export function validateContentType(
 
   const normalizedType = contentType.toLowerCase().split(';')[0].trim();
   const isAllowed = allowedTypes.some(
-    type =>
+    (type) =>
       normalizedType === type.toLowerCase() || normalizedType.startsWith(type.toLowerCase() + '/')
   );
 
@@ -320,7 +322,7 @@ export async function validateRequest(
   const {
     maxSize = REQUEST_LIMITS.MAX_JSON_SIZE,
     allowedContentTypes = ['application/json'],
-    timeout = REQUEST_LIMITS.DEFAULT_TIMEOUT,
+    timeout: _timeout = REQUEST_LIMITS.DEFAULT_TIMEOUT, // Reserved for future timeout implementation
   } = options;
 
   // Validate content type

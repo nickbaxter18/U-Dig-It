@@ -1,6 +1,5 @@
 'use client';
 
-import { logger } from '@/lib/logger';
 import {
   AlertCircle,
   CheckCircle,
@@ -14,7 +13,10 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+
 import { useEffect, useRef, useState } from 'react';
+
+import { logger } from '@/lib/logger';
 
 interface MobileContactFormProps {
   className?: string;
@@ -98,13 +100,17 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        setFormData(prev => ({ ...prev, ...parsedData }));
+        setFormData((prev) => ({ ...prev, ...parsedData }));
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to parse saved form data:', {
-            component: 'MobileContactForm',
-            action: 'error',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to parse saved form data:',
+            {
+              component: 'MobileContactForm',
+              action: 'error',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       }
     }
@@ -124,11 +130,11 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
 
   // Handle input change
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
     // Clear error for this field
     if (errors[field as keyof FormErrors]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[field as keyof FormErrors];
         return newErrors;
@@ -217,7 +223,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
 
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Clear form and localStorage
       setFormData({
@@ -243,10 +249,14 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to submit form:', {
-          component: 'MobileContactForm',
-          action: 'error',
-        }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Failed to submit form:',
+          {
+            component: 'MobileContactForm',
+            action: 'error',
+          },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -311,7 +321,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
       <div className="bg-gray-50 p-6">
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Contact</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {contactInfo.map((info: any, index: any) => {
+          {contactInfo.map((info: unknown, index: unknown) => {
             const Icon = info.icon;
             const content = (
               <div className="flex items-center space-x-3 rounded-lg bg-white p-3">
@@ -348,7 +358,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             <input
               type="text"
               value={formData.name}
-              onChange={e => handleInputChange('name', e.target.value)}
+              onChange={(e) => handleInputChange('name', e.target.value)}
               onFocus={() => speakFieldLabel('Full Name')}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.name
@@ -389,7 +399,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             <input
               type="email"
               value={formData.email}
-              onChange={e => handleInputChange('email', e.target.value)}
+              onChange={(e) => handleInputChange('email', e.target.value)}
               onFocus={() => speakFieldLabel('Email Address')}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.email
@@ -430,7 +440,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             <input
               type="tel"
               value={formData.phone}
-              onChange={e => handleInputChange('phone', e.target.value)}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
               onFocus={() => speakFieldLabel('Phone Number')}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.phone
@@ -471,7 +481,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             <input
               type="text"
               value={formData.subject}
-              onChange={e => handleInputChange('subject', e.target.value)}
+              onChange={(e) => handleInputChange('subject', e.target.value)}
               onFocus={() => speakFieldLabel('Subject')}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.subject
@@ -511,7 +521,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
           <div className="relative">
             <textarea
               value={formData.message}
-              onChange={e => handleInputChange('message', e.target.value)}
+              onChange={(e) => handleInputChange('message', e.target.value)}
               onFocus={() => speakFieldLabel('Message')}
               rows={4}
               className={`w-full resize-none rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
@@ -555,7 +565,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
               { value: 'email', label: 'Email' },
               { value: 'phone', label: 'Phone' },
               { value: 'either', label: 'Either' },
-            ].map(option => (
+            ].map((option) => (
               <label
                 key={option.value}
                 className="flex cursor-pointer items-center space-x-3 rounded-lg bg-gray-50 p-3"
@@ -565,7 +575,7 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
                   name="preferredContact"
                   value={option.value}
                   checked={formData.preferredContact === option.value}
-                  onChange={e => handleInputChange('preferredContact', e.target.value)}
+                  onChange={(e) => handleInputChange('preferredContact', e.target.value)}
                   className="text-kubota-orange focus:ring-kubota-orange h-5 w-5"
                 />
                 <span className="text-gray-700">{option.label}</span>

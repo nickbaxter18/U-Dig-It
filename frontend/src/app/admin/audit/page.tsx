@@ -1,9 +1,23 @@
 'use client';
 
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Download,
+  Eye,
+  Filter,
+  Link2,
+  Printer,
+  Search,
+  User,
+  X,
+} from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Activity, AlertTriangle, Clock, Download, Eye, Filter, Link2, Printer, Search, User, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface AuditLog {
   id: string;
@@ -13,8 +27,8 @@ interface AuditLog {
   resourceType: string;
   resourceId: string;
   resourceName: string;
-  changesBefore?: Record<string, any>;
-  changesAfter?: Record<string, any>;
+  changesBefore?: Record<string, unknown>;
+  changesAfter?: Record<string, unknown>;
   ipAddress: string;
   userAgent: string;
   timestamp: Date;
@@ -53,9 +67,9 @@ export default function AuditLogViewer() {
       const { logs } = await response.json();
 
       // Transform to component format with Date objects
-      const transformed: AuditLog[] = (logs || []).map((log: any) => ({
+      const transformed: AuditLog[] = (logs || []).map((log: unknown) => ({
         ...log,
-        timestamp: new Date(log.timestamp)
+        timestamp: new Date(log.timestamp),
       }));
 
       setAuditLogs(transformed);
@@ -108,7 +122,7 @@ export default function AuditLogViewer() {
     }
   };
 
-  const filteredLogs = auditLogs.filter(log => {
+  const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch =
       log.adminName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -128,14 +142,16 @@ export default function AuditLogViewer() {
         case 'today':
           matchesDate = logDate.toDateString() === now.toDateString();
           break;
-        case 'week':
+        case 'week': {
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           matchesDate = logDate >= weekAgo;
           break;
-        case 'month':
+        }
+        case 'month': {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           matchesDate = logDate >= monthAgo;
           break;
+        }
       }
     }
 
@@ -148,13 +164,12 @@ export default function AuditLogViewer() {
     if (filterType === 'resource') {
       // Find logs for the same resource (same resourceType and resourceId)
       related = auditLogs.filter(
-        l => l.resourceType === log.resourceType && l.resourceId === log.resourceId && l.id !== log.id
+        (l) =>
+          l.resourceType === log.resourceType && l.resourceId === log.resourceId && l.id !== log.id
       );
     } else if (filterType === 'admin') {
       // Find logs by the same admin
-      related = auditLogs.filter(
-        l => l.adminId === log.adminId && l.id !== log.id
-      );
+      related = auditLogs.filter((l) => l.adminId === log.adminId && l.id !== log.id);
     }
 
     setRelatedLogs(related);
@@ -315,33 +330,49 @@ export default function AuditLogViewer() {
             </div>
           </div>
 
-          ${log.changesBefore ? `
+          ${
+            log.changesBefore
+              ? `
           <div class="section">
             <h2>Changes Before</h2>
             <div class="changes changes-before">
-              ${Object.entries(log.changesBefore).map(([key, value]) => `
+              ${Object.entries(log.changesBefore)
+                .map(
+                  ([key, value]) => `
                 <div class="field">
                   <span class="field-label">${key}:</span>
                   <span class="field-value">${typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</span>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
-          ${log.changesAfter ? `
+          ${
+            log.changesAfter
+              ? `
           <div class="section">
             <h2>Changes After</h2>
             <div class="changes changes-after">
-              ${Object.entries(log.changesAfter).map(([key, value]) => `
+              ${Object.entries(log.changesAfter)
+                .map(
+                  ([key, value]) => `
                 <div class="field">
                   <span class="field-label">${key}:</span>
                   <span class="field-value">${typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</span>
                 </div>
-              `).join('')}
+              `
+                )
+                .join('')}
             </div>
           </div>
-          ` : ''}
+          `
+              : ''
+          }
 
           <div class="section no-print">
             <p style="color: #666; font-size: 12px;">
@@ -361,7 +392,7 @@ export default function AuditLogViewer() {
     }, 250);
   };
 
-  const renderChanges = (changes: Record<string, any>) => {
+  const renderChanges = (changes: Record<string, unknown>) => {
     return Object.entries(changes).map(([key, value]) => (
       <div key={key} className="text-sm">
         <span className="font-medium text-gray-700">{key}:</span>
@@ -409,7 +440,11 @@ export default function AuditLogViewer() {
               }
             } catch (err) {
               alert('Failed to export audit logs');
-              logger.error('Audit export failed', {}, err instanceof Error ? err : new Error(String(err)));
+              logger.error(
+                'Audit export failed',
+                {},
+                err instanceof Error ? err : new Error(String(err))
+              );
             }
           }}
           className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
@@ -455,7 +490,7 @@ export default function AuditLogViewer() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Critical Actions</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {auditLogs.filter(l => l.severity === 'critical').length}
+                {auditLogs.filter((l) => l.severity === 'critical').length}
               </p>
             </div>
           </div>
@@ -469,7 +504,7 @@ export default function AuditLogViewer() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Active Admins</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {new Set(auditLogs.map(l => l.adminId)).size}
+                {new Set(auditLogs.map((l) => l.adminId)).size}
               </p>
             </div>
           </div>
@@ -484,7 +519,7 @@ export default function AuditLogViewer() {
               <p className="text-sm font-medium text-gray-500">Today's Actions</p>
               <p className="text-2xl font-semibold text-gray-900">
                 {
-                  auditLogs.filter(l => {
+                  auditLogs.filter((l) => {
                     const today = new Date().toDateString();
                     return new Date(l.timestamp).toDateString() === today;
                   }).length
@@ -502,7 +537,7 @@ export default function AuditLogViewer() {
             type="text"
             placeholder="Search audit logs..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -510,7 +545,7 @@ export default function AuditLogViewer() {
 
         <select
           value={actionFilter}
-          onChange={e => setActionFilter(e.target.value)}
+          onChange={(e) => setActionFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Actions</option>
@@ -522,7 +557,7 @@ export default function AuditLogViewer() {
 
         <select
           value={severityFilter}
-          onChange={e => setSeverityFilter(e.target.value)}
+          onChange={(e) => setSeverityFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Severity</option>
@@ -534,7 +569,7 @@ export default function AuditLogViewer() {
 
         <select
           value={dateFilter}
-          onChange={e => setDateFilter(e.target.value)}
+          onChange={(e) => setDateFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Time</option>
@@ -579,7 +614,7 @@ export default function AuditLogViewer() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredLogs.map(log => (
+              {filteredLogs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="text-sm text-gray-900">
@@ -668,10 +703,7 @@ export default function AuditLogViewer() {
                 Found {relatedLogs.length} related log{relatedLogs.length === 1 ? '' : 's'}
               </p>
             </div>
-            <button
-              onClick={handleCloseRelatedLogs}
-              className="text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={handleCloseRelatedLogs} className="text-gray-400 hover:text-gray-600">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -700,7 +732,7 @@ export default function AuditLogViewer() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {relatedLogs.map(log => (
+                {relatedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                       {log.timestamp.toLocaleString()}
@@ -872,10 +904,24 @@ export default function AuditLogViewer() {
                       ['Admin ID', selectedLog.adminId],
                       ['IP Address', selectedLog.ipAddress],
                       ['User Agent', selectedLog.userAgent],
-                      ...(selectedLog.changesBefore ? Object.entries(selectedLog.changesBefore).map(([k, v]) => [`Before: ${k}`, typeof v === 'object' ? JSON.stringify(v) : String(v)]) : []),
-                      ...(selectedLog.changesAfter ? Object.entries(selectedLog.changesAfter).map(([k, v]) => [`After: ${k}`, typeof v === 'object' ? JSON.stringify(v) : String(v)]) : []),
+                      ...(selectedLog.changesBefore
+                        ? Object.entries(selectedLog.changesBefore).map(([k, v]) => [
+                            `Before: ${k}`,
+                            typeof v === 'object' ? JSON.stringify(v) : String(v),
+                          ])
+                        : []),
+                      ...(selectedLog.changesAfter
+                        ? Object.entries(selectedLog.changesAfter).map(([k, v]) => [
+                            `After: ${k}`,
+                            typeof v === 'object' ? JSON.stringify(v) : String(v),
+                          ])
+                        : []),
                     ];
-                    const csvContent = csv.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+                    const csvContent = csv
+                      .map((row) =>
+                        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+                      )
+                      .join('\n');
                     const blob = new Blob([csvContent], { type: 'text/csv' });
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');

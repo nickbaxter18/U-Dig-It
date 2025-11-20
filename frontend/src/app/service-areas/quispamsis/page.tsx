@@ -1,12 +1,15 @@
+import { CheckCircle, DollarSign, MapPin, Phone, Shield, Truck } from 'lucide-react';
+
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
 import Footer from '@/components/Footer';
 import { LocationWatermarkSet } from '@/components/GeoWatermark';
 import Navigation from '@/components/Navigation';
 import { NearbyServiceAreas } from '@/components/ServiceAreaLinks';
 import { ImageObjectSchema, LocalBusinessSchema } from '@/components/StructuredData';
+
 import { serviceAreaMetadata } from '@/lib/service-area-metadata';
-import { CheckCircle, DollarSign, MapPin, Phone, Shield, Truck } from 'lucide-react';
-import type { Metadata } from 'next';
-import Link from 'next/link';
 
 export const metadata: Metadata = serviceAreaMetadata.quispamsis;
 
@@ -14,7 +17,10 @@ export default function QuispamsisServiceAreaPage() {
   return (
     <>
       {/* Local Business Schema for Quispamsis */}
-      <LocalBusinessSchema name="U-Dig It Rentals Inc - Quispamsis" url="https://udigit.ca/service-areas/quispamsis" />
+      <LocalBusinessSchema
+        name="U-Dig It Rentals Inc - Quispamsis"
+        url="https://udigit.ca/service-areas/quispamsis"
+      />
 
       {/* Image SEO Schema for Equipment Photo */}
       <ImageObjectSchema
@@ -26,7 +32,9 @@ export default function QuispamsisServiceAreaPage() {
         height={800}
       />
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .headline-3d {
           perspective: 1000px;
           perspective-origin: center;
@@ -37,7 +45,9 @@ export default function QuispamsisServiceAreaPage() {
           filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.9))
             drop-shadow(0 16px 48px rgba(0, 0, 0, 0.7)) drop-shadow(0 24px 64px rgba(0, 0, 0, 0.5));
         }
-      `}} />
+      `,
+        }}
+      />
 
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -74,7 +84,8 @@ export default function QuispamsisServiceAreaPage() {
                 </span>
               </h1>
               <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-gray-200 md:text-2xl">
-                Professional Kubota SVL75-3 rental serving all Quispamsis neighborhoods. Delivery from Saint John in 25-35 minutes.
+                Professional Kubota SVL75-3 rental serving all Quispamsis neighborhoods. Delivery
+                from Saint John in 25-35 minutes.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link
@@ -99,7 +110,6 @@ export default function QuispamsisServiceAreaPage() {
         {/* Main Content */}
         <div className="py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
             {/* Communities Served */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
               <div className="mb-6 flex items-center gap-3">
@@ -107,8 +117,18 @@ export default function QuispamsisServiceAreaPage() {
                 <h2 className="text-3xl font-bold text-gray-900">Areas We Serve in Quispamsis</h2>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {['Quispamsis Town Center', 'Gondola Point', 'Keenan Drive', 'Meenan\'s Cove', 'Hampton Road', 'Pettingill Road Area'].map((area: any) => (
-                  <div key={area} className="flex items-center gap-2 rounded-lg border border-gray-200 p-3">
+                {[
+                  'Quispamsis Town Center',
+                  'Gondola Point',
+                  'Keenan Drive',
+                  "Meenan's Cove",
+                  'Hampton Road',
+                  'Pettingill Road Area',
+                ].map((area: unknown) => (
+                  <div
+                    key={area}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 p-3"
+                  >
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <span className="text-gray-700">{area}</span>
                   </div>
@@ -121,7 +141,9 @@ export default function QuispamsisServiceAreaPage() {
               <div className="rounded-lg border-2 border-green-200 bg-green-50 p-6 text-center">
                 <Truck className="mx-auto mb-3 h-12 w-12 text-green-600" />
                 <h3 className="mb-2 text-lg font-bold text-gray-900">Quick Delivery</h3>
-                <p className="text-sm text-gray-700">25-35 minute delivery from Saint John to Quispamsis</p>
+                <p className="text-sm text-gray-700">
+                  25-35 minute delivery from Saint John to Quispamsis
+                </p>
               </div>
               <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6 text-center">
                 <DollarSign className="mx-auto mb-3 h-12 w-12 text-blue-600" />
@@ -131,37 +153,57 @@ export default function QuispamsisServiceAreaPage() {
               <div className="rounded-lg border-2 border-yellow-200 bg-yellow-50 p-6 text-center">
                 <Shield className="mx-auto mb-3 h-12 w-12 text-yellow-600" />
                 <h3 className="mb-2 text-lg font-bold text-gray-900">Local Expertise</h3>
-                <p className="text-sm text-gray-700">We know Quispamsis terrain and property types</p>
+                <p className="text-sm text-gray-700">
+                  We know Quispamsis terrain and property types
+                </p>
               </div>
             </div>
 
             {/* About Quispamsis */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
-              <h2 className="mb-6 text-3xl font-bold text-gray-900">Serving Quispamsis & the Kennebecasis Valley</h2>
+              <h2 className="mb-6 text-3xl font-bold text-gray-900">
+                Serving Quispamsis & the Kennebecasis Valley
+              </h2>
               <div className="space-y-4 text-gray-700">
                 <p>
-                  Quispamsis is a thriving community in the Kennebecasis Valley (KV Region), known for its beautiful residential developments, waterfront properties, and growing commercial sector. U-Dig It Rentals proudly serves Quispamsis homeowners, contractors, and landscapers with professional Kubota equipment rental.
+                  Quispamsis is a thriving community in the Kennebecasis Valley (KV Region), known
+                  for its beautiful residential developments, waterfront properties, and growing
+                  commercial sector. U-Dig It Rentals proudly serves Quispamsis homeowners,
+                  contractors, and landscapers with professional Kubota equipment rental.
                 </p>
                 <p>
-                  From Gondola Point's scenic waterfront lots to new subdivisions along Hampton Road, our Kubota SVL75-3 handles Quispamsis projects with ease. The compact 68" width fits through standard gates, making it ideal for established Quispamsis neighborhoods with mature landscaping.
+                  From Gondola Point's scenic waterfront lots to new subdivisions along Hampton
+                  Road, our Kubota SVL75-3 handles Quispamsis projects with ease. The compact 68"
+                  width fits through standard gates, making it ideal for established Quispamsis
+                  neighborhoods with mature landscaping.
                 </p>
-                <h3 className="pt-4 text-xl font-bold text-gray-900">Common Quispamsis Projects:</h3>
+                <h3 className="pt-4 text-xl font-bold text-gray-900">
+                  Common Quispamsis Projects:
+                </h3>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div className="rounded-lg border border-gray-200 p-4">
                     <h4 className="mb-1 font-semibold text-gray-900">🏡 Residential Landscaping</h4>
-                    <p className="text-sm">Yard leveling, retaining walls, and drainage work for Quispamsis homes</p>
+                    <p className="text-sm">
+                      Yard leveling, retaining walls, and drainage work for Quispamsis homes
+                    </p>
                   </div>
                   <div className="rounded-lg border border-gray-200 p-4">
                     <h4 className="mb-1 font-semibold text-gray-900">🏊 Pool Excavation</h4>
-                    <p className="text-sm">In-ground pool installation - very popular in Quispamsis</p>
+                    <p className="text-sm">
+                      In-ground pool installation - very popular in Quispamsis
+                    </p>
                   </div>
                   <div className="rounded-lg border border-gray-200 p-4">
                     <h4 className="mb-1 font-semibold text-gray-900">🚧 New Construction</h4>
-                    <p className="text-sm">Foundation excavation for new homes in Quispamsis developments</p>
+                    <p className="text-sm">
+                      Foundation excavation for new homes in Quispamsis developments
+                    </p>
                   </div>
                   <div className="rounded-lg border border-gray-200 p-4">
                     <h4 className="mb-1 font-semibold text-gray-900">🌊 Waterfront Projects</h4>
-                    <p className="text-sm">Kennebecasis River property improvements and erosion control</p>
+                    <p className="text-sm">
+                      Kennebecasis River property improvements and erosion control
+                    </p>
                   </div>
                 </div>
               </div>
@@ -176,20 +218,26 @@ export default function QuispamsisServiceAreaPage() {
             <div className="rounded-lg bg-gradient-to-r from-[#A90F0F] to-[#8a0c0c] p-8 text-white">
               <h2 className="mb-4 text-3xl font-bold">Ready to Rent in Quispamsis?</h2>
               <p className="mb-6 text-lg text-white/90">
-                Get a free quote for your Quispamsis project. We're ready to help with equipment selection, delivery scheduling, and insurance requirements.
+                Get a free quote for your Quispamsis project. We're ready to help with equipment
+                selection, delivery scheduling, and insurance requirements.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row">
-                <Link href="/book" className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 font-bold text-[#A90F0F] shadow-xl hover:bg-gray-100">
+                <Link
+                  href="/book"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-8 py-4 font-bold text-[#A90F0F] shadow-xl hover:bg-gray-100"
+                >
                   <span>📅</span>
                   <span>Book Online Now</span>
                 </Link>
-                <a href="tel:+15066431575" className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-white px-8 py-4 font-bold text-white shadow-xl hover:bg-white/10">
+                <a
+                  href="tel:+15066431575"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border-2 border-white px-8 py-4 font-bold text-white shadow-xl hover:bg-white/10"
+                >
                   <Phone className="h-5 w-5" />
                   <span>Call (506) 643-1575</span>
                 </a>
               </div>
             </div>
-
           </div>
         </div>
 

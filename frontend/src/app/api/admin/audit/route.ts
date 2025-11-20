@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
@@ -21,7 +24,9 @@ export async function GET(request: NextRequest) {
     // ✅ Fetch audit logs from Supabase
     const { data: logs, error: logsError } = await supabase
       .from('audit_logs')
-      .select('id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at')
+      .select(
+        'id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at'
+      )
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -30,16 +35,16 @@ export async function GET(request: NextRequest) {
     }
 
     // ✅ Fetch user data for logs separately
-    const userIds = [...new Set((logs || []).map(log => log.user_id).filter(Boolean))];
+    const userIds = [...new Set((logs || []).map((log) => log.user_id).filter(Boolean))];
     const { data: users } = await supabase
       .from('users')
       .select('id, firstName, lastName, email')
       .in('id', userIds);
 
-    const usersMap = new Map((users || []).map(u => [u.id, u]));
+    const usersMap = new Map((users || []).map((u) => [u.id, u]));
 
     // ✅ Transform logs
-    const transformedLogs = (logs || []).map((log: any) => {
+    const transformedLogs = (logs || []).map((log: unknown) => {
       const user = log.user_id ? usersMap.get(log.user_id) : null;
       const userName = user
         ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'unknown'
@@ -68,39 +73,31 @@ export async function GET(request: NextRequest) {
         userAgent: log.user_agent || 'Unknown',
         timestamp: log.created_at,
         severity,
-        description
+        description,
       };
     });
 
     logger.info('Audit logs fetched successfully', {
       component: 'audit-api',
       action: 'fetch_logs',
-      metadata: { count: transformedLogs.length }
+      metadata: { count: transformedLogs.length },
     });
 
     return NextResponse.json({
-      logs: transformedLogs
+      logs: transformedLogs,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error('Failed to fetch audit logs', {
-      component: 'audit-api',
-      action: 'fetch_logs_error',
-      metadata: { error: errorMessage }
-    }, error instanceof Error ? error : new Error(String(error)));
-
-    return NextResponse.json(
-      { error: 'Failed to fetch audit logs' },
-      { status: 500 }
+    logger.error(
+      'Failed to fetch audit logs',
+      {
+        component: 'audit-api',
+        action: 'fetch_logs_error',
+        metadata: { error: errorMessage },
+      },
+      error instanceof Error ? error : new Error(String(error))
     );
+
+    return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-

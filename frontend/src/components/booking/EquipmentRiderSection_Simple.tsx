@@ -6,7 +6,9 @@
 'use client';
 
 import { AlertCircle, CheckCircle, Download, ExternalLink, FileText } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
 
 interface EquipmentRiderSectionProps {
@@ -19,19 +21,15 @@ interface EquipmentRiderSectionProps {
 export default function EquipmentRiderSection({
   bookingId,
   equipmentModel,
-  showFullPreview = false,
+  showFullPreview: _showFullPreview = false, // Reserved for future preview toggle
 }: EquipmentRiderSectionProps) {
   const [requiresRider, setRequiresRider] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, _setError] = useState<string | null>(null); // Reserved for future error handling
   const [acknowledged, setAcknowledged] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    checkRiderRequirement();
-  }, [bookingId]);
-
-  const checkRiderRequirement = async () => {
+  const checkRiderRequirement = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -44,14 +42,22 @@ export default function EquipmentRiderSection({
       setRequiresRider(isSVL75);
       setLoading(false);
     } catch (err) {
-      logger.error('Error checking rider requirement:', {
-        component: 'EquipmentRiderSection_Simple',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Error checking rider requirement:',
+        {
+          component: 'EquipmentRiderSection_Simple',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setRequiresRider(false);
       setLoading(false);
     }
-  };
+  }, [equipmentModel]);
+
+  useEffect(() => {
+    checkRiderRequirement();
+  }, [checkRiderRequirement]);
 
   const handleDownloadRider = async () => {
     try {
@@ -78,11 +84,15 @@ export default function EquipmentRiderSection({
       URL.revokeObjectURL(url);
 
       setDownloading(false);
-    } catch (err: any) {
-      logger.error('Error downloading rider:', {
-        component: 'EquipmentRiderSection_Simple',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Error downloading rider:',
+        {
+          component: 'EquipmentRiderSection_Simple',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert('Failed to download equipment rider. Please try again.');
       setDownloading(false);
     }
@@ -155,7 +165,7 @@ export default function EquipmentRiderSection({
             type="checkbox"
             id="rider-acknowledgment"
             checked={acknowledged}
-            onChange={e => setAcknowledged(e.target.checked)}
+            onChange={(e) => setAcknowledged(e.target.checked)}
             className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <label htmlFor="rider-acknowledgment" className="ml-3 flex-1">

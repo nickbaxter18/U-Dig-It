@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+
 import { AdvancedFilters } from './AdvancedFilters';
 import { SearchResults } from './SearchResults';
-import { logger } from '@/lib/logger';
 
 interface Equipment {
   id: string;
@@ -88,10 +91,14 @@ export function EquipmentSearch() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to load filter options:', {
-            component: 'EquipmentSearch',
-            action: 'error',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to load filter options:',
+            {
+              component: 'EquipmentSearch',
+              action: 'error',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       }
     };
@@ -125,10 +132,14 @@ export function EquipmentSearch() {
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to load suggestions:', {
-            component: 'EquipmentSearch',
-            action: 'error',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to load suggestions:',
+            {
+              component: 'EquipmentSearch',
+              action: 'error',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       }
     }, 300);
@@ -162,7 +173,11 @@ export function EquipmentSearch() {
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Search error:', { component: 'EquipmentSearch', action: 'error' }, error instanceof Error ? error : new Error(String(error)));
+        logger.error(
+          'Search error:',
+          { component: 'EquipmentSearch', action: 'error' },
+          error instanceof Error ? error : new Error(String(error))
+        );
       }
     } finally {
       setLoading(false);
@@ -172,7 +187,7 @@ export function EquipmentSearch() {
   // Handle search term change
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    setFilters(prev => ({ ...prev, query: value, page: 1 }));
+    setFilters((prev) => ({ ...prev, query: value, page: 1 }));
   };
 
   // Handle filter changes
@@ -192,7 +207,7 @@ export function EquipmentSearch() {
   // Handle suggestion selection
   const handleSuggestionSelect = (suggestion: string) => {
     setSearchTerm(suggestion);
-    setFilters(prev => ({ ...prev, query: suggestion, page: 1 }));
+    setFilters((prev) => ({ ...prev, query: suggestion, page: 1 }));
     setShowSuggestions(false);
     performSearch({ ...filters, query: suggestion, page: 1 });
   };
@@ -264,8 +279,8 @@ export function EquipmentSearch() {
             type="text"
             placeholder="Search by unit ID, model, make, or location..."
             value={searchTerm}
-            onChange={e => handleSearchChange(e.target.value)}
-            onKeyPress={e => e.key === 'Enter' && handleSearch()}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             onFocus={() => setShowSuggestions(true)}
             className="focus:ring-kubota-orange block w-full rounded-md border border-gray-300 bg-white py-3 pl-10 pr-3 leading-5 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-2"
           />
@@ -281,7 +296,7 @@ export function EquipmentSearch() {
           {/* Search Suggestions */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              {suggestions.map((suggestion: any, index: any) => (
+              {suggestions.map((suggestion: unknown, index: unknown) => (
                 <button
                   key={index}
                   onClick={() => handleSuggestionSelect(suggestion)}

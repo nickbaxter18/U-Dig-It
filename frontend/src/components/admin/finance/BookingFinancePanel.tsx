@@ -1,3 +1,16 @@
+import { format } from 'date-fns';
+import {
+  AlertTriangle,
+  Calendar,
+  CheckCircle,
+  DollarSign,
+  Loader2,
+  PenSquare,
+  PlusCircle,
+  RefreshCcw,
+  Wallet,
+} from 'lucide-react';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -16,18 +29,6 @@ import type {
 } from '@/lib/api/admin/payments';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-import { format } from 'date-fns';
-import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle,
-  DollarSign,
-  Loader2,
-  PenSquare,
-  PlusCircle,
-  RefreshCcw,
-  Wallet,
-} from 'lucide-react';
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -166,13 +167,17 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
       if (stripeError) {
         logger.error(
           'Failed to fetch Stripe payments',
-          { component: 'BookingFinancePanel', action: 'stripe_payments_fetch', metadata: { bookingId } },
+          {
+            component: 'BookingFinancePanel',
+            action: 'stripe_payments_fetch',
+            metadata: { bookingId },
+          },
           stripeError
         );
         setStripePayments([]);
       } else {
         setStripePayments(
-          ((stripeData ?? []) as any[]).map((payment: any) => ({
+          ((stripeData ?? []) as unknown[]).map((payment: unknown) => ({
             amount: Number(payment.amount ?? 0),
             status: payment.status ?? 'pending',
           }))
@@ -198,7 +203,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   const manualPaymentsCompleted = useMemo(
     () =>
       manualPayments
-        .filter(payment => payment.status === 'completed')
+        .filter((payment) => payment.status === 'completed')
         .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
     [manualPayments]
   );
@@ -206,7 +211,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   const stripePaymentsCompleted = useMemo(
     () =>
       stripePayments
-        .filter(payment => payment.status === 'completed' || payment.status === 'succeeded')
+        .filter((payment) => payment.status === 'completed' || payment.status === 'succeeded')
         .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
     [stripePayments]
   );
@@ -216,13 +221,13 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
 
   const nextInstallment = useMemo(() => {
     const upcoming = installments
-      .filter(installment => installment.status === 'pending')
+      .filter((installment) => installment.status === 'pending')
       .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
     return upcoming.length > 0 ? upcoming[0] : null;
   }, [installments]);
 
   const handleManualPaymentChange = (field: keyof ManualPaymentFormState, value: string) => {
-    setManualPaymentForm(prev => ({
+    setManualPaymentForm((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -259,7 +264,11 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     } catch (err) {
       logger.error(
         'Failed to record manual payment',
-        { component: 'BookingFinancePanel', action: 'manual_payment_create', metadata: { bookingId } },
+        {
+          component: 'BookingFinancePanel',
+          action: 'manual_payment_create',
+          metadata: { bookingId },
+        },
         err instanceof Error ? err : new Error(String(err))
       );
       setError(err instanceof Error ? err.message : 'Unable to record manual payment');
@@ -295,7 +304,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
 
     const count = Math.max(1, installmentDraft.count);
     const frequency = Math.max(1, installmentDraft.frequencyDays);
-    const balanceToSchedule = outstandingBalance > 0 ? outstandingBalance : Number(balanceAmount ?? 0);
+    const balanceToSchedule =
+      outstandingBalance > 0 ? outstandingBalance : Number(balanceAmount ?? 0);
 
     if (balanceToSchedule <= 0) {
       setError('Outstanding balance is already settled.');
@@ -462,7 +472,10 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
           className="grid grid-cols-1 gap-4 rounded-md border border-gray-100 bg-gray-50 p-4 md:grid-cols-5"
         >
           <div className="md:col-span-1">
-            <label htmlFor="manual-amount" className="block text-xs font-medium uppercase text-gray-500">
+            <label
+              htmlFor="manual-amount"
+              className="block text-xs font-medium uppercase text-gray-500"
+            >
               Amount (CAD)
             </label>
             <input
@@ -472,19 +485,25 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               min="0"
               required
               value={manualPaymentForm.amount}
-              onChange={event => handleManualPaymentChange('amount', event.target.value)}
+              onChange={(event) => handleManualPaymentChange('amount', event.target.value)}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
           <div className="md:col-span-1">
-            <label htmlFor="manual-method" className="block text-xs font-medium uppercase text-gray-500">
+            <label
+              htmlFor="manual-method"
+              className="block text-xs font-medium uppercase text-gray-500"
+            >
               Method
             </label>
             <select
               id="manual-method"
               value={manualPaymentForm.method}
-              onChange={event =>
-                handleManualPaymentChange('method', event.target.value as ManualPaymentFormState['method'])
+              onChange={(event) =>
+                handleManualPaymentChange(
+                  'method',
+                  event.target.value as ManualPaymentFormState['method']
+                )
               }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             >
@@ -506,19 +525,22 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               id="manual-received"
               type="date"
               value={manualPaymentForm.receivedAt}
-              onChange={event => handleManualPaymentChange('receivedAt', event.target.value)}
+              onChange={(event) => handleManualPaymentChange('receivedAt', event.target.value)}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
           </div>
           <div className="md:col-span-2">
-            <label htmlFor="manual-notes" className="block text-xs font-medium uppercase text-gray-500">
+            <label
+              htmlFor="manual-notes"
+              className="block text-xs font-medium uppercase text-gray-500"
+            >
               Notes
             </label>
             <input
               id="manual-notes"
               type="text"
               value={manualPaymentForm.notes}
-              onChange={event => handleManualPaymentChange('notes', event.target.value)}
+              onChange={(event) => handleManualPaymentChange('notes', event.target.value)}
               placeholder="Receipt number, reference, etc."
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             />
@@ -569,7 +591,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {manualPayments.map(payment => (
+              {manualPayments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {formatDate(payment.received_at ?? payment.created_at)}
@@ -638,7 +660,10 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
           className="grid grid-cols-1 gap-4 rounded-md border border-gray-100 bg-gray-50 p-4 md:grid-cols-4"
         >
           <div>
-            <label htmlFor="installment-count" className="block text-xs font-medium uppercase text-gray-500">
+            <label
+              htmlFor="installment-count"
+              className="block text-xs font-medium uppercase text-gray-500"
+            >
               Installments
             </label>
             <input
@@ -646,8 +671,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               type="number"
               min={1}
               value={installmentDraft.count}
-              onChange={event =>
-                setInstallmentDraft(prev => ({
+              onChange={(event) =>
+                setInstallmentDraft((prev) => ({
                   ...prev,
                   count: Number.parseInt(event.target.value, 10) || 1,
                 }))
@@ -656,7 +681,10 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
             />
           </div>
           <div>
-            <label htmlFor="installment-first" className="block text-xs font-medium uppercase text-gray-500">
+            <label
+              htmlFor="installment-first"
+              className="block text-xs font-medium uppercase text-gray-500"
+            >
               First Due Date
             </label>
             <input
@@ -664,8 +692,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               type="date"
               required
               value={installmentDraft.firstDueDate}
-              onChange={event =>
-                setInstallmentDraft(prev => ({
+              onChange={(event) =>
+                setInstallmentDraft((prev) => ({
                   ...prev,
                   firstDueDate: event.target.value,
                 }))
@@ -685,8 +713,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               type="number"
               min={1}
               value={installmentDraft.frequencyDays}
-              onChange={event =>
-                setInstallmentDraft(prev => ({
+              onChange={(event) =>
+                setInstallmentDraft((prev) => ({
                   ...prev,
                   frequencyDays: Number.parseInt(event.target.value, 10) || 7,
                 }))
@@ -737,7 +765,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {installments.map(installment => (
+              {installments.map((installment) => (
                 <tr key={installment.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     #{installment.installment_number}
@@ -824,9 +852,11 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {ledgerEntries.map(entry => (
+              {ledgerEntries.map((entry) => (
                 <tr key={entry.id}>
-                  <td className="px-4 py-3 text-sm text-gray-600">{formatDate(entry.created_at)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {formatDate(entry.created_at)}
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {entry.entry_type.replace('_', ' ').toUpperCase()}
                   </td>
@@ -840,8 +870,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               {ledgerEntries.length === 0 && !loading && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-500">
-                    No ledger entries yet. Entries will appear as payments, refunds, or adjustments are
-                    recorded.
+                    No ledger entries yet. Entries will appear as payments, refunds, or adjustments
+                    are recorded.
                   </td>
                 </tr>
               )}
@@ -859,5 +889,3 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     </div>
   );
 }
-
-

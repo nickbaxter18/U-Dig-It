@@ -1,7 +1,9 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const bulkExportSchema = z.object({
   customerIds: z.array(z.string().uuid()).min(1),
@@ -16,19 +18,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
@@ -38,12 +36,15 @@ export async function POST(request: NextRequest) {
     const { customerIds, format } = payload;
 
     // Fetch customers with stats
-    const { data: customers, error: fetchError } = await supabase.rpc('get_customers_with_stats_paginated', {
-      p_offset: 0,
-      p_limit: 10000, // Large limit to get all selected customers
-      p_search_term: null,
-      p_status_filter: null,
-    });
+    const { data: customers, error: fetchError } = await supabase.rpc(
+      'get_customers_with_stats_paginated',
+      {
+        p_offset: 0,
+        p_limit: 10000, // Large limit to get all selected customers
+        p_search_term: null,
+        p_status_filter: null,
+      }
+    );
 
     if (fetchError) {
       // Fallback to manual query
@@ -62,24 +63,28 @@ export async function POST(request: NextRequest) {
         .select('customerId, totalAmount, createdAt')
         .in('customerId', customerIds);
 
-      const bookingsByCustomer = ((bookingsData || []) as any[]).reduce(
-        (acc: Record<string, any[]>, booking: any) => {
+      const bookingsByCustomer = ((bookingsData || []) as unknown[]).reduce(
+        (acc: Record<string, unknown[]>, booking: unknown) => {
           if (!acc[booking.customerId]) {
             acc[booking.customerId] = [];
           }
           acc[booking.customerId].push(booking);
           return acc;
         },
-        {} as Record<string, any[]>
+        {} as Record<string, unknown[]>
       );
 
-      const customersWithStats = ((usersData || []) as any[]).map((user: any) => {
+      const customersWithStats = ((usersData || []) as unknown[]).map((user: unknown) => {
         const customerBookings = bookingsByCustomer[user?.id || 'unknown'] || [];
         const totalBookings = customerBookings.length;
-        const totalSpent = customerBookings.reduce((sum: any, b: any) => sum + parseFloat(b.totalAmount || '0'), 0);
-        const lastBooking = customerBookings.length > 0
-          ? new Date(Math.max(...customerBookings.map((b) => new Date(b.createdAt).getTime())))
-          : undefined;
+        const totalSpent = customerBookings.reduce(
+          (sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount || '0'),
+          0
+        );
+        const lastBooking =
+          customerBookings.length > 0
+            ? new Date(Math.max(...customerBookings.map((b) => new Date(b.createdAt).getTime())))
+            : undefined;
 
         return {
           id: user?.id || 'unknown',
@@ -98,12 +103,17 @@ export async function POST(request: NextRequest) {
           totalSpent,
           lastBooking: lastBooking?.toISOString(),
           registrationDate: user?.createdAt,
-          status: user?.status === 'suspended' ? 'suspended' : user?.emailVerified ? 'active' : 'pending_verification',
+          status:
+            user?.status === 'suspended'
+              ? 'suspended'
+              : user?.emailVerified
+                ? 'active'
+                : 'pending_verification',
         };
       });
 
       // Filter to only selected customers
-      const selectedCustomers = customersWithStats.filter(c => customerIds.includes(c.id));
+      const selectedCustomers = customersWithStats.filter((c) => customerIds.includes(c.id));
 
       if (format === 'csv') {
         const headers = [
@@ -124,7 +134,7 @@ export async function POST(request: NextRequest) {
           'Registration Date',
         ];
 
-        const rows = selectedCustomers.map((customer: any) => [
+        const rows = selectedCustomers.map((customer: unknown) => [
           customer.firstName || '',
           customer.lastName || '',
           customer.email || '',
@@ -142,7 +152,9 @@ export async function POST(request: NextRequest) {
           customer.registrationDate ? new Date(customer.registrationDate).toLocaleString() : '',
         ]);
 
-        const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const csvContent = [headers, ...rows]
+          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+          .join('\n');
 
         logger.info('Bulk customer export completed', {
           component: 'admin-customers-bulk-export',
@@ -165,7 +177,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Use RPC function results
-    const selectedCustomers = ((customers || []) as any[]).filter((c: any) => customerIds.includes(c.id));
+    const selectedCustomers = ((customers || []) as unknown[]).filter((c: unknown) =>
+      customerIds.includes(c.id)
+    );
 
     if (format === 'csv') {
       const headers = [
@@ -186,7 +200,7 @@ export async function POST(request: NextRequest) {
         'Registration Date',
       ];
 
-      const rows = selectedCustomers.map((customer: any) => [
+      const rows = selectedCustomers.map((customer: unknown) => [
         customer.firstName || '',
         customer.lastName || '',
         customer.email || '',
@@ -204,7 +218,9 @@ export async function POST(request: NextRequest) {
         customer.registrationDate ? new Date(customer.registrationDate).toLocaleString() : '',
       ]);
 
-      const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
 
       logger.info('Bulk customer export completed', {
         component: 'admin-customers-bulk-export',
@@ -226,7 +242,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body', details: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body', details: err.issues },
+        { status: 400 }
+      );
     }
 
     logger.error(
@@ -238,5 +257,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to perform bulk export' }, { status: 500 });
   }
 }
-
-

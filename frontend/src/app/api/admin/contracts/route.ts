@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/admin/contracts
@@ -16,12 +17,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -30,7 +27,8 @@ export async function GET(request: NextRequest) {
     // 3. Fetch contracts with related booking data
     let query = supabase
       .from('contracts')
-      .select(`
+      .select(
+        `
         id,
         "contractNumber",
         "bookingId",
@@ -61,7 +59,8 @@ export async function GET(request: NextRequest) {
             model
           )
         )
-      `)
+      `
+      )
       .order('createdAt', { ascending: false });
 
     if (bookingIdParam) {
@@ -73,7 +72,7 @@ export async function GET(request: NextRequest) {
     if (contractsError) throw contractsError;
 
     // 4. Transform to match frontend interface
-    const contracts = (contractsData || []).map((contract: any) => {
+    const contracts = (contractsData || []).map((contract: unknown) => {
       const booking = contract.booking || {};
       const customer = booking.customer || {};
       const equipment = booking.equipment || {};
@@ -122,21 +121,15 @@ export async function GET(request: NextRequest) {
       contracts,
       total: contracts.length,
     });
-  } catch (error: any) {
-    logger.error('Contracts API error', {
-      component: 'admin-contracts-api',
-      action: 'error',
-    }, error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Contracts API error',
+      {
+        component: 'admin-contracts-api',
+        action: 'error',
+      },
+      error
     );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-

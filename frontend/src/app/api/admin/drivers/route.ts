@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,12 +11,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     // ✅ Fetch drivers from Supabase
@@ -31,23 +28,24 @@ export async function GET(request: NextRequest) {
     logger.info('Drivers fetched successfully', {
       component: 'drivers-api',
       action: 'fetch_drivers',
-      metadata: { count: drivers?.length || 0 }
+      metadata: { count: drivers?.length || 0 },
     });
 
     return NextResponse.json({
-      drivers: drivers || []
+      drivers: drivers || [],
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch drivers', {
-      component: 'drivers-api',
-      action: 'fetch_drivers_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch drivers' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch drivers',
+      {
+        component: 'drivers-api',
+        action: 'fetch_drivers_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch drivers' }, { status: 500 });
   }
 }
 
@@ -59,12 +57,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const body = await request.json();
@@ -76,15 +70,12 @@ export async function POST(request: NextRequest) {
       vehicleType,
       vehicleRegistration,
       notes,
-      isAvailable = true
+      isAvailable = true,
     } = body;
 
     // Validate required fields
     if (!name || !phone) {
-      return NextResponse.json(
-        { error: 'Name and phone are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
     }
 
     // Create driver
@@ -100,7 +91,7 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         is_available: isAvailable,
         active_deliveries: 0,
-        total_deliveries_completed: 0
+        total_deliveries_completed: 0,
       })
       .select()
       .single();
@@ -112,36 +103,38 @@ export async function POST(request: NextRequest) {
     logger.info('Driver created successfully', {
       component: 'drivers-api',
       action: 'create_driver',
-      metadata: { driverId: driver.id, name }
+      metadata: { driverId: driver.id, name },
     });
 
-    return NextResponse.json({
-      driver: {
-        id: driver.id,
-        name: driver.name,
-        phone: driver.phone,
-        licenseNumber: driver.license_number,
-        licenseExpiry: driver.license_expiry,
-        vehicleType: driver.vehicle_type,
-        vehicleRegistration: driver.vehicle_registration,
-        notes: driver.notes,
-        isAvailable: driver.is_available,
-        activeDeliveries: driver.active_deliveries,
-        totalDeliveriesCompleted: driver.total_deliveries_completed
-      }
-    }, { status: 201 });
-  } catch (error: any) {
-    logger.error('Failed to create driver', {
-      component: 'drivers-api',
-      action: 'create_driver_error',
-      metadata: { error: error.message }
-    }, error);
-
     return NextResponse.json(
-      { error: 'Failed to create driver' },
-      { status: 500 }
+      {
+        driver: {
+          id: driver.id,
+          name: driver.name,
+          phone: driver.phone,
+          licenseNumber: driver.license_number,
+          licenseExpiry: driver.license_expiry,
+          vehicleType: driver.vehicle_type,
+          vehicleRegistration: driver.vehicle_registration,
+          notes: driver.notes,
+          isAvailable: driver.is_available,
+          activeDeliveries: driver.active_deliveries,
+          totalDeliveriesCompleted: driver.total_deliveries_completed,
+        },
+      },
+      { status: 201 }
     );
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to create driver',
+      {
+        component: 'drivers-api',
+        action: 'create_driver_error',
+        metadata: { error: error.message },
+      },
+      error
+    );
+
+    return NextResponse.json({ error: 'Failed to create driver' }, { status: 500 });
   }
 }
-
-

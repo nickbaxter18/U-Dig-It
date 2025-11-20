@@ -5,10 +5,12 @@
 
 'use client';
 
+import { CheckCircle, Download, ExternalLink } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-import { CheckCircle, Download, ExternalLink } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes
 
@@ -18,7 +20,7 @@ function extractPathFromStorageUrl(storageUrl: string | null | undefined): strin
   try {
     const url = new URL(storageUrl);
     const segments = url.pathname.split('/').filter(Boolean);
-    const objectIndex = segments.findIndex(segment => segment === 'object');
+    const objectIndex = segments.findIndex((segment) => segment === 'object');
     if (objectIndex === -1 || segments.length <= objectIndex + 2) {
       return null;
     }
@@ -53,11 +55,7 @@ export default function SignedContractDisplay({
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [generatingUrl, setGeneratingUrl] = useState(false);
 
-  useEffect(() => {
-    fetchContract();
-  }, [contractId]);
-
-  const fetchContract = async () => {
+  const fetchContract = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('contracts')
@@ -68,14 +66,18 @@ export default function SignedContractDisplay({
       if (error) throw error;
       setContract(data);
     } catch (error) {
-      logger.error('Error fetching contract:', {
-        component: 'SignedContractDisplay',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Error fetching contract:',
+        {
+          component: 'SignedContractDisplay',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [contractId]);
 
   useEffect(() => {
     let isActive = true;
@@ -87,8 +89,7 @@ export default function SignedContractDisplay({
       }
 
       const storagePath =
-        contract.signedDocumentPath ||
-        extractPathFromStorageUrl(contract.signedDocumentUrl);
+        contract.signedDocumentPath || extractPathFromStorageUrl(contract.signedDocumentUrl);
 
       if (!storagePath) {
         setDownloadUrl(contract.signedDocumentUrl ?? null);
@@ -121,14 +122,18 @@ export default function SignedContractDisplay({
           setDownloadUrl(data.signedUrl);
         }
       } catch (err) {
-        logger.error('Unexpected error generating signed URL', {
-          component: 'SignedContractDisplay',
-          action: 'signed_url_error',
-          metadata: {
-            contractId,
-            path: storagePath,
+        logger.error(
+          'Unexpected error generating signed URL',
+          {
+            component: 'SignedContractDisplay',
+            action: 'signed_url_error',
+            metadata: {
+              contractId,
+              path: storagePath,
+            },
           },
-        }, err instanceof Error ? err : new Error(String(err)));
+          err instanceof Error ? err : new Error(String(err))
+        );
         if (isActive) {
           setDownloadUrl(contract.signedDocumentUrl ?? null);
         }
@@ -256,14 +261,18 @@ export default function SignedContractDisplay({
           className="flex min-w-[200px] flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-blue-700"
         >
           <ExternalLink className="mr-2 h-5 w-5" />
-          {downloadUrl ? 'View Signed PDF' : generatingUrl ? 'Preparing secure link...' : 'View Contract'}
+          {downloadUrl
+            ? 'View Signed PDF'
+            : generatingUrl
+              ? 'Preparing secure link...'
+              : 'View Contract'}
         </a>
       </div>
 
       <div className="mt-3 text-center">
         <p className="text-xs text-gray-600">
-          ✅ <strong>Professional PDF Ready:</strong> Your signed contract includes Master
-          Agreement + Equipment Rider (8 pages) with your signature and initials embedded.
+          ✅ <strong>Professional PDF Ready:</strong> Your signed contract includes Master Agreement
+          + Equipment Rider (8 pages) with your signature and initials embedded.
         </p>
       </div>
 

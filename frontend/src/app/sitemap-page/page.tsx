@@ -1,28 +1,30 @@
 'use client';
 
-import Footer from '@/components/Footer';
-import Navigation from '@/components/Navigation';
 import {
-    Award,
-    BookOpen,
-    Calendar,
-    FileText,
-    HelpCircle,
-    Home,
-    Info,
-    Lock,
-    Mail,
-    Map,
-    Newspaper,
-    Phone,
-    Settings,
-    Shield,
-    TrendingUp,
-    User,
-    Wrench
+  Award,
+  BookOpen,
+  Calendar,
+  FileText,
+  HelpCircle,
+  Home,
+  Info,
+  Lock,
+  Mail,
+  Map,
+  Newspaper,
+  Phone,
+  Settings,
+  Shield,
+  TrendingUp,
+  User,
+  Wrench,
 } from 'lucide-react';
+
 import Image from 'next/image';
 import Link from 'next/link';
+
+import Footer from '@/components/Footer';
+import Navigation from '@/components/Navigation';
 
 export default function SitemapPage() {
   const siteStructure = {
@@ -214,149 +216,303 @@ export default function SitemapPage() {
           <div className="pointer-events-none absolute inset-0">
             {/* Desktop Watermarks - Original (hidden on mobile) */}
             <div className="hidden md:block">
-            {/* Top Left Corner */}
-            <div className="absolute left-12 top-8 rotate-[8deg] opacity-10">
-              <div className="relative h-56 w-56">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="U-Dig It Rentals - Site Navigation Saint John NB"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 40px, 56px"
-                  unoptimized
-                />
+              {/* Top Left Corner */}
+              <div className="absolute left-12 top-8 rotate-[8deg] opacity-10">
+                <div className="relative h-56 w-56">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals - Site Navigation Saint John NB"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 40px, 56px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Top Right Corner */}
-            <div className="absolute right-16 top-12 rotate-[-10deg] opacity-10">
-              <div className="relative h-60 w-60">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Equipment Rental Site Map - U-Dig It Pages"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 44px, 60px"
-                  unoptimized
-                />
+              {/* Top Right Corner */}
+              <div className="absolute right-16 top-12 rotate-[-10deg] opacity-10">
+                <div className="relative h-60 w-60">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Equipment Rental Site Map - U-Dig It Pages"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 44px, 60px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Upper Left */}
-            <div className="absolute left-[15%] top-[22%] rotate-[-6deg] opacity-10">
-              <div className="relative h-48 w-48">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="All Rental Pages Directory - U-Dig It Navigation"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 32px, 48px"
-                  unoptimized
-                />
+              {/* Upper Left */}
+              <div className="absolute left-[15%] top-[22%] rotate-[-6deg] opacity-10">
+                <div className="relative h-48 w-48">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="All Rental Pages Directory - U-Dig It Navigation"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 32px, 48px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Upper Right */}
-            <div className="absolute right-[18%] top-[24%] rotate-[12deg] opacity-10">
-              <div className="relative h-52 w-52">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Website Directory - U-Dig It Logo"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 36px, 52px"
-                  unoptimized
-                />
+              {/* Upper Right */}
+              <div className="absolute right-[18%] top-[24%] rotate-[12deg] opacity-10">
+                <div className="relative h-52 w-52">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Website Directory - U-Dig It Logo"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 36px, 52px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Center Right */}
-            <div className="absolute right-0 top-[45%] translate-x-[35%] rotate-[15deg] transform opacity-10">
-              <div className="relative h-80 w-80">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Complete Site Navigation - U-Dig It Sitemap"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 60px, 80px"
-                  unoptimized
-                />
+              {/* Center Right */}
+              <div className="absolute right-0 top-[45%] translate-x-[35%] rotate-[15deg] transform opacity-10">
+                <div className="relative h-80 w-80">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Complete Site Navigation - U-Dig It Sitemap"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 60px, 80px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Center Left */}
-            <div className="absolute left-0 top-[48%] -translate-x-[35%] rotate-[-12deg] transform opacity-10">
-              <div className="w-76 h-76 relative">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Browse All Pages - U-Dig It Rentals"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 56px, 76px"
-                  unoptimized
-                />
+              {/* Center Left */}
+              <div className="absolute left-0 top-[48%] -translate-x-[35%] rotate-[-12deg] transform opacity-10">
+                <div className="w-76 h-76 relative">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Browse All Pages - U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 56px, 76px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Bottom Left */}
-            <div className="absolute bottom-[12%] left-[20%] rotate-[4deg] opacity-10">
-              <div className="relative h-44 w-44">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Site Index Saint John - U-Dig It Pages"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 32px, 44px"
-                  unoptimized
-                />
+              {/* Bottom Left */}
+              <div className="absolute bottom-[12%] left-[20%] rotate-[4deg] opacity-10">
+                <div className="relative h-44 w-44">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Site Index Saint John - U-Dig It Pages"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 32px, 44px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Bottom Right */}
-            <div className="absolute bottom-[10%] right-[22%] rotate-[-7deg] opacity-10">
-              <div className="relative h-48 w-48">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Page Directory - U-Dig It Logo"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 36px, 48px"
-                  unoptimized
-                />
+              {/* Bottom Right */}
+              <div className="absolute bottom-[10%] right-[22%] rotate-[-7deg] opacity-10">
+                <div className="relative h-48 w-48">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Page Directory - U-Dig It Logo"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 36px, 48px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Upper center */}
-            <div className="absolute left-[30%] top-[11%] rotate-[5deg] opacity-10">
-              <div className="relative h-40 w-40">
-                <Image
-                  src="/images/udigit-logo.png"
-                  alt="Website Navigation - U-Dig It Rentals"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 28px, 40px"
-                  unoptimized
-                />
+              {/* Upper center */}
+              <div className="absolute left-[30%] top-[11%] rotate-[5deg] opacity-10">
+                <div className="relative h-40 w-40">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="Website Navigation - U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 28px, 40px"
+                    unoptimized
+                  />
+                </div>
               </div>
-            </div>
             </div>
 
             {/* Mobile Only - More Watermarks for better coverage */}
             <div className="md:hidden">
-              <div className="absolute left-[2%] top-[3%] opacity-10"><div className="relative h-20 w-20"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="20px" unoptimized /></div></div>
-              <div className="absolute right-[2%] top-[5%] rotate-12 opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
-              <div className="absolute left-[20%] top-[12%] rotate-[-8deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute right-[15%] top-[15%] rotate-[10deg] opacity-10"><div className="relative h-14 w-14"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="14px" unoptimized /></div></div>
-              <div className="absolute left-1/2 top-[2%] -translate-x-1/2 rotate-3 opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute left-[5%] top-1/3 -rotate-6 opacity-10"><div className="relative h-24 w-24"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="24px" unoptimized /></div></div>
-              <div className="absolute right-[5%] top-[45%] rotate-[8deg] opacity-10"><div className="relative h-24 w-24"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="24px" unoptimized /></div></div>
-              <div className="absolute left-[10%] top-[50%] rotate-[5deg] opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
-              <div className="absolute right-[12%] top-[55%] -rotate-[7deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute bottom-[8%] left-[8%] rotate-6 opacity-10"><div className="relative h-20 w-20"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="20px" unoptimized /></div></div>
-              <div className="absolute bottom-[3%] right-[3%] -rotate-6 opacity-10"><div className="relative h-22 w-22"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="22px" unoptimized /></div></div>
-              <div className="absolute bottom-[15%] left-[25%] rotate-[4deg] opacity-10"><div className="relative h-14 w-14"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="14px" unoptimized /></div></div>
-              <div className="absolute bottom-[12%] right-[20%] -rotate-[5deg] opacity-10"><div className="relative h-16 w-16"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="16px" unoptimized /></div></div>
-              <div className="absolute bottom-[2%] left-1/3 -rotate-3 opacity-10"><div className="relative h-18 w-18"><Image src="/images/udigit-logo.png" alt="U-Dig It Rentals" fill className="object-contain" sizes="18px" unoptimized /></div></div>
+              <div className="absolute left-[2%] top-[3%] opacity-10">
+                <div className="relative h-20 w-20">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="20px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[2%] top-[5%] rotate-12 opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[20%] top-[12%] rotate-[-8deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[15%] top-[15%] rotate-[10deg] opacity-10">
+                <div className="relative h-14 w-14">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="14px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-1/2 top-[2%] -translate-x-1/2 rotate-3 opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[5%] top-1/3 -rotate-6 opacity-10">
+                <div className="relative h-24 w-24">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="24px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[5%] top-[45%] rotate-[8deg] opacity-10">
+                <div className="relative h-24 w-24">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="24px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute left-[10%] top-[50%] rotate-[5deg] opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute right-[12%] top-[55%] -rotate-[7deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[8%] left-[8%] rotate-6 opacity-10">
+                <div className="relative h-20 w-20">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="20px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[3%] right-[3%] -rotate-6 opacity-10">
+                <div className="relative h-22 w-22">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="22px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[15%] left-[25%] rotate-[4deg] opacity-10">
+                <div className="relative h-14 w-14">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="14px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[12%] right-[20%] -rotate-[5deg] opacity-10">
+                <div className="relative h-16 w-16">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="16px"
+                    unoptimized
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-[2%] left-1/3 -rotate-3 opacity-10">
+                <div className="relative h-18 w-18">
+                  <Image
+                    src="/images/udigit-logo.png"
+                    alt="U-Dig It Rentals"
+                    fill
+                    className="object-contain"
+                    sizes="18px"
+                    unoptimized
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -462,7 +618,7 @@ export default function SitemapPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {siteStructure.main.map((page: any) => (
+                {siteStructure.main.map((page: unknown) => (
                   <Link
                     key={page.href}
                     href={page.href}
@@ -506,7 +662,7 @@ export default function SitemapPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {siteStructure.resources.map((page: any) => (
+                {siteStructure.resources.map((page: unknown) => (
                   <Link
                     key={page.href}
                     href={page.href}
@@ -538,7 +694,10 @@ export default function SitemapPage() {
             </div>
 
             {/* Account Pages Section */}
-            <div id="account-pages" className="mb-12 scroll-mt-20 rounded-lg bg-white p-8 shadow-lg">
+            <div
+              id="account-pages"
+              className="mb-12 scroll-mt-20 rounded-lg bg-white p-8 shadow-lg"
+            >
               <div className="mb-6 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-[#A90F0F] to-[#7a0b0b]">
                   <User className="h-6 w-6 text-white" />
@@ -550,7 +709,7 @@ export default function SitemapPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {siteStructure.account.map((page: any) => (
+                {siteStructure.account.map((page: unknown) => (
                   <Link
                     key={page.href}
                     href={page.href}
@@ -594,7 +753,7 @@ export default function SitemapPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {siteStructure.policies.map((page: any) => (
+                {siteStructure.policies.map((page: unknown) => (
                   <Link
                     key={page.href}
                     href={page.href}
@@ -638,7 +797,7 @@ export default function SitemapPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {siteStructure.support.map((page: any) => (
+                {siteStructure.support.map((page: unknown) => (
                   <Link
                     key={page.href}
                     href={page.href}
@@ -698,14 +857,22 @@ export default function SitemapPage() {
                   { name: 'Saint Martins', slug: 'saint-martins' },
                   { name: 'Willow Grove', slug: 'willow-grove' },
                   { name: 'French Village', slug: 'french-village' },
-                ].map(area => (
+                ].map((area) => (
                   <Link
                     key={area.slug}
                     href={`/service-areas/${area.slug}`}
                     className="flex items-center gap-2 rounded-lg border-2 border-gray-200 bg-gray-50 p-3 transition-all hover:border-[#E1BC56] hover:bg-yellow-50 hover:shadow-md"
                   >
-                    <svg className="h-4 w-4 flex-shrink-0 text-[#E1BC56]" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    <svg
+                      className="h-4 w-4 flex-shrink-0 text-[#E1BC56]"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <span className="text-sm font-medium text-gray-700">{area.name}</span>
                   </Link>
@@ -784,4 +951,3 @@ export default function SitemapPage() {
     </>
   );
 }
-

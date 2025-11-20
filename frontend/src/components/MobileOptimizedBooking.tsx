@@ -11,6 +11,7 @@ import {
   MapPin,
   Smartphone,
 } from 'lucide-react';
+
 import { useEffect, useRef, useState } from 'react';
 
 interface MobileOptimizedBookingProps {
@@ -224,7 +225,7 @@ export default function MobileOptimizedBooking({
       <div className="mb-6">
         <h3 className="mb-3 text-sm font-medium text-gray-700">Quick Select</h3>
         <div className="grid grid-cols-2 gap-3">
-          {quickDatePresets.map((preset: any, index: any) => (
+          {quickDatePresets.map((preset: unknown, index: unknown) => (
             <button
               key={index}
               onClick={() => handleQuickDate(preset.days)}
@@ -248,7 +249,7 @@ export default function MobileOptimizedBooking({
                 ref={dateInputRef}
                 type="date"
                 value={startDate}
-                onChange={e => setStartDate(e.target.value)}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="focus:border-kubota-orange w-full rounded-xl border-2 border-gray-200 p-4 text-lg focus:ring-0"
                 style={{ minHeight: '44px' }}
               />
@@ -262,7 +263,7 @@ export default function MobileOptimizedBooking({
               <input
                 type="date"
                 value={endDate}
-                onChange={e => setEndDate(e.target.value)}
+                onChange={(e) => setEndDate(e.target.value)}
                 min={startDate}
                 className="focus:border-kubota-orange w-full rounded-xl border-2 border-gray-200 p-4 text-lg focus:ring-0"
                 style={{ minHeight: '44px' }}
@@ -289,7 +290,7 @@ export default function MobileOptimizedBooking({
                 ref={addressInputRef}
                 type="text"
                 value={deliveryAddress}
-                onChange={e => setDeliveryAddress(e.target.value)}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
                 placeholder="Enter delivery address"
                 className="focus:border-kubota-orange w-full rounded-xl border-2 border-gray-200 p-4 text-lg focus:ring-0"
                 style={{ minHeight: '44px' }}
@@ -302,7 +303,7 @@ export default function MobileOptimizedBooking({
             <label className="mb-2 block text-sm font-medium text-gray-700">City</label>
             <select
               value={deliveryCity}
-              onChange={e => setDeliveryCity(e.target.value)}
+              onChange={(e) => setDeliveryCity(e.target.value)}
               className="focus:border-kubota-orange w-full rounded-xl border-2 border-gray-200 p-4 text-lg focus:ring-0"
               style={{ minHeight: '44px' }}
             >

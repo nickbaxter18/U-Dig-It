@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const filePath = join(process.cwd(), 'public', 'downloads', 'equipment-rental-checklist.pdf');
     const fileBuffer = await readFile(filePath);
@@ -16,11 +18,15 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Error serving PDF', {
-      component: 'app-route',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) }
-    }, error instanceof Error ? error : undefined);
+    logger.error(
+      'Error serving PDF',
+      {
+        component: 'app-route',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
     return NextResponse.json({ error: 'PDF not found' }, { status: 404 });
   }
 }

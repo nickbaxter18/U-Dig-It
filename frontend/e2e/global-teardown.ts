@@ -1,6 +1,6 @@
 import { FullConfig } from '@playwright/test';
 
-async function globalTeardown(config: FullConfig) {
+async function globalTeardown(_config: FullConfig) {
   // TODO: Clean up test database
   // TODO: Stop mock services
   // TODO: Clear test data

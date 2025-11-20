@@ -1,18 +1,20 @@
 // Authentication helpers for admin E2E tests
-import { Page, BrowserContext } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
+import { BrowserContext, Page } from '@playwright/test';
 
 export const ADMIN_TEST_ACCOUNT = {
   email: 'aitest2@udigit.ca',
   password: 'TestAI2024!@#$',
 };
 
-// Supabase configuration
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bnimazxnqligusckahab.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc';
+// Supabase configuration (kept for potential future use)
+// const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bnimazxnqligusckahab.supabase.co';
+// const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc';
 
 export class AdminAuthHelper {
-  constructor(private page: Page, private context: BrowserContext) {}
+  constructor(
+    private page: Page,
+    private context: BrowserContext
+  ) {}
 
   /**
    * Login as admin user via UI (most reliable for SSR apps)
@@ -32,7 +34,12 @@ export class AdminAuthHelper {
         .getByRole('button', { name: /sign in with email/i })
         .or(this.page.locator('button:has-text("Sign in with email")'));
 
-      if (await emailButton.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+      if (
+        await emailButton
+          .first()
+          .isVisible({ timeout: 3000 })
+          .catch(() => false)
+      ) {
         await emailButton.first().click();
         await this.page.waitForTimeout(800);
       }
@@ -41,12 +48,16 @@ export class AdminAuthHelper {
     // Wait for email input
     await this.page.waitForSelector('input[type="email"], input[name="email"], input#email', {
       timeout: 15000,
-      state: 'visible'
+      state: 'visible',
     });
 
     // Fill form
-    const emailField = this.page.locator('input[type="email"], input[name="email"], input#email').first();
-    const passwordField = this.page.locator('input[type="password"], input[name="password"], input#password').first();
+    const emailField = this.page
+      .locator('input[type="email"], input[name="email"], input#email')
+      .first();
+    const passwordField = this.page
+      .locator('input[type="password"], input[name="password"], input#password')
+      .first();
 
     await emailField.clear();
     await emailField.fill(ADMIN_TEST_ACCOUNT.email);
@@ -57,7 +68,8 @@ export class AdminAuthHelper {
     await this.page.waitForTimeout(200);
 
     // Submit form and wait for navigation
-    const submitButton = this.page.locator('button[type="submit"]')
+    const submitButton = this.page
+      .locator('button[type="submit"]')
       .or(this.page.getByRole('button', { name: /sign in/i }))
       .first();
 
@@ -87,7 +99,8 @@ export class AdminAuthHelper {
   async isAuthenticated(): Promise<boolean> {
     try {
       // Check for admin-specific elements
-      const hasAdminNav = await this.page.locator('nav, [data-testid="admin-sidebar"]').count() > 0;
+      const hasAdminNav =
+        (await this.page.locator('nav, [data-testid="admin-sidebar"]').count()) > 0;
       const isOnAdminPage = this.page.url().includes('/admin');
       return hasAdminNav || isOnAdminPage;
     } catch {
@@ -165,4 +178,3 @@ export class AdminAuthHelper {
     }
   }
 }
-

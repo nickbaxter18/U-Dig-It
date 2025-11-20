@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export interface ValidationRule<T> {
   field: keyof T;
-  validate: (value: any, formData: T) => string | undefined;
+  validate: (value: unknown, formData: T) => string | undefined;
   debounceMs?: number;
 }
 
@@ -17,7 +17,7 @@ export interface FieldError {
  * @param rules - Validation rules for each field
  * @returns Object containing errors and validation functions
  */
-export function useFormValidation<T extends Record<string, any>>(
+export function useFormValidation<T extends Record<string, unknown>>(
   formData: T,
   rules: ValidationRule<T>[]
 ) {
@@ -28,15 +28,15 @@ export function useFormValidation<T extends Record<string, any>>(
    * Mark a field as touched (user has interacted with it)
    */
   const touchField = useCallback((field: keyof T) => {
-    setTouchedFields(prev => new Set(prev).add(field));
+    setTouchedFields((prev) => new Set(prev).add(field));
   }, []);
 
   /**
    * Validate a specific field
    */
   const validateField = useCallback(
-    (field: keyof T, value: any): string | undefined => {
-      const rule = rules.find(r => r.field === field);
+    (field: keyof T, value: unknown): string | undefined => {
+      const rule = rules.find((r) => r.field === field);
       if (!rule) return undefined;
 
       return rule.validate(value, formData);
@@ -51,7 +51,7 @@ export function useFormValidation<T extends Record<string, any>>(
     const newErrors: FieldError = {};
     let isValid = true;
 
-    rules.forEach(rule => {
+    rules.forEach((rule) => {
       const error = rule.validate(formData[rule.field], formData);
       if (error) {
         newErrors[rule.field as string] = error;
@@ -67,7 +67,7 @@ export function useFormValidation<T extends Record<string, any>>(
    * Clear error for a specific field
    */
   const clearError = useCallback((field: keyof T) => {
-    setErrors(prev => {
+    setErrors((prev) => {
       const updated = { ...prev };
       delete updated[field as string];
       return updated;
@@ -87,14 +87,14 @@ export function useFormValidation<T extends Record<string, any>>(
   useEffect(() => {
     const timeouts: NodeJS.Timeout[] = [];
 
-    rules.forEach(rule => {
+    rules.forEach((rule) => {
       // Only validate fields that have been touched
       if (!touchedFields.has(rule.field)) return;
 
       const debounceMs = rule.debounceMs || 500;
       const timeout = setTimeout(() => {
         const error = rule.validate(formData[rule.field], formData);
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
           [rule.field]: error,
         }));

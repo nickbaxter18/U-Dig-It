@@ -1,0 +1,81 @@
+---
+description: "Automatically reference development tools documentation when working with Cursor, configs, or build tools"
+globs:
+  - "**/.cursor/**/*.{md,mdc,json}"
+  - "**/next.config.{ts,js,mjs}"
+  - "**/turbopack.config.{ts,js}"
+  - "**/.storybook/**/*.{ts,js}"
+  - "**/package.json"
+  - "**/tsconfig.json"
+alwaysApply: false
+---
+
+# Development Tools Documentation Auto-Reference
+
+When configuring development tools, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## Cursor IDE
+- Use **@Cursor Rules** when:
+  - Creating new `.mdc` rule files
+  - Configuring rule types (Always, Auto Attached, Agent Requested, Manual)
+  - Setting up glob patterns
+  - Organizing nested rules
+  - Understanding rule anatomy
+
+- Use **@Cursor API** when:
+  - Working with Cursor's API
+  - Integrating external tools
+  - Building extensions
+
+- Use **@Cursor Learn** when:
+  - Learning Cursor features
+  - Understanding AI capabilities
+  - Optimizing workflow
+
+## Turbopack (Next.js Dev Server)
+- Use **@turbopack** when:
+  - Configuring development server
+  - Setting up filesystem caching
+  - Optimizing build performance
+  - Troubleshooting build issues
+  - Configuring custom loaders
+
+## Storybook (Component Development)
+- Use **@storybook** when:
+  - Setting up Storybook configuration
+  - Creating stories
+  - Configuring addons
+  - Setting up testing utilities
+  - Building component documentation
+
+## Validation (Zod)
+- Use **@https://zod.dev** when:
+  - Creating validation schemas
+  - Parsing and validating data
+  - TypeScript type inference
+  - Error handling
+  - Schema composition
+
+## Example Usage Pattern
+
+```typescript
+// When creating Cursor rules:
+// @Cursor Rules for proper rule structure and glob patterns
+
+// When optimizing builds:
+// @turbopack for development performance
+// @next.js docs for production builds
+
+// When setting up validation:
+// @https://zod.dev for schema patterns and best practices
+```
+
+## Configuration Best Practices
+- **Keep configs type-safe** (use TypeScript)
+- **Document custom configurations**
+- **Use environment variables** for secrets
+- **Validate configurations** at build time
+- **Version control all configs**
+
+## Reminder
+**Reference tool documentation** before modifying configurations to ensure compatibility and follow best practices.

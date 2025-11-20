@@ -154,7 +154,7 @@ const SHARPNESS_THRESHOLD_SELFIE = 12;
 const DOCUMENT_ASPECT_RATIO_RANGE = { min: 1.3, max: 1.9 };
 const SELFIE_ASPECT_RATIO_RANGE = { min: 0.6, max: 1.4 };
 // RELAXED: Increased to 0.30 to allow fingers and hands visible when holding license
-const DOCUMENT_MAX_SKIN_RATIO = 0.3;
+const _DOCUMENT_MAX_SKIN_RATIO = 0.3; // Reserved for future skin ratio validation
 // RELAXED: Increased from 0.015 to 0.02 for better selfie detection
 const SELFIE_MIN_SKIN_RATIO = 0.02;
 // RELAXED: Document face should be small (photo on card), but allow some variation

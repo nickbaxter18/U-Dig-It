@@ -1,10 +1,10 @@
-# Cursor IDE - Codebase Indexing Exclusions
-# Optimizes codebase search and indexing performance
+# Cursor IDE - Excluded Files and Directories
+# This file tells Cursor to ignore these files during indexing and AI context
 
 # Dependencies
 node_modules/
 .pnpm-store/
-.pnpm-debug.log
+.pnpm/
 
 # Build outputs
 .next/
@@ -13,18 +13,11 @@ build/
 .turbo/
 out/
 
-# Coverage & testing
+# Coverage & logs
 coverage/
-.nyc_output/
-*.lcov
-
-# Logs
 *.log
-logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+*.cache
+.cache/
 
 # IDE
 .vscode/
@@ -38,36 +31,40 @@ pnpm-debug.log*
 Thumbs.db
 desktop.ini
 
+# Legacy backend (inactive - migrated to Supabase)
+backend/
+
+# Test outputs
+test-results/
+test-reports/
+playwright-report/
+.vitest/
+
 # Temporary files
-tmp/
-temp/
 *.tmp
+*.temp
+.tmp/
 
-# Cache
-.cache/
-.parcel-cache/
-.eslintcache
+# Documentation that's already indexed
+docs/audits/
+docs/plans/
+docs/status/
 
-# Environment
-.env.local
-.env.*.local
+# Generated files
+*.generated.*
+supabase/types.ts  # Generated from schema, but keep for reference
 
-# Git
-.git/
-.gitignore
+# Large binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.pdf
+*.zip
+*.tar.gz
 
-# Documentation builds
-docs/.vitepress/dist/
-docs/.vitepress/cache/
-
-# Supabase local
-supabase/.branches/
-supabase/.temp/
-
-# Worktrees (parallel agents)
-.cursor/worktrees/
-
-# Large data files
-*.csv
-*.json.bak
-*.sql.bak
+# Lock files (not needed for AI context)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

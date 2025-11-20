@@ -9,35 +9,158 @@ alwaysApply: false
 
 Guarantee that every coding task, feature design, or troubleshooting session references the most relevant external documentation before and during implementation. Ensures consistency with Supabase, Next.js, Stripe, SendGrid, and associated tooling best practices.
 
-## Rules
+## Auto-Reference System 🚀
 
-1. **Documentation First**
-   Before writing or modifying code, consult the appropriate external doc for the feature area. Use the indexed sources in `docs/external/EXTERNAL_DOCS_INDEX.md` and the Cursor Docs panel.
+**NEW**: Automatic @ mention system is now active! See `.cursor/rules/AUTO_REFERENCE_SYSTEM.md` for complete details.
 
-2. **Topic Alignment**
-   Match work items to documentation categories:
-   - Supabase (auth, RLS, storage, functions, CLI) for any backend/database changes.
-   - Next.js & React docs for routing, server components, middleware, state, and performance.
-   - Stripe docs for anything payment-related (PaymentIntents, Checkout, webhooks, disputes, Radar).
-   - SendGrid docs for email flows, templates, and deliverability.
-   - Radix UI & Tailwind for component structure, accessibility, styling.
-   - Playwright, Vitest, Testing Library for testing additions or updates.
-   - Zod for schema validation patterns.
-   - Lighthouse/Core Web Vitals for performance improvements or regression checks.
-   - Vercel docs for deployment, Edge runtime, secrets, logging.
+### Available Auto-Reference Rules
+These rules automatically trigger when working on relevant files:
 
-3. **Citation Requirement**
-   When referencing patterns or behavior from docs in a discussion or code comment, mention the doc/source briefly (e.g., “Per Supabase RLS docs…”).
+1. **`auto-reference-supabase-docs.mdc`** - Database, auth, storage, functions
+2. **`auto-reference-nextjs-docs.mdc`** - Routing, server components, API routes
+3. **`auto-reference-stripe-docs.mdc`** - Payments, webhooks, billing
+4. **`auto-reference-testing-docs.mdc`** - Unit, integration, E2E tests
+5. **`auto-reference-ui-docs.mdc`** - Components, styling, accessibility
+6. **`auto-reference-email-docs.mdc`** - Email delivery, templates, compliance
+7. **`auto-reference-performance-docs.mdc`** - Core Web Vitals, optimization
+8. **`auto-reference-dev-tools-docs.mdc`** - Cursor, build tools, configs
+9. **`auto-reference-monitoring-docs.mdc`** - Analytics, observability
+10. **`auto-reference-integrations-docs.mdc`** - Third-party services
 
-4. **Decision Support**
-   Include doc-backed rationale in solution discussions (design docs, PR descriptions, significant comments). Highlight any deviations from official guidance and explain why.
+Each rule uses glob patterns to auto-attach and instructs me to use appropriate @ mentions.
 
-5. **Troubleshooting Protocol**
-   Treat external docs as the first stop for debugging. Reference relevant guides before escalating to the team or raising an incident.
+## Indexed Documentation Inventory
 
-6. **Documentation Currency**
-   If a doc is outdated or missing, capture the gap in `docs/external/EXTERNAL_DOCS_INDEX.md` and flag in the PR or issue so the process can be adjusted.
+**48 documentation sources** are indexed in Cursor. See `.cursor/rules/INDEXED_DOCS_REFERENCE.md` for complete list.
 
-## Gratitude
+### Quick Reference by Category
 
-Consistently using authoritative documentation minimizes divergence from proven patterns, reduces regressions, and keeps our Supabase-first platform aligned with partner ecosystems.\*\*\*
+#### Supabase (9 sources)
+- @Supabase - General features, PostgREST
+- @Supabase RLS - Row-Level Security
+- @Supabase Auth - Authentication
+- @Supabase Storage - File management
+- @Supabase Functions - Edge functions
+- @Supabase Cli - CLI commands
+- @Supabase Platform Advisors - Performance/security
+- @supabas javascript - JavaScript client
+- @https://supabase.com/docs/guides/security - Security guide
+
+#### Next.js & Vercel (5 sources)
+- @next.js docs
+- @https://nextjs.org/docs/app/building-your-application/routing/route-handlers
+- @https://nextjs.org/docs/app/building-your-application/routing/middleware
+- @turbopack
+- @https://vercel.com/docs
+
+#### Payments (4 sources)
+- @Stripe Docs
+- @Stripe Webhooks
+- @Stripe Disputes
+- @https://stripe.com/docs/radar
+
+#### UI & Styling (3 sources)
+- @React Dev
+- @Radix-UI
+- @Tailwind Css
+
+#### Testing (4 sources)
+- @https://playwright.dev/docs/intro
+- @https://vitest.dev/guide/
+- @https://testing-library.com/docs/react-testing-library/intro
+- @mock service worker
+
+#### Performance (3 sources)
+- @https://web.dev/vitals/
+- @lighthouse
+- @tanstack query docs
+
+#### Email (3 sources)
+- @Send Grid Docs
+- @https://docs.sendgrid.com/for-developers/sending-email/deliverability
+- @https://docs.sendgrid.com/for-developers/sending-email/compliance
+
+#### Development Tools (6 sources)
+- @Cursor Rules
+- @Cursor API
+- @Cursor Learn
+- @https://zod.dev
+- @storybook
+- @turbopack
+
+#### Monitoring (4 sources)
+- @SigNoz
+- @OpenTelemetry
+- @https://docs.cloud.google.com/docs
+- @https://developers.google.com/identity/protocols/oauth2
+
+#### Integrations (5 sources)
+- @cal.com
+- @Trigger.dev
+- @Documenso
+- @Formbricks
+- @MapLibre GL JS
+
+#### Starter Templates (1 source)
+- @Supa Next Starter
+
+## Core Rules
+
+### 1. Documentation First
+Before writing or modifying code, the **auto-reference rules will automatically prompt** me to consult the appropriate indexed documentation using @ mentions.
+
+### 2. Topic Alignment
+The auto-reference system automatically maps files to relevant documentation:
+- Database files → Supabase docs
+- API routes → Next.js + Supabase docs
+- Payment code → Stripe docs
+- Test files → Testing framework docs
+- Components → React + Radix + Tailwind docs
+
+### 3. Citation Requirement
+When referencing patterns from docs, I will:
+- Use @ mentions to cite sources
+- Include doc-backed rationale in explanations
+- Note any deviations from official guidance
+
+### 4. Troubleshooting Protocol
+I will treat indexed docs as the first stop for debugging:
+1. Check relevant @ mentioned docs
+2. Search for error messages or patterns
+3. Apply documented solutions
+4. Escalate only if docs don't cover the issue
+
+### 5. Documentation Currency
+If indexed docs are outdated or missing information:
+- Note the gap in the conversation
+- Flag in PR descriptions
+- Update `docs/external/EXTERNAL_DOCS_INDEX.md`
+
+## Manual @ Mention Usage
+
+You can also manually trigger documentation references:
+
+```
+// Example questions with @ mentions:
+"How do I create an RLS policy? @Supabase RLS"
+"What's the best way to handle webhooks? @Stripe Webhooks"
+"How do I test this component? @https://testing-library.com/docs/react-testing-library/intro"
+```
+
+## Benefits
+
+✅ **Automatic**: Rules trigger based on file type
+✅ **Comprehensive**: 48 documentation sources covered
+✅ **Context-Aware**: Right docs at the right time
+✅ **Consistent**: Always follow documented patterns
+✅ **Discoverable**: See available docs via autocomplete
+
+## See Also
+
+- `.cursor/rules/AUTO_REFERENCE_SYSTEM.md` - Complete system documentation
+- `.cursor/rules/INDEXED_DOCS_REFERENCE.md` - All 48 indexed sources
+- `docs/external/EXTERNAL_DOCS_INDEX.md` - External docs inventory
+
+---
+
+Consistently using authoritative documentation minimizes divergence from proven patterns, reduces regressions, and keeps our Supabase-first platform aligned with partner ecosystems.

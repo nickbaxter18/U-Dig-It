@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { POST } from '../stripe/route';
 import { createMockRequest } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { POST } from '../stripe/route';
 
 const { mockStripe } = vi.hoisted(() => {
   const webhooks = {
@@ -17,7 +18,7 @@ const { mockStripe } = vi.hoisted(() => {
 // Mock Stripe as a constructor class
 vi.mock('stripe', () => ({
   default: class MockStripe {
-    webhooks: any;
+    webhooks: unknown;
 
     constructor() {
       this.webhooks = mockStripe.webhooks;
@@ -38,7 +39,7 @@ vi.mock('@/lib/stripe/config', () => ({
   createStripeClient: vi.fn(() => {
     // Return a new instance of our mocked Stripe class
     const MockStripe = class {
-      webhooks: any;
+      webhooks: unknown;
       constructor() {
         this.webhooks = mockStripe.webhooks;
       }
@@ -60,9 +61,13 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('should verify webhook signature', async () => {
-    const request = createMockRequest('POST', {}, {
-      headers: { 'stripe-signature': 'sig_test' },
-    });
+    const request = createMockRequest(
+      'POST',
+      {},
+      {
+        headers: { 'stripe-signature': 'sig_test' },
+      }
+    );
 
     mockStripe.webhooks.constructEvent.mockReturnValue({
       type: 'payment_intent.succeeded',
@@ -75,9 +80,13 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('should handle payment_intent.succeeded event', async () => {
-    const request = createMockRequest('POST', {}, {
-      headers: { 'stripe-signature': 'sig_test' },
-    });
+    const request = createMockRequest(
+      'POST',
+      {},
+      {
+        headers: { 'stripe-signature': 'sig_test' },
+      }
+    );
 
     mockStripe.webhooks.constructEvent.mockReturnValue({
       type: 'payment_intent.succeeded',
@@ -95,9 +104,13 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('should handle charge.refunded event', async () => {
-    const request = createMockRequest('POST', {}, {
-      headers: { 'stripe-signature': 'sig_test' },
-    });
+    const request = createMockRequest(
+      'POST',
+      {},
+      {
+        headers: { 'stripe-signature': 'sig_test' },
+      }
+    );
 
     mockStripe.webhooks.constructEvent.mockReturnValue({
       type: 'charge.refunded',
@@ -115,9 +128,13 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('should reject invalid signature', async () => {
-    const request = createMockRequest('POST', {}, {
-      headers: { 'stripe-signature': 'invalid' },
-    });
+    const request = createMockRequest(
+      'POST',
+      {},
+      {
+        headers: { 'stripe-signature': 'invalid' },
+      }
+    );
 
     mockStripe.webhooks.constructEvent.mockImplementation(() => {
       throw new Error('Invalid signature');
@@ -129,9 +146,13 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('should handle unknown event types', async () => {
-    const request = createMockRequest('POST', {}, {
-      headers: { 'stripe-signature': 'sig_test' },
-    });
+    const request = createMockRequest(
+      'POST',
+      {},
+      {
+        headers: { 'stripe-signature': 'sig_test' },
+      }
+    );
 
     mockStripe.webhooks.constructEvent.mockReturnValue({
       type: 'unknown.event',
@@ -143,4 +164,3 @@ describe('POST /api/webhook/stripe', () => {
     expect(response.status).toBe(200); // Still return 200 to acknowledge
   });
 });
-

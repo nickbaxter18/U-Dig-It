@@ -2,10 +2,11 @@
  * Comprehensive API Route Tests for Equipment Search
  * Tests filtering, pagination, sorting, and error handling
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST } from '../equipment/search/route';
+
 import { NextRequest } from 'next/server';
+
+import { POST } from '../equipment/search/route';
 
 // Mock dependencies
 vi.mock('@/lib/logger', () => ({
@@ -21,7 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 describe('API Route: /api/equipment/search', () => {
-  let mockSupabase: any;
+  let mockSupabase: unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -297,5 +298,3 @@ describe('API Route: /api/equipment/search', () => {
     expect(data.error).toBeDefined();
   });
 });
-
-

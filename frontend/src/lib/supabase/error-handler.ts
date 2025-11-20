@@ -9,7 +9,7 @@ export class SupabaseError extends Error {
   }
 }
 
-export const handleSupabaseError = (error: any): SupabaseError => {
+export const handleSupabaseError = (error: unknown): SupabaseError => {
   if (error?.code) {
     switch (error.code) {
       case 'PGRST116':

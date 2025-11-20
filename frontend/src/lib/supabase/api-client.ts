@@ -1,5 +1,7 @@
 import type { TablesInsert } from '@/../../supabase/types';
+
 import { logger } from '@/lib/logger';
+
 import { supabase } from './client';
 
 // Type-safe API client
@@ -68,11 +70,15 @@ export class SupabaseApiClient {
         },
       };
     } catch (error) {
-      logger.error('Availability check error', {
-        component: 'api-client',
-        action: 'error',
-        metadata: { error: error instanceof Error ? error.message : String(error) },
-      }, error instanceof Error ? error : undefined);
+      logger.error(
+        'Availability check error',
+        {
+          component: 'api-client',
+          action: 'error',
+          metadata: { error: error instanceof Error ? error.message : String(error) },
+        },
+        error instanceof Error ? error : undefined
+      );
       throw error;
     }
   }
@@ -80,7 +86,11 @@ export class SupabaseApiClient {
   // Booking operations
   async createBooking(bookingData: TablesInsert<'bookings'>) {
     const supabaseAny: any = supabase;
-    const { data, error } = await supabaseAny.from('bookings').insert(bookingData).select().single();
+    const { data, error } = await supabaseAny
+      .from('bookings')
+      .insert(bookingData)
+      .select()
+      .single();
 
     if (error) throw error;
     return data;
@@ -128,7 +138,11 @@ export class SupabaseApiClient {
   // Payment operations
   async createPayment(paymentData: TablesInsert<'payments'>) {
     const supabaseAny: any = supabase;
-    const { data, error } = await supabaseAny.from('payments').insert(paymentData).select().single();
+    const { data, error } = await supabaseAny
+      .from('payments')
+      .insert(paymentData)
+      .select()
+      .single();
 
     if (error) throw error;
     return data;
@@ -186,10 +200,16 @@ export class SupabaseApiClient {
 
     // Don't throw error if public.users update fails (metadata is source of truth)
     if (publicUpdateError && process.env.NODE_ENV === 'development') {
-      logger.error('Failed to update public.users table:', {
-        component: 'api-client',
-        action: 'warning',
-      }, publicUpdateError instanceof Error ? publicUpdateError : new Error(String(publicUpdateError)));
+      logger.error(
+        'Failed to update public.users table:',
+        {
+          component: 'api-client',
+          action: 'warning',
+        },
+        publicUpdateError instanceof Error
+          ? publicUpdateError
+          : new Error(String(publicUpdateError))
+      );
     }
 
     return data.user;
@@ -223,7 +243,7 @@ export class SupabaseApiClient {
 
   // Health check
   async healthCheck() {
-    const { data, error } = await supabase.from('equipment').select('id').limit(1);
+    const { data: _data, error } = await supabase.from('equipment').select('id').limit(1);
 
     if (error) throw error;
     return { status: 'healthy', timestamp: new Date().toISOString() };

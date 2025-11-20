@@ -1,0 +1,74 @@
+---
+description: "Automatically reference performance documentation when optimizing application performance"
+globs:
+  - "**/next.config.{ts,js,mjs}"
+  - "**/webpack.config.{ts,js}"
+  - "**/lighthouse.config.{ts,js}"
+  - "**/app/**/*.{ts,tsx}"
+  - "**/components/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Performance Documentation Auto-Reference
+
+When working on performance optimization, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## Core Web Vitals
+- Use **@https://web.dev/vitals/** when:
+  - Measuring Largest Contentful Paint (LCP)
+  - Optimizing First Input Delay (FID)
+  - Reducing Cumulative Layout Shift (CLS)
+  - Improving Time to First Byte (TTFB)
+  - Measuring Interaction to Next Paint (INP)
+  - Setting performance budgets
+
+## Lighthouse Audits
+- Use **@lighthouse** when:
+  - Running performance audits
+  - Analyzing performance reports
+  - Implementing audit recommendations
+  - Setting up CI/CD performance checks
+  - Measuring accessibility scores
+  - Evaluating SEO metrics
+
+## TanStack Query (Data Fetching)
+- Use **@tanstack latest** or **@tanstack query docs** when:
+  - Implementing efficient data fetching
+  - Setting up caching strategies
+  - Optimizing query invalidation
+  - Using background refetching
+  - Implementing optimistic updates
+  - Managing query states
+
+## Example Usage Pattern
+
+```typescript
+// When optimizing Core Web Vitals:
+// @https://web.dev/vitals/ for measurement and optimization strategies
+// @lighthouse for audit recommendations
+
+// When implementing data fetching:
+// @tanstack query docs for optimal caching and refetching patterns
+
+// When analyzing performance:
+// @lighthouse for comprehensive performance audits
+```
+
+## Performance Targets
+- **LCP**: < 2.5s
+- **FID/INP**: < 100ms
+- **CLS**: < 0.1
+- **TTFB**: < 800ms
+- **Page Load**: < 1s
+- **Time to Interactive**: < 2s
+
+## Performance Best Practices
+- **Use code splitting** for large components
+- **Implement lazy loading** for images and routes
+- **Optimize images** (WebP, proper sizing)
+- **Minimize JavaScript bundles**
+- **Use memoization** for expensive calculations
+- **Implement efficient caching** strategies
+
+## Reminder
+**Check Web Vitals and Lighthouse docs** regularly to ensure performance targets are met and to stay updated on best practices.

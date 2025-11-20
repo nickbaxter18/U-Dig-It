@@ -7,14 +7,15 @@
  *   3. Record release in booking_payments
  *   4. Send notification email/SMS
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
+
+// import Stripe from 'stripe'; // Unused - type only
 
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
@@ -38,8 +39,10 @@ export async function POST(request: NextRequest) {
 
     // 3. Auth verification (admin only)
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -92,9 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 7. Cancel the PaymentIntent (release the hold)
-    const canceledIntent = await stripe.paymentIntents.cancel(
-      booking.security_hold_intent_id
-    );
+    const canceledIntent = await stripe.paymentIntents.cancel(booking.security_hold_intent_id);
 
     logger.info('Security hold released', {
       component: 'release-hold-api',
@@ -183,13 +184,16 @@ export async function POST(request: NextRequest) {
       paymentIntentId: booking.security_hold_intent_id,
       status: canceledIntent.status,
     });
-
-  } catch (error: any) {
-    logger.error('Failed to release security hold', {
-      component: 'release-hold-api',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to release security hold',
+      {
+        component: 'release-hold-api',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Failed to release security hold', details: error.message },
@@ -197,17 +201,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

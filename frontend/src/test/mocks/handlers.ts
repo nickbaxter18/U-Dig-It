@@ -6,8 +6,7 @@
  *
  * @see https://mswjs.io/docs/
  */
-
-import { http, HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 
 // Base URLs for different services
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:54321';
@@ -53,13 +52,15 @@ export const supabaseHandlers = [
     const id = url.searchParams.get('id');
 
     if (id === 'eq.123e4567-e89b-12d3-a456-426614174000') {
-      return HttpResponse.json([{
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        name: 'Kubota SVL-75',
-        category: 'compact-track-loader',
-        dailyRate: 250,
-        status: 'available',
-      }]);
+      return HttpResponse.json([
+        {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          name: 'Kubota SVL-75',
+          category: 'compact-track-loader',
+          dailyRate: 250,
+          status: 'available',
+        },
+      ]);
     }
 
     return HttpResponse.json([]);
@@ -84,11 +85,14 @@ export const supabaseHandlers = [
 
   // Mock booking creation
   http.post(`${SUPABASE_URL}/rest/v1/bookings`, async () => {
-    return HttpResponse.json({
-      id: '223e4567-e89b-12d3-a456-426614174000',
-      bookingNumber: 'BK-2025-001',
-      status: 'pending',
-    }, { status: 201 });
+    return HttpResponse.json(
+      {
+        id: '223e4567-e89b-12d3-a456-426614174000',
+        bookingNumber: 'BK-2025-001',
+        status: 'pending',
+      },
+      { status: 201 }
+    );
   }),
 
   // Mock auth user
@@ -118,13 +122,13 @@ export const apiHandlers = [
 
   // Mock Stripe webhook
   http.post(`${API_BASE}/webhooks/stripe`, async ({ request }) => {
-    const body = await request.json();
+    const _body = await request.json(); // Unused - kept for future validation
     return HttpResponse.json({ received: true });
   }),
 
   // Mock booking availability check
   http.post(`${API_BASE}/bookings/check-availability`, async ({ request }) => {
-    const body = await request.json();
+    const _body = await request.json(); // Unused - kept for future validation
     return HttpResponse.json({
       available: true,
       conflicts: [],
@@ -190,9 +194,4 @@ export const errorHandlers = [
 /**
  * All handlers combined
  */
-export const handlers = [
-  ...supabaseHandlers,
-  ...apiHandlers,
-  ...errorHandlers,
-];
-
+export const handlers = [...supabaseHandlers, ...apiHandlers, ...errorHandlers];

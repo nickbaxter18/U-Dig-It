@@ -1,9 +1,11 @@
 'use client';
 
+import { useRef, useState } from 'react';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/client';
-import { useRef, useState } from 'react';
 
 interface ProfilePictureUploadProps {
   currentAvatarUrl?: string | null;
@@ -78,9 +80,9 @@ export default function ProfilePictureUpload({
    * Compress and optimize image before upload
    */
   const optimizeImage = async (file: File): Promise<Blob> => {
-    return new Promise((resolve: any, reject: any) => {
+    return new Promise((resolve: unknown, reject: unknown) => {
       const reader = new FileReader();
-      reader.onload = (e: any) => {
+      reader.onload = (e: unknown) => {
         const img = document.createElement('img');
         img.onload = () => {
           // Create canvas for compression
@@ -109,7 +111,7 @@ export default function ProfilePictureUpload({
           ctx?.drawImage(img, 0, 0, width, height);
 
           canvas.toBlob(
-            (blob: any) => {
+            (blob: unknown) => {
               if (blob) {
                 resolve(blob);
               } else {
@@ -201,7 +203,7 @@ export default function ProfilePictureUpload({
               metadata: { error: deleteError.message },
             });
           }
-        } catch (cleanupError: any) {
+        } catch (cleanupError: unknown) {
           // Non-critical error - continue with upload
           logger.warn('Error during old avatar cleanup (continuing)', {
             component: 'ProfilePictureUpload',
@@ -261,11 +263,15 @@ export default function ProfilePictureUpload({
       // ✅ FIX: Force page reload to refresh avatar everywhere
       // This ensures Navigation, Profile, and all components update immediately
       window.location.reload();
-    } catch (err: any) {
-      logger.error('Avatar upload error:', {
-        component: 'ProfilePictureUpload',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Avatar upload error:',
+        {
+          component: 'ProfilePictureUpload',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message || 'Failed to upload profile picture. Please try again.');
     } finally {
       setUploading(false);
@@ -351,11 +357,15 @@ export default function ProfilePictureUpload({
       // ✅ FIX: Force page reload to refresh avatar everywhere
       // This ensures Navigation, Profile, and all components update
       window.location.reload();
-    } catch (err: any) {
-      logger.error('Avatar removal error:', {
-        component: 'ProfilePictureUpload',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Avatar removal error:',
+        {
+          component: 'ProfilePictureUpload',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message || 'Failed to remove profile picture. Please try again.');
     } finally {
       setUploading(false);
@@ -376,15 +386,17 @@ export default function ProfilePictureUpload({
           onDrop={handleDrop}
         >
           {displayUrl ? (
-            <img
-              src={displayUrl}
-              alt="Profile picture"
-              className="h-full w-full object-cover"
-            />
+            <img src={displayUrl} alt="Profile picture" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-white">
-              <span className={size === 'small' ? 'text-2xl' : size === 'medium' ? 'text-4xl' : 'text-5xl'}>
-                {user?.user_metadata?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?'}
+              <span
+                className={
+                  size === 'small' ? 'text-2xl' : size === 'medium' ? 'text-4xl' : 'text-5xl'
+                }
+              >
+                {user?.user_metadata?.firstName?.[0]?.toUpperCase() ||
+                  user?.email?.[0]?.toUpperCase() ||
+                  '?'}
               </span>
             </div>
           )}
@@ -397,12 +409,7 @@ export default function ProfilePictureUpload({
                 className="text-sm font-medium text-white"
                 aria-label="Upload profile picture"
               >
-                <svg
-                  className="h-8 w-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -459,7 +466,7 @@ export default function ProfilePictureUpload({
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-        onChange={(e: any) => handleFileChange(e.target.files?.[0] || null)}
+        onChange={(e: unknown) => handleFileChange(e.target.files?.[0] || null)}
         className="hidden"
         aria-label="Upload profile picture file"
       />
@@ -472,11 +479,7 @@ export default function ProfilePictureUpload({
       >
         {uploading ? (
           <span className="flex items-center">
-            <svg
-              className="mr-2 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -495,12 +498,7 @@ export default function ProfilePictureUpload({
           </span>
         ) : (
           <span className="flex items-center">
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -521,9 +519,7 @@ export default function ProfilePictureUpload({
       </p>
 
       {/* Drag & Drop Hint */}
-      <p className="mt-1 text-center text-xs text-gray-400">
-        or drag and drop
-      </p>
+      <p className="mt-1 text-center text-xs text-gray-400">or drag and drop</p>
 
       {/* Error Message */}
       {error && (
@@ -541,4 +537,3 @@ export default function ProfilePictureUpload({
     </div>
   );
 }
-

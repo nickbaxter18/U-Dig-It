@@ -3,20 +3,17 @@
  *
  * Proxies to contest-verify-email Edge Function
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/lib/supabase/config';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Verification token required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Verification token required' }, { status: 400 });
     }
 
     // Call Supabase Edge Function
@@ -26,7 +23,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({ token }),
     });
@@ -58,34 +55,16 @@ export async function POST(request: NextRequest) {
       referralCode: data.referralCode,
       referralLink: data.referralLink,
     });
-
-  } catch (error: any) {
-    logger.error('Contest verification API error', {
-      component: 'contest-verify-api',
-      action: 'error',
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Contest verification API error',
+      {
+        component: 'contest-verify-api',
+        action: 'error',
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

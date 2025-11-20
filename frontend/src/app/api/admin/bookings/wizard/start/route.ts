@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import {
-  bookingWizardStartSchema,
   BookingWizardStartInput,
   BookingWizardStatus,
+  bookingWizardStartSchema,
 } from '@/lib/validators/admin/bookings';
 
 interface WizardSessionResponse {
@@ -22,7 +23,7 @@ interface WizardSessionResponse {
 
 const SESSION_TIMEOUT_MINUTES = 30;
 
-function serializeSession(session: any): WizardSessionResponse {
+function serializeSession(session: unknown): WizardSessionResponse {
   return {
     id: session.id,
     adminId: session.admin_id,
@@ -63,19 +64,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const data = bookingWizardStartSchema.parse(body);
@@ -141,5 +138,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

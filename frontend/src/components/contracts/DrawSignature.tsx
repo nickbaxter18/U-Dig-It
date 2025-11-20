@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface DrawSignatureProps {
   onSignatureCapture: (signature: string) => void;
@@ -26,38 +26,8 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
   const [canUndo, setCanUndo] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2; // Retina display
-    canvas.height = rect.height * 2;
-    ctx.scale(2, 2);
-
-    // Draw background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw signature guidelines (dotted line)
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(0, rect.height / 2);
-    ctx.lineTo(rect.width, rect.height / 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Redraw all paths
-    redrawCanvas();
-  }, [points]);
-
-  const redrawCanvas = () => {
+  // Define redrawCanvas before useEffect that uses it
+  const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -80,7 +50,7 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
     ctx.setLineDash([]);
 
     // Redraw all paths with smooth curves
-    points.forEach(path => {
+    points.forEach((path) => {
       if (path.length === 0) return;
 
       ctx.strokeStyle = '#000000';
@@ -104,7 +74,27 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
 
       ctx.stroke();
     });
-  };
+  }, [points]);
+
+  // Canvas initialization effect - runs once on mount
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size (only once on mount)
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2; // Retina display
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+  }, []); // Empty deps - only run once on mount
+
+  // Redraw effect - runs when points change or canvas is initialized
+  useEffect(() => {
+    redrawCanvas();
+  }, [points, redrawCanvas]);
 
   const getCoordinates = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -141,7 +131,7 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
     e.preventDefault();
 
     const point = getCoordinates(e);
-    setCurrentPath(prev => [...prev, point]);
+    setCurrentPath((prev) => [...prev, point]);
 
     // Draw immediately for responsiveness
     const canvas = canvasRef.current;
@@ -165,7 +155,7 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
 
   const stopDrawing = () => {
     if (isDrawing && currentPath.length > 0) {
-      setPoints(prev => [...prev, currentPath]);
+      setPoints((prev) => [...prev, currentPath]);
       setCanUndo(true);
       setHasSignature(true);
       setCurrentPath([]);
@@ -175,7 +165,7 @@ export default function DrawSignature({ onSignatureCapture, onClear }: DrawSigna
 
   const handleUndo = () => {
     if (points.length > 0) {
-      setPoints(prev => prev.slice(0, -1));
+      setPoints((prev) => prev.slice(0, -1));
       setHasSignature(points.length > 1);
       setCanUndo(points.length > 1);
     }

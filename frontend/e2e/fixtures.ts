@@ -1,5 +1,8 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 // Reusable test fixtures and utilities for Playwright tests
-import { test as base, Page } from '@playwright/test';
+// 'use' is a Playwright fixture parameter, not a React hook
+import { Page, test as base } from '@playwright/test';
+
 import { createApiMocks, mockScenarios } from './api-mocks';
 
 // Extend the base test with custom fixtures

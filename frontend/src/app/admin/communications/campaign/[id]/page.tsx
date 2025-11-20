@@ -1,11 +1,15 @@
 'use client';
 
+import { ArrowLeft, BarChart, Mail, Send, Users } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { useParams, useRouter } from 'next/navigation';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { ArrowLeft, BarChart, Mail, Send, Users } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface CampaignDetail {
   id: string;
@@ -23,7 +27,7 @@ interface CampaignDetail {
   createdAt: Date;
   htmlContent?: string;
   textContent?: string;
-  recipientFilter?: any;
+  recipientFilter?: unknown;
 }
 
 export default function CampaignDetailPage() {
@@ -44,9 +48,9 @@ export default function CampaignDetailPage() {
     if (user && campaignId) {
       fetchCampaign();
     }
-  }, [user, authLoading, router, campaignId]);
+  }, [user, authLoading, router, campaignId, fetchCampaign]);
 
-  const fetchCampaign = async () => {
+  const fetchCampaign = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -62,31 +66,43 @@ export default function CampaignDetailPage() {
       logger.info('Campaign detail fetched successfully', {
         component: 'CampaignDetailPage',
         action: 'fetch_campaign',
-        metadata: { campaignId }
+        metadata: { campaignId },
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
-      logger.error('Failed to fetch campaign detail', {
-        component: 'CampaignDetailPage',
-        action: 'fetch_campaign_error',
-        metadata: { error: errorMessage, campaignId }
-      }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to fetch campaign detail',
+        {
+          component: 'CampaignDetailPage',
+          action: 'fetch_campaign_error',
+          metadata: { error: errorMessage, campaignId },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      case 'sending': return 'bg-yellow-100 text-yellow-800';
-      case 'scheduled': return 'bg-purple-100 text-purple-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800';
+      case 'sending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'scheduled':
+        return 'bg-purple-100 text-purple-800';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -167,7 +183,9 @@ export default function CampaignDetailPage() {
               <h1 className="text-3xl font-bold text-gray-900">{campaign.name}</h1>
               <p className="mt-2 text-gray-600">{campaign.subject}</p>
             </div>
-            <span className={`px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(campaign.status)}`}>
+            <span
+              className={`px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(campaign.status)}`}
+            >
               {campaign.status}
             </span>
           </div>
@@ -179,7 +197,9 @@ export default function CampaignDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Recipients</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{campaign.recipientCount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {campaign.recipientCount.toLocaleString()}
+                </p>
               </div>
               <Users className="h-10 w-10 text-blue-600" />
             </div>
@@ -189,7 +209,9 @@ export default function CampaignDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Emails Sent</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{campaign.emailsSent.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {campaign.emailsSent.toLocaleString()}
+                </p>
               </div>
               <Send className="h-10 w-10 text-green-600" />
             </div>
@@ -199,7 +221,9 @@ export default function CampaignDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Open Rate</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{calculateOpenRate().toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {calculateOpenRate().toFixed(1)}%
+                </p>
               </div>
               <Mail className="h-10 w-10 text-purple-600" />
             </div>
@@ -209,7 +233,9 @@ export default function CampaignDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Click Rate</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{calculateClickRate().toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {calculateClickRate().toFixed(1)}%
+                </p>
               </div>
               <BarChart className="h-10 w-10 text-kubota-orange" />
             </div>
@@ -223,19 +249,28 @@ export default function CampaignDetailPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Emails Delivered</span>
-                <span className="text-sm font-medium">{campaign.emailsDelivered.toLocaleString()} ({calculateDeliveryRate().toFixed(1)}%)</span>
+                <span className="text-sm font-medium">
+                  {campaign.emailsDelivered.toLocaleString()} ({calculateDeliveryRate().toFixed(1)}
+                  %)
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Emails Opened</span>
-                <span className="text-sm font-medium">{campaign.emailsOpened.toLocaleString()} ({calculateOpenRate().toFixed(1)}%)</span>
+                <span className="text-sm font-medium">
+                  {campaign.emailsOpened.toLocaleString()} ({calculateOpenRate().toFixed(1)}%)
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Emails Clicked</span>
-                <span className="text-sm font-medium">{campaign.emailsClicked.toLocaleString()} ({calculateClickRate().toFixed(1)}%)</span>
+                <span className="text-sm font-medium">
+                  {campaign.emailsClicked.toLocaleString()} ({calculateClickRate().toFixed(1)}%)
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Emails Failed</span>
-                <span className="text-sm font-medium text-red-600">{campaign.emailsFailed.toLocaleString()}</span>
+                <span className="text-sm font-medium text-red-600">
+                  {campaign.emailsFailed.toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
@@ -245,18 +280,24 @@ export default function CampaignDetailPage() {
             <div className="space-y-4">
               <div>
                 <span className="text-sm text-gray-600">Created:</span>
-                <span className="text-sm font-medium ml-2">{new Date(campaign.createdAt).toLocaleString()}</span>
+                <span className="text-sm font-medium ml-2">
+                  {new Date(campaign.createdAt).toLocaleString()}
+                </span>
               </div>
               {campaign.scheduledAt && (
                 <div>
                   <span className="text-sm text-gray-600">Scheduled:</span>
-                  <span className="text-sm font-medium ml-2">{new Date(campaign.scheduledAt).toLocaleString()}</span>
+                  <span className="text-sm font-medium ml-2">
+                    {new Date(campaign.scheduledAt).toLocaleString()}
+                  </span>
                 </div>
               )}
               {campaign.sentAt && (
                 <div>
                   <span className="text-sm text-gray-600">Sent:</span>
-                  <span className="text-sm font-medium ml-2">{new Date(campaign.sentAt).toLocaleString()}</span>
+                  <span className="text-sm font-medium ml-2">
+                    {new Date(campaign.sentAt).toLocaleString()}
+                  </span>
                 </div>
               )}
             </div>
@@ -291,4 +332,3 @@ export default function CampaignDetailPage() {
     </div>
   );
 }
-

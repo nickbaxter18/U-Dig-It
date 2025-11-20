@@ -1,11 +1,15 @@
 'use client';
 
+import { CheckCircle, Edit, MapPin, Plus, Trash2, XCircle } from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Plus, Edit, Trash2, CheckCircle, XCircle, MapPin } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface Driver {
   id: string;
@@ -37,7 +41,7 @@ export default function DriversManagementPage() {
     vehicleType: '',
     vehicleRegistration: '',
     notes: '',
-    isAvailable: true
+    isAvailable: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -59,25 +63,31 @@ export default function DriversManagementPage() {
       if (!res.ok) throw new Error('Failed to fetch drivers');
       const data = await res.json();
 
-      setDrivers(data.drivers.map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        phone: d.phone,
-        licenseNumber: d.license_number,
-        licenseExpiry: d.license_expiry,
-        vehicleType: d.vehicle_type,
-        vehicleRegistration: d.vehicle_registration,
-        notes: d.notes,
-        isAvailable: d.is_available,
-        currentLocation: d.current_location,
-        activeDeliveries: d.active_deliveries || 0,
-        totalDeliveriesCompleted: d.total_deliveries_completed || 0
-      })));
+      setDrivers(
+        data.drivers.map((d: unknown) => ({
+          id: d.id,
+          name: d.name,
+          phone: d.phone,
+          licenseNumber: d.license_number,
+          licenseExpiry: d.license_expiry,
+          vehicleType: d.vehicle_type,
+          vehicleRegistration: d.vehicle_registration,
+          notes: d.notes,
+          isAvailable: d.is_available,
+          currentLocation: d.current_location,
+          activeDeliveries: d.active_deliveries || 0,
+          totalDeliveriesCompleted: d.total_deliveries_completed || 0,
+        }))
+      );
     } catch (error) {
-      logger.error('Failed to fetch drivers', {
-        component: 'DriversManagementPage',
-        action: 'fetch_drivers_error'
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to fetch drivers',
+        {
+          component: 'DriversManagementPage',
+          action: 'fetch_drivers_error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       setLoading(false);
     }
@@ -94,7 +104,7 @@ export default function DriversManagementPage() {
         vehicleType: driver.vehicleType || '',
         vehicleRegistration: driver.vehicleRegistration || '',
         notes: driver.notes || '',
-        isAvailable: driver.isAvailable
+        isAvailable: driver.isAvailable,
       });
     } else {
       setEditingDriver(null);
@@ -106,7 +116,7 @@ export default function DriversManagementPage() {
         vehicleType: '',
         vehicleRegistration: '',
         notes: '',
-        isAvailable: true
+        isAvailable: true,
       });
     }
     setShowModal(true);
@@ -128,9 +138,7 @@ export default function DriversManagementPage() {
     }
 
     try {
-      const url = editingDriver
-        ? `/api/admin/drivers/${editingDriver.id}`
-        : '/api/admin/drivers';
+      const url = editingDriver ? `/api/admin/drivers/${editingDriver.id}` : '/api/admin/drivers';
       const method = editingDriver ? 'PATCH' : 'POST';
 
       const response = await fetchWithAuth(url, {
@@ -144,8 +152,8 @@ export default function DriversManagementPage() {
           vehicleType: formData.vehicleType || null,
           vehicleRegistration: formData.vehicleRegistration || null,
           notes: formData.notes || null,
-          isAvailable: formData.isAvailable
-        })
+          isAvailable: formData.isAvailable,
+        }),
       });
 
       if (!response.ok) {
@@ -155,7 +163,7 @@ export default function DriversManagementPage() {
 
       logger.info('Driver saved successfully', {
         component: 'DriversManagementPage',
-        action: editingDriver ? 'update_driver' : 'create_driver'
+        action: editingDriver ? 'update_driver' : 'create_driver',
       });
 
       setShowModal(false);
@@ -163,11 +171,15 @@ export default function DriversManagementPage() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setErrors({ general: errorMessage });
-      logger.error('Failed to save driver', {
-        component: 'DriversManagementPage',
-        action: 'save_driver_error',
-        metadata: { error: errorMessage }
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to save driver',
+        {
+          component: 'DriversManagementPage',
+          action: 'save_driver_error',
+          metadata: { error: errorMessage },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   };
 
@@ -176,7 +188,7 @@ export default function DriversManagementPage() {
 
     try {
       const response = await fetchWithAuth(`/api/admin/drivers/${driverId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       if (!response.ok) {
@@ -187,18 +199,22 @@ export default function DriversManagementPage() {
       logger.info('Driver deleted successfully', {
         component: 'DriversManagementPage',
         action: 'delete_driver',
-        metadata: { driverId }
+        metadata: { driverId },
       });
 
       await fetchDrivers();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       alert(`Failed to delete driver: ${errorMessage}`);
-      logger.error('Failed to delete driver', {
-        component: 'DriversManagementPage',
-        action: 'delete_driver_error',
-        metadata: { error: errorMessage }
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to delete driver',
+        {
+          component: 'DriversManagementPage',
+          action: 'delete_driver_error',
+          metadata: { error: errorMessage },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   };
 
@@ -234,9 +250,7 @@ export default function DriversManagementPage() {
             <div
               key={driver.id}
               className={`rounded-lg border p-6 shadow-sm ${
-                driver.isAvailable
-                  ? 'border-green-200 bg-green-50'
-                  : 'border-red-200 bg-red-50'
+                driver.isAvailable ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
               }`}
             >
               <div className="flex items-start justify-between mb-4">
@@ -300,7 +314,9 @@ export default function DriversManagementPage() {
 
           {drivers.length === 0 && (
             <div className="col-span-full text-center py-12">
-              <p className="text-gray-500">No drivers found. Add your first driver to get started.</p>
+              <p className="text-gray-500">
+                No drivers found. Add your first driver to get started.
+              </p>
             </div>
           )}
         </div>
@@ -323,9 +339,7 @@ export default function DriversManagementPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name *
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
                       <input
                         type="text"
                         value={formData.name}
@@ -363,7 +377,9 @@ export default function DriversManagementPage() {
                       <input
                         type="text"
                         value={formData.licenseNumber}
-                        onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, licenseNumber: e.target.value })
+                        }
                         className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-kubota-orange"
                       />
                     </div>
@@ -375,7 +391,9 @@ export default function DriversManagementPage() {
                       <input
                         type="date"
                         value={formData.licenseExpiry}
-                        onChange={(e) => setFormData({ ...formData, licenseExpiry: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, licenseExpiry: e.target.value })
+                        }
                         className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-kubota-orange"
                       />
                     </div>
@@ -402,16 +420,16 @@ export default function DriversManagementPage() {
                       <input
                         type="text"
                         value={formData.vehicleRegistration}
-                        onChange={(e) => setFormData({ ...formData, vehicleRegistration: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, vehicleRegistration: e.target.value })
+                        }
                         className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-kubota-orange"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Notes
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -458,5 +476,3 @@ export default function DriversManagementPage() {
     </div>
   );
 }
-
-

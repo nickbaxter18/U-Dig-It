@@ -1,9 +1,5 @@
 'use client';
 
-import MobileContactForm from '@/components/MobileContactForm';
-import MobileEquipmentShowcase from '@/components/MobileEquipmentShowcase';
-import MobileNavigation from '@/components/MobileNavigation';
-import MobileOptimizedBooking from '@/components/MobileOptimizedBooking';
 import {
   CheckCircle,
   ChevronDown,
@@ -13,7 +9,14 @@ import {
   Smartphone,
   Volume2,
 } from 'lucide-react';
+
 import { useState } from 'react';
+
+import MobileContactForm from '@/components/MobileContactForm';
+import MobileEquipmentShowcase from '@/components/MobileEquipmentShowcase';
+import MobileNavigation from '@/components/MobileNavigation';
+import MobileOptimizedBooking from '@/components/MobileOptimizedBooking';
+
 import { logger } from '@/lib/logger';
 
 /**
@@ -22,7 +25,7 @@ import { logger } from '@/lib/logger';
  */
 export default function MobileDemoPage() {
   const [activeDemo, setActiveDemo] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Removed unused state: isExpanded, setIsExpanded
 
   const demos = [
     {
@@ -85,19 +88,21 @@ export default function MobileDemoPage() {
 
   const handleDateSelect = (startDate: string, endDate: string) => {
     if (process.env.NODE_ENV === 'development') {
-      logger.debug(
-        'Selected dates:',
-        { component: 'app-page', action: 'debug', metadata: { startDate, endDate } }
-      );
+      logger.debug('Selected dates:', {
+        component: 'app-page',
+        action: 'debug',
+        metadata: { startDate, endDate },
+      });
     }
   };
 
   const handleLocationSelect = (address: string, city: string) => {
     if (process.env.NODE_ENV === 'development') {
-      logger.debug(
-        'Selected location:',
-        { component: 'app-page', action: 'debug', metadata: { address, city } }
-      );
+      logger.debug('Selected location:', {
+        component: 'app-page',
+        action: 'debug',
+        metadata: { address, city },
+      });
     }
   };
 
@@ -166,7 +171,7 @@ export default function MobileDemoPage() {
 
         {/* Demo Components */}
         <div className="space-y-8">
-          {demos.map(demo => {
+          {demos.map((demo) => {
             const Component = demo.component;
             const isActive = activeDemo === demo.id;
 
@@ -184,7 +189,7 @@ export default function MobileDemoPage() {
 
                       {/* Features List */}
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        {demo.features.map((feature: any, index: any) => (
+                        {demo.features.map((feature: unknown, index: unknown) => (
                           <div key={index} className="flex items-center space-x-2">
                             <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" />
                             <span className="text-sm text-gray-700">{feature}</span>

@@ -2,9 +2,11 @@
  * Logger Test Suite
  * Tests structured logging, sensitive data filtering, and rate limiting
  */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { logger, LogLevel } from '../logger';
+import { LogLevel as _LogLevel, logger } from '../logger';
+
+// Reserved for future log level testing
 
 describe('Logger', () => {
   beforeEach(() => {
@@ -126,16 +128,3 @@ describe('Logger', () => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-

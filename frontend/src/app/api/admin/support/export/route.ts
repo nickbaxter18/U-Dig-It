@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 function formatCsvValue(value: unknown) {
   const asString = value === null || value === undefined ? '' : String(value);
@@ -15,19 +16,15 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') ?? 'all';
@@ -88,14 +85,16 @@ export async function GET(request: NextRequest) {
     const { data, error: queryError } = await query;
     if (queryError) throw queryError;
 
-    const tickets = (data ?? []).map((ticket: any) => {
+    const tickets = (data ?? []).map((ticket: unknown) => {
       const customer = ticket.customer ?? {};
       const booking = ticket.booking ?? {};
       const equipment = ticket.equipment ?? {};
       const assignedUser = ticket.assignedUser ?? {};
 
       const equipmentName =
-        equipment.make && equipment.model ? `${equipment.make} ${equipment.model}` : equipment.make || equipment.model;
+        equipment.make && equipment.model
+          ? `${equipment.make} ${equipment.model}`
+          : equipment.make || equipment.model;
       const assignedToName =
         assignedUser.firstName && assignedUser.lastName
           ? `${assignedUser.firstName} ${assignedUser.lastName}`
@@ -119,7 +118,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    const filteredTickets = tickets.filter(ticket => {
+    const filteredTickets = tickets.filter((ticket) => {
       if (searchTerm) {
         const matchesSearch =
           ticket.ticketNumber?.toLowerCase().includes(searchTerm) ||
@@ -149,7 +148,7 @@ export async function GET(request: NextRequest) {
       'First Response At',
     ];
 
-    const rows = filteredTickets.map(ticket => [
+    const rows = filteredTickets.map((ticket) => [
       ticket.ticketNumber ?? 'N/A',
       ticket.customerName,
       ticket.customerEmail,
@@ -164,7 +163,7 @@ export async function GET(request: NextRequest) {
       ticket.firstResponseAt ? ticket.firstResponseAt.toLocaleString() : '',
     ]);
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `support-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {
@@ -186,5 +185,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to export support tickets' }, { status: 500 });
   }
 }
-
-

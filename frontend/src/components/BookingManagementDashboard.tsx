@@ -16,7 +16,7 @@ import LicenseUploadSection from './booking/LicenseUploadSection';
 import PaymentSection from './booking/PaymentSection';
 
 interface BookingManagementDashboardProps {
-  booking: any;
+  booking: unknown;
   completionSteps: {
     contract_signed: boolean;
     insurance_uploaded: boolean;
@@ -31,7 +31,7 @@ interface BookingManagementDashboardProps {
     contract_signed: boolean;
   };
   userId: string;
-  isAdmin: boolean;
+  _isAdmin: boolean; // Reserved for future admin check
 }
 
 export default function BookingManagementDashboard({
@@ -39,14 +39,14 @@ export default function BookingManagementDashboard({
   completionSteps,
   completedDuringBooking,
   userId,
-  isAdmin,
+  isAdmin: _isAdmin, // Reserved for future admin check
 }: BookingManagementDashboardProps) {
   const router = useRouter();
   const bookingId = booking?.id ?? 'unknown';
   const storageKey = `booking-active-section-${bookingId}`;
 
   const [activeSection, setActiveSection] = useState<string>('overview');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [_refreshKey, setRefreshKey] = useState(0); // Reserved for forced refresh
   const hasRestoredSection = useRef(false);
 
   const handleStepComplete = () => {
@@ -69,8 +69,8 @@ export default function BookingManagementDashboard({
   }, [activeSection, storageKey]);
 
   const contract = booking.contracts?.[0];
-  const payment = booking.payments?.find((p: any) => p.type === 'payment');
-  const deposit = booking.payments?.find((p: any) => p.type === 'deposit');
+  const payment = booking.payments?.find((p: unknown) => p.type === 'payment');
+  const deposit = booking.payments?.find((p: unknown) => p.type === 'deposit');
   const latestVerificationRequest = useMemo(() => {
     if (!Array.isArray(booking.id_verification_requests)) return null;
     const sorted = [...booking.id_verification_requests].sort((a, b) => {
@@ -79,7 +79,7 @@ export default function BookingManagementDashboard({
       return right - left;
     });
     return sorted[0] ?? null;
-  }, [booking.id_verification_requests, refreshKey]);
+  }, [booking.id_verification_requests]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

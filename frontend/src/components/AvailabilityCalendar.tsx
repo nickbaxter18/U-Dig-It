@@ -5,9 +5,10 @@
 
 'use client';
 
-import { supabase } from '@/lib/supabase/client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 interface AvailabilityBlock {
   id: string;
@@ -32,7 +33,7 @@ interface AvailabilityCalendarProps {
   selectedEndDate?: Date | null;
   onDateSelect?: (start: Date, end: Date | null) => void;
   minDate?: Date;
-  maxDate?: Date;
+  _maxDate?: Date; // Reserved for future date restriction
 }
 
 export default function AvailabilityCalendar({
@@ -41,7 +42,7 @@ export default function AvailabilityCalendar({
   selectedEndDate,
   onDateSelect,
   minDate = new Date(),
-  maxDate,
+  maxDate: _maxDate, // Reserved for future date restriction
 }: AvailabilityCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [availabilityBlocks, setAvailabilityBlocks] = useState<AvailabilityBlock[]>([]);
@@ -51,37 +52,7 @@ export default function AvailabilityCalendar({
   const [rangeEnd, setRangeEnd] = useState<Date | null>(selectedEndDate || null);
 
   // Fetch availability blocks for the current month
-  useEffect(() => {
-    fetchAvailability();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel(`availability-${equipmentId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'availability_blocks',
-          filter: `equipment_id=eq.${equipmentId}`,
-        },
-        payload => {
-          logger.debug('[AvailabilityCalendar] Availability changed:', {
-            component: 'AvailabilityCalendar',
-            action: 'debug',
-            metadata: { payload },
-          });
-          fetchAvailability();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [equipmentId, currentMonth]);
-
-  const fetchAvailability = async () => {
+  const fetchAvailability = useCallback(async () => {
     try {
       setLoading(true);
       const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -98,15 +69,49 @@ export default function AvailabilityCalendar({
 
       setAvailabilityBlocks(data || []);
     } catch (error) {
-      logger.error('[AvailabilityCalendar] Failed to fetch availability:', {
-        component: 'AvailabilityCalendar',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        '[AvailabilityCalendar] Failed to fetch availability:',
+        {
+          component: 'AvailabilityCalendar',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       setAvailabilityBlocks([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [equipmentId, currentMonth]);
+
+  useEffect(() => {
+    fetchAvailability();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel(`availability-${equipmentId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'availability_blocks',
+          filter: `equipment_id=eq.${equipmentId}`,
+        },
+        (payload) => {
+          logger.debug('[AvailabilityCalendar] Availability changed:', {
+            component: 'AvailabilityCalendar',
+            action: 'debug',
+            metadata: { payload },
+          });
+          fetchAvailability();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [equipmentId, currentMonth, fetchAvailability]);
 
   const getDaysInMonth = (): DateInfo[] => {
     const year = currentMonth.getFullYear();
@@ -343,7 +348,7 @@ export default function AvailabilityCalendar({
         <>
           {/* Week day headers */}
           <div className="mb-2 grid grid-cols-7 gap-2">
-            {weekDays.map(day => (
+            {weekDays.map((day) => (
               <div key={day} className="py-2 text-center text-xs font-semibold text-gray-600">
                 {day}
               </div>
@@ -434,7 +439,7 @@ export default function AvailabilityCalendar({
               setRangeStart(null);
               setRangeEnd(null);
               setSelectingRange(false);
-              if (onDateSelect) onDateSelect(null as any, null);
+              if (onDateSelect) onDateSelect(null, null);
             }}
             className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-800"
           >
@@ -447,13 +452,13 @@ export default function AvailabilityCalendar({
       <div className="mt-6 grid grid-cols-3 gap-4 border-t border-gray-200 pt-4 text-center">
         <div>
           <div className="text-2xl font-bold text-green-600">
-            {days.filter(d => d.isAvailable && !d.isPast).length}
+            {days.filter((d) => d.isAvailable && !d.isPast).length}
           </div>
           <div className="text-xs text-gray-600">Available Days</div>
         </div>
         <div>
           <div className="text-2xl font-bold text-red-600">
-            {days.filter(d => !d.isAvailable && !d.isPast).length}
+            {days.filter((d) => !d.isAvailable && !d.isPast).length}
           </div>
           <div className="text-xs text-gray-600">Booked Days</div>
         </div>

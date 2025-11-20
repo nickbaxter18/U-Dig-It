@@ -7,10 +7,10 @@
  *   - Vercel cron (if on Vercel)
  *   - Manual admin trigger
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { processScheduledJobs } from '@/lib/job-scheduler';
 import { logger } from '@/lib/logger';
-import { NextRequest, NextResponse } from 'next/server';
 
 // Verify cron secret to prevent unauthorized runs
 const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
@@ -21,9 +21,7 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization');
     const cronSecret = request.headers.get('x-cron-secret');
 
-    const isAuthorized =
-      authHeader === `Bearer ${CRON_SECRET}` ||
-      cronSecret === CRON_SECRET;
+    const isAuthorized = authHeader === `Bearer ${CRON_SECRET}` || cronSecret === CRON_SECRET;
 
     if (!isAuthorized) {
       logger.warn('Unauthorized job processor access', {
@@ -49,13 +47,16 @@ export async function POST(request: NextRequest) {
       failures: result.failures || 0,
       timestamp: new Date().toISOString(),
     });
-
-  } catch (error: any) {
-    logger.error('Job processor failed', {
-      component: 'job-processor-api',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Job processor failed',
+      {
+        component: 'job-processor-api',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Job processing failed', details: error.message },
@@ -72,28 +73,3 @@ export async function GET() {
     timestamp: new Date().toISOString(),
   });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

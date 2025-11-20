@@ -14,7 +14,10 @@ import {
   User,
   X,
 } from 'lucide-react';
+
 import { Fragment, useEffect, useRef, useState } from 'react';
+
+import { PermissionGate } from '@/components/admin/PermissionGate';
 
 interface Booking {
   id: string;
@@ -48,7 +51,7 @@ interface BookingsTableProps {
     totalPages: number;
   };
   onBookingSelect: (booking: Booking) => void;
-  onBookingUpdate: (bookingId: string, updates: Record<string, any>) => void;
+  onBookingUpdate: (bookingId: string, updates: Record<string, unknown>) => void;
   onStatusUpdate: (bookingId: string, status: string) => void;
   onCancelBooking: (bookingId: string, reason?: string) => void;
   onPageChange: (page: number) => void;
@@ -75,7 +78,7 @@ export function BookingsTable({
   const selectAllRef = useRef<HTMLInputElement>(null);
 
   const allVisibleSelected =
-    bookings.length > 0 && bookings.every(booking => selectedBookingIds.includes(booking.id));
+    bookings.length > 0 && bookings.every((booking) => selectedBookingIds.includes(booking.id));
   const someSelected = selectedBookingIds.length > 0 && !allVisibleSelected;
 
   useEffect(() => {
@@ -178,7 +181,7 @@ export function BookingsTable({
                   className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
                   aria-label="Select all bookings"
                   checked={allVisibleSelected}
-                  onChange={event => {
+                  onChange={(event) => {
                     event.stopPropagation();
                     onToggleSelectAll();
                   }}
@@ -208,238 +211,256 @@ export function BookingsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {bookings.map(booking => {
+            {bookings.map((booking) => {
               const isSelected = selectedBookingIds.includes(booking.id);
               return (
-              <Fragment key={booking.id}>
-                <tr
-                  className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
-                  onClick={() => onBookingSelect(booking)}
-                >
-                  <td
-                    className="px-3 py-4 lg:px-4"
-                    onClick={event => {
-                      event.stopPropagation();
-                    }}
+                <Fragment key={booking.id}>
+                  <tr
+                    className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
+                    onClick={() => onBookingSelect(booking)}
                   >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
-                      checked={isSelected}
-                      onChange={event => {
+                    <td
+                      className="px-3 py-4 lg:px-4"
+                      onClick={(event) => {
                         event.stopPropagation();
-                        onToggleBookingSelection(booking.id);
                       }}
-                      aria-label={`Select booking ${booking.bookingNumber}`}
-                    />
-                  </td>
-                  <td className="px-3 py-4 lg:px-6">
-                    <div className="flex items-center">
-                      <div className="hidden h-10 w-10 flex-shrink-0 sm:block">
-                        <div className="bg-kubota-orange flex h-10 w-10 items-center justify-center rounded-full">
-                          <Calendar className="h-5 w-5 text-white" />
-                        </div>
-                      </div>
-                      <div className="sm:ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {booking.bookingNumber}
-                        </div>
-                        <div className="text-xs text-gray-500 sm:text-sm">{formatDate(booking.createdAt)}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 lg:px-6">
-                    <div className="flex items-center">
-                      <div className="hidden h-8 w-8 flex-shrink-0 sm:block">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
-                          <User className="h-4 w-4 text-gray-600" />
-                        </div>
-                      </div>
-                      <div className="min-w-0 sm:ml-3">
-                        <div className="truncate text-sm font-medium text-gray-900">
-                          {booking.customer.firstName} {booking.customer.lastName}
-                        </div>
-                        <div className="truncate text-xs text-gray-500 sm:text-sm">{booking.customer.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-4 md:table-cell lg:px-6">
-                    <div className="flex items-center">
-                      <div className="h-8 w-8 flex-shrink-0">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
-                          <Package className="h-4 w-4 text-gray-600" />
-                        </div>
-                      </div>
-                      <div className="ml-3 min-w-0">
-                        <div className="truncate text-sm font-medium text-gray-900">
-                          {booking.equipment.name}
-                        </div>
-                        <div className="truncate text-sm text-gray-500">{booking.equipment.model}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 lg:px-6">
-                    <div className="text-xs text-gray-900 sm:text-sm">{formatDate(booking.startDate)}</div>
-                    <div className="text-xs text-gray-500 sm:text-sm">to {formatDate(booking.endDate)}</div>
-                  </td>
-                  <td className="px-3 py-4 lg:px-6">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(booking.status)}`}
                     >
-                      {booking.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="hidden px-3 py-4 sm:table-cell lg:px-6">
-                    <div className="flex items-center">
-                      <DollarSign className="mr-1 h-4 w-4 text-gray-400" />
-                      <span className="text-sm font-medium text-gray-900">
-                        {formatCurrency(booking.total)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 text-right text-sm font-medium lg:px-6">
-                    <div className="flex items-center justify-end space-x-1 sm:space-x-2">
-                      <button
-                        onClick={e => {
-                          e.stopPropagation();
-                          onBookingSelect(booking);
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                        checked={isSelected}
+                        onChange={(event) => {
+                          event.stopPropagation();
+                          onToggleBookingSelection(booking.id);
                         }}
-                        aria-label="View booking details"
-                        className="text-kubota-orange hover:text-orange-600"
-                      >
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                        <span className="sr-only">View details</span>
-                      </button>
-                      {booking.customer.phone && (
-                        <a
-                          href={`tel:${booking.customer.phone}`}
-                          onClick={e => e.stopPropagation()}
-                          className="text-blue-500 hover:text-blue-700"
-                          aria-label="Call customer"
-                        >
-                          <Phone className="h-4 w-4" aria-hidden="true" />
-                        </a>
-                      )}
-                      {booking.customer.email && (
-                        <a
-                          href={`mailto:${booking.customer.email}`}
-                          onClick={e => e.stopPropagation()}
-                          className="text-blue-500 hover:text-blue-700"
-                          aria-label="Email customer"
-                        >
-                          <Mail className="h-4 w-4" aria-hidden="true" />
-                        </a>
-                      )}
-                      <div className="relative">
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            toggleActionMenu(booking.id);
-                          }}
-                          aria-label="More actions"
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <MoreVertical className="h-4 w-4" aria-hidden="true" />
-                        </button>
-                        {actionMenus.has(booking.id) && (
-                          <div className="absolute right-0 z-10 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg">
-                            <div className="py-1">
-                              <button
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  onBookingSelect(booking);
-                                  setActionMenus(new Set());
-                                }}
-                                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </button>
-                              <button
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  // Handle edit
-                                  setActionMenus(new Set());
-                                }}
-                                className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Booking
-                              </button>
-                              {booking.status !== 'CANCELLED' && (
-                                <button
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    const confirmed = window.confirm(
-                                      'Are you sure you want to cancel this booking?'
-                                    );
-                                    if (confirmed) {
-                                      onCancelBooking(booking.id);
-                                    }
-                                    setActionMenus(new Set());
-                                  }}
-                                  className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                  <X className="mr-2 h-4 w-4" />
-                                  Cancel Booking
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-                {expandedRows.has(booking.id) && (
-                  <tr>
-                    <td colSpan={7} className="bg-gray-50 px-3 py-4 lg:px-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="mb-2 text-sm font-medium text-gray-900">
-                            Booking Details
-                          </h4>
-                          <div className="space-y-1 text-sm text-gray-600">
-                            <div>ID: {booking.id}</div>
-                            <div>Created: {formatDate(booking.createdAt)}</div>
-                            <div>
-                              Duration:{' '}
-                              {Math.ceil(
-                                (new Date(booking.endDate).getTime() -
-                                  new Date(booking.startDate).getTime()) /
-                                  (1000 * 60 * 60 * 24)
-                              )}{' '}
-                              days
-                            </div>
+                        aria-label={`Select booking ${booking.bookingNumber}`}
+                      />
+                    </td>
+                    <td className="px-3 py-4 lg:px-6">
+                      <div className="flex items-center">
+                        <div className="hidden h-10 w-10 flex-shrink-0 sm:block">
+                          <div className="bg-kubota-orange flex h-10 w-10 items-center justify-center rounded-full">
+                            <Calendar className="h-5 w-5 text-white" />
                           </div>
                         </div>
-                        <div>
-                          <h4 className="mb-2 text-sm font-medium text-gray-900">Quick Actions</h4>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => onBookingSelect(booking)}
-                              className="bg-kubota-orange rounded px-3 py-1 text-xs text-white hover:bg-orange-600"
-                            >
-                              View Full Details
-                            </button>
-                            <button
-                              onClick={() => {
-                                const newStatus = prompt('New status:', booking.status);
-                                if (newStatus && newStatus !== booking.status) {
-                                  onStatusUpdate(booking.id, newStatus);
-                                }
-                              }}
-                              className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
-                            >
-                              Update Status
-                            </button>
+                        <div className="sm:ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {booking.bookingNumber}
+                          </div>
+                          <div className="text-xs text-gray-500 sm:text-sm">
+                            {formatDate(booking.createdAt)}
                           </div>
                         </div>
                       </div>
                     </td>
+                    <td className="px-3 py-4 lg:px-6">
+                      <div className="flex items-center">
+                        <div className="hidden h-8 w-8 flex-shrink-0 sm:block">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
+                            <User className="h-4 w-4 text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="min-w-0 sm:ml-3">
+                          <div className="truncate text-sm font-medium text-gray-900">
+                            {booking.customer.firstName} {booking.customer.lastName}
+                          </div>
+                          <div className="truncate text-xs text-gray-500 sm:text-sm">
+                            {booking.customer.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-4 md:table-cell lg:px-6">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 flex-shrink-0">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
+                            <Package className="h-4 w-4 text-gray-600" />
+                          </div>
+                        </div>
+                        <div className="ml-3 min-w-0">
+                          <div className="truncate text-sm font-medium text-gray-900">
+                            {booking.equipment.name}
+                          </div>
+                          <div className="truncate text-sm text-gray-500">
+                            {booking.equipment.model}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 lg:px-6">
+                      <div className="text-xs text-gray-900 sm:text-sm">
+                        {formatDate(booking.startDate)}
+                      </div>
+                      <div className="text-xs text-gray-500 sm:text-sm">
+                        to {formatDate(booking.endDate)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 lg:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(booking.status)}`}
+                      >
+                        {booking.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-4 sm:table-cell lg:px-6">
+                      <div className="flex items-center">
+                        <DollarSign className="mr-1 h-4 w-4 text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900">
+                          {formatCurrency(booking.total)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-right text-sm font-medium lg:px-6">
+                      <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onBookingSelect(booking);
+                          }}
+                          aria-label="View booking details"
+                          className="text-kubota-orange hover:text-orange-600"
+                        >
+                          <Eye className="h-4 w-4" aria-hidden="true" />
+                          <span className="sr-only">View details</span>
+                        </button>
+                        {booking.customer.phone && (
+                          <a
+                            href={`tel:${booking.customer.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-blue-500 hover:text-blue-700"
+                            aria-label="Call customer"
+                          >
+                            <Phone className="h-4 w-4" aria-hidden="true" />
+                          </a>
+                        )}
+                        {booking.customer.email && (
+                          <a
+                            href={`mailto:${booking.customer.email}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-blue-500 hover:text-blue-700"
+                            aria-label="Email customer"
+                          >
+                            <Mail className="h-4 w-4" aria-hidden="true" />
+                          </a>
+                        )}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleActionMenu(booking.id);
+                            }}
+                            aria-label="More actions"
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                          {actionMenus.has(booking.id) && (
+                            <div className="absolute right-0 z-10 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg">
+                              <div className="py-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBookingSelect(booking);
+                                    setActionMenus(new Set());
+                                  }}
+                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </button>
+                                <PermissionGate permission="bookings:update:all">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Handle edit
+                                      setActionMenus(new Set());
+                                    }}
+                                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit Booking
+                                  </button>
+                                </PermissionGate>
+                                {booking.status !== 'CANCELLED' && (
+                                  <PermissionGate permission="bookings:cancel:all">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const confirmed = window.confirm(
+                                          'Are you sure you want to cancel this booking?'
+                                        );
+                                        if (confirmed) {
+                                          onCancelBooking(booking.id);
+                                        }
+                                        setActionMenus(new Set());
+                                      }}
+                                      className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                      <X className="mr-2 h-4 w-4" />
+                                      Cancel Booking
+                                    </button>
+                                  </PermissionGate>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                   </tr>
-                )}
-              </Fragment>
+                  {expandedRows.has(booking.id) && (
+                    <tr>
+                      <td colSpan={7} className="bg-gray-50 px-3 py-4 lg:px-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium text-gray-900">
+                              Booking Details
+                            </h4>
+                            <div className="space-y-1 text-sm text-gray-600">
+                              <div>ID: {booking.id}</div>
+                              <div>Created: {formatDate(booking.createdAt)}</div>
+                              <div>
+                                Duration:{' '}
+                                {Math.ceil(
+                                  (new Date(booking.endDate).getTime() -
+                                    new Date(booking.startDate).getTime()) /
+                                    (1000 * 60 * 60 * 24)
+                                )}{' '}
+                                days
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium text-gray-900">
+                              Quick Actions
+                            </h4>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => onBookingSelect(booking)}
+                                className="bg-kubota-orange rounded px-3 py-1 text-xs text-white hover:bg-orange-600"
+                              >
+                                View Full Details
+                              </button>
+                              <PermissionGate permission="bookings:update:all">
+                                <button
+                                  onClick={() => {
+                                    const newStatus = prompt('New status:', booking.status);
+                                    if (newStatus && newStatus !== booking.status) {
+                                      onStatusUpdate(booking.id, newStatus);
+                                    }
+                                  }}
+                                  className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+                                >
+                                  Update Status
+                                </button>
+                              </PermissionGate>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>

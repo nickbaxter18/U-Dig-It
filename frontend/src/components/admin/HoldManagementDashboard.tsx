@@ -40,7 +40,7 @@ interface HoldManagementDashboardProps {
     status: string;
     stripe_payment_intent_id?: string;
     created_at: string;
-    metadata?: any;
+    metadata?: unknown;
   }>;
 }
 
@@ -62,7 +62,7 @@ export default function HoldManagementDashboard({
 
   // Calculate T-48 date
   const pickupDate = new Date(booking.startDate);
-  const t48Date = new Date(pickupDate.getTime() - (48 * 60 * 60 * 1000));
+  const t48Date = new Date(pickupDate.getTime() - 48 * 60 * 60 * 1000);
   const isWithin48h = t48Date <= new Date();
 
   /**
@@ -88,11 +88,13 @@ export default function HoldManagementDashboard({
       }
 
       const result = await response.json();
-      setSuccessMessage(`✅ $500 security hold placed successfully! Intent ID: ${result.paymentIntentId}`);
+      setSuccessMessage(
+        `✅ $500 security hold placed successfully! Intent ID: ${result.paymentIntentId}`
+      );
 
       // Refresh page after 2 seconds
       setTimeout(() => window.location.reload(), 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setErrorMessage(`❌ Failed to place hold: ${error.message}`);
       logger.error('Admin: Failed to place security hold', {
         component: 'HoldManagement',
@@ -129,7 +131,7 @@ export default function HoldManagementDashboard({
       setSuccessMessage('✅ Security hold released successfully!');
 
       setTimeout(() => window.location.reload(), 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setErrorMessage(`❌ Failed to release hold: ${error.message}`);
     } finally {
       setIsProcessing(false);
@@ -142,7 +144,11 @@ export default function HoldManagementDashboard({
   const capturePartial = async () => {
     const amountCents = parseFloat(captureAmount) * 100;
 
-    if (!captureAmount || amountCents <= 0 || amountCents > (booking.hold_security_amount_cents || 50000)) {
+    if (
+      !captureAmount ||
+      amountCents <= 0 ||
+      amountCents > (booking.hold_security_amount_cents || 50000)
+    ) {
       setErrorMessage('Invalid amount');
       return;
     }
@@ -173,11 +179,13 @@ export default function HoldManagementDashboard({
       }
 
       const result = await response.json();
-      setSuccessMessage(`✅ Captured $${result.capturedAmount}! Remainder ($${result.remainderReleased}) released.`);
+      setSuccessMessage(
+        `✅ Captured $${result.capturedAmount}! Remainder ($${result.remainderReleased}) released.`
+      );
       setShowCaptureModal(false);
 
       setTimeout(() => window.location.reload(), 2000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       setErrorMessage(`❌ Failed to capture: ${error.message}`);
     } finally {
       setIsProcessing(false);
@@ -199,7 +207,11 @@ export default function HoldManagementDashboard({
     <div className="space-y-6" aria-busy={isProcessing}>
       {/* Status Messages */}
       {successMessage && (
-        <div className="rounded-lg bg-green-100 border border-green-400 p-4 text-green-800" role="status" aria-live="polite">
+        <div
+          className="rounded-lg bg-green-100 border border-green-400 p-4 text-green-800"
+          role="status"
+          aria-live="polite"
+        >
           {successMessage}
         </div>
       )}
@@ -215,7 +227,9 @@ export default function HoldManagementDashboard({
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           {/* Verification Hold */}
-          <div className={`rounded-lg border-2 p-4 ${hasVerifyHold ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50'}`}>
+          <div
+            className={`rounded-lg border-2 p-4 ${hasVerifyHold ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50'}`}
+          >
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">{hasVerifyHold ? '✅' : '⏳'}</span>
               <div>
@@ -231,18 +245,24 @@ export default function HoldManagementDashboard({
           </div>
 
           {/* Security Hold */}
-          <div className={`rounded-lg border-2 p-4 ${
-            securityHoldActive ? 'border-blue-300 bg-blue-50' :
-            hasSecurityHold ? 'border-green-300 bg-green-50' :
-            'border-yellow-300 bg-yellow-50'
-          }`}>
+          <div
+            className={`rounded-lg border-2 p-4 ${
+              securityHoldActive
+                ? 'border-blue-300 bg-blue-50'
+                : hasSecurityHold
+                  ? 'border-green-300 bg-green-50'
+                  : 'border-yellow-300 bg-yellow-50'
+            }`}
+          >
             <div className="flex items-center mb-2">
               <span className="text-2xl mr-2">
                 {securityHoldActive ? '🔒' : hasSecurityHold ? '✅' : '⏰'}
               </span>
               <div>
                 <div className="text-sm font-semibold text-gray-900">Security Hold</div>
-                <div className="text-xs text-gray-600">$500 {securityHoldActive ? '(active)' : ''}</div>
+                <div className="text-xs text-gray-600">
+                  $500 {securityHoldActive ? '(active)' : ''}
+                </div>
               </div>
             </div>
             {hasSecurityHold && (
@@ -318,30 +338,40 @@ export default function HoldManagementDashboard({
           <p className="text-sm text-gray-600">No hold transactions yet</p>
         ) : (
           <div className="space-y-2">
-            {holdTransactions.map((tx: any) => (
+            {holdTransactions.map((tx: unknown) => (
               <div
                 key={tx.id}
                 className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
               >
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
-                      tx.purpose === 'verify_hold' ? 'bg-purple-100 text-purple-800' :
-                      tx.purpose === 'security_hold' ? 'bg-blue-100 text-blue-800' :
-                      tx.purpose === 'capture' ? 'bg-red-100 text-red-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                        tx.purpose === 'verify_hold'
+                          ? 'bg-purple-100 text-purple-800'
+                          : tx.purpose === 'security_hold'
+                            ? 'bg-blue-100 text-blue-800'
+                            : tx.purpose === 'capture'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-green-100 text-green-800'
+                      }`}
+                    >
                       {tx.purpose}
                     </span>
                     <span className="text-sm font-medium text-gray-900">
                       ${(tx.amount_cents / 100).toFixed(2)}
                     </span>
-                    <span className={`text-xs ${
-                      tx.status === 'succeeded' ? 'text-green-600' :
-                      tx.status === 'canceled' ? 'text-gray-600' :
-                      tx.status === 'failed' ? 'text-red-600' :
-                      'text-yellow-600'
-                    }`}>
+                    <span
+                      className={`text-xs ${
+                        tx.status === 'succeeded'
+                          ? 'text-green-600'
+                          : tx.status === 'canceled'
+                            ? 'text-gray-600'
+                            : tx.status === 'failed'
+                              ? 'text-red-600'
+                              : 'text-yellow-600'
+                      }`}
+                    >
                       {tx.status}
                     </span>
                   </div>
@@ -381,7 +411,7 @@ export default function HoldManagementDashboard({
                   max="500"
                   step="0.01"
                   value={captureAmount}
-                  onChange={(e: any) => setCaptureAmount(e.target.value)}
+                  onChange={(e: unknown) => setCaptureAmount(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 py-2 pl-7 pr-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="180.00"
                 />
@@ -394,7 +424,7 @@ export default function HoldManagementDashboard({
               </label>
               <textarea
                 value={captureReason}
-                onChange={(e: any) => setCaptureReason(e.target.value)}
+                onChange={(e: unknown) => setCaptureReason(e.target.value)}
                 rows={3}
                 className="w-full rounded-lg border border-gray-300 p-3 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Hydraulic hose damage from improper use"
@@ -438,28 +468,3 @@ export default function HoldManagementDashboard({
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

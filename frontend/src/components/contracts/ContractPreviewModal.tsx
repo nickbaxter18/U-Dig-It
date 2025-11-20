@@ -6,6 +6,7 @@
 'use client';
 
 import { AlertTriangle, FileText, Scale, Shield, X } from 'lucide-react';
+
 import { useRef, useState } from 'react';
 
 interface ContractPreviewModalProps {
@@ -26,7 +27,7 @@ export default function ContractPreviewModal({
   const contentRef = useRef<HTMLDivElement>(null);
 
   const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionId)) {
         newSet.delete(sectionId);
@@ -343,7 +344,7 @@ export default function ContractPreviewModal({
           </div>
 
           {/* Contract Sections (Accordion) */}
-          {contractSections.map((section: any, index: any) => (
+          {contractSections.map((section: unknown, _index: unknown) => (
             <div
               key={section.id}
               className={`overflow-hidden rounded-lg border-2 transition-all ${

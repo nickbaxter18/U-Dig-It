@@ -1,0 +1,384 @@
+---
+description: "Automatically update reference documentation when code changes - components, APIs, database schema"
+alwaysApply: true
+---
+
+# Documentation Auto-Update System
+
+## 🎯 Purpose
+Automatically keep reference documentation in sync with code changes, eliminating manual documentation updates.
+
+---
+
+## Auto-Update Rules
+
+When I create or modify code, I will **automatically update** the relevant reference documentation files.
+
+---
+
+## 1. Component Documentation
+
+### When Creating New Component
+
+**File**: `docs/reference/COMPONENT_INDEX.md`
+
+**Auto-Update Pattern**:
+```markdown
+## [Category] Components
+
+### ComponentName
+- **Path**: `frontend/src/components/category/ComponentName.tsx`
+- **Props**: `{ prop1: string, prop2: number }`
+- **Usage**: `<ComponentName prop1={value} prop2={123} />`
+- **Description**: Brief description of what component does
+- **Dependencies**: List key dependencies (e.g., uses TanStack Query)
+```
+
+**Example**:
+```typescript
+// New component created: BookingCard.tsx
+// I automatically add to COMPONENT_INDEX.md:
+
+### BookingCard
+- **Path**: `frontend/src/components/booking/BookingCard.tsx`
+- **Props**: `{ booking: Booking, onCancel: () => void }`
+- **Usage**: `<BookingCard booking={booking} onCancel={handleCancel} />`
+- **Description**: Displays booking details with cancel action
+- **Dependencies**: Uses `@/lib/supabase/client` for data fetching
+```
+
+---
+
+## 2. API Route Documentation
+
+### When Creating New API Endpoint
+
+**File**: `docs/reference/API_ROUTES_INDEX.md`
+
+**Auto-Update Pattern**:
+```markdown
+## [Category] Endpoints
+
+### [METHOD] /api/[route]
+- **Auth**: Required | Optional | Public
+- **Rate Limit**: STRICT | MODERATE | NONE
+- **Request Body**: `{ field1: type, field2: type }`
+- **Response**: `{ data: Type, error?: string }`
+- **Description**: What endpoint does
+```
+
+**Example**:
+```typescript
+// New API route created: POST /api/bookings/cancel
+// I automatically add to API_ROUTES_INDEX.md:
+
+### POST /api/bookings/cancel
+- **Auth**: Required
+- **Rate Limit**: STRICT
+- **Request Body**: `{ bookingId: string, reason?: string }`
+- **Response**: `{ success: boolean, booking: Booking }`
+- **Description**: Cancels a booking and processes refund if applicable
+```
+
+---
+
+## 3. Database Schema Documentation
+
+### When Creating New Table
+
+**File**: `docs/reference/DATABASE_SCHEMA.md`
+
+**Auto-Update Pattern**:
+```markdown
+## table_name
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| id | UUID | Primary key | PRIMARY KEY, DEFAULT gen_random_uuid() |
+| created_at | TIMESTAMPTZ | Created timestamp | NOT NULL, DEFAULT now() |
+| ... | ... | ... | ... |
+
+**Indexes**:
+- `idx_table_name_column` ON table_name(column)
+
+**RLS Policies**:
+- `table_name_select` - SELECT policy description
+- `table_name_insert` - INSERT policy description
+```
+
+**Example**:
+```sql
+-- New table created: equipment_maintenance
+-- I automatically add to DATABASE_SCHEMA.md:
+
+## equipment_maintenance
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| id | UUID | Primary key | PRIMARY KEY, DEFAULT gen_random_uuid() |
+| equipment_id | UUID | Equipment reference | NOT NULL, REFERENCES equipment(id) |
+| maintenance_type | VARCHAR(50) | Type of maintenance | NOT NULL |
+| performed_at | TIMESTAMPTZ | When maintenance performed | NOT NULL |
+| created_at | TIMESTAMPTZ | Created timestamp | NOT NULL, DEFAULT now() |
+
+**Indexes**:
+- `idx_equipment_maintenance_equipment_id` ON equipment_maintenance(equipment_id)
+
+**RLS Policies**:
+- `equipment_maintenance_select` - Admins see all, users see their equipment
+- `equipment_maintenance_insert` - Admins only
+```
+
+---
+
+## 4. Type Definitions Documentation
+
+### When Creating New Types
+
+**File**: `docs/reference/TYPE_DEFINITIONS_INDEX.md`
+
+**Auto-Update Pattern**:
+```markdown
+## TypeName
+
+**Location**: `frontend/src/types/category.ts`
+
+```typescript
+interface TypeName {
+  field1: string;
+  field2: number;
+  field3?: boolean; // Optional
+}
+```
+
+**Usage**: Description of when to use this type
+```
+
+**Example**:
+```typescript
+// New type created: MaintenanceRecord
+// I automatically add to TYPE_DEFINITIONS_INDEX.md:
+
+## MaintenanceRecord
+
+**Location**: `frontend/src/types/equipment.ts`
+
+```typescript
+interface MaintenanceRecord {
+  id: string;
+  equipmentId: string;
+  maintenanceType: 'routine' | 'repair' | 'inspection';
+  performedAt: string;
+  notes?: string;
+}
+```
+
+**Usage**: Type for equipment maintenance records in admin dashboard
+```
+
+---
+
+## 5. Utility Functions Documentation
+
+### When Creating New Utility Function
+
+**File**: `docs/reference/UTILITY_FUNCTIONS_INDEX.md`
+
+**Auto-Update Pattern**:
+```markdown
+## functionName
+
+**Location**: `frontend/src/lib/category/functionName.ts`
+
+```typescript
+export function functionName(param1: Type1, param2: Type2): ReturnType {
+  // Implementation
+}
+```
+
+**Description**: What function does
+**Parameters**:
+- `param1`: Description
+- `param2`: Description
+**Returns**: Description of return value
+**Example**: Usage example
+```
+
+**Example**:
+```typescript
+// New utility created: calculateMaintenanceCost
+// I automatically add to UTILITY_FUNCTIONS_INDEX.md:
+
+## calculateMaintenanceCost
+
+**Location**: `frontend/src/lib/equipment/maintenance.ts`
+
+```typescript
+export function calculateMaintenanceCost(
+  maintenanceType: MaintenanceType,
+  equipmentValue: number
+): number {
+  const rates = {
+    routine: 0.01,
+    repair: 0.05,
+    inspection: 0.002
+  };
+  return equipmentValue * rates[maintenanceType];
+}
+```
+
+**Description**: Calculates maintenance cost based on type and equipment value
+**Parameters**:
+- `maintenanceType`: Type of maintenance (routine, repair, inspection)
+- `equipmentValue`: Current value of equipment
+**Returns**: Maintenance cost in dollars
+**Example**:
+```typescript
+const cost = calculateMaintenanceCost('repair', 50000); // Returns 2500
+```
+```
+
+---
+
+## 6. Update Workflow
+
+### Automatic Update Process
+
+1. **Detect Change**
+   ```
+   New component created → Component file detected
+   New API route created → API route file detected
+   New table created → Migration file detected
+   ```
+
+2. **Extract Information**
+   ```
+   Parse file → Extract props/types/parameters
+   Read code → Understand purpose and usage
+   Check dependencies → Identify related files
+   ```
+
+3. **Update Documentation**
+   ```
+   Open reference file → Find appropriate section
+   Add entry → Follow established format
+   Maintain consistency → Match existing style
+   ```
+
+4. **Verify Update**
+   ```
+   Check format → Matches existing entries
+   Verify accuracy → Information correct
+   Test links → Paths are valid
+   ```
+
+---
+
+## 📋 Update Checklist
+
+### For Each Code Change
+
+- [ ] **Component created?** → Update `COMPONENT_INDEX.md`
+- [ ] **API route created?** → Update `API_ROUTES_INDEX.md`
+- [ ] **Database table created?** → Update `DATABASE_SCHEMA.md`
+- [ ] **Type definition created?** → Update `TYPE_DEFINITIONS_INDEX.md`
+- [ ] **Utility function created?** → Update `UTILITY_FUNCTIONS_INDEX.md`
+- [ ] **Format consistent?** → Matches existing entries
+- [ ] **Information accurate?** → Verified against code
+
+---
+
+## 🎯 Documentation Standards
+
+### Format Consistency
+
+All documentation entries must:
+- ✅ Follow established format in file
+- ✅ Use consistent markdown structure
+- ✅ Include all required fields
+- ✅ Match existing style and tone
+- ✅ Have accurate paths and types
+
+### Information Accuracy
+
+All documentation must:
+- ✅ Match actual code implementation
+- ✅ Include correct file paths
+- ✅ List all required parameters
+- ✅ Show correct return types
+- ✅ Provide accurate examples
+
+---
+
+## 📊 Update Tracking
+
+### Metrics to Track
+
+- **Updates Made**: Number of doc entries added/updated
+- **Accuracy Rate**: % of entries that match code
+- **Time Saved**: Estimated time saved vs manual updates
+- **Coverage**: % of code documented
+
+**Target**: 100% coverage, 95%+ accuracy
+
+---
+
+## 🔍 Verification
+
+### After Each Update
+
+I will verify:
+1. **Format**: Matches existing entries
+2. **Accuracy**: Information matches code
+3. **Completeness**: All fields filled
+4. **Links**: File paths are correct
+
+### Periodic Review
+
+Weekly review of:
+- Documentation freshness (last updated dates)
+- Coverage gaps (undocumented code)
+- Format consistency across entries
+
+---
+
+## ✅ Success Criteria
+
+Documentation is up-to-date when:
+- ✅ All new components documented
+- ✅ All new API routes documented
+- ✅ All new database tables documented
+- ✅ All new types documented
+- ✅ All new utilities documented
+- ✅ Format consistent across all entries
+- ✅ Information accurate and verified
+
+---
+
+## 🎯 Usage
+
+### For AI Model (Automatic)
+
+I will automatically:
+1. Detect new code (components, APIs, tables, etc.)
+2. Extract relevant information
+3. Update appropriate documentation file
+4. Verify update is correct
+5. Report what was updated
+
+### For Developers
+
+When you see:
+```
+✅ Documentation Updated:
+   → Added BookingCard to COMPONENT_INDEX.md
+   → Added POST /api/bookings/cancel to API_ROUTES_INDEX.md
+```
+
+This means I automatically updated the docs for new code.
+
+---
+
+**Status**: ✅ Active Auto-Update System
+**Files Monitored**: 5 reference files
+**Update Frequency**: Real-time (on code creation/modification)

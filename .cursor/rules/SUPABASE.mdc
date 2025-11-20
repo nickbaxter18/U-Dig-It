@@ -8,6 +8,8 @@ alwaysApply: true
 ## 🎯 Purpose
 **HIGHEST PRIORITY**: All database operations use Supabase exclusively via MCP tools.
 
+**IMPORTANT**: For API keys and secrets management, see `api-keys-secrets-management.mdc` - Never access `process.env` directly for secrets!
+
 ---
 
 ## 1) Supabase Priority Rule

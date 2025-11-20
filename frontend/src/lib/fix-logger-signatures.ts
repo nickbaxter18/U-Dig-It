@@ -6,8 +6,9 @@
  *
  * @see frontend/src/lib/logger.ts for the LogContext interface
  */
+import type { LogContext as _LogContext } from './logger';
 
-import type { LogContext } from './logger';
+// Reserved for future type usage
 
 /**
  * CORRECT Logger Signatures
@@ -102,5 +103,3 @@ export const wrongExamples = {
  */
 
 export {};
-
-

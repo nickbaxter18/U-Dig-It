@@ -137,7 +137,12 @@ export async function GET(request: NextRequest) {
       alertsResult,
       alertCandidatesResult,
     ] = await Promise.all([
-      supabase.from('mv_dashboard_kpis').select('*').order('snapshot_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase
+        .from('mv_dashboard_kpis')
+        .select('*')
+        .order('snapshot_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabase
         .from('mv_revenue_trends')
         .select('*')
@@ -169,7 +174,9 @@ export async function GET(request: NextRequest) {
         .lte('snapshot_date', currentEndISO),
       supabase
         .from('equipment')
-        .select('id, unitId, make, model, status, utilization_rate, total_rental_days, revenue_generated'),
+        .select(
+          'id, unitId, make, model, status, utilization_rate, total_rental_days, revenue_generated'
+        ),
       supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
@@ -193,7 +200,11 @@ export async function GET(request: NextRequest) {
         .gte('createdAt', currentStart.toISOString())
         .lte('createdAt', currentEnd.toISOString()),
       supabase.from('alerts').select('*').order('detected_at', { ascending: false }).limit(10),
-      supabase.from('mv_alert_candidates').select('*').order('detected_at', { ascending: false }).limit(10),
+      supabase
+        .from('mv_alert_candidates')
+        .select('*')
+        .order('detected_at', { ascending: false })
+        .limit(10),
     ]);
 
     const revenueTrend = (revenueTrendResult.data ?? []) as TrendPoint[];
@@ -202,15 +213,30 @@ export async function GET(request: NextRequest) {
     const previousBookingTrend = (previousBookingTrendResult.data ?? []) as BookingTrendPoint[];
     const utilizationRows = (utilizationResult.data ?? []) as EquipmentUtilizationPoint[];
 
-    const totalRevenue = revenueTrend.reduce((acc, row) => acc + Number(row.gross_revenue ?? 0) - Number(row.refunded_amount ?? 0), 0);
+    const totalRevenue = revenueTrend.reduce(
+      (acc, row) => acc + Number(row.gross_revenue ?? 0) - Number(row.refunded_amount ?? 0),
+      0
+    );
     const previousRevenue = previousRevenueTrend.reduce(
       (acc, row) => acc + Number(row.gross_revenue ?? 0) - Number(row.refunded_amount ?? 0),
       0
     );
-    const totalBookings = bookingTrend.reduce((acc, row) => acc + Number(row.total_bookings ?? 0), 0);
-    const previousTotalBookings = previousBookingTrend.reduce((acc, row) => acc + Number(row.total_bookings ?? 0), 0);
-    const completedBookings = bookingTrend.reduce((acc, row) => acc + Number(row.completed_bookings ?? 0), 0);
-    const cancelledBookings = bookingTrend.reduce((acc, row) => acc + Number(row.cancelled_bookings ?? 0), 0);
+    const totalBookings = bookingTrend.reduce(
+      (acc, row) => acc + Number(row.total_bookings ?? 0),
+      0
+    );
+    const previousTotalBookings = previousBookingTrend.reduce(
+      (acc, row) => acc + Number(row.total_bookings ?? 0),
+      0
+    );
+    const completedBookings = bookingTrend.reduce(
+      (acc, row) => acc + Number(row.completed_bookings ?? 0),
+      0
+    );
+    const cancelledBookings = bookingTrend.reduce(
+      (acc, row) => acc + Number(row.cancelled_bookings ?? 0),
+      0
+    );
 
     const equipmentSummaryRows = (equipmentSummaryResult.data ?? []) as Array<{
       id: string;
@@ -223,12 +249,14 @@ export async function GET(request: NextRequest) {
       revenue_generated: string | number | null;
     }>;
     const activeEquipment = equipmentSummaryRows.filter(
-      row => !['out_of_service', 'unavailable'].includes((row.status ?? '').toString().toLowerCase())
+      (row) =>
+        !['out_of_service', 'unavailable'].includes((row.status ?? '').toString().toLowerCase())
     ).length;
     const equipmentUtilization =
       equipmentSummaryRows.length > 0
         ? equipmentSummaryRows.reduce(
-            (acc, row) => acc + Number((row as { utilization_rate?: string | number }).utilization_rate ?? 0),
+            (acc, row) =>
+              acc + Number((row as { utilization_rate?: string | number }).utilization_rate ?? 0),
             0
           ) / equipmentSummaryRows.length
         : 0;
@@ -317,7 +345,7 @@ function buildChartsPayload(params: {
     revenue_generated: string | number | null;
   }>;
 }) {
-  const revenueSeries = params.revenueCurrent.map((row: any) => {
+  const revenueSeries = params.revenueCurrent.map((row: unknown) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     return {
@@ -339,7 +367,7 @@ function buildChartsPayload(params: {
     { grossRevenue: 0, refundedAmount: 0, netRevenue: 0 }
   );
 
-  const revenueComparison = params.revenuePrevious.map((row: any) => {
+  const revenueComparison = params.revenuePrevious.map((row: unknown) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     return {
@@ -348,7 +376,7 @@ function buildChartsPayload(params: {
     };
   });
 
-  const bookingSeries = params.bookingCurrent.map(row => ({
+  const bookingSeries = params.bookingCurrent.map((row) => ({
     date: row.bucket_date,
     total: Number(row.total_bookings ?? 0),
     completed: Number(row.completed_bookings ?? 0),
@@ -382,7 +410,7 @@ function buildChartsPayload(params: {
     }
   }
 
-  const utilizationDetails = params.equipmentSummary.map((item: any) => {
+  const utilizationDetails = params.equipmentSummary.map((item: unknown) => {
     const latestSnapshot = utilizationMap.get(item.id);
     const utilizationPct =
       latestSnapshot !== undefined
@@ -394,7 +422,9 @@ function buildChartsPayload(params: {
       label: buildEquipmentLabel(item),
       status: (item.status ?? 'unknown') as string,
       utilizationPct,
-      rentedDays: latestSnapshot ? Number(latestSnapshot.hours_used ?? 0) : item.total_rental_days ?? 0,
+      rentedDays: latestSnapshot
+        ? Number(latestSnapshot.hours_used ?? 0)
+        : (item.total_rental_days ?? 0),
       revenue:
         latestSnapshot !== undefined
           ? Number(latestSnapshot.revenue_generated ?? 0)
@@ -448,5 +478,3 @@ function buildEquipmentLabel(item: {
   const base = parts.length > 0 ? parts.join(' ') : 'Equipment';
   return item.unitId ? `${base} (${item.unitId})` : base;
 }
-
-

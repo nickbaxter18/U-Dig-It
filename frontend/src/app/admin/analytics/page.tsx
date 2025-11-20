@@ -1,11 +1,15 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client'; // Added Supabase import
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 import { Calendar, DollarSign, Download, TrendingUp, Users, Wrench } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+// Added Supabase import
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface AnalyticsData {
   revenue: {
@@ -49,11 +53,7 @@ export default function AnalyticsDashboard() {
     'revenue' | 'bookings' | 'equipment' | 'customers'
   >('revenue');
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, [dateRange]);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -103,7 +103,7 @@ export default function AnalyticsDashboard() {
 
       // Aggregate revenue by date
       const revenueByDate = new Map<string, { revenue: number; bookings: number }>();
-      currentBookings?.forEach(booking => {
+      currentBookings?.forEach((booking) => {
         const date = new Date(booking.createdAt).toISOString().split('T')[0];
         const current = revenueByDate.get(date) || { revenue: 0, bookings: 0 };
         revenueByDate.set(date, {
@@ -114,13 +114,17 @@ export default function AnalyticsDashboard() {
 
       const revenueData = Array.from(revenueByDate.entries())
         .map(([date, { revenue, bookings }]) => ({ date, revenue, bookings }))
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a: unknown, b: unknown) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const totalRevenue =
-        currentBookings?.reduce((sum: any, b: any) => sum + parseFloat(b.totalAmount), 0) || 0;
+        currentBookings?.reduce((sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount), 0) ||
+        0;
 
       const previousRevenue =
-        previousBookings?.reduce((sum: any, b: any) => sum + parseFloat(b.totalAmount), 0) || 0;
+        previousBookings?.reduce(
+          (sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount),
+          0
+        ) || 0;
 
       const growthPercentage =
         previousRevenue > 0
@@ -140,7 +144,7 @@ export default function AnalyticsDashboard() {
         string,
         { total: number; completed: number; cancelled: number }
       >();
-      currentBookings?.forEach(booking => {
+      currentBookings?.forEach((booking) => {
         const date = new Date(booking.createdAt).toISOString().split('T')[0];
         const current = bookingsByDate.get(date) || { total: 0, completed: 0, cancelled: 0 };
         bookingsByDate.set(date, {
@@ -157,11 +161,13 @@ export default function AnalyticsDashboard() {
           completed,
           cancelled,
         }))
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a: unknown, b: unknown) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       const totalBookings = currentBookings?.length || 0;
-      const completedBookings = currentBookings?.filter(b => b.status === 'completed').length || 0;
-      const cancelledBookings = currentBookings?.filter(b => b.status === 'cancelled').length || 0;
+      const completedBookings =
+        currentBookings?.filter((b) => b.status === 'completed').length || 0;
+      const cancelledBookings =
+        currentBookings?.filter((b) => b.status === 'cancelled').length || 0;
       const completionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0;
       const cancellationRate = totalBookings > 0 ? (cancelledBookings / totalBookings) * 100 : 0;
 
@@ -183,7 +189,7 @@ export default function AnalyticsDashboard() {
       if (equipmentError) throw equipmentError;
 
       const equipmentWithStats = await Promise.all(
-        (equipment || []).map(async eq => {
+        (equipment || []).map(async (eq) => {
           // Get bookings for this equipment in the date range
           const { data: equipmentBookings } = await supabase
             .from('bookings')
@@ -195,12 +201,15 @@ export default function AnalyticsDashboard() {
             >();
 
           const revenue =
-            equipmentBookings?.reduce((sum: any, b: any) => sum + parseFloat(b.totalAmount || '0'), 0) || 0;
+            equipmentBookings?.reduce(
+              (sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount || '0'),
+              0
+            ) || 0;
 
           // Calculate utilization rate (simplified: days booked / total days in period)
           const totalDays = daysDiff;
           let daysBooked = 0;
-          equipmentBookings?.forEach(booking => {
+          equipmentBookings?.forEach((booking) => {
             if (booking.status !== 'cancelled') {
               const start = new Date(booking.startDate);
               const end = new Date(booking.endDate);
@@ -223,12 +232,12 @@ export default function AnalyticsDashboard() {
 
       const averageUtilization =
         equipmentWithStats.length > 0
-          ? equipmentWithStats.reduce((sum: any, e: any) => sum + e.utilizationRate, 0) /
+          ? equipmentWithStats.reduce((sum: unknown, e: unknown) => sum + e.utilizationRate, 0) /
             equipmentWithStats.length
           : 0;
 
       const topPerformer = equipmentWithStats.reduce(
-        (max: any, e: any) => (e.utilizationRate > max.utilizationRate ? e : max),
+        (max: unknown, e: unknown) => (e.utilizationRate > max.utilizationRate ? e : max),
         equipmentWithStats[0] || { equipmentId: '', equipmentName: 'N/A', utilizationRate: 0 }
       );
 
@@ -250,7 +259,7 @@ export default function AnalyticsDashboard() {
 
       // Customer data by date
       const customersByDate = new Map<string, { new: number; returning: number }>();
-      currentBookings?.forEach(booking => {
+      currentBookings?.forEach((booking) => {
         const date = new Date(booking.createdAt).toISOString().split('T')[0];
         // For simplicity, assume all customers in a booking are returning
         // (proper implementation would check if it's their first booking)
@@ -261,7 +270,7 @@ export default function AnalyticsDashboard() {
         });
       });
 
-      newUsers?.forEach(user => {
+      newUsers?.forEach((user) => {
         const date = new Date(user.createdAt).toISOString().split('T')[0];
         const current = customersByDate.get(date) || { new: 0, returning: 0 };
         customersByDate.set(date, {
@@ -276,10 +285,10 @@ export default function AnalyticsDashboard() {
           newCustomers: newCust,
           returningCustomers: returning,
         }))
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a: unknown, b: unknown) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       // Calculate retention rate (simplified: customers with >1 booking / total customers)
-      const customersWithBookings = new Set(currentBookings?.map(b => b.customerId) || []);
+      const customersWithBookings = new Set(currentBookings?.map((b) => b.customerId) || []);
       const { data: repeatCustomers } = await supabase
         .from('bookings')
         .select('customerId')
@@ -287,13 +296,13 @@ export default function AnalyticsDashboard() {
         .returns<Array<{ customerId: string }>>();
 
       const customerBookingCounts = new Map<string, number>();
-      repeatCustomers?.forEach(b => {
+      repeatCustomers?.forEach((b) => {
         const count = customerBookingCounts.get(b.customerId) || 0;
         customerBookingCounts.set(b.customerId, count + 1);
       });
 
       const returningCount = Array.from(customerBookingCounts.values()).filter(
-        count => count > 1
+        (count) => count > 1
       ).length;
       const retentionRate =
         customersWithBookings.size > 0 ? (returningCount / customersWithBookings.size) * 100 : 0;
@@ -362,12 +371,16 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   const renderRevenueChart = () => {
     if (!analyticsData) return null;
 
-    const maxRevenue = Math.max(...analyticsData.revenue.data.map(d => d.revenue));
+    const maxRevenue = Math.max(...analyticsData.revenue.data.map((d) => d.revenue));
 
     return (
       <div className="h-64">
@@ -407,7 +420,7 @@ export default function AnalyticsDashboard() {
   const renderBookingsChart = () => {
     if (!analyticsData) return null;
 
-    const maxBookings = Math.max(...analyticsData.bookings.data.map(d => d.bookings));
+    const maxBookings = Math.max(...analyticsData.bookings.data.map((d) => d.bookings));
 
     return (
       <div className="h-64">
@@ -452,7 +465,7 @@ export default function AnalyticsDashboard() {
 
     return (
       <div className="space-y-4">
-        {analyticsData.equipment.data.map(item => (
+        {analyticsData.equipment.data.map((item) => (
           <div
             key={item.equipmentId}
             className="flex items-center justify-between rounded-lg bg-gray-50 p-4"
@@ -482,7 +495,7 @@ export default function AnalyticsDashboard() {
     if (!analyticsData) return null;
 
     const maxCustomers = Math.max(
-      ...analyticsData.customers.data.map(d => d.newCustomers + d.returningCustomers)
+      ...analyticsData.customers.data.map((d) => d.newCustomers + d.returningCustomers)
     );
 
     return (
@@ -545,7 +558,10 @@ export default function AnalyticsDashboard() {
         <div className="flex space-x-2">
           <select
             value={dateRange}
-            onChange={e => setDateRange(e.target.value as 'week' | 'month' | 'quarter' | 'year')}
+            onChange={(e) => {
+              setDateRange(e.target.value as 'week' | 'month' | 'quarter' | 'year');
+              fetchAnalyticsData();
+            }}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
           >
             <option value="week">This Week</option>
@@ -556,7 +572,9 @@ export default function AnalyticsDashboard() {
           <button
             onClick={async () => {
               try {
-                const response = await fetchWithAuth(`/api/admin/analytics/export?dateRange=${dateRange}`);
+                const response = await fetchWithAuth(
+                  `/api/admin/analytics/export?dateRange=${dateRange}`
+                );
                 if (response.ok) {
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
@@ -572,7 +590,11 @@ export default function AnalyticsDashboard() {
                 }
               } catch (err) {
                 alert('Failed to export analytics');
-                logger.error('Analytics export failed', {}, err instanceof Error ? err : new Error(String(err)));
+                logger.error(
+                  'Analytics export failed',
+                  {},
+                  err instanceof Error ? err : new Error(String(err))
+                );
               }
             }}
             className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
@@ -679,7 +701,7 @@ export default function AnalyticsDashboard() {
             { id: 'bookings', name: 'Bookings', icon: Calendar },
             { id: 'equipment', name: 'Equipment', icon: Wrench },
             { id: 'customers', name: 'Customers', icon: Users },
-          ].map(chart => (
+          ].map((chart) => (
             <button
               key={chart.id}
               onClick={() =>
@@ -738,7 +760,9 @@ export default function AnalyticsDashboard() {
                     <span className="text-sm text-gray-600">Best Day</span>
                     <span className="text-sm font-medium">
                       {new Date(
-                        Math.max(...analyticsData.revenue.data.map(d => new Date(d.date).getTime()))
+                        Math.max(
+                          ...analyticsData.revenue.data.map((d) => new Date(d.date).getTime())
+                        )
                       ).toLocaleDateString()}
                     </span>
                   </div>
@@ -839,8 +863,8 @@ export default function AnalyticsDashboard() {
                         body: JSON.stringify({
                           reportType: 'full',
                           dateRange: '30d',
-                          format: 'pdf'
-                        })
+                          format: 'pdf',
+                        }),
                       });
                       if (response.ok) {
                         const blob = await response.blob();
@@ -855,7 +879,7 @@ export default function AnalyticsDashboard() {
                       } else {
                         alert('Failed to generate report');
                       }
-                    } catch (error) {
+                    } catch {
                       alert('Error generating report');
                     }
                   }}
@@ -882,7 +906,7 @@ export default function AnalyticsDashboard() {
                       } else {
                         alert('Failed to export data');
                       }
-                    } catch (error) {
+                    } catch {
                       alert('Error exporting data');
                     }
                   }}
@@ -906,8 +930,8 @@ export default function AnalyticsDashboard() {
                           reportType: 'full',
                           frequency: frequency,
                           recipients: [email],
-                          dateRange: '30d'
-                        })
+                          dateRange: '30d',
+                        }),
                       });
                       if (response.ok) {
                         const data = await response.json();
@@ -916,7 +940,7 @@ export default function AnalyticsDashboard() {
                         const error = await response.json();
                         alert(`Failed to schedule report: ${error.error}`);
                       }
-                    } catch (error) {
+                    } catch {
                       alert('Error scheduling report');
                     }
                   }}

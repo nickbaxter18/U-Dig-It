@@ -239,7 +239,7 @@ const computeCaptureAnalysis = async (file: File): Promise<CaptureAnalysis> => {
     }
   }
 
-  const totalPixels = data.data.length / 4;
+  const _totalPixels = data.data.length / 4; // Reserved for future pixel calculations
   const brightness = brightnessSum / Math.max(totalSamples, 1);
   // Normalize edge strength: divide by number of edge samples (not total pixels)
   // This gives a value similar to the backend's edgeStrength calculation
@@ -291,14 +291,16 @@ const computeCenterCrop = (frameWidth: number, frameHeight: number) => {
   return { x: 0, y: offsetY, width: frameWidth, height: cropHeight };
 };
 
-const getDocumentClipPath = (variant: FrameVariant) => {
+const _getDocumentClipPath = (variant: FrameVariant) => {
+  // Reserved for future clip path generation
   const spec = DOCUMENT_FRAME_SPECS[variant];
   const verticalInset = (100 - spec.height) / 2;
   const horizontalInset = (100 - spec.width) / 2;
   return `inset(${verticalInset}% ${horizontalInset}% ${verticalInset}% ${horizontalInset}% round ${spec.radius})`;
 };
 
-const getSelfieClipPath = (variant: FrameVariant) => {
+const _getSelfieClipPath = (variant: FrameVariant) => {
+  // Reserved for future clip path generation
   const spec = SELFIE_FRAME_SPECS[variant];
   return `ellipse(${spec.rx}% ${spec.ry}% at 50% 50%)`;
 };
@@ -1141,7 +1143,8 @@ export default function LicenseUploadSection({
     };
   }, [pendingRequestId, latestRequest, isPolling, pollingInterval, onUploadComplete]);
 
-  const renderAnalysisSummary = (analysis: CaptureAnalysis | null, context: CaptureContext) => {
+  const _renderAnalysisSummary = (analysis: CaptureAnalysis | null, context: CaptureContext) => {
+    // Reserved for future analysis display
     if (!analysis) return null;
     const limits = context === 'selfie' ? SELFIE_ASPECT_RANGE : DOCUMENT_ASPECT_RANGE;
     const brightnessOk =

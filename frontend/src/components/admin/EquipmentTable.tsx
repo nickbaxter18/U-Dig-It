@@ -1,7 +1,10 @@
 'use client';
 
 import { Clock, Eye, MapPin, Pencil, Trash, Wrench } from 'lucide-react';
+
 import { useState } from 'react';
+
+import { PermissionGate } from '@/components/admin/PermissionGate';
 
 interface Equipment {
   id: string;
@@ -192,7 +195,7 @@ export function EquipmentTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {equipment.map(item => (
+            {equipment.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-6 py-4">
                   <div className="flex items-center">
@@ -251,27 +254,33 @@ export function EquipmentTable({
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => onView(item)}
-                      className="text-gray-400 hover:text-gray-600"
-                      title="View details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => onEdit(item)}
-                      className="text-blue-400 hover:text-blue-600"
-                      title="Edit equipment"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => onDelete(item.id)}
-                      className="text-red-400 hover:text-red-600"
-                      title="Delete equipment"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
+                    <PermissionGate permission="equipment:read:all">
+                      <button
+                        onClick={() => onView(item)}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="View details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="equipment:update:all">
+                      <button
+                        onClick={() => onEdit(item)}
+                        className="text-blue-400 hover:text-blue-600"
+                        title="Edit equipment"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </PermissionGate>
+                    <PermissionGate permission="equipment:delete:all">
+                      <button
+                        onClick={() => onDelete(item.id)}
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete equipment"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </PermissionGate>
                   </div>
                 </td>
               </tr>

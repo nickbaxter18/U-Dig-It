@@ -1,8 +1,12 @@
 ---
-description: Complete development workflow using all power tools together
+description: "Detailed development workflow - daily operations, tools integration, and step-by-step feature development. Core workflow covered in CORE.mdc, use this for comprehensive workflow guidance."
 globs: []
-alwaysApply: true
+alwaysApply: false
 ---
+
+# Complete Development Workflow
+
+**Note**: Core workflow standards are in `@CORE.mdc`. This rule provides detailed workflow procedures for complex development scenarios.
 
 # Complete Development Workflow
 

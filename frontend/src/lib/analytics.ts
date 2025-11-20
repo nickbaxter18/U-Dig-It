@@ -1,7 +1,7 @@
 // Analytics tracking utilities
 import { logger } from '@/lib/logger';
 
-export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
+export const trackEvent = (eventName: string, properties?: Record<string, unknown>) => {
   if (typeof window === 'undefined') return;
 
   // Google Analytics 4
@@ -31,7 +31,11 @@ export const trackPageView = (pageName: string, pagePath: string) => {
   }
 
   if (process.env.NODE_ENV === 'development') {
-    logger.debug('Page View:', { component: 'analytics', action: 'debug', metadata: { pageName, pagePath } });
+    logger.debug('Page View:', {
+      component: 'analytics',
+      action: 'debug',
+      metadata: { pageName, pagePath },
+    });
   }
 };
 

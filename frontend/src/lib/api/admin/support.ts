@@ -1,5 +1,4 @@
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-
 import {
   InsuranceReminderInput,
   InsuranceRequestInfoInput,
@@ -15,7 +14,7 @@ export async function fetchSupportMessages(ticketId: string) {
   const response = await fetchWithAuth(`/api/admin/support/tickets/${ticketId}/messages`);
   if (!response.ok) throw new Error('Failed to load support messages');
   const data = await response.json();
-  return data.messages as any[];
+  return data.messages as unknown[];
 }
 
 export async function postSupportMessage(ticketId: string, payload: SupportMessageCreateInput) {
@@ -37,10 +36,7 @@ export async function fetchSupportSla(ticketId: string) {
   return response.json();
 }
 
-export async function updateSupportSla(
-  ticketId: string,
-  payload: SupportSlaUpdateInput
-) {
+export async function updateSupportSla(ticketId: string, payload: SupportSlaUpdateInput) {
   const response = await fetchWithAuth(`/api/admin/support/tickets/${ticketId}/sla`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -53,10 +49,7 @@ export async function updateSupportSla(
   return response.json();
 }
 
-export async function assignSupportTicket(
-  ticketId: string,
-  payload: SupportAssignmentInput
-) {
+export async function assignSupportTicket(ticketId: string, payload: SupportAssignmentInput) {
   const response = await fetchWithAuth(`/api/admin/support/tickets/${ticketId}/assign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -69,10 +62,7 @@ export async function assignSupportTicket(
   return response.json();
 }
 
-export async function remindSupportTicket(
-  ticketId: string,
-  payload: SupportReminderInput
-) {
+export async function remindSupportTicket(ticketId: string, payload: SupportReminderInput) {
   const response = await fetchWithAuth(`/api/admin/support/tickets/${ticketId}/remind`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -89,7 +79,7 @@ export async function fetchSupportTemplates() {
   const response = await fetchWithAuth('/api/admin/support/templates');
   if (!response.ok) throw new Error('Failed to load support templates');
   const data = await response.json();
-  return data.templates as any[];
+  return data.templates as unknown[];
 }
 
 export async function createSupportTemplate(payload: SupportTemplateCreateInput) {
@@ -105,10 +95,7 @@ export async function createSupportTemplate(payload: SupportTemplateCreateInput)
   return response.json();
 }
 
-export async function updateSupportTemplate(
-  id: string,
-  payload: SupportTemplateUpdateInput
-) {
+export async function updateSupportTemplate(id: string, payload: SupportTemplateUpdateInput) {
   const response = await fetchWithAuth(`/api/admin/support/templates/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -136,7 +123,7 @@ export async function fetchInsuranceActivity(insuranceId: string) {
   const response = await fetchWithAuth(`/api/admin/insurance/${insuranceId}/activity`);
   if (!response.ok) throw new Error('Failed to load insurance activity');
   const data = await response.json();
-  return data.activity as any[];
+  return data.activity as unknown[];
 }
 
 export async function requestInsuranceInfo(
@@ -155,10 +142,7 @@ export async function requestInsuranceInfo(
   return response.json();
 }
 
-export async function remindInsurance(
-  insuranceId: string,
-  payload: InsuranceReminderInput
-) {
+export async function remindInsurance(insuranceId: string, payload: InsuranceReminderInput) {
   const response = await fetchWithAuth(`/api/admin/insurance/${insuranceId}/remind`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -170,4 +154,3 @@ export async function remindInsurance(
   }
   return response.json();
 }
-

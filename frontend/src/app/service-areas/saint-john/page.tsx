@@ -1,19 +1,24 @@
+import { CheckCircle, DollarSign, Mail, MapPin, Phone, Shield, Truck } from 'lucide-react';
+
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
 import Footer from '@/components/Footer';
 import { LocationWatermarkSet } from '@/components/GeoWatermark';
 import Navigation from '@/components/Navigation';
 import { NearbyServiceAreas } from '@/components/ServiceAreaLinks';
 import { ImageObjectSchema, LocalBusinessSchema } from '@/components/StructuredData';
-import { CheckCircle, DollarSign, Mail, MapPin, Phone, Shield, Truck } from 'lucide-react';
-import type { Metadata } from 'next';
-import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Kubota SVL75-3 Rental Saint John NB | Track Loader | U-Dig It',
-  description: 'Professional Kubota SVL75-3 track loader rental in Saint John, NB. $450/day with delivery. Serving Uptown, South End, Millidgeville, East & West. Call (506) 643-1575.',
-  keywords: 'kubota rental saint john, skid steer rental saint john nb, track loader rental saint john, equipment rental saint john new brunswick, excavation equipment saint john, construction equipment rental nb',
+  description:
+    'Professional Kubota SVL75-3 track loader rental in Saint John, NB. $450/day with delivery. Serving Uptown, South End, Millidgeville, East & West. Call (506) 643-1575.',
+  keywords:
+    'kubota rental saint john, skid steer rental saint john nb, track loader rental saint john, equipment rental saint john new brunswick, excavation equipment saint john, construction equipment rental nb',
   openGraph: {
     title: 'Kubota SVL75-3 Rental Saint John NB | U-Dig It Rentals',
-    description: 'Professional track loader rental in Saint John with delivery. $450/day. Serving all Saint John neighborhoods. 24/7 support.',
+    description:
+      'Professional track loader rental in Saint John with delivery. $450/day. Serving all Saint John neighborhoods. 24/7 support.',
     url: 'https://udigit.ca/service-areas/saint-john',
     type: 'website',
     images: [
@@ -21,20 +26,23 @@ export const metadata: Metadata = {
         url: 'https://udigit.ca/images/kubota-svl-75-hero.png',
         width: 1200,
         height: 630,
-        alt: 'Kubota SVL75-3 Track Loader Rental Saint John NB'
-      }
-    ]
+        alt: 'Kubota SVL75-3 Track Loader Rental Saint John NB',
+      },
+    ],
   },
   alternates: {
-    canonical: 'https://udigit.ca/service-areas/saint-john'
-  }
+    canonical: 'https://udigit.ca/service-areas/saint-john',
+  },
 };
 
 export default function SaintJohnServiceAreaPage() {
   return (
     <>
       {/* Local Business Schema for Saint John */}
-      <LocalBusinessSchema name="U-Dig It Rentals Inc - Saint John" url="https://udigit.ca/service-areas/saint-john" />
+      <LocalBusinessSchema
+        name="U-Dig It Rentals Inc - Saint John"
+        url="https://udigit.ca/service-areas/saint-john"
+      />
 
       {/* Image SEO Schema for Equipment Photo */}
       <ImageObjectSchema
@@ -46,7 +54,9 @@ export default function SaintJohnServiceAreaPage() {
         height={800}
       />
 
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .headline-3d {
           perspective: 1000px;
           perspective-origin: center;
@@ -57,7 +67,9 @@ export default function SaintJohnServiceAreaPage() {
           filter: drop-shadow(0 8px 32px rgba(0, 0, 0, 0.9))
             drop-shadow(0 16px 48px rgba(0, 0, 0, 0.7)) drop-shadow(0 24px 64px rgba(0, 0, 0, 0.5));
         }
-      `}} />
+      `,
+        }}
+      />
 
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -96,7 +108,8 @@ export default function SaintJohnServiceAreaPage() {
                 </span>
               </h1>
               <p className="mx-auto mb-8 max-w-3xl text-xl leading-relaxed text-gray-200 md:text-2xl">
-                Professional Kubota SVL75-3 rental serving all neighborhoods of Saint John with reliable delivery and expert support.
+                Professional Kubota SVL75-3 rental serving all neighborhoods of Saint John with
+                reliable delivery and expert support.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Link
@@ -122,16 +135,33 @@ export default function SaintJohnServiceAreaPage() {
         {/* Main Content */}
         <div className="py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
             {/* Neighborhoods Served */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
               <div className="mb-6 flex items-center gap-3">
                 <MapPin className="h-8 w-8 text-[#E1BC56]" />
-                <h2 className="text-3xl font-bold text-gray-900">Neighborhoods We Serve in Saint John</h2>
+                <h2 className="text-3xl font-bold text-gray-900">
+                  Neighborhoods We Serve in Saint John
+                </h2>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {['East Saint John', 'West Saint John', 'South End', 'North End', 'Old North End', 'Millidgeville', 'One Mile House', 'Crescent Valley', 'Rockwood Park', 'Lorneville', 'Red Head', 'Morna Heights'].map((area: any) => (
-                  <div key={area} className="flex items-center gap-2 rounded-lg border border-gray-200 p-3">
+                {[
+                  'East Saint John',
+                  'West Saint John',
+                  'South End',
+                  'North End',
+                  'Old North End',
+                  'Millidgeville',
+                  'One Mile House',
+                  'Crescent Valley',
+                  'Rockwood Park',
+                  'Lorneville',
+                  'Red Head',
+                  'Morna Heights',
+                ].map((area: unknown) => (
+                  <div
+                    key={area}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 p-3"
+                  >
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <span className="text-gray-700">{area}</span>
                   </div>
@@ -144,7 +174,9 @@ export default function SaintJohnServiceAreaPage() {
               <div className="rounded-lg border-2 border-green-200 bg-green-50 p-6 text-center">
                 <Truck className="mx-auto mb-3 h-12 w-12 text-green-600" />
                 <h3 className="mb-2 text-lg font-bold text-gray-900">Delivery Available</h3>
-                <p className="text-sm text-gray-700">Professional delivery & pickup service within Saint John area</p>
+                <p className="text-sm text-gray-700">
+                  Professional delivery & pickup service within Saint John area
+                </p>
               </div>
               <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6 text-center">
                 <DollarSign className="mx-auto mb-3 h-12 w-12 text-blue-600" />
@@ -154,7 +186,9 @@ export default function SaintJohnServiceAreaPage() {
               <div className="rounded-lg border-2 border-yellow-200 bg-yellow-50 p-6 text-center">
                 <Shield className="mx-auto mb-3 h-12 w-12 text-yellow-600" />
                 <h3 className="mb-2 text-lg font-bold text-gray-900">Insurance Help</h3>
-                <p className="text-sm text-gray-700">We work with local Saint John brokers to get you covered</p>
+                <p className="text-sm text-gray-700">
+                  We work with local Saint John brokers to get you covered
+                </p>
               </div>
               <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-6 text-center">
                 <CheckCircle className="mx-auto mb-3 h-12 w-12 text-purple-600" />
@@ -165,28 +199,41 @@ export default function SaintJohnServiceAreaPage() {
 
             {/* Equipment Available */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
-              <h2 className="mb-6 text-3xl font-bold text-gray-900">Equipment Available in Saint John</h2>
+              <h2 className="mb-6 text-3xl font-bold text-gray-900">
+                Equipment Available in Saint John
+              </h2>
               <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-6">
                 <div className="flex flex-col gap-6 md:flex-row md:items-center">
                   <div className="flex-1">
                     <h3 className="mb-2 text-2xl font-bold text-gray-900">2025 Kubota SVL75-3</h3>
-                    <p className="mb-4 text-gray-700">Compact Track Loader - Perfect for construction, landscaping, and excavation projects in Saint John.</p>
+                    <p className="mb-4 text-gray-700">
+                      Compact Track Loader - Perfect for construction, landscaping, and excavation
+                      projects in Saint John.
+                    </p>
                     <ul className="space-y-2 text-sm text-gray-700">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span><strong>74.3 HP</strong> Kubota diesel engine</span>
+                        <span>
+                          <strong>74.3 HP</strong> Kubota diesel engine
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span><strong>9,190 lb</strong> operating weight</span>
+                        <span>
+                          <strong>9,190 lb</strong> operating weight
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span><strong>68" width</strong> - fits through standard gates</span>
+                        <span>
+                          <strong>68" width</strong> - fits through standard gates
+                        </span>
                       </li>
                       <li className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span><strong>3,200 lb</strong> rated operating capacity</span>
+                        <span>
+                          <strong>3,200 lb</strong> rated operating capacity
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -210,31 +257,52 @@ export default function SaintJohnServiceAreaPage() {
 
             {/* Local Information */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
-              <h2 className="mb-6 text-3xl font-bold text-gray-900">About Equipment Rental in Saint John</h2>
+              <h2 className="mb-6 text-3xl font-bold text-gray-900">
+                About Equipment Rental in Saint John
+              </h2>
               <div className="space-y-4 text-gray-700">
                 <p>
-                  <strong>U-Dig It Rentals</strong> is proud to serve the entire Saint John area with professional Kubota equipment rental services. Whether you're working on a residential landscaping project in Rockwood Park, a commercial construction site in the South End, or excavation work anywhere in Greater Saint John, we have the equipment and expertise to support your project.
+                  <strong>U-Dig It Rentals</strong> is proud to serve the entire Saint John area
+                  with professional Kubota equipment rental services. Whether you're working on a
+                  residential landscaping project in Rockwood Park, a commercial construction site
+                  in the South End, or excavation work anywhere in Greater Saint John, we have the
+                  equipment and expertise to support your project.
                 </p>
                 <p>
-                  Our location at <strong>945 Golden Grove Road</strong> allows us to quickly serve customers throughout Saint John, from East Saint John to West Saint John, and everywhere in between.
+                  Our location at <strong>945 Golden Grove Road</strong> allows us to quickly serve
+                  customers throughout Saint John, from East Saint John to West Saint John, and
+                  everywhere in between.
                 </p>
-                <h3 className="text-xl font-bold text-gray-900">Why Saint John Contractors Choose U-Dig It:</h3>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Why Saint John Contractors Choose U-Dig It:
+                </h3>
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">
                     <CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-green-600" />
-                    <span><strong>Local Saint John company</strong> - we know the terrain, soil conditions, and building codes</span>
+                    <span>
+                      <strong>Local Saint John company</strong> - we know the terrain, soil
+                      conditions, and building codes
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-green-600" />
-                    <span><strong>Fast response times</strong> - typically 1-2 hours for delivery within Saint John</span>
+                    <span>
+                      <strong>Fast response times</strong> - typically 1-2 hours for delivery within
+                      Saint John
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-green-600" />
-                    <span><strong>24/7 emergency support</strong> - equipment issues? We're always available</span>
+                    <span>
+                      <strong>24/7 emergency support</strong> - equipment issues? We're always
+                      available
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-green-600" />
-                    <span><strong>Insurance assistance</strong> - we work with Saint John-area brokers</span>
+                    <span>
+                      <strong>Insurance assistance</strong> - we work with Saint John-area brokers
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -242,31 +310,51 @@ export default function SaintJohnServiceAreaPage() {
 
             {/* Popular Projects in Saint John */}
             <div className="mb-12 rounded-lg bg-white p-8 shadow-lg">
-              <h2 className="mb-6 text-3xl font-bold text-gray-900">Common Equipment Rental Projects in Saint John</h2>
+              <h2 className="mb-6 text-3xl font-bold text-gray-900">
+                Common Equipment Rental Projects in Saint John
+              </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">🏗️ Foundation Excavation</h3>
-                  <p className="text-sm text-gray-700">Basement digs, crawl spaces, and foundation prep for new homes and additions throughout Saint John.</p>
+                  <p className="text-sm text-gray-700">
+                    Basement digs, crawl spaces, and foundation prep for new homes and additions
+                    throughout Saint John.
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">🌳 Landscaping & Grading</h3>
-                  <p className="text-sm text-gray-700">Yard leveling, topsoil placement, driveway prep, and retaining wall construction.</p>
+                  <p className="text-sm text-gray-700">
+                    Yard leveling, topsoil placement, driveway prep, and retaining wall
+                    construction.
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">🏊 Pool Installation</h3>
-                  <p className="text-sm text-gray-700">Excavation for in-ground pools - a popular summer project in Saint John's residential areas.</p>
+                  <p className="text-sm text-gray-700">
+                    Excavation for in-ground pools - a popular summer project in Saint John's
+                    residential areas.
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">❄️ Snow Removal</h3>
-                  <p className="text-sm text-gray-700">Winter equipment rental for commercial parking lots and large driveways in Saint John.</p>
+                  <p className="text-sm text-gray-700">
+                    Winter equipment rental for commercial parking lots and large driveways in Saint
+                    John.
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">🔧 Utility Trenching</h3>
-                  <p className="text-sm text-gray-700">Water line, sewer, electrical conduit trenching for Saint John homes and businesses.</p>
+                  <p className="text-sm text-gray-700">
+                    Water line, sewer, electrical conduit trenching for Saint John homes and
+                    businesses.
+                  </p>
                 </div>
                 <div className="rounded-lg border border-gray-200 p-4">
                   <h3 className="mb-2 font-semibold text-gray-900">🚧 Site Preparation</h3>
-                  <p className="text-sm text-gray-700">Commercial lot clearing, grading, and prep for construction in Saint John's business districts.</p>
+                  <p className="text-sm text-gray-700">
+                    Commercial lot clearing, grading, and prep for construction in Saint John's
+                    business districts.
+                  </p>
                 </div>
               </div>
             </div>
@@ -279,10 +367,12 @@ export default function SaintJohnServiceAreaPage() {
               </div>
               <div className="space-y-3 text-gray-700">
                 <p>
-                  <strong>Delivery within Saint John:</strong> Professional equipment delivery and pickup service available for all Saint John neighborhoods.
+                  <strong>Delivery within Saint John:</strong> Professional equipment delivery and
+                  pickup service available for all Saint John neighborhoods.
                 </p>
                 <p>
-                  <strong>Delivery fee:</strong> $150 each way (total $300 for delivery + pickup) within the Greater Saint John area.
+                  <strong>Delivery fee:</strong> $150 each way (total $300 for delivery + pickup)
+                  within the Greater Saint John area.
                 </p>
                 <p>
                   <strong>Typical delivery times to Saint John neighborhoods:</strong>
@@ -305,7 +395,8 @@ export default function SaintJohnServiceAreaPage() {
             <div className="rounded-lg bg-gradient-to-r from-[#A90F0F] to-[#8a0c0c] p-8 text-white">
               <h2 className="mb-4 text-3xl font-bold">Ready to Rent in Saint John?</h2>
               <p className="mb-6 text-lg text-white/90">
-                Get a free quote for your Saint John project today. Our team is ready to help with equipment selection, delivery scheduling, and insurance requirements.
+                Get a free quote for your Saint John project today. Our team is ready to help with
+                equipment selection, delivery scheduling, and insurance requirements.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row">
                 <Link
@@ -331,7 +422,6 @@ export default function SaintJohnServiceAreaPage() {
                 </a>
               </div>
             </div>
-
           </div>
         </div>
 

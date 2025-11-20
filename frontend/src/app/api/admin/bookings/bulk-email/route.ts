@@ -1,7 +1,9 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const bulkEmailSchema = z.object({
   bookingIds: z.array(z.string().uuid()).min(1),
@@ -18,19 +20,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Send emails via SendGrid API
     const emailResults = await Promise.allSettled(
-      bookings.map(async (booking: any) => {
+      bookings.map(async (booking: unknown) => {
         if (!booking.customer?.email) {
           return { bookingId: booking.id, success: false, error: 'No email address' };
         }
@@ -81,7 +79,10 @@ export async function POST(request: NextRequest) {
               to: booking.customer.email,
               subject: subject.replace('{{bookingNumber}}', booking.bookingNumber || ''),
               html: message
-                .replace('{{customerName}}', `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim())
+                .replace(
+                  '{{customerName}}',
+                  `${booking.customer.firstName || ''} ${booking.customer.lastName || ''}`.trim()
+                )
                 .replace('{{bookingNumber}}', booking.bookingNumber || ''),
               emailType,
             }),
@@ -107,7 +108,9 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    const successful = emailResults.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    const successful = emailResults.filter(
+      (r) => r.status === 'fulfilled' && r.value.success
+    ).length;
     const failed = emailResults.length - successful;
 
     logger.info('Bulk booking email completed', {
@@ -121,11 +124,16 @@ export async function POST(request: NextRequest) {
       total: bookings.length,
       successful,
       failed,
-      results: emailResults.map(r => (r.status === 'fulfilled' ? r.value : { success: false, error: 'Unknown error' })),
+      results: emailResults.map((r) =>
+        r.status === 'fulfilled' ? r.value : { success: false, error: 'Unknown error' }
+      ),
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body', details: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body', details: err.issues },
+        { status: 400 }
+      );
     }
 
     logger.error(
@@ -137,5 +145,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to perform bulk email' }, { status: 500 });
   }
 }
-
-

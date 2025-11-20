@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
 
 /**
  * PREMIUM REDESIGNED EquipmentShowcase Component
@@ -159,7 +160,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    {specs.map((spec: any, index: any) => (
+                    {specs.map((spec: unknown, index: unknown) => (
                       <button
                         key={index}
                         onClick={() => setActiveSpec(index)}
@@ -208,7 +209,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
 
           {/* Features List with Premium Styling */}
           <div className="space-y-3">
-            {features.map((feature: any, index: any) => (
+            {features.map((feature: unknown, index: unknown) => (
               <div
                 key={index}
                 className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-white p-4 shadow-md transition-all duration-300 hover:border-[#E1BC56]/30 hover:shadow-xl"

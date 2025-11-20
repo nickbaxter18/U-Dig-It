@@ -1,7 +1,8 @@
 'use client';
 
-import { formatCurrency, formatDate } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface AnalyticsData {
   revenue: {
@@ -117,7 +118,7 @@ export default function AnalyticsDashboard() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h2>
         <div className="flex space-x-2">
-          {(['7d', '30d', '90d', '1y'] as const).map(range => (
+          {(['7d', '30d', '90d', '1y'] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -217,12 +218,12 @@ export default function AnalyticsDashboard() {
         <div className="rounded-lg bg-white p-6 shadow">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Revenue Trend</h3>
           <div className="flex h-64 items-end space-x-1">
-            {analytics.trends.revenue.slice(-14).map((point: any, index: any) => (
+            {analytics.trends.revenue.slice(-14).map((point: unknown, index: unknown) => (
               <div
                 key={index}
                 className="rounded-t bg-blue-500"
                 style={{
-                  height: `${(point.value / Math.max(...analytics.trends.revenue.map(p => p.value))) * 100}%`,
+                  height: `${(point.value / Math.max(...analytics.trends.revenue.map((p) => p.value))) * 100}%`,
                   width: '100%',
                 }}
                 title={`${formatDate(point.date)}: ${formatCurrency(point.value)}`}

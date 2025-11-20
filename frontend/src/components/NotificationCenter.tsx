@@ -178,6 +178,9 @@ export default function NotificationCenter({ userId, showBadge = true }: Notific
   );
 
   const markAllAsRead = useCallback(async () => {
+    if (!userId) return;
+
+    // Optimistically update local state
     setNotifications((prev) =>
       prev.map((notification) => ({
         ...notification,
@@ -185,7 +188,7 @@ export default function NotificationCenter({ userId, showBadge = true }: Notific
       }))
     );
 
-    const { error } = await supabase.rpc('mark_all_notifications_read');
+    const { data, error } = await supabase.rpc('mark_all_notifications_read');
 
     if (error) {
       logger.error(
@@ -193,12 +196,17 @@ export default function NotificationCenter({ userId, showBadge = true }: Notific
         {
           component: 'NotificationCenter',
           action: 'mark_all_read_error',
+          metadata: { userId, error: error.message },
         },
         error instanceof Error ? error : new Error(String(error))
       );
+      // Revert optimistic update on error
+      fetchNotifications();
+    } else {
+      // Refetch to ensure consistency (realtime might not catch all updates)
       fetchNotifications();
     }
-  }, [fetchNotifications]);
+  }, [userId, fetchNotifications]);
 
   const resolveActionUrl = useCallback((url: string) => {
     if (!url) return null;
@@ -239,14 +247,34 @@ export default function NotificationCenter({ userId, showBadge = true }: Notific
 
       if (notification.actionUrl) {
         const target = resolveActionUrl(notification.actionUrl);
-        if (!target) return;
+        if (!target) {
+          logger.warn('Failed to resolve notification action URL', {
+            component: 'NotificationCenter',
+            action: 'click_no_target',
+            metadata: { notificationId: notification.id, actionUrl: notification.actionUrl },
+          });
+          return;
+        }
+
+        logger.debug('Navigating from notification', {
+          component: 'NotificationCenter',
+          action: 'notification_click',
+          metadata: { notificationId: notification.id, target },
+        });
+
+        setIsOpen(false);
 
         if (target.startsWith('http')) {
           window.location.href = target;
         } else {
           router.push(target);
+          // Scroll to top when navigating to booking page
+          if (target.includes('/book')) {
+            setTimeout(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+          }
         }
-        setIsOpen(false);
       }
     },
     [markAsRead, resolveActionUrl, router]

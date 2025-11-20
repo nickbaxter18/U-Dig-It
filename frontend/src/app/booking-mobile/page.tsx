@@ -1,8 +1,10 @@
 'use client';
 
-import MobileOptimizedBooking from '@/components/MobileOptimizedBooking';
-import { logger } from '@/lib/logger';
 import { useRouter } from 'next/navigation';
+
+import MobileOptimizedBooking from '@/components/MobileOptimizedBooking';
+
+import { logger } from '@/lib/logger';
 
 export default function MobileBookingPage() {
   const router = useRouter();
@@ -12,7 +14,7 @@ export default function MobileBookingPage() {
     logger.debug('Booking completed', {
       component: 'app-page',
       action: 'debug',
-      metadata: { bookingData }
+      metadata: { bookingData },
     });
 
     // Redirect to confirmation page
@@ -28,7 +30,7 @@ export default function MobileBookingPage() {
           metadata: { startDate, endDate },
         });
       }}
-      onLocationSelect={(address: any, city: any) => {
+      onLocationSelect={(address: unknown, city: unknown) => {
         logger.debug('Location selected', {
           component: 'app-page',
           action: 'debug',

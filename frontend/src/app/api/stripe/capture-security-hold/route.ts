@@ -9,18 +9,19 @@
  *
  * Note: Can only capture ONCE. Remainder releases automatically.
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
+
+// import Stripe from 'stripe'; // Unused - type only
 
 export async function POST(request: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
-  
+
   try {
     // 1. Request validation
     const validation = await validateRequest(request, {
@@ -40,7 +41,10 @@ export async function POST(request: NextRequest) {
 
     // 3. Auth verification (admin only)
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -95,18 +99,17 @@ export async function POST(request: NextRequest) {
     const maxAmount = booking.hold_security_amount_cents || 50000;
     if (amountCents > maxAmount) {
       return NextResponse.json(
-        { error: `Capture amount ($${amountCents/100}) exceeds hold amount ($${maxAmount/100})` },
+        {
+          error: `Capture amount ($${amountCents / 100}) exceeds hold amount ($${maxAmount / 100})`,
+        },
         { status: 400 }
       );
     }
 
     // 8. Capture the payment intent
-    const capturedIntent = await stripe.paymentIntents.capture(
-      booking.security_hold_intent_id,
-      {
-        amount_to_capture: amountCents,
-      }
-    );
+    const capturedIntent = await stripe.paymentIntents.capture(booking.security_hold_intent_id, {
+      amount_to_capture: amountCents,
+    });
 
     logger.info('Security hold captured', {
       component: 'capture-hold-api',
@@ -167,19 +170,22 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Captured $${amountCents/100} from security hold`,
+      message: `Captured $${amountCents / 100} from security hold`,
       paymentIntentId: booking.security_hold_intent_id,
       chargeId: capturedIntent.latest_charge,
       capturedAmount: amountCents / 100,
       remainderReleased: (maxAmount - amountCents) / 100,
     });
-
-  } catch (error: any) {
-    logger.error('Failed to capture security hold', {
-      component: 'capture-hold-api',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to capture security hold',
+      {
+        component: 'capture-hold-api',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Failed to capture security hold', details: error.message },
@@ -187,17 +193,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

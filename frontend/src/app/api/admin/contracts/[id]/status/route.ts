@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * PATCH /api/admin/contracts/[id]/status
@@ -8,10 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Admin-only endpoint
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
 
@@ -22,19 +20,15 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 2. Verify admin role
     const { data: userData } = await supabase
@@ -115,7 +109,7 @@ export async function PATCH(
       success: true,
       contract: data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Contract status update error',
       {
@@ -125,10 +119,6 @@ export async function PATCH(
       error
     );
 
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-

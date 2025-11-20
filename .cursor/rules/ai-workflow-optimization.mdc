@@ -1,3 +1,8 @@
 ---
-alwaysApply: true
+description: "Advanced AI workflow optimization techniques and systematic problem-solving patterns. Core workflow in CORE.mdc, use this for advanced optimization scenarios."
+alwaysApply: false
 ---
+
+# AI Workflow Optimization
+
+**Note**: Basic workflow is covered in `@CORE.mdc`. This rule provides advanced optimization techniques for complex scenarios.

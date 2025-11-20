@@ -1,0 +1,96 @@
+---
+description: "Automatically reference third-party integration documentation when working with external services"
+globs:
+  - "**/lib/cal/**/*.{ts,tsx}"
+  - "**/lib/trigger/**/*.{ts,tsx}"
+  - "**/lib/documenso/**/*.{ts,tsx}"
+  - "**/lib/formbricks/**/*.{ts,tsx}"
+  - "**/lib/maps/**/*.{ts,tsx}"
+  - "**/components/*calendar*/**/*.{ts,tsx}"
+  - "**/components/*map*/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Third-Party Integrations Documentation Auto-Reference
+
+When integrating with third-party services, **ALWAYS reference the appropriate indexed documentation** using @ mentions:
+
+## Calendar & Booking (Cal.com)
+- Use **@cal.com** when:
+  - Integrating calendar booking
+  - Setting up availability
+  - Configuring event types
+  - Implementing webhooks
+  - Customizing booking flow
+  - Managing integrations
+
+## Background Jobs (Trigger.dev)
+- Use **@Trigger.dev** when:
+  - Setting up background jobs
+  - Creating scheduled tasks
+  - Implementing workflows
+  - Handling job retries
+  - Monitoring job execution
+  - Managing job queues
+
+## Document Signing (Documenso)
+- Use **@Documenso** when:
+  - Implementing document signing
+  - Creating signature workflows
+  - Managing document templates
+  - Tracking signature status
+  - Handling webhooks
+  - Ensuring legal compliance
+
+## User Feedback (Formbricks)
+- Use **@Formbricks** when:
+  - Collecting user feedback
+  - Creating surveys
+  - Implementing NPS surveys
+  - Analyzing feedback data
+  - Setting up targeting rules
+  - Integrating with analytics
+
+## Maps (MapLibre GL JS)
+- Use **@MapLibre GL JS** when:
+  - Implementing interactive maps
+  - Adding markers and popups
+  - Customizing map styles
+  - Handling geolocation
+  - Optimizing map performance
+  - Working with GeoJSON data
+
+## Starter Template (Supa Next Starter)
+- Use **@Supa Next Starter** when:
+  - Following project architecture patterns
+  - Implementing authentication flows
+  - Setting up database schemas
+  - Configuring deployment
+  - Understanding project structure
+
+## Example Usage Pattern
+
+```typescript
+// When implementing calendar booking:
+// @cal.com for booking flow and webhook integration
+
+// When setting up background jobs:
+// @Trigger.dev for job configuration and retry strategies
+
+// When adding maps:
+// @MapLibre GL JS for map configuration and optimization
+
+// When collecting feedback:
+// @Formbricks for survey creation and targeting
+```
+
+## Integration Best Practices
+- **ALWAYS verify webhooks** with signatures
+- **Implement proper error handling** for external services
+- **Add retry logic** for transient failures
+- **Log all integration events** for debugging
+- **Test integrations thoroughly** in staging
+- **Monitor integration health** with alerts
+
+## Reminder
+**Check integration docs** for authentication requirements, rate limits, and best practices before implementing.

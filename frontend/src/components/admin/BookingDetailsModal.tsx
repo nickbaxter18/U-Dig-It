@@ -1,9 +1,5 @@
 'use client';
 
-import { BookingFinancePanel } from '@/components/admin/finance/BookingFinancePanel';
-import { logger } from '@/lib/logger';
-import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { supabase } from '@/lib/supabase/client';
 import {
   AlertTriangle,
   Calendar,
@@ -25,7 +21,16 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+
 import { useCallback, useEffect, useState } from 'react';
+
+import { PermissionGate } from '@/components/admin/PermissionGate';
+import { BookingFinancePanel } from '@/components/admin/finance/BookingFinancePanel';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+
 import { EmailCustomerModal } from './EmailCustomerModal';
 
 interface Booking {
@@ -61,7 +66,7 @@ interface BookingDetailsModalProps {
   booking: Booking;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (bookingId: string, updates: Record<string, any>) => void;
+  onUpdate: (bookingId: string, updates: Record<string, unknown>) => void;
   onStatusUpdate: (bookingId: string, status: string) => void;
   onCancel: (bookingId: string, reason?: string) => void;
 }
@@ -90,7 +95,9 @@ export function BookingDetailsModal({
   onStatusUpdate,
   onCancel,
 }: BookingDetailsModalProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'payments' | 'communications' | 'documents'>('details');
+  const [activeTab, setActiveTab] = useState<
+    'details' | 'payments' | 'communications' | 'documents'
+  >('details');
   const [internalNotes, setInternalNotes] = useState(booking.internalNotes || '');
   const [showNotesEdit, setShowNotesEdit] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -98,6 +105,143 @@ export function BookingDetailsModal({
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [stripeLinkLoadingId, setStripeLinkLoadingId] = useState<string | null>(null);
+
+  const mapPaymentStatus = useCallback((status?: string | null): BookingPayment['status'] => {
+    const normalized = (status ?? '').toLowerCase();
+    switch (normalized) {
+      case 'completed':
+      case 'succeeded':
+        return 'succeeded';
+      case 'refunded':
+        return 'refunded';
+      case 'partially_refunded':
+        return 'partially_refunded';
+      case 'failed':
+      case 'cancelled':
+        return 'failed';
+      case 'processing':
+      case 'pending':
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  }, []);
+
+  const mapPaymentMethod = useCallback((method?: string | null): BookingPayment['method'] => {
+    const normalized = (method ?? '').toLowerCase();
+    switch (normalized) {
+      case 'credit_card':
+      case 'debit_card':
+      case 'card':
+        return 'card';
+      case 'bank_transfer':
+        return 'bank_transfer';
+      case 'cash':
+        return 'cash';
+      case 'check':
+      case 'cheque':
+        return 'check';
+      default:
+        return 'card';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'payments') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadPayments = async () => {
+      setPaymentsLoading(true);
+      setPaymentsError(null);
+      try {
+        const { data, error } = await supabase
+          .from('payments')
+          .select(
+            `
+            id,
+            paymentNumber,
+            amount,
+            status,
+            type,
+            method,
+            "stripePaymentIntentId",
+            "stripeCheckoutSessionId",
+            "processedAt",
+            "createdAt",
+            "amountRefunded",
+            "refundReason",
+            "failureReason"
+          `
+          )
+          .eq('bookingId', booking.id)
+          .order('createdAt', { ascending: false });
+
+        if (error) throw error;
+
+        const mapped: BookingPayment[] = (data ?? []).map((payment: unknown) => {
+          const amount =
+            typeof payment.amount === 'string' ? parseFloat(payment.amount) : (payment.amount ?? 0);
+          const refundAmountRaw = payment.amountRefunded ?? null;
+          const refundAmount =
+            refundAmountRaw === null
+              ? undefined
+              : typeof refundAmountRaw === 'string'
+                ? parseFloat(refundAmountRaw)
+                : Number(refundAmountRaw);
+
+          return {
+            id: payment.id,
+            paymentNumber: payment.paymentNumber ?? null,
+            amount,
+            status: mapPaymentStatus(payment.status),
+            type: payment.type ?? null,
+            method: mapPaymentMethod(payment.method),
+            createdAt: payment.createdAt ?? null,
+            processedAt: payment.processedAt ?? null,
+            stripePaymentIntentId: payment.stripePaymentIntentId ?? null,
+            stripeCheckoutSessionId: payment.stripeCheckoutSessionId ?? null,
+            refundAmount,
+            refundReason: payment.refundReason ?? null,
+            failureReason: payment.failureReason ?? null,
+          };
+        });
+
+        if (isMounted) {
+          setPayments(mapped);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load payments';
+        if (process.env.NODE_ENV === 'development') {
+          logger.error(
+            'Failed to load booking payments',
+            {
+              component: 'BookingDetailsModal',
+              action: 'payments_fetch_error',
+              metadata: { bookingId: booking.id, error: message },
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
+        }
+        if (isMounted) {
+          setPayments([]);
+          setPaymentsError(message);
+        }
+      } finally {
+        if (isMounted) {
+          setPaymentsLoading(false);
+        }
+      }
+    };
+
+    loadPayments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, activeTab, booking.id, mapPaymentMethod, mapPaymentStatus]);
 
   if (!isOpen) return null;
 
@@ -145,46 +289,6 @@ export function BookingDetailsModal({
       minute: '2-digit',
     });
   };
-
-  const mapPaymentStatus = useCallback((status?: string | null): BookingPayment['status'] => {
-    const normalized = (status ?? '').toLowerCase();
-    switch (normalized) {
-      case 'completed':
-      case 'succeeded':
-        return 'succeeded';
-      case 'refunded':
-        return 'refunded';
-      case 'partially_refunded':
-        return 'partially_refunded';
-      case 'failed':
-      case 'cancelled':
-        return 'failed';
-      case 'processing':
-      case 'pending':
-        return 'pending';
-      default:
-        return 'pending';
-    }
-  }, []);
-
-  const mapPaymentMethod = useCallback((method?: string | null): BookingPayment['method'] => {
-    const normalized = (method ?? '').toLowerCase();
-    switch (normalized) {
-      case 'credit_card':
-      case 'debit_card':
-      case 'card':
-        return 'card';
-      case 'bank_transfer':
-        return 'bank_transfer';
-      case 'cash':
-        return 'cash';
-      case 'check':
-      case 'cheque':
-        return 'check';
-      default:
-        return 'card';
-    }
-  }, []);
 
   const getPaymentStatusClasses = (status: BookingPayment['status']) => {
     switch (status) {
@@ -358,7 +462,11 @@ export function BookingDetailsModal({
       alert('Unable to open receipt: missing payment ID.');
       return;
     }
-    window.open(`/api/admin/payments/receipt/${payment.id}?mode=inline`, '_blank', 'noopener,noreferrer');
+    window.open(
+      `/api/admin/payments/receipt/${payment.id}?mode=inline`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   const handleDownloadReceipt = async (payment: BookingPayment) => {
@@ -398,7 +506,9 @@ export function BookingDetailsModal({
 
     try {
       setStripeLinkLoadingId(payment.id);
-      const response = await fetchWithAuth(`/api/admin/payments/stripe/link?paymentId=${payment.id}`);
+      const response = await fetchWithAuth(
+        `/api/admin/payments/stripe/link?paymentId=${payment.id}`
+      );
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Unable to generate Stripe dashboard link');
@@ -417,103 +527,6 @@ export function BookingDetailsModal({
     }
   };
 
-  useEffect(() => {
-    if (!isOpen || activeTab !== 'payments') {
-      return;
-    }
-
-    let isMounted = true;
-
-    const loadPayments = async () => {
-      setPaymentsLoading(true);
-      setPaymentsError(null);
-      try {
-        const { data, error } = await supabase
-          .from('payments')
-          .select(
-            `
-            id,
-            paymentNumber,
-            amount,
-            status,
-            type,
-            method,
-            "stripePaymentIntentId",
-            "stripeCheckoutSessionId",
-            "processedAt",
-            "createdAt",
-            "amountRefunded",
-            "refundReason",
-            "failureReason"
-          `
-          )
-          .eq('bookingId', booking.id)
-          .order('createdAt', { ascending: false });
-
-        if (error) throw error;
-
-        const mapped: BookingPayment[] = (data ?? []).map((payment: any) => {
-          const amount =
-            typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount ?? 0;
-          const refundAmountRaw = payment.amountRefunded ?? null;
-          const refundAmount =
-            refundAmountRaw === null
-              ? undefined
-              : typeof refundAmountRaw === 'string'
-                ? parseFloat(refundAmountRaw)
-                : Number(refundAmountRaw);
-
-          return {
-            id: payment.id,
-            paymentNumber: payment.paymentNumber ?? null,
-            amount,
-            status: mapPaymentStatus(payment.status),
-            type: payment.type ?? null,
-            method: mapPaymentMethod(payment.method),
-            createdAt: payment.createdAt ?? null,
-            processedAt: payment.processedAt ?? null,
-            stripePaymentIntentId: payment.stripePaymentIntentId ?? null,
-            stripeCheckoutSessionId: payment.stripeCheckoutSessionId ?? null,
-            refundAmount,
-            refundReason: payment.refundReason ?? null,
-            failureReason: payment.failureReason ?? null,
-          };
-        });
-
-        if (isMounted) {
-          setPayments(mapped);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to load payments';
-        if (process.env.NODE_ENV === 'development') {
-          logger.error(
-            'Failed to load booking payments',
-            {
-              component: 'BookingDetailsModal',
-              action: 'payments_fetch_error',
-              metadata: { bookingId: booking.id, error: message },
-            },
-            error instanceof Error ? error : new Error(String(error))
-          );
-        }
-        if (isMounted) {
-          setPayments([]);
-          setPaymentsError(message);
-        }
-      } finally {
-        if (isMounted) {
-          setPaymentsLoading(false);
-        }
-      }
-    };
-
-    loadPayments();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, activeTab, booking.id, mapPaymentMethod, mapPaymentStatus]);
-
   const handleSaveNotes = async () => {
     try {
       await onUpdate(booking.id, { internalNotes });
@@ -524,11 +537,15 @@ export function BookingDetailsModal({
         metadata: { bookingId: booking.id },
       });
     } catch (error) {
-      logger.error('Failed to save notes', {
-        component: 'BookingDetailsModal',
-        action: 'save_notes_error',
-        metadata: { bookingId: booking.id },
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to save notes',
+        {
+          component: 'BookingDetailsModal',
+          action: 'save_notes_error',
+          metadata: { bookingId: booking.id },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       alert('Failed to save notes. Please try again.');
     }
   };
@@ -619,11 +636,15 @@ export function BookingDetailsModal({
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Start Date:</span>
-                      <span className="font-medium text-gray-900">{formatDate(booking.startDate)}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatDate(booking.startDate)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">End Date:</span>
-                      <span className="font-medium text-gray-900">{formatDate(booking.endDate)}</span>
+                      <span className="font-medium text-gray-900">
+                        {formatDate(booking.endDate)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Duration:</span>
@@ -739,7 +760,7 @@ export function BookingDetailsModal({
                     <>
                       <textarea
                         value={internalNotes}
-                        onChange={(e: any) => setInternalNotes(e.target.value)}
+                        onChange={(e: unknown) => setInternalNotes(e.target.value)}
                         placeholder="Add internal notes visible only to admins..."
                         className="mb-2 w-full rounded border border-gray-300 p-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-opacity-50"
                         rows={4}
@@ -803,16 +824,40 @@ export function BookingDetailsModal({
                 <div className="rounded-lg border border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 p-4">
                   <h4 className="mb-4 text-sm font-semibold text-gray-900">Quick Actions</h4>
                   <div className="space-y-2">
-                    {getRelevantActions().map((action: any, index: any) => (
-                      <button
-                        key={index}
-                        onClick={action.onClick}
-                        className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${action.color}`}
-                      >
-                        {action.icon}
-                        {action.label}
-                      </button>
-                    ))}
+                    {getRelevantActions().map((action: any, index: number) => {
+                      // Determine permission based on action label
+                      let permission: string | null = null;
+                      if (action.label.includes('Cancel')) {
+                        permission = 'bookings:cancel:all';
+                      } else if (action.label.includes('Approve')) {
+                        permission = 'bookings:approve:all';
+                      } else if (action.label.includes('Update') || action.label.includes('Edit')) {
+                        permission = 'bookings:update:all';
+                      }
+
+                      const button = (
+                        <button
+                          key={index}
+                          onClick={action.onClick}
+                          className={`flex w-full items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${action.color}`}
+                        >
+                          {action.icon}
+                          {action.label}
+                        </button>
+                      );
+
+                      // Wrap with PermissionGate if permission is required
+                      if (permission) {
+                        return (
+                          <PermissionGate key={index} permission={permission}>
+                            {button}
+                          </PermissionGate>
+                        );
+                      }
+
+                      // No permission required (e.g., View Contract, Email Customer)
+                      return button;
+                    })}
                   </div>
                 </div>
 
@@ -825,7 +870,9 @@ export function BookingDetailsModal({
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Amount:</span>
-                      <span className="font-bold text-gray-900">{formatCurrency(booking.total)}</span>
+                      <span className="font-bold text-gray-900">
+                        {formatCurrency(booking.total)}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Status:</span>
@@ -881,13 +928,21 @@ export function BookingDetailsModal({
                 <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Stripe & Manual Payments</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Stripe & Manual Payments
+                      </h3>
                       <p className="text-sm text-gray-600">
                         View payment attempts processed through Stripe or recorded manually.
                       </p>
                     </div>
                     <button
-                      onClick={() => window.open(`/admin/payments?booking=${booking.id}`, '_blank', 'noopener,noreferrer')}
+                      onClick={() =>
+                        window.open(
+                          `/admin/payments?booking=${booking.id}`,
+                          '_blank',
+                          'noopener,noreferrer'
+                        )
+                      }
                       className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                       <CreditCard className="h-4 w-4" />
@@ -897,7 +952,11 @@ export function BookingDetailsModal({
                 </div>
 
                 {paymentsLoading ? (
-                  <div className="flex h-32 items-center justify-center" role="status" aria-live="polite">
+                  <div
+                    className="flex h-32 items-center justify-center"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <div className="border-kubota-orange h-10 w-10 animate-spin rounded-full border-4 border-kubota-orange border-t-transparent"></div>
                   </div>
                 ) : paymentsError ? (
@@ -905,7 +964,9 @@ export function BookingDetailsModal({
                     <div className="flex items-start gap-2">
                       <AlertTriangle className="mt-0.5 h-5 w-5 text-red-600" />
                       <div>
-                        <h4 className="text-sm font-semibold text-red-800">Unable to load payments</h4>
+                        <h4 className="text-sm font-semibold text-red-800">
+                          Unable to load payments
+                        </h4>
                         <p className="text-sm text-red-700">{paymentsError}</p>
                       </div>
                     </div>
@@ -920,12 +981,16 @@ export function BookingDetailsModal({
                 ) : (
                   <div className="space-y-4">
                     {payments.map((payment) => (
-                      <div key={payment.id} className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                      <div
+                        key={payment.id}
+                        className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+                      >
                         <div className="flex flex-wrap items-start justify-between gap-4">
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-sm font-semibold text-gray-900">
-                                {payment.paymentNumber || `Payment ${payment.id.slice(0, 8).toUpperCase()}`}
+                                {payment.paymentNumber ||
+                                  `Payment ${payment.id.slice(0, 8).toUpperCase()}`}
                               </span>
                               <span
                                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${getPaymentStatusClasses(payment.status)}`}
@@ -935,11 +1000,14 @@ export function BookingDetailsModal({
                               </span>
                             </div>
                             <p className="text-xs text-gray-500">
-                              {getPaymentTypeLabel(payment.type)} · {getPaymentMethodLabel(payment.method)}
+                              {getPaymentTypeLabel(payment.type)} ·{' '}
+                              {getPaymentMethodLabel(payment.method)}
                             </p>
                             <p className="text-xs text-gray-500">
                               Created {formatDateTime(payment.createdAt)}
-                              {payment.processedAt ? ` · Processed ${formatDateTime(payment.processedAt)}` : ''}
+                              {payment.processedAt
+                                ? ` · Processed ${formatDateTime(payment.processedAt)}`
+                                : ''}
                             </p>
                             {payment.failureReason && (
                               <div className="flex items-start gap-2 text-xs text-red-600">
@@ -947,12 +1015,13 @@ export function BookingDetailsModal({
                                 <span>{payment.failureReason}</span>
                               </div>
                             )}
-                            {typeof payment.refundAmount === 'number' && payment.refundAmount > 0 && (
-                              <div className="text-xs text-blue-600">
-                                Refunded {formatCurrency(payment.refundAmount)}
-                                {payment.refundReason ? ` · ${payment.refundReason}` : ''}
-                              </div>
-                            )}
+                            {typeof payment.refundAmount === 'number' &&
+                              payment.refundAmount > 0 && (
+                                <div className="text-xs text-blue-600">
+                                  Refunded {formatCurrency(payment.refundAmount)}
+                                  {payment.refundReason ? ` · ${payment.refundReason}` : ''}
+                                </div>
+                              )}
                           </div>
                           <div className="text-right">
                             <span className="text-sm font-semibold text-gray-900">
@@ -978,7 +1047,8 @@ export function BookingDetailsModal({
                           <button
                             onClick={() => handleViewInStripe(payment)}
                             disabled={
-                              (!payment.stripePaymentIntentId && !payment.stripeCheckoutSessionId) ||
+                              (!payment.stripePaymentIntentId &&
+                                !payment.stripeCheckoutSessionId) ||
                               stripeLinkLoadingId === payment.id
                             }
                             className={`inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -992,7 +1062,8 @@ export function BookingDetailsModal({
                         </div>
                         {!payment.stripePaymentIntentId && !payment.stripeCheckoutSessionId && (
                           <p className="mt-2 text-xs text-gray-500">
-                            This payment is not linked to Stripe. Stripe-specific actions are unavailable.
+                            This payment is not linked to Stripe. Stripe-specific actions are
+                            unavailable.
                           </p>
                         )}
                       </div>

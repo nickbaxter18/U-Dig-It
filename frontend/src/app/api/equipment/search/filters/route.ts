@@ -1,6 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/equipment/search/filters
@@ -17,11 +18,15 @@ export async function GET() {
       .order('make');
 
     if (error) {
-      logger.error('[Equipment Search API] Database error', {
-        component: 'api-filters',
-        action: 'error',
-        metadata: { error: error.message },
-      }, error);
+      logger.error(
+        '[Equipment Search API] Database error',
+        {
+          component: 'api-filters',
+          action: 'error',
+          metadata: { error: error.message },
+        },
+        error
+      );
       return NextResponse.json(
         { error: 'Failed to fetch equipment filters', details: error.message },
         { status: 500 }
@@ -29,16 +34,16 @@ export async function GET() {
     }
 
     // Extract unique values for each filter
-    const makes = [...new Set(equipment?.map(e => e.make).filter(Boolean))] as string[];
-    const models = [...new Set(equipment?.map(e => e.model).filter(Boolean))] as string[];
-    const types = [...new Set(equipment?.map(e => e.type).filter(Boolean))] as string[];
-    const statuses = [...new Set(equipment?.map(e => e.status).filter(Boolean))] as string[];
+    const makes = [...new Set(equipment?.map((e) => e.make).filter(Boolean))] as string[];
+    const models = [...new Set(equipment?.map((e) => e.model).filter(Boolean))] as string[];
+    const types = [...new Set(equipment?.map((e) => e.type).filter(Boolean))] as string[];
+    const statuses = [...new Set(equipment?.map((e) => e.status).filter(Boolean))] as string[];
 
     // Extract locations (assuming location is stored as JSON with address/city fields)
     const cities = [
       ...new Set(
         equipment
-          ?.map(e => {
+          ?.map((e) => {
             if (e.location && typeof e.location === 'object') {
               return (e.location as any).city;
             }
@@ -59,12 +64,16 @@ export async function GET() {
       total: equipment?.length || 0,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: any) {
-    logger.error('[Equipment Search API] Unexpected error', {
-      component: 'api-filters',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      '[Equipment Search API] Unexpected error',
+      {
+        component: 'api-filters',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

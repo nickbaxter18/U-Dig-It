@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { createServiceClient } from '@/lib/supabase/service';
 
-// Verify SendGrid webhook signature
-const SENDGRID_WEBHOOK_SECRET = process.env.SENDGRID_WEBHOOK_SECRET || '';
+// Verify SendGrid webhook signature (reserved for future signature verification)
+const _SENDGRID_WEBHOOK_SECRET = process.env.SENDGRID_WEBHOOK_SECRET || '';
 
 /**
  * POST /api/webhooks/sendgrid
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
           logEntry = existing;
         }
 
-        const updateData: Record<string, any> = {
+        const updateData: Record<string, unknown> = {
           updated_at: new Date().toISOString(),
           metadata: {
             ...(logEntry?.metadata || {}),
@@ -80,25 +80,33 @@ export async function POST(request: NextRequest) {
         switch (eventType) {
           case 'processed':
             updateData.status = 'sent';
-            updateData.sent_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.sent_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             break;
 
           case 'delivered':
             updateData.status = 'delivered';
-            updateData.delivered_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.delivered_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             break;
 
           case 'open':
             updateData.status = 'opened';
             if (!logEntry?.opened_at) {
-              updateData.opened_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+              updateData.opened_at = timestamp
+                ? new Date(timestamp * 1000).toISOString()
+                : new Date().toISOString();
             }
             break;
 
           case 'click':
             updateData.status = 'clicked';
             if (!logEntry?.clicked_at) {
-              updateData.clicked_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+              updateData.clicked_at = timestamp
+                ? new Date(timestamp * 1000).toISOString()
+                : new Date().toISOString();
             }
             if (url) {
               updateData.metadata = {
@@ -110,14 +118,18 @@ export async function POST(request: NextRequest) {
 
           case 'bounce':
             updateData.status = 'bounced';
-            updateData.bounced_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.bounced_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             updateData.bounce_reason = reason || status || 'Unknown bounce reason';
             updateData.bounce_type = bounceType || 'hard';
             break;
 
           case 'dropped':
             updateData.status = 'dropped';
-            updateData.bounced_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.bounced_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             updateData.bounce_reason = reason || 'Email dropped by SendGrid';
             updateData.bounce_type = 'hard';
             break;
@@ -128,17 +140,23 @@ export async function POST(request: NextRequest) {
 
           case 'spamreport':
             updateData.status = 'spam_report';
-            updateData.spam_reported_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.spam_reported_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             break;
 
           case 'unsubscribe':
             updateData.status = 'unsubscribed';
-            updateData.unsubscribed_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.unsubscribed_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             break;
 
           case 'group_unsubscribe':
             updateData.status = 'unsubscribed';
-            updateData.unsubscribed_at = timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString();
+            updateData.unsubscribed_at = timestamp
+              ? new Date(timestamp * 1000).toISOString()
+              : new Date().toISOString();
             break;
 
           default:
@@ -174,17 +192,17 @@ export async function POST(request: NextRequest) {
         } else {
           // Create new log entry if we have enough info
           if (messageId && eventType === 'processed') {
-            const { error: insertError } = await supabaseAdmin
-              .from('email_delivery_logs')
-              .insert({
-                email_id: messageId,
-                to_email: email,
-                from_email: otherData.from || 'noreply@udigitrentals.com',
-                subject: otherData.subject || null,
-                status: 'sent',
-                sent_at: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString(),
-                metadata: updateData.metadata,
-              });
+            const { error: insertError } = await supabaseAdmin.from('email_delivery_logs').insert({
+              email_id: messageId,
+              to_email: email,
+              from_email: otherData.from || 'noreply@udigitrentals.com',
+              subject: otherData.subject || null,
+              status: 'sent',
+              sent_at: timestamp
+                ? new Date(timestamp * 1000).toISOString()
+                : new Date().toISOString(),
+              metadata: updateData.metadata,
+            });
 
             if (insertError) {
               logger.error(
@@ -238,5 +256,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }
-
-

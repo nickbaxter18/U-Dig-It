@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+
 import { logger } from '@/lib/logger';
 import { isBookingStatusConsideredPaid } from '@/lib/payments';
-import { useState } from 'react';
+
 import BookingInvoiceCard from './BookingInvoiceCard';
 
 interface Payment {
@@ -16,17 +18,17 @@ interface Payment {
 }
 
 interface PaymentSectionProps {
-  booking: any;
+  booking: unknown;
   payment?: Payment;
   paymentType: 'deposit' | 'payment';
-  onPaymentComplete?: () => void;
+  _onPaymentComplete?: () => void; // Reserved for future payment completion callback
 }
 
 export default function PaymentSection({
   booking,
   payment,
   paymentType,
-  onPaymentComplete,
+  onPaymentComplete: _onPaymentComplete, // Reserved for future payment completion callback
 }: PaymentSectionProps) {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,11 +88,15 @@ export default function PaymentSection({
 
       // Redirect to Stripe Checkout
       window.location.href = data.url;
-    } catch (err: any) {
-      logger.error('Checkout session error:', {
-        component: 'PaymentSection',
-        action: 'error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Checkout session error:',
+        {
+          component: 'PaymentSection',
+          action: 'error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err.message || 'Failed to create checkout session');
       setProcessingPayment(false);
     }
@@ -142,12 +148,24 @@ export default function PaymentSection({
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center">
                 <div className="mr-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                  <svg className="h-7 w-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"></path>
+                  <svg
+                    className="h-7 w-7 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                    ></path>
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-green-900">Payment Method Verified ✓</h3>
+                  <h3 className="text-lg font-semibold text-green-900">
+                    Payment Method Verified ✓
+                  </h3>
                   <p className="text-sm text-green-700">Card securely saved with Stripe</p>
                 </div>
               </div>
@@ -157,8 +175,18 @@ export default function PaymentSection({
             <div className="space-y-4">
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <h4 className="mb-3 flex items-center text-sm font-semibold text-blue-900">
-                  <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="mr-2 h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                   How the $500 Security Hold Works
                 </h4>
@@ -168,10 +196,18 @@ export default function PaymentSection({
                     <div>
                       <strong>48 Hours Before Pickup:</strong>
                       <p className="mt-1 text-xs leading-relaxed">
-                        We'll automatically place a <strong>$500 refundable hold</strong> on your saved card on{' '}
-                        <strong>{new Date(new Date(booking.startDate).getTime() - 48 * 60 * 60 * 1000).toLocaleDateString()} at{' '}
-                        {new Date(new Date(booking.startDate).getTime() - 48 * 60 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>.
-                        This is <strong>NOT a charge</strong> — it's a temporary authorization.
+                        We'll automatically place a <strong>$500 refundable hold</strong> on your
+                        saved card on{' '}
+                        <strong>
+                          {new Date(
+                            new Date(booking.startDate).getTime() - 48 * 60 * 60 * 1000
+                          ).toLocaleDateString()}{' '}
+                          at{' '}
+                          {new Date(
+                            new Date(booking.startDate).getTime() - 48 * 60 * 60 * 1000
+                          ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </strong>
+                        . This is <strong>NOT a charge</strong> — it's a temporary authorization.
                       </p>
                     </div>
                   </div>
@@ -180,7 +216,8 @@ export default function PaymentSection({
                     <div>
                       <strong>During Your Rental:</strong>
                       <p className="mt-1 text-xs leading-relaxed">
-                        The $500 hold remains active while you have the equipment. This protects against damage, loss, or failure to meet return requirements.
+                        The $500 hold remains active while you have the equipment. This protects
+                        against damage, loss, or failure to meet return requirements.
                       </p>
                     </div>
                   </div>
@@ -189,8 +226,10 @@ export default function PaymentSection({
                     <div>
                       <strong>After Return:</strong>
                       <p className="mt-1 text-xs leading-relaxed">
-                        When you return the equipment <strong>clean, refueled, and in good condition</strong>, we automatically release the hold within 24 hours.
-                        The hold may be charged for damage beyond normal wear, failure to refuel, or excessive mud/debris.
+                        When you return the equipment{' '}
+                        <strong>clean, refueled, and in good condition</strong>, we automatically
+                        release the hold within 24 hours. The hold may be charged for damage beyond
+                        normal wear, failure to refuel, or excessive mud/debris.
                       </p>
                     </div>
                   </div>
@@ -200,37 +239,67 @@ export default function PaymentSection({
               {/* Return Requirements */}
               <div className="rounded-lg border border-gray-200 bg-white p-4">
                 <h4 className="mb-3 text-sm font-semibold text-gray-900 flex items-center">
-                  <svg className="mr-2 h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="mr-2 h-5 w-5 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   Return Requirements for Full Hold Release
                 </h4>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li className="flex items-start">
                     <span className="mr-2 text-green-600">✓</span>
-                    <span><strong>Clean:</strong> Remove excessive mud/debris (normal working dirt is fine)</span>
+                    <span>
+                      <strong>Clean:</strong> Remove excessive mud/debris (normal working dirt is
+                      fine)
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2 text-green-600">✓</span>
-                    <span><strong>Refueled:</strong> Return with a full fuel tank</span>
+                    <span>
+                      <strong>Refueled:</strong> Return with a full fuel tank
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2 text-green-600">✓</span>
-                    <span><strong>Good Condition:</strong> No damage beyond normal wear and tear</span>
+                    <span>
+                      <strong>Good Condition:</strong> No damage beyond normal wear and tear
+                    </span>
                   </li>
                 </ul>
                 <p className="mt-3 text-xs text-gray-500 italic">
-                  Failure to meet these requirements may result in charges from the security hold for cleaning ($150), refueling (fuel cost + $50), or repairs.
+                  Failure to meet these requirements may result in charges from the security hold
+                  for cleaning ($150), refueling (fuel cost + $50), or repairs.
                 </p>
               </div>
 
               {/* Card Details */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <h4 className="mb-2 text-sm font-semibold text-gray-900">💳 Payment Method on File</h4>
+                <h4 className="mb-2 text-sm font-semibold text-gray-900">
+                  💳 Payment Method on File
+                </h4>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <svg className="mr-2 h-5 w-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    <svg
+                      className="mr-2 h-5 w-5 text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
                     </svg>
                     <span className="text-sm text-gray-700">Card ending in ••••</span>
                   </div>
@@ -244,11 +313,15 @@ export default function PaymentSection({
           </div>
         ) : (
           <>
-            {!isDeposit && <h3 className="text-lg font-semibold text-gray-900">📄 Rental Invoice</h3>}
+            {!isDeposit && (
+              <h3 className="text-lg font-semibold text-gray-900">📄 Rental Invoice</h3>
+            )}
             {isDeposit && (
               <div className="rounded-lg border-2 border-gray-200 p-6">
                 <div className="mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">💳 Card Verification Required</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    💳 Card Verification Required
+                  </h3>
                   <p className="mt-1 text-sm text-gray-600">
                     Verify your payment method for the $500 security hold
                   </p>
@@ -259,77 +332,75 @@ export default function PaymentSection({
             {/* Professional Invoice (only for payment, not deposit) */}
             {!isDeposit && <BookingInvoiceCard booking={booking} />}
 
-          {/* Payment Button - Only for Invoice, not Deposit */}
-          {!isDeposit && (
-            <>
-              {isPaid ? (
-                <div className="space-y-3">
-                  <div className="flex items-center rounded-lg bg-green-50 px-4 py-3 text-green-600">
-                    <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="font-medium">
-                      ✅ Invoice Paid
-                    </span>
-                    {payment?.processedAt && (
-                      <span className="ml-auto text-sm text-green-700">
-                        {new Date(payment.processedAt).toLocaleDateString()}
-                      </span>
+            {/* Payment Button - Only for Invoice, not Deposit */}
+            {!isDeposit && (
+              <>
+                {isPaid ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center rounded-lg bg-green-50 px-4 py-3 text-green-600">
+                      <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span className="font-medium">✅ Invoice Paid</span>
+                      {payment?.processedAt && (
+                        <span className="ml-auto text-sm text-green-700">
+                          {new Date(payment.processedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {payment?.id && (
+                      <a
+                        href={`/api/payments/receipt/${payment.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center rounded-lg border border-[#A90F0F] px-4 py-2 text-sm font-semibold text-[#A90F0F] transition-colors hover:bg-[#A90F0F] hover:text-white"
+                      >
+                        View Receipt
+                      </a>
                     )}
                   </div>
-
-                  {payment?.id && (
-                    <a
-                      href={`/api/payments/receipt/${payment.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center rounded-lg border border-[#A90F0F] px-4 py-2 text-sm font-semibold text-[#A90F0F] transition-colors hover:bg-[#A90F0F] hover:text-white"
-                    >
-                      View Receipt
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={handlePayment}
-                  disabled={processingPayment}
-                  className="w-full rounded-lg px-6 py-4 text-lg font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-[#A90F0F] hover:bg-[#8B0B0B]"
-                >
-                  {processingPayment ? (
-                    <span className="flex items-center justify-center">
-                      <svg
-                        className="-ml-1 mr-3 h-5 w-5 animate-spin text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Creating Secure Checkout...
-                    </span>
-                  ) : (
-                    <>💳 Pay Invoice - ${amount.toFixed(2)}</>
-                  )}
-                </button>
-              )}
-            </>
-          )}
-        </>
+                ) : (
+                  <button
+                    onClick={handlePayment}
+                    disabled={processingPayment}
+                    className="w-full rounded-lg px-6 py-4 text-lg font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 bg-[#A90F0F] hover:bg-[#8B0B0B]"
+                  >
+                    {processingPayment ? (
+                      <span className="flex items-center justify-center">
+                        <svg
+                          className="-ml-1 mr-3 h-5 w-5 animate-spin text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Creating Secure Checkout...
+                      </span>
+                    ) : (
+                      <>💳 Pay Invoice - ${amount.toFixed(2)}</>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {/* Manual Interac e-Transfer Option (Invoice Only) */}
@@ -360,7 +431,9 @@ export default function PaymentSection({
               </p>
 
               <div className="rounded-lg bg-white p-4 shadow-sm">
-                <h4 className="mb-3 text-sm font-semibold text-gray-900">How to pay with Interac e-Transfer:</h4>
+                <h4 className="mb-3 text-sm font-semibold text-gray-900">
+                  How to pay with Interac e-Transfer:
+                </h4>
                 <ol className="space-y-2 text-sm text-gray-700">
                   <li className="flex items-start">
                     <span className="mr-2 font-bold text-green-600">1.</span>
@@ -373,7 +446,9 @@ export default function PaymentSection({
                   <li className="flex items-start">
                     <span className="mr-2 font-bold text-green-600">3.</span>
                     <div className="flex-1">
-                      <span>Send <strong className="font-bold">${amount.toFixed(2)} CAD</strong> to:</span>
+                      <span>
+                        Send <strong className="font-bold">${amount.toFixed(2)} CAD</strong> to:
+                      </span>
                       <div className="mt-1 rounded bg-gray-100 px-3 py-2 font-mono text-base font-bold text-gray-900">
                         info@udigit.ca
                       </div>
@@ -408,7 +483,8 @@ export default function PaymentSection({
                   />
                 </svg>
                 <p className="text-xs text-green-800">
-                  <strong>Note:</strong> Most e-Transfers are auto-deposited instantly. Your booking will be confirmed once we receive payment. Need help? Call us at (506) 643-1575.
+                  <strong>Note:</strong> Most e-Transfers are auto-deposited instantly. Your booking
+                  will be confirmed once we receive payment. Need help? Call us at (506) 643-1575.
                 </p>
               </div>
             </div>
@@ -416,16 +492,14 @@ export default function PaymentSection({
         )}
 
         {/* Payment Info */}
-        <div className={`rounded-lg border p-4 ${
-          isDeposit
-            ? 'border-blue-200 bg-blue-50'
-            : 'border-yellow-200 bg-yellow-50'
-        }`}>
+        <div
+          className={`rounded-lg border p-4 ${
+            isDeposit ? 'border-blue-200 bg-blue-50' : 'border-yellow-200 bg-yellow-50'
+          }`}
+        >
           <div className="flex items-start">
             <svg
-              className={`mr-2 mt-0.5 h-5 w-5 ${
-                isDeposit ? 'text-blue-600' : 'text-yellow-600'
-              }`}
+              className={`mr-2 mt-0.5 h-5 w-5 ${isDeposit ? 'text-blue-600' : 'text-yellow-600'}`}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -436,14 +510,14 @@ export default function PaymentSection({
               />
             </svg>
             <div className="flex-1">
-              <h4 className={`mb-1 text-sm font-semibold ${
-                isDeposit ? 'text-blue-900' : 'text-yellow-900'
-              }`}>
+              <h4
+                className={`mb-1 text-sm font-semibold ${
+                  isDeposit ? 'text-blue-900' : 'text-yellow-900'
+                }`}
+              >
                 {isDeposit ? '💰 Refundable Security Hold' : '🔒 Secure Payment'}
               </h4>
-              <p className={`text-sm ${
-                isDeposit ? 'text-blue-800' : 'text-yellow-800'
-              }`}>
+              <p className={`text-sm ${isDeposit ? 'text-blue-800' : 'text-yellow-800'}`}>
                 {isDeposit
                   ? 'This $500 temporary hold is automatically placed 48 hours before pickup and released within 24 hours after you return the equipment clean, refueled, and in good condition. Not a charge — just a temporary authorization on your card.'
                   : 'Payments are processed securely through Stripe. Your payment information is encrypted and never stored on our servers.'}
@@ -465,10 +539,15 @@ export default function PaymentSection({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Status:</span>
-                <span className={`font-medium ${
-                  payment.status === 'completed' ? 'text-green-600' :
-                  payment.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
-                }`}>
+                <span
+                  className={`font-medium ${
+                    payment.status === 'completed'
+                      ? 'text-green-600'
+                      : payment.status === 'pending'
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                  }`}
+                >
                   {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
                 </span>
               </div>
@@ -491,5 +570,3 @@ export default function PaymentSection({
     </div>
   );
 }
-
-

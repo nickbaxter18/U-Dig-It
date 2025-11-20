@@ -1,10 +1,12 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { createInAppNotification } from '@/lib/notification-service';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
-import { createClient } from '@/lib/supabase/server';
 import { validateRequest } from '@/lib/request-validator';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
+import { createClient } from '@/lib/supabase/server';
 
 const bookingExitSchema = z.object({
   step: z.number().int().min(1).max(6).optional(),
@@ -16,7 +18,10 @@ const bookingExitSchema = z.object({
 export async function POST(request: NextRequest) {
   const limiter = await rateLimit(request, RateLimitPresets.RELAXED);
   if (!limiter.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: limiter.headers });
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: limiter.headers }
+    );
   }
 
   const validation = await validateRequest(request, {
@@ -31,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   try {
     payload = await request.json();
-  } catch (error) {
+  } catch {
     logger.debug('[booking-exit] Unable to parse request body as JSON', {
       component: 'notifications-api',
       action: 'booking_exit_parse',
@@ -65,11 +70,15 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (existingError) {
-    logger.error('Failed to check existing booking exit notifications', {
-      component: 'notifications-api',
-      action: 'booking_exit_lookup_error',
-      metadata: { userId: user.id },
-    }, existingError instanceof Error ? existingError : new Error(String(existingError)));
+    logger.error(
+      'Failed to check existing booking exit notifications',
+      {
+        component: 'notifications-api',
+        action: 'booking_exit_lookup_error',
+        metadata: { userId: user.id },
+      },
+      existingError instanceof Error ? existingError : new Error(String(existingError))
+    );
   }
 
   if (existing) {
@@ -85,8 +94,9 @@ export async function POST(request: NextRequest) {
       category: 'reminder',
       priority: 'low',
       title: 'Finish setting up your booking',
-      message: `We saved your progress${step ? ` on step ${step}` : ''}. Come back to secure your equipment rental.`.trim(),
-      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/book?resume=1`,
+      message:
+        `We saved your progress${step ? ` on step ${step}` : ''}. Come back to secure your equipment rental.`.trim(),
+      actionUrl: '/book?resume=1',
       ctaLabel: 'Resume booking',
       templateId: 'booking_flow_exit',
       templateData: {
@@ -102,17 +112,18 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Failed to create booking exit notification', {
-      component: 'notifications-api',
-      action: 'booking_exit_notification_error',
-      metadata: { userId: user.id },
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Failed to create booking exit notification',
+      {
+        component: 'notifications-api',
+        action: 'booking_exit_notification_error',
+        metadata: { userId: user.id },
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json({ success: false }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
 }
-
-
-

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+
 import '../styles/equipment-showcase.css';
 
 interface EquipmentShowcaseProps {
@@ -113,7 +114,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
     if (!isAutoRotating) return;
 
     const interval = setInterval(() => {
-      setActiveView(prev => (prev + 1) % equipmentViews.length);
+      setActiveView((prev) => (prev + 1) % equipmentViews.length);
     }, 5000);
 
     return () => clearInterval(interval);
@@ -267,7 +268,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
 
                 {/* Enhanced Key Specifications */}
                 <div className="mb-12 grid grid-cols-1 gap-6 sm:grid-cols-3">
-                  {currentView.specs.map((spec: any, index: any) => (
+                  {currentView.specs.map((spec: unknown, index: unknown) => (
                     <div key={index} className="group">
                       <div className="modern-card flex min-h-[140px] flex-col justify-center border border-gray-500/60 bg-gradient-to-br from-gray-700/80 to-gray-800/80 p-6 backdrop-blur-sm hover:border-[#E1BC56]/70 hover:shadow-lg hover:shadow-[#E1BC56]/20">
                         <div className="mb-4 text-center text-3xl text-[#E1BC56] drop-shadow-md transition-all duration-300 group-hover:rotate-3 group-hover:scale-110">
@@ -345,7 +346,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
 
                 {/* Enhanced Features Grid */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {currentView.features.map((feature: any, index: any) => (
+                  {currentView.features.map((feature: unknown, index: unknown) => (
                     <div
                       key={index}
                       className="modern-card hover-lift group flex min-h-[70px] items-center border border-gray-500/50 bg-gray-700/60 p-4 transition-all duration-300 hover:border-gray-400/70 hover:bg-gray-700/80"
@@ -393,7 +394,7 @@ export default function EquipmentShowcase({ className = '' }: EquipmentShowcaseP
         {/* Enhanced View Selection - Modern Tabs */}
         <div className="flex justify-center">
           <div className="tabs-modern rounded-2xl border border-gray-500/60 bg-gray-700/60 p-2 shadow-lg backdrop-blur-sm">
-            {equipmentViews.map((view: any, index: any) => (
+            {equipmentViews.map((view: unknown, index: unknown) => (
               <button
                 key={view.id}
                 onClick={() => {

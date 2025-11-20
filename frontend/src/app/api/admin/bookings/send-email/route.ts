@@ -1,7 +1,8 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { sendAdminEmail } from '@/lib/sendgrid';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { sendAdminEmail } from '@/lib/sendgrid';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,27 +12,42 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // ✅ Parse request body
     const body = await request.json();
     const { bookingId, recipientEmail, recipientName, subject, message, templateId } = body;
 
-    if (!bookingId || !recipientEmail || !subject || !message) {
+    // Validate required fields with detailed error messages
+    const missingFields: string[] = [];
+    if (!bookingId) missingFields.push('bookingId');
+    if (!recipientEmail) missingFields.push('recipientEmail');
+    if (!subject) missingFields.push('subject');
+    if (!message) missingFields.push('message');
+
+    if (missingFields.length > 0) {
+      logger.error('Missing required fields in send-email request', {
+        component: 'send-email-api',
+        action: 'validation_error',
+        metadata: {
+          missingFields,
+          receivedFields: Object.keys(body),
+        },
+      });
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        {
+          error: 'Missing required fields',
+          missingFields,
+          receivedFields: Object.keys(body),
+        },
         { status: 400 }
       );
     }
@@ -68,11 +84,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (logError) {
-      logger.error('Failed to log email', {
-        component: 'send-email-api',
-        action: 'log_email_error',
-        metadata: { bookingId, recipientEmail, error: logError.message },
-      }, logError);
+      logger.error(
+        'Failed to log email',
+        {
+          component: 'send-email-api',
+          action: 'log_email_error',
+          metadata: { bookingId, recipientEmail, error: logError.message },
+        },
+        logError
+      );
       // Continue anyway - email logging failure shouldn't prevent email send
     }
 
@@ -86,10 +106,7 @@ export async function POST(request: NextRequest) {
         component: 'send-email-api',
         action: 'missing_api_key',
       });
-      return NextResponse.json(
-        { error: 'Email service not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
     }
 
     // ✅ Get template HTML if templateId provided
@@ -152,18 +169,22 @@ export async function POST(request: NextRequest) {
         message: 'Email sent successfully',
         emailLogId: emailLog?.id,
       });
-    } catch (sendError: any) {
+    } catch (sendError: unknown) {
       // ✅ Handle SendGrid errors
-      logger.error('SendGrid email send failed', {
-        component: 'send-email-api',
-        action: 'sendgrid_error',
-        metadata: {
-          bookingId,
-          recipientEmail,
-          error: sendError.message,
-          code: sendError.code,
+      logger.error(
+        'SendGrid email send failed',
+        {
+          component: 'send-email-api',
+          action: 'sendgrid_error',
+          metadata: {
+            bookingId,
+            recipientEmail,
+            error: sendError.message,
+            code: sendError.code,
+          },
         },
-      }, sendError);
+        sendError
+      );
 
       // ✅ Update email log status to failed
       if (emailLog?.id) {
@@ -186,15 +207,15 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    logger.error('Failed to send email', {
-      component: 'send-email-api',
-      action: 'send_email_error',
-    }, error instanceof Error ? error : new Error(String(error)));
-
-    return NextResponse.json(
-      { error: 'Failed to send email' },
-      { status: 500 }
+    logger.error(
+      'Failed to send email',
+      {
+        component: 'send-email-api',
+        action: 'send_email_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
     );
+
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 }
-

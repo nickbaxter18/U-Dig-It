@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET } from '../analytics/export/route';
 import { createMockRequest } from '@/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { NextResponse } from 'next/server';
+
+import { GET } from '../analytics/export/route';
 
 const { requireAdminMock } = vi.hoisted(() => ({
   requireAdminMock: vi.fn(),
@@ -12,9 +14,9 @@ vi.mock('@/lib/supabase/requireAdmin', () => ({
 }));
 
 type SupabaseMockOptions = {
-  bookingsData?: any[];
-  equipmentData?: any[];
-  equipmentBookingsMap?: Record<string, any[]>;
+  bookingsData?: unknown[];
+  equipmentData?: unknown[];
+  equipmentBookingsMap?: Record<string, unknown[]>;
   userRole?: 'admin' | 'super_admin' | 'customer';
 };
 
@@ -40,7 +42,7 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
         Promise.resolve({
           data: equipmentBookingsMap[value] ?? [],
           error: null,
-        }),
+        })
       ),
     })),
   };
@@ -153,11 +155,7 @@ describe('GET /api/admin/analytics/export', () => {
   it('includes equipment utilization metrics when equipment is present', async () => {
     const equipmentData = [{ id: 'eq-1', make: 'Kubota', model: 'SVL-75', status: 'available' }];
     const equipmentBookingsMap = {
-      'eq-1': [
-        { status: 'confirmed' },
-        { status: 'in_progress' },
-        { status: 'cancelled' },
-      ],
+      'eq-1': [{ status: 'confirmed' }, { status: 'in_progress' }, { status: 'cancelled' }],
     };
 
     const supabase = createSupabaseMock({
@@ -175,4 +173,3 @@ describe('GET /api/admin/analytics/export', () => {
     expect(csv).toContain('"active bookings"');
   });
 });
-

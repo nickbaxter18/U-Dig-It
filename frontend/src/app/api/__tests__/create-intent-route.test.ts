@@ -2,10 +2,11 @@
  * Comprehensive API Route Tests for Payment Intent Creation
  * Tests payment creation, security, validation, and error handling
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { POST } from '../payments/create-intent/route';
+
 import { NextRequest } from 'next/server';
+
+import { POST } from '../payments/create-intent/route';
 
 // Mock dependencies
 vi.mock('@/lib/logger', () => ({
@@ -30,9 +31,7 @@ vi.mock('@/lib/request-validator', () => ({
     DEFAULT_TIMEOUT: 30000,
   },
   withTimeout: vi.fn((promise) => promise),
-  createSafeResponse: vi.fn((data, status) =>
-    new Response(JSON.stringify(data), { status })
-  ),
+  createSafeResponse: vi.fn((data, status) => new Response(JSON.stringify(data), { status })),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -40,11 +39,11 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 // Create a shared mock instance using hoisted
-const { sharedMockPaymentIntentsCreate, sharedMockStripeInstance } = vi.hoisted(() => {
+const { sharedMockPaymentIntentsCreate, _sharedMockStripeInstance } = vi.hoisted(() => {
   const mockCreate = vi.fn();
   return {
     sharedMockPaymentIntentsCreate: mockCreate,
-    sharedMockStripeInstance: {
+    _sharedMockStripeInstance: {
       paymentIntents: {
         create: mockCreate,
       },
@@ -56,7 +55,7 @@ const { sharedMockPaymentIntentsCreate, sharedMockStripeInstance } = vi.hoisted(
 vi.mock('stripe', () => {
   return {
     default: class MockStripe {
-      paymentIntents: any;
+      paymentIntents: unknown;
 
       constructor() {
         this.paymentIntents = {
@@ -81,13 +80,11 @@ vi.mock('@/lib/request-validator', () => ({
     DEFAULT_TIMEOUT: 30000,
   },
   withTimeout: vi.fn((promise) => promise),
-  createSafeResponse: vi.fn((data, status) =>
-    new Response(JSON.stringify(data), { status })
-  ),
+  createSafeResponse: vi.fn((data, status) => new Response(JSON.stringify(data), { status })),
 }));
 
 describe('API Route: /api/payments/create-intent', () => {
-  let mockSupabase: any;
+  let mockSupabase: unknown;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -466,9 +463,7 @@ describe('API Route: /api/payments/create-intent', () => {
       }),
     }));
 
-    sharedMockPaymentIntentsCreate.mockRejectedValue(
-      new Error('Card declined')
-    );
+    sharedMockPaymentIntentsCreate.mockRejectedValue(new Error('Card declined'));
 
     const request = new NextRequest('http://localhost:3000/api/payments/create-intent', {
       method: 'POST',
@@ -485,5 +480,3 @@ describe('API Route: /api/payments/create-intent', () => {
     expect(data.error).toContain('Card declined');
   });
 });
-
-

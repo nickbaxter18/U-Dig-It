@@ -2,13 +2,16 @@
  * Equipment Rider API
  * Generates equipment-specific rider PDFs for rentals
  */
+import { renderToBuffer } from '@react-pdf/renderer';
+
+import React from 'react';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import SVL75EquipmentRiderDocument from '@/components/contracts/SVL75EquipmentRider';
+
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
-import { renderToBuffer } from '@react-pdf/renderer';
-import { NextRequest, NextResponse } from 'next/server';
-import React from 'react';
 
 interface RiderData {
   serialNumber?: string;
@@ -74,11 +77,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (bookingError || !booking) {
-      logger.error('Booking fetch error', {
-        component: 'api-equipment-rider',
-        action: 'error',
-        metadata: { error: bookingError?.message },
-      }, bookingError || undefined);
+      logger.error(
+        'Booking fetch error',
+        {
+          component: 'api-equipment-rider',
+          action: 'error',
+          metadata: { error: bookingError?.message },
+        },
+        bookingError || undefined
+      );
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
@@ -109,11 +116,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (customerError) {
-      logger.error('Customer fetch error', {
-        component: 'api-equipment-rider',
-        action: 'error',
-        metadata: { error: customerError?.message },
-      }, customerError || undefined);
+      logger.error(
+        'Customer fetch error',
+        {
+          component: 'api-equipment-rider',
+          action: 'error',
+          metadata: { error: customerError?.message },
+        },
+        customerError || undefined
+      );
     }
 
     // Prepare rider data from booking
@@ -190,12 +201,16 @@ export async function POST(req: NextRequest) {
         },
       });
     }
-  } catch (error: any) {
-    logger.error('Equipment rider generation error', {
-      component: 'api-equipment-rider',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) },
-    }, error instanceof Error ? error : undefined);
+  } catch (error: unknown) {
+    logger.error(
+      'Equipment rider generation error',
+      {
+        component: 'api-equipment-rider',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
     return NextResponse.json(
       {
         error: error.message || 'Failed to generate equipment rider',
@@ -232,7 +247,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    let equipment: any;
+    let equipment: unknown;
 
     if (bookingId) {
       // Get equipment from booking
@@ -277,12 +292,16 @@ export async function GET(req: NextRequest) {
       equipmentModel: equipment.model,
       equipmentType: equipment.type,
     });
-  } catch (error: any) {
-    logger.error('Equipment rider check error', {
-      component: 'api-equipment-rider',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) },
-    }, error instanceof Error ? error : undefined);
+  } catch (error: unknown) {
+    logger.error(
+      'Equipment rider check error',
+      {
+        component: 'api-equipment-rider',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
     return NextResponse.json(
       {
         error: error.message || 'Failed to check equipment rider requirement',

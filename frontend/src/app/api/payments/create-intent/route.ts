@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
       currency,
       bookingId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Payment intent creation error',
       {

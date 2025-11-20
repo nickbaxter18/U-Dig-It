@@ -2,18 +2,18 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
 // Helper function to check accessibility
-async function checkAccessibility(page: any) {
+async function checkAccessibility(page: unknown) {
   const results = await new AxeBuilder({ page }).analyze();
   const violations = results.violations.filter(
-    (violation: any) => violation.impact === 'critical' || violation.impact === 'serious'
+    (violation: unknown) => violation.impact === 'critical' || violation.impact === 'serious'
   );
 
   if (violations.length > 0) {
-    const violationDetails = violations.map((v: any) => ({
+    const violationDetails = violations.map((v: unknown) => ({
       rule: v.id,
       description: v.description,
       impact: v.impact,
-      elements: v.nodes.map((node: any) => ({
+      elements: v.nodes.map((node: unknown) => ({
         html: node.html,
         target: node.target,
         failureSummary: node.failureSummary,
@@ -29,21 +29,13 @@ async function checkAccessibility(page: any) {
 }
 
 // Define all pages to test for accessibility
-const pages = [
-  '/',
-  '/book',
-  '/getting-insurance',
-  '/rider',
-  '/terms',
-  '/404',
-  '/500'
-];
+const pages = ['/', '/book', '/getting-insurance', '/rider', '/terms', '/404', '/500'];
 
 // Test accessibility for all pages
-pages.forEach(page => {
+pages.forEach((page) => {
   test(`Accessibility: ${page}`, async ({ browser }) => {
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 720 }
+      viewport: { width: 1280, height: 720 },
     });
     const pageInstance = await context.newPage();
 
@@ -94,7 +86,7 @@ pages.forEach(page => {
         const headingLevels: number[] = [];
         for (let i = 0; i < headingCount; i++) {
           const heading = headings.nth(i);
-          const tagName = await heading.evaluate(el => el.tagName);
+          const tagName = await heading.evaluate((el) => el.tagName);
           const level = parseInt(tagName.replace('H', ''));
           headingLevels.push(level);
         }
@@ -106,7 +98,9 @@ pages.forEach(page => {
           const skip = currentLevel - previousLevel;
           // Allow skipping but log warning for significant skips
           if (skip > 2) {
-            console.warn(`Large heading level skip detected: H${previousLevel} -> H${currentLevel}`);
+            console.warn(
+              `Large heading level skip detected: H${previousLevel} -> H${currentLevel}`
+            );
           }
         }
       }
@@ -129,9 +123,14 @@ pages.forEach(page => {
       for (let i = 0; i < linkCount; i++) {
         const link = links.nth(i);
         const href = await link.getAttribute('href');
-        const text = await link.textContent() || "";
+        const text = (await link.textContent()) || '';
 
-        if (href && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+        if (
+          href &&
+          !href.startsWith('#') &&
+          !href.startsWith('mailto:') &&
+          !href.startsWith('tel:')
+        ) {
           // External links should have descriptive text
           expect(text?.trim().length).toBeGreaterThan(1);
         }
@@ -144,7 +143,7 @@ pages.forEach(page => {
       for (let i = 0; i < buttonCount; i++) {
         const button = buttons.nth(i);
         const ariaLabel = await button.getAttribute('aria-label');
-        const text = await button.textContent() || "";
+        const text = (await button.textContent()) || '';
 
         // Button should have either text content or aria-label
         const hasContent = text?.trim().length > 0;
@@ -154,14 +153,16 @@ pages.forEach(page => {
       }
 
       // Check for proper focus management
-      const focusableElements = pageInstance.locator('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const focusableElements = pageInstance.locator(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
       const focusableCount = await focusableElements.count();
 
       if (focusableCount > 0) {
         // Ensure focusable elements are keyboard accessible
         for (let i = 0; i < focusableCount; i++) {
           const element = focusableElements.nth(i);
-          const tagName = await element.evaluate(el => el.tagName);
+          const tagName = await element.evaluate((el) => el.tagName);
 
           if (tagName === 'BUTTON' || tagName === 'A') {
             // Buttons and links should be focusable
@@ -174,7 +175,6 @@ pages.forEach(page => {
           }
         }
       }
-
     } finally {
       await context.close();
     }
@@ -184,7 +184,7 @@ pages.forEach(page => {
 // Test accessibility for dynamic content and interactions
 test('Accessibility: Dynamic content and interactions', async ({ browser }) => {
   const context = await browser.newContext({
-    viewport: { width: 1280, height: 720 }
+    viewport: { width: 1280, height: 720 },
   });
   const page = await context.newPage();
 
@@ -206,7 +206,9 @@ test('Accessibility: Dynamic content and interactions', async ({ browser }) => {
 
       // Check for focus trap (focus should be within modal)
       const focusedElement = await page.locator(':focus');
-      await expect(focusedElement.locator('xpath=ancestor-or-self::*[contains(@role,"dialog")]')).toBeVisible();
+      await expect(
+        focusedElement.locator('xpath=ancestor-or-self::*[contains(@role,"dialog")]')
+      ).toBeVisible();
 
       // Check for escape key handler
       await page.keyboard.press('Escape');
@@ -234,7 +236,10 @@ test('Accessibility: Dynamic content and interactions', async ({ browser }) => {
           for (let i = 0; i < errorCount; i++) {
             const error = errorElements.nth(i);
             const errorId = await error.getAttribute('id');
-            const ariaDescribedBy = await error.locator('xpath=../input | ../select | ../textarea').first().getAttribute('aria-describedby');
+            const ariaDescribedBy = await error
+              .locator('xpath=../input | ../select | ../textarea')
+              .first()
+              .getAttribute('aria-describedby');
 
             if (errorId && ariaDescribedBy) {
               expect(ariaDescribedBy).toContain(errorId);
@@ -243,7 +248,6 @@ test('Accessibility: Dynamic content and interactions', async ({ browser }) => {
         }
       }
     }
-
   } finally {
     await context.close();
   }
@@ -252,7 +256,7 @@ test('Accessibility: Dynamic content and interactions', async ({ browser }) => {
 // Test accessibility in different viewport sizes
 test('Accessibility: Mobile viewport', async ({ browser }) => {
   const context = await browser.newContext({
-    viewport: { width: 375, height: 667 } // iPhone size
+    viewport: { width: 375, height: 667 }, // iPhone size
   });
   const page = await context.newPage();
 
@@ -274,7 +278,6 @@ test('Accessibility: Mobile viewport', async ({ browser }) => {
         expect(size).toBeGreaterThanOrEqual(44);
       }
     }
-
   } finally {
     await context.close();
   }

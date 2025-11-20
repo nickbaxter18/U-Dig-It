@@ -1,17 +1,12 @@
 'use client';
 
-import { logger } from '@/lib/logger';
+import { Calendar, CreditCard, DollarSign, Download, TrendingDown, TrendingUp } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { requestFinancialExport } from '@/lib/api/admin/payments';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-import {
-    Calendar,
-    CreditCard,
-    DollarSign,
-    Download,
-    TrendingDown,
-    TrendingUp,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface FinancialSummary {
   totalRevenue: number;
@@ -40,9 +35,7 @@ interface FinancialReportsSectionProps {
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
-function getDateRanges(
-  range: FinancialReportsSectionProps['dateRange'],
-): {
+function getDateRanges(range: FinancialReportsSectionProps['dateRange']): {
   currentStart?: Date;
   currentEnd?: Date;
   previousStart?: Date;
@@ -113,11 +106,7 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    fetchFinancialSummary();
-  }, [dateRange]);
-
-  const fetchFinancialSummary = async () => {
+  const fetchFinancialSummary = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -137,7 +126,7 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       if (currentError) throw currentError;
       const currentPayments = currentPaymentsData ?? [];
 
-      let previousPayments: any[] = [];
+      let previousPayments: unknown[] = [];
       if (previousStart && previousEnd) {
         const { data: previousData, error: previousError } = await supabase
           .from('payments')
@@ -149,7 +138,7 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
         previousPayments = previousData ?? [];
       }
 
-      const parseAmount = (value: any) => {
+      const parseAmount = (value: unknown) => {
         if (typeof value === 'number') return value;
         if (typeof value === 'string') {
           const parsed = Number.parseFloat(value);
@@ -159,63 +148,62 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       };
 
       const successfulPayments = currentPayments.filter(
-        (p: any) => p.type === 'payment' && p.status === 'completed',
+        (p: unknown) => p.type === 'payment' && p.status === 'completed'
       );
       const totalRevenue = successfulPayments.reduce(
-        (sum: number, p: any) => sum + parseAmount(p.amount),
-        0,
+        (sum: number, p: unknown) => sum + parseAmount(p.amount),
+        0
       );
 
       const totalRefunds = currentPayments.reduce(
-        (sum: number, p: any) => sum + parseAmount(p.amountRefunded),
-        0,
+        (sum: number, p: unknown) => sum + parseAmount(p.amountRefunded),
+        0
       );
 
       const netRevenue = totalRevenue - totalRefunds;
 
       const transactionCount = successfulPayments.length;
-      const totalTransactions = currentPayments.filter((p: any) => p.type === 'payment').length;
+      const totalTransactions = currentPayments.filter((p: unknown) => p.type === 'payment').length;
       const averageTransactionValue = transactionCount > 0 ? totalRevenue / transactionCount : 0;
       const successRate = totalTransactions > 0 ? (transactionCount / totalTransactions) * 100 : 0;
 
       const paymentMethodBreakdown = {
         card: successfulPayments
-          .filter(
-            (p: any) => p.method === 'credit_card' || p.method === 'debit_card',
-          )
-          .reduce((sum: number, p: any) => sum + parseAmount(p.amount), 0),
+          .filter((p: unknown) => p.method === 'credit_card' || p.method === 'debit_card')
+          .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
         bank_transfer: successfulPayments
-          .filter((p: any) => p.method === 'bank_transfer')
-          .reduce((sum: number, p: any) => sum + parseAmount(p.amount), 0),
+          .filter((p: unknown) => p.method === 'bank_transfer')
+          .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
         other: successfulPayments
-          .filter((p: any) => ['cash', 'check', 'other'].includes(p.method))
-          .reduce((sum: number, p: any) => sum + parseAmount(p.amount), 0),
+          .filter((p: unknown) => ['cash', 'check', 'other'].includes(p.method))
+          .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
       };
 
       const successfulPreviousPayments = previousPayments.filter(
-        (p: any) => p.type === 'payment' && p.status === 'completed',
+        (p: unknown) => p.type === 'payment' && p.status === 'completed'
       );
       const previousRevenue = successfulPreviousPayments.reduce(
-        (sum: number, p: any) => sum + parseAmount(p.amount),
-        0,
+        (sum: number, p: unknown) => sum + parseAmount(p.amount),
+        0
       );
       const previousTransactions = successfulPreviousPayments.length;
-      const hasComparison = previousStart != null && previousEnd != null && previousPayments.length > 0;
+      const hasComparison =
+        previousStart != null && previousEnd != null && previousPayments.length > 0;
 
       const revenueGrowth = hasComparison
         ? previousRevenue > 0
           ? ((totalRevenue - previousRevenue) / previousRevenue) * 100
           : totalRevenue > 0
-          ? 100
-          : 0
+            ? 100
+            : 0
         : 0;
 
       const transactionsGrowth = hasComparison
         ? previousTransactions > 0
           ? ((transactionCount - previousTransactions) / previousTransactions) * 100
           : transactionCount > 0
-          ? 100
-          : 0
+            ? 100
+            : 0
         : 0;
 
       const financialSummary: FinancialSummary = {
@@ -236,16 +224,24 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       };
 
       setSummary(financialSummary);
-    } catch (err: any) {
-      logger.error('Failed to fetch financial summary', {
-        component: 'FinancialReportsSection',
-        action: 'fetch_error',
-      }, err instanceof Error ? err : new Error(String(err)));
-      setError(err.message);
+    } catch (err: unknown) {
+      logger.error(
+        'Failed to fetch financial summary',
+        {
+          component: 'FinancialReportsSection',
+          action: 'fetch_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      setError(err instanceof Error ? err.message : 'Failed to load financial summary');
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange]);
+
+  useEffect(() => {
+    fetchFinancialSummary();
+  }, [fetchFinancialSummary]);
 
   const handleExport = async () => {
     try {
@@ -257,11 +253,15 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       if (response.downloadUrl) {
         window.open(response.downloadUrl, '_blank', 'noopener,noreferrer');
       }
-    } catch (err: any) {
-      logger.error('Failed to generate financial export', {
-        component: 'FinancialReportsSection',
-        action: 'export_error',
-      }, err instanceof Error ? err : new Error(String(err)));
+    } catch (err: unknown) {
+      logger.error(
+        'Failed to generate financial export',
+        {
+          component: 'FinancialReportsSection',
+          action: 'export_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
     } finally {
       setExporting(false);
     }
@@ -355,7 +355,10 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
             <div>
               <p className="text-sm font-medium text-blue-900">Avg Transaction</p>
               <p className="mt-2 text-3xl font-bold text-blue-700">
-                ${summary.averageTransactionValue.toLocaleString('en-CA', { minimumFractionDigits: 2 })}
+                $
+                {summary.averageTransactionValue.toLocaleString('en-CA', {
+                  minimumFractionDigits: 2,
+                })}
               </p>
               <div className="mt-2 text-sm text-gray-600">
                 {summary.transactionCount} transactions
@@ -437,7 +440,8 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
               <div className="flex justify-between items-center mb-1">
                 <span className="text-sm text-gray-600">Credit/Debit Card:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  ${summary.paymentMethodBreakdown.card.toLocaleString('en-CA', {
+                  $
+                  {summary.paymentMethodBreakdown.card.toLocaleString('en-CA', {
                     minimumFractionDigits: 2,
                   })}
                 </span>
@@ -462,7 +466,8 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
               <div className="flex justify-between items-center mb-1">
                 <span className="text-sm text-gray-600">Bank Transfer:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  ${summary.paymentMethodBreakdown.bank_transfer.toLocaleString('en-CA', {
+                  $
+                  {summary.paymentMethodBreakdown.bank_transfer.toLocaleString('en-CA', {
                     minimumFractionDigits: 2,
                   })}
                 </span>
@@ -477,7 +482,10 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
               </div>
               <div className="mt-1 text-xs text-gray-500">
                 {summary.totalRevenue > 0
-                  ? ((summary.paymentMethodBreakdown.bank_transfer / summary.totalRevenue) * 100).toFixed(1)
+                  ? (
+                      (summary.paymentMethodBreakdown.bank_transfer / summary.totalRevenue) *
+                      100
+                    ).toFixed(1)
                   : 0}
                 % of total
               </div>
@@ -487,7 +495,8 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
               <div className="flex justify-between items-center mb-1">
                 <span className="text-sm text-gray-600">Other:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  ${summary.paymentMethodBreakdown.other.toLocaleString('en-CA', {
+                  $
+                  {summary.paymentMethodBreakdown.other.toLocaleString('en-CA', {
                     minimumFractionDigits: 2,
                   })}
                 </span>
@@ -513,12 +522,3 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

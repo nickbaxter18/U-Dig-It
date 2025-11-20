@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
+
 import { logger } from '@/lib/logger';
 
 // Performance monitoring utilities
@@ -37,7 +38,7 @@ export class PerformanceMonitor {
     const _values = this.metrics.get(name) || [];
     if (_values.length === 0) return null;
 
-    const sum = _values.reduce((a: any, b: any) => a + b, 0);
+    const sum = _values.reduce((a: unknown, b: unknown) => a + b, 0);
     const avg = sum / _values.length;
     const min = Math.min(..._values);
     const max = Math.max(..._values);
@@ -87,7 +88,7 @@ export class PerformanceMonitor {
   async flush() {
     if (process.env.NODE_ENV === 'production') {
       // Send aggregated metrics to Sentry
-      Array.from(this.metrics.entries()).forEach(([name, values]) => {
+      Array.from(this.metrics.entries()).forEach(([name, _values]) => {
         const stats = this.getMetricStats(name);
         if (stats) {
           Sentry.setContext('metrics', { [name]: stats });
@@ -102,37 +103,42 @@ export function reportWebVitals(metric: unknown) {
   // Record Core Web Vitals
   const monitor = PerformanceMonitor.getInstance();
 
-  switch ((metric as any).name) {
+  switch ((metric as { name: string; value: number }).name) {
     case 'FCP':
-      monitor.recordMetric('web-vitals.fcp', (metric as any).value);
+      monitor.recordMetric('web-vitals.fcp', (metric as { name: string; value: number }).value);
       break;
     case 'LCP':
-      monitor.recordMetric('web-vitals.lcp', (metric as any).value);
+      monitor.recordMetric('web-vitals.lcp', (metric as { name: string; value: number }).value);
       break;
     case 'CLS':
-      monitor.recordMetric('web-vitals.cls', (metric as any).value);
+      monitor.recordMetric('web-vitals.cls', (metric as { name: string; value: number }).value);
       break;
     case 'FID':
-      monitor.recordMetric('web-vitals.fid', (metric as any).value);
+      monitor.recordMetric('web-vitals.fid', (metric as { name: string; value: number }).value);
       break;
     case 'TTFB':
-      monitor.recordMetric('web-vitals.ttfb', (metric as any).value);
+      monitor.recordMetric('web-vitals.ttfb', (metric as { name: string; value: number }).value);
       break;
     case 'INP':
-      monitor.recordMetric('web-vitals.inp', (metric as any).value);
+      monitor.recordMetric('web-vitals.inp', (metric as { name: string; value: number }).value);
       break;
   }
 
   // Send to Sentry
   if (process.env.NODE_ENV === 'production') {
-    Sentry.setTag(`web-vitals.${(metric as any).name}`, (metric as any).value);
-    Sentry.setContext('web-vitals', { [(metric as any).name]: (metric as any).value });
+    const metricData = metric as { name: string; value: number };
+    Sentry.setTag(`web-vitals.${metricData.name}`, metricData.value);
+    Sentry.setContext('web-vitals', { [metricData.name]: metricData.value });
   }
 
   // Log in development
   if (process.env.NODE_ENV === 'development') {
     if (process.env.NODE_ENV === 'development') {
-      logger.debug('Web Vitals:', { component: 'monitoring', action: 'debug', metadata: { value: metric } });
+      logger.debug('Web Vitals:', {
+        component: 'monitoring',
+        action: 'debug',
+        metadata: { value: metric },
+      });
     }
   }
 }
@@ -142,7 +148,7 @@ export function captureErrorBoundary(error: Error, errorInfo: unknown) {
   Sentry.captureException(error, {
     contexts: {
       react: {
-        componentStack: (errorInfo as any).componentStack,
+        componentStack: (errorInfo as { componentStack?: string } | null)?.componentStack,
       },
     },
   });
@@ -159,8 +165,8 @@ export function captureApiError(error: unknown, endpoint: string, method: string
     extra: {
       endpoint,
       method,
-      statusCode: (error as any).statusCode,
-      message: (error as any).message,
+      statusCode: (error as { statusCode?: number } | null)?.statusCode,
+      message: (error as { message?: string } | null)?.message,
     },
   });
 }
@@ -172,7 +178,7 @@ export function setupPerformanceObserver() {
   // Observe Long Tasks
   if ('PerformanceObserver' in window) {
     try {
-      const observer = new PerformanceObserver(list => {
+      const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           const perfEntry = entry as PerformanceEntry & { duration?: number };
           if (perfEntry.duration && perfEntry.duration > 50) {
@@ -182,7 +188,7 @@ export function setupPerformanceObserver() {
         }
       });
       observer.observe({ entryTypes: ['longtask'] });
-    } catch (_error) {
+    } catch {
       // Long task API not supported
     }
   }
@@ -190,7 +196,7 @@ export function setupPerformanceObserver() {
   // Observe Layout Shifts
   if ('PerformanceObserver' in window) {
     try {
-      const observer = new PerformanceObserver(list => {
+      const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           const layoutEntry = entry as PerformanceEntry & { value?: number };
           if (layoutEntry.value && layoutEntry.value > 0.1) {
@@ -200,7 +206,7 @@ export function setupPerformanceObserver() {
         }
       });
       observer.observe({ entryTypes: ['layout-shift'] });
-    } catch (_error) {
+    } catch {
       // Layout shift API not supported
     }
   }

@@ -1,7 +1,8 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { NextRequest, NextResponse } from 'next/server';
 
 const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes for download links
 
@@ -9,7 +10,7 @@ function parseStorageUrl(storageUrl: string): { bucket: string; path: string } |
   try {
     const url = new URL(storageUrl);
     const segments = url.pathname.split('/').filter(Boolean);
-    const objectIndex = segments.findIndex(segment => segment === 'object');
+    const objectIndex = segments.findIndex((segment) => segment === 'object');
 
     if (objectIndex === -1 || segments.length <= objectIndex + 2) {
       return null;
@@ -37,10 +38,7 @@ function parseStorageUrl(storageUrl: string): { bucket: string; path: string } |
  *
  * Admin-only endpoint
  */
-export async function GET(
-  request: NextRequest,
-  context: { params?: { id?: string } }
-) {
+export async function GET(request: NextRequest, context: { params?: { id?: string } }) {
   try {
     const params = context.params ?? {};
     let contractId = params.id;
@@ -48,7 +46,7 @@ export async function GET(
     if (!contractId) {
       const url = new URL(request.url);
       const segments = url.pathname.split('/').filter(Boolean);
-      const contractsIdx = segments.findIndex(segment => segment === 'contracts');
+      const contractsIdx = segments.findIndex((segment) => segment === 'contracts');
       if (contractsIdx >= 0 && segments.length > contractsIdx + 1) {
         contractId = segments[contractsIdx + 1];
       }
@@ -69,19 +67,15 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 3. Fetch contract
     const { data: contract, error: contractError } = await supabase
@@ -131,10 +125,7 @@ export async function GET(
 
     if (!downloadUrl) {
       if (!storageBucket || !storagePath) {
-        return NextResponse.json(
-          { error: 'Contract PDF not yet generated' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Contract PDF not yet generated' }, { status: 404 });
       }
 
       const bucketClient = supabase.storage.from(storageBucket);
@@ -144,18 +135,15 @@ export async function GET(
       );
 
       if (signedError) {
-        logger.warn(
-          'Primary client failed to create signed URL',
-          {
-            component: 'contracts-download-api',
-            action: 'signed_url_warning',
-            metadata: {
-              bucket: storageBucket,
-              path: storagePath,
-              error: signedError.message,
-            },
-          }
-        );
+        logger.warn('Primary client failed to create signed URL', {
+          component: 'contracts-download-api',
+          action: 'signed_url_warning',
+          metadata: {
+            bucket: storageBucket,
+            path: storagePath,
+            error: signedError.message,
+          },
+        });
       } else {
         downloadUrl = signedData?.signedUrl ?? null;
       }
@@ -187,10 +175,7 @@ export async function GET(
 
     if (!downloadUrl) {
       if (!contract.signedDocumentUrl && !contract.documentUrl) {
-        return NextResponse.json(
-          { error: 'Contract PDF not yet generated' },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: 'Contract PDF not yet generated' }, { status: 404 });
       }
 
       downloadUrl = contract.signedDocumentUrl ?? contract.documentUrl ?? null;
@@ -212,7 +197,7 @@ export async function GET(
       contractId,
       contractNumber: contract.contractNumber,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Contract download error',
       {
@@ -222,10 +207,6 @@ export async function GET(
       error
     );
 
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-

@@ -1,188 +1,9 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-
-import { POST } from '../payments/refund/route';
-import { createMockRequest } from '@/test-utils';
-
-const mockSupabase = {
-  from: vi.fn(),
-};
-
-const mockStripeClient = {
-  refunds: {
-    create: vi.fn(),
-  },
-};
-
-const mockRequireAdmin = vi.fn();
-const mockGetStripeSecretKey = vi.fn();
-const mockCreateStripeClient = vi.fn();
-
-vi.mock('@/lib/supabase/requireAdmin', () => ({
-  requireAdmin: mockRequireAdmin,
-}));
-
-vi.mock('@/lib/stripe/config', () => ({
-  getStripeSecretKey: mockGetStripeSecretKey,
-  createStripeClient: mockCreateStripeClient,
-}));
-
-describe('POST /api/admin/payments/refund', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockRequireAdmin.mockResolvedValue({
-      supabase: mockSupabase,
-      user: { id: 'admin-1', email: 'admin@test.com' },
-      role: 'admin',
-    });
-    mockGetStripeSecretKey.mockResolvedValue('sk_test');
-    mockCreateStripeClient.mockReturnValue(mockStripeClient);
-  });
-
-  it('rejects missing required fields', async () => {
-    const request = createMockRequest('POST', { paymentId: 'pay_1' });
-    const response = await POST(request);
-    expect(response.status).toBe(400);
-  });
-
-  it('returns 404 when payment not found', async () => {
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'payments') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: null, error: { message: 'not found' } }),
-        };
-      }
-
-      return {
-        insert: vi.fn().mockResolvedValue({ error: null }),
-      };
-    });
-
-    const request = createMockRequest('POST', {
-      paymentId: 'missing',
-      amount: '10',
-      reason: 'duplicate',
-    });
-
-    const response = await POST(request);
-    expect(response.status).toBe(404);
-  });
-
-  it('processes refund successfully', async () => {
-    const paymentRecord = {
-      id: 'pay_123',
-      amount: '100.00',
-      status: 'captured',
-      stripePaymentIntentId: 'pi_123',
-      amountRefunded: '20.00',
-      refundedAt: null,
-      refundReason: null,
-      bookingId: 'booking_1',
-    };
-
-    const paymentsTable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: paymentRecord, error: null }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    };
-
-    const auditLogsTable = {
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    };
-
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'payments') {
-        return paymentsTable;
-      }
-      if (table === 'audit_logs') {
-        return auditLogsTable;
-      }
-      return {
-        insert: vi.fn().mockResolvedValue({ error: null }),
-      };
-    });
-
-    mockStripeClient.refunds.create.mockResolvedValue({ id: 're_123' });
-
-    const request = createMockRequest('POST', {
-      paymentId: paymentRecord.id,
-      amount: '30.00',
-      reason: 'customer_request',
-    });
-
-    const response = await POST(request);
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body).toMatchObject({
-      success: true,
-      refundId: 're_123',
-      amount: 30,
-      status: 'partially_refunded',
-    });
-
-    expect(mockStripeClient.refunds.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        payment_intent: paymentRecord.stripePaymentIntentId,
-        amount: 3000,
-        metadata: expect.objectContaining({
-          admin_user_id: 'admin-1',
-        }),
-      })
-    );
-    expect(auditLogsTable.insert).toHaveBeenCalled();
-  });
-
-  it('handles Stripe errors gracefully', async () => {
-    const paymentRecord = {
-      id: 'pay_456',
-      amount: '50.00',
-      status: 'captured',
-      stripePaymentIntentId: 'pi_789',
-      amountRefunded: '0',
-      refundedAt: null,
-      refundReason: null,
-      bookingId: 'booking_2',
-    };
-
-    const paymentsTable = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: paymentRecord, error: null }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
-    };
-
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === 'payments') {
-        return paymentsTable;
-      }
-      return {
-        insert: vi.fn().mockResolvedValue({ error: null }),
-      };
-    });
-
-    mockStripeClient.refunds.create.mockRejectedValue(new Error('Stripe failure'));
-
-    const request = createMockRequest('POST', {
-      paymentId: paymentRecord.id,
-      amount: '10.00',
-      reason: 'customer_request',
-    });
-
-    const response = await POST(request);
-    expect(response.status).toBe(500);
-  });
-});
-import { NextResponse } from 'next/server';
+import { createMockRequest, createTestPayment, expectErrorResponse } from '@/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { NextResponse } from 'next/server';
+
 import { POST } from '../payments/refund/route';
-import { createMockRequest, expectErrorResponse, createTestPayment } from '@/test-utils';
 
 const mockRequireAdmin = vi.hoisted(() => vi.fn());
 
@@ -199,7 +20,7 @@ const mockStripeInstance = vi.hoisted(() => ({
 const MockStripeConstructor = vi.hoisted(() =>
   vi.fn(function MockStripe() {
     return mockStripeInstance;
-  }),
+  })
 );
 
 vi.mock('stripe', () => ({
@@ -208,9 +29,9 @@ vi.mock('stripe', () => ({
 
 interface BuildSupabaseOptions {
   role?: string;
-  payment?: any;
-  paymentError?: any;
-  updateError?: any;
+  payment?: unknown;
+  paymentError?: unknown;
+  updateError?: unknown;
 }
 
 const buildSupabase = (options: BuildSupabaseOptions = {}) => {
@@ -219,7 +40,7 @@ const buildSupabase = (options: BuildSupabaseOptions = {}) => {
   const paymentError = options.paymentError ?? null;
   const updateError = options.updateError ?? null;
 
-  const updatePayloads: any[] = [];
+  const updatePayloads: unknown[] = [];
 
   const paymentsSingle = vi.fn().mockResolvedValue({
     data: paymentRecord,
@@ -234,7 +55,7 @@ const buildSupabase = (options: BuildSupabaseOptions = {}) => {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     single: paymentsSingle,
-    update: vi.fn((payload: any) => {
+    update: vi.fn((payload: unknown) => {
       updatePayloads.push(payload);
       return { eq: paymentsUpdateEq };
     }),
@@ -285,7 +106,7 @@ describe('POST /api/admin/payments/refund', () => {
   const mockAdmin = { id: 'admin-123' };
   let basePayment: ReturnType<typeof createTestPayment>;
   let supabaseMock: ReturnType<typeof buildSupabase>['supabase'];
-  let updatePayloads: any[];
+  let updatePayloads: unknown[];
   let paymentsUpdateEq: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -379,7 +200,7 @@ describe('POST /api/admin/payments/refund', () => {
       expect.objectContaining({
         payment_intent: basePayment.stripePaymentIntentId,
         amount: Math.round(basePayment.amount * 100),
-      }),
+      })
     );
   });
 
@@ -395,7 +216,7 @@ describe('POST /api/admin/payments/refund', () => {
     expect(mockStripeInstance.refunds.create).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 25000,
-      }),
+      })
     );
   });
 
@@ -462,7 +283,7 @@ describe('POST /api/admin/payments/refund', () => {
         paymentId: basePayment.id,
         amount: 250,
         reason: 'Stripe failure',
-      }),
+      })
     );
 
     await expectErrorResponse(response, 500, /Stripe error/i);

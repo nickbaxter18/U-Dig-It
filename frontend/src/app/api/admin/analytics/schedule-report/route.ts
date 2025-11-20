@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/admin/analytics/schedule-report
@@ -17,7 +18,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const { reportType, frequency, recipients, dateRange } = body;
@@ -63,27 +66,27 @@ export async function POST(request: NextRequest) {
         recipients,
         dateRange,
         nextRun: nextRun.toISOString(),
-        userId: user?.id || 'unknown'
-      }
+        userId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({
       success: true,
       message: `Report scheduled to run ${frequency}. Next run: ${nextRun.toLocaleString()}`,
       nextRun: nextRun.toISOString(),
-      scheduleId: `schedule-${Date.now()}`
+      scheduleId: `schedule-${Date.now()}`,
     });
-  } catch (error: any) {
-    logger.error('Failed to schedule report', {
-      component: 'analytics-schedule-api',
-      action: 'schedule_report_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to schedule report' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to schedule report',
+      {
+        component: 'analytics-schedule-api',
+        action: 'schedule_report_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to schedule report' }, { status: 500 });
   }
 }
-

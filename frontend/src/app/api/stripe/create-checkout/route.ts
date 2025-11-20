@@ -2,16 +2,17 @@
  * Create Stripe Checkout Session API
  * Creates a checkout session for booking payment
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
+
+// import Stripe from 'stripe'; // Unused - type only
 
 export async function POST(req: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
-  
+
   try {
     const supabase = await createClient();
 
@@ -25,6 +26,53 @@ export async function POST(req: NextRequest) {
     }
 
     const { bookingId, paymentType, returnUrl, cancelUrl } = await req.json();
+
+    // Get base URL with proper fallback
+    const getBaseUrl = () => {
+      // Priority 1: Use provided returnUrl/cancelUrl base if available
+      if (returnUrl) {
+        try {
+          const url = new URL(returnUrl);
+          return url.origin;
+        } catch {
+          // Invalid URL, continue to next option
+        }
+      }
+
+      // Priority 2: Use NEXT_PUBLIC_SITE_URL if set and valid
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+      if (siteUrl) {
+        try {
+          const url = new URL(siteUrl);
+          return url.origin;
+        } catch {
+          // Invalid URL, continue to next option
+        }
+      }
+
+      // Priority 3: Use request origin (from headers)
+      const origin = req.headers.get('origin') || req.headers.get('host');
+      if (origin) {
+        // Check if origin already has scheme
+        if (origin.startsWith('http://') || origin.startsWith('https://')) {
+          try {
+            const url = new URL(origin);
+            return url.origin;
+          } catch {
+            // Invalid, continue
+          }
+        } else {
+          // Add scheme based on environment
+          const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+          return `${scheme}://${origin}`;
+        }
+      }
+
+      // Priority 4: Default fallback for development
+      return 'http://localhost:3000';
+    };
+
+    const baseUrl = getBaseUrl();
 
     if (!bookingId) {
       return NextResponse.json({ error: 'Booking ID required' }, { status: 400 });
@@ -63,19 +111,24 @@ export async function POST(req: NextRequest) {
 
     // Determine payment type and amount
     const isDeposit = paymentType === 'deposit';
-    const amount = isDeposit ? parseFloat(booking.securityDeposit) : parseFloat(booking.totalAmount);
+    const amount = isDeposit
+      ? parseFloat(booking.securityDeposit)
+      : parseFloat(booking.totalAmount);
     const description = isDeposit
       ? `Security Deposit: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`
       : `Rental Payment: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
 
     // Check if this specific payment type is already paid
-    const existingPayment = booking.payments?.find((p: any) =>
-      p.type === paymentType && p.status === 'completed'
+    const existingPayment = booking.payments?.find(
+      (p: unknown) => p.type === paymentType && p.status === 'completed'
     );
     if (existingPayment) {
-      return NextResponse.json({
-        error: `${isDeposit ? 'Deposit' : 'Payment'} already completed`
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `${isDeposit ? 'Deposit' : 'Payment'} already completed`,
+        },
+        { status: 400 }
+      );
     }
 
     logger.info('Creating Stripe checkout session', {
@@ -124,8 +177,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: returnUrl || `${process.env.NEXT_PUBLIC_SITE_URL}/booking/${bookingId}/manage?payment=success`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL}/booking/${bookingId}/manage?payment=cancelled`,
+      success_url: returnUrl || `${baseUrl}/booking/${bookingId}/manage?payment=success`,
+      cancel_url: cancelUrl || `${baseUrl}/booking/${bookingId}/manage?payment=cancelled`,
       client_reference_id: booking.id,
       customer_email: booking.customer.email,
       metadata: {
@@ -160,12 +213,16 @@ export async function POST(req: NextRequest) {
       url: session.url,
       sessionId: session.id,
     });
-  } catch (error: any) {
-    logger.error('Checkout creation error:', {
-      component: 'api-create-checkout',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Checkout creation error:',
+      {
+        component: 'api-create-checkout',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
     return NextResponse.json(
       {
         error: error.message || 'Failed to create checkout session',

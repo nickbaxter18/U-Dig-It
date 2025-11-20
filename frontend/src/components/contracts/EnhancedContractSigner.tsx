@@ -5,13 +5,17 @@
 
 'use client';
 
+import { CheckCircle, Clock, Eye, FileText, Lock, Shield } from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
-import { contractNumberFromBooking } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
 import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
-import { CheckCircle, Clock, Eye, FileText, Lock, Shield } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { contractNumberFromBooking } from '@/lib/utils';
+
 import ContractPreviewModal from './ContractPreviewModal';
 import DrawSignature from './DrawSignature';
 import TypedSignature from './TypedSignature';
@@ -81,8 +85,8 @@ export default function EnhancedContractSigner({
         const { data: userData, error } = await supabase
           .from('users')
           .select('firstName, lastName')
-        .eq('id', user.id)
-        .single();
+          .eq('id', user.id)
+          .single();
 
         let fullName = '';
 
@@ -97,7 +101,7 @@ export default function EnhancedContractSigner({
             metadata: {
               source: 'users_table',
               name: fullName,
-              initials: generateInitials(fullName)
+              initials: generateInitials(fullName),
             },
           });
         } else if (user.user_metadata?.firstName && user.user_metadata?.lastName) {
@@ -113,7 +117,7 @@ export default function EnhancedContractSigner({
             metadata: {
               source: 'auth_metadata',
               name: fullName,
-              initials: generateInitials(fullName)
+              initials: generateInitials(fullName),
             },
           });
         }
@@ -123,10 +127,14 @@ export default function EnhancedContractSigner({
           setSignerInitials(generateInitials(fullName));
         }
       } catch (err) {
-        logger.error('Error fetching user profile for contract', {
-          component: 'EnhancedContractSigner',
-          action: 'error',
-        }, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          'Error fetching user profile for contract',
+          {
+            component: 'EnhancedContractSigner',
+            action: 'error',
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
       }
     };
 
@@ -137,7 +145,7 @@ export default function EnhancedContractSigner({
   // Session timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setSessionExpiry(prev => {
+      setSessionExpiry((prev) => {
         if (prev <= 0) {
           clearInterval(timer);
           alert('Session expired for security. Please refresh and try again.');
@@ -267,11 +275,18 @@ export default function EnhancedContractSigner({
         .single();
 
       if (contractError) {
-        logger.error('Contract creation error:', {
-          component: 'EnhancedContractSigner',
-          action: 'error',
-        }, contractError instanceof Error ? contractError : new Error(String(contractError)));
-        throw new Error((contractError as any).message || 'Failed to create contract');
+        logger.error(
+          'Contract creation error:',
+          {
+            component: 'EnhancedContractSigner',
+            action: 'error',
+          },
+          contractError instanceof Error ? contractError : new Error(String(contractError))
+        );
+        throw new Error(
+          (contractError instanceof Error ? contractError.message : String(contractError)) ||
+            'Failed to create contract'
+        );
       }
 
       // Update booking status to confirmed
@@ -293,10 +308,14 @@ export default function EnhancedContractSigner({
           });
         }
       } catch (completionError) {
-        logger.error('Error checking completion after contract signing', {
-          component: 'EnhancedContractSigner',
-          action: 'completion_check_error',
-        }, completionError as Error);
+        logger.error(
+          'Error checking completion after contract signing',
+          {
+            component: 'EnhancedContractSigner',
+            action: 'completion_check_error',
+          },
+          completionError as Error
+        );
         // Don't fail signing if completion check fails
       }
 
@@ -339,10 +358,14 @@ export default function EnhancedContractSigner({
           // Continue anyway - contract is signed even if PDF generation fails
         }
       } catch (pdfError) {
-        logger.error('⚠️ PDF generation error:', {
-          component: 'EnhancedContractSigner',
-          action: 'pdf_generation_error',
-        }, pdfError instanceof Error ? pdfError : new Error(String(pdfError)));
+        logger.error(
+          '⚠️ PDF generation error:',
+          {
+            component: 'EnhancedContractSigner',
+            action: 'pdf_generation_error',
+          },
+          pdfError instanceof Error ? pdfError : new Error(String(pdfError))
+        );
         // Continue anyway - contract is signed even if PDF generation fails
       }
 
@@ -352,11 +375,15 @@ export default function EnhancedContractSigner({
         metadata: { contractId: contract.id },
       });
       onSigned(contract.id);
-    } catch (error: any) {
-      logger.error('Signing error:', {
-        component: 'EnhancedContractSigner',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+    } catch (error: unknown) {
+      logger.error(
+        'Signing error:',
+        {
+          component: 'EnhancedContractSigner',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       const errorMessage = error?.message || error?.error?.message || 'Unknown error occurred';
       logger.error(
         'Error details:',
@@ -556,11 +583,11 @@ export default function EnhancedContractSigner({
             <input
               type="file"
               accept="image/png,image/jpeg,image/gif"
-              onChange={e => {
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
                   const reader = new FileReader();
-                  reader.onload = event => {
+                  reader.onload = (event) => {
                     const result = event.target?.result as string;
                     setSignatureImage(result);
                   };
@@ -611,7 +638,7 @@ export default function EnhancedContractSigner({
             <input
               type="text"
               value={signerName}
-              onChange={e => setSignerName(e.target.value)}
+              onChange={(e) => setSignerName(e.target.value)}
               placeholder="John Michael Doe"
               className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
             />
@@ -627,7 +654,7 @@ export default function EnhancedContractSigner({
             <input
               type="text"
               value={signerInitials}
-              onChange={e => setSignerInitials(e.target.value.toUpperCase().slice(0, 4))}
+              onChange={(e) => setSignerInitials(e.target.value.toUpperCase().slice(0, 4))}
               placeholder="JMD"
               maxLength={4}
               className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-center text-lg font-bold uppercase tracking-wider text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -645,7 +672,7 @@ export default function EnhancedContractSigner({
           <input
             type="checkbox"
             checked={agreed}
-            onChange={e => setAgreed(e.target.checked)}
+            onChange={(e) => setAgreed(e.target.checked)}
             className="mt-1 h-5 w-5 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
           <span className="ml-3 text-sm text-gray-700">
@@ -672,7 +699,14 @@ export default function EnhancedContractSigner({
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={!signatureImage || !signerName || !signerInitials || !agreed || !hasReviewedContract || submitting}
+        disabled={
+          !signatureImage ||
+          !signerName ||
+          !signerInitials ||
+          !agreed ||
+          !hasReviewedContract ||
+          submitting
+        }
         className="flex w-full transform items-center justify-center rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-8 py-4 text-lg font-bold text-white shadow-xl transition-all hover:scale-[1.02] hover:from-green-700 hover:to-green-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting ? (

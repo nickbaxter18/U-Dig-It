@@ -1,8 +1,8 @@
-import { createInAppNotification } from '@/lib/notification-service';
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { sendAdminEmail } from '@/lib/sendgrid';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { createInAppNotification } from '@/lib/notification-service';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * POST /api/admin/contracts/[id]/send
@@ -10,10 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Admin-only endpoint
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
 
@@ -24,19 +21,15 @@ export async function POST(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // 2. Verify admin role
     const { data: userData } = await supabase
@@ -52,7 +45,8 @@ export async function POST(
     // 3. Fetch contract and associated booking
     const { data: contractData, error: contractError } = await supabase
       .from('contracts')
-      .select(`
+      .select(
+        `
         id,
         "contractNumber",
         "bookingId",
@@ -68,7 +62,8 @@ export async function POST(
             lastName
           )
         )
-      `)
+      `
+      )
       .eq('id', id)
       .single();
 
@@ -102,7 +97,8 @@ export async function POST(
     // 5. Contract ready for customer signing via EnhancedContractSigner
     // For now, we'll create a notification for the customer
     const customerEmail = contract.booking?.customer?.email;
-    const customerName = `${contract.booking?.customer?.firstName || ''} ${contract.booking?.customer?.lastName || ''}`.trim();
+    const customerName =
+      `${contract.booking?.customer?.firstName || ''} ${contract.booking?.customer?.lastName || ''}`.trim();
 
     if (customerEmail) {
       let notificationError: Error | null = null;
@@ -130,7 +126,7 @@ export async function POST(
           },
           status: 'pending',
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         notificationError = error instanceof Error ? error : new Error(String(error));
       }
 
@@ -146,19 +142,19 @@ export async function POST(
     logger.info('Contract sent for signature', {
       component: 'contracts-send-api',
       action: 'send_success',
-        metadata: {
-          contractId: id,
-          contractNumber: contract.contractNumber,
-          adminId: user?.id || 'unknown',
-          customerEmail,
-        },
+      metadata: {
+        contractId: id,
+        contractNumber: contract.contractNumber,
+        adminId: user?.id || 'unknown',
+        customerEmail,
+      },
     });
 
     return NextResponse.json({
       success: true,
       message: `Contract ${contract.contractNumber} sent to ${customerName} at ${customerEmail}`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(
       'Contract send error',
       {
@@ -168,10 +164,6 @@ export async function POST(
       error
     );
 
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
   }
 }
-

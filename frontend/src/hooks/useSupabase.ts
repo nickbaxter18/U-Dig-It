@@ -1,11 +1,13 @@
-import { supabase } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
+
+import { supabase } from '@/lib/supabase/client';
+
 import type { Database, Tables } from '../../../supabase/types';
 
 // Generic hook for Supabase queries
 export function useSupabaseQuery<T>(
   table: keyof Database['public']['Tables'],
-  query: any,
+  query: unknown,
   options?: {
     enabled?: boolean;
     refetchOnWindowFocus?: boolean;
@@ -23,11 +25,18 @@ export function useSupabaseQuery<T>(
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-          .from(table)
-          .select(query.select || '*')
-          .eq(query.eq?.key, query.eq?.value)
-          .limit(query.limit || 100);
+        const selectValue = query.select || '*';
+        const eqKey = query.eq?.key;
+        const eqValue = query.eq?.value;
+        const limitValue = query.limit || 100;
+
+        let supabaseQuery = supabase.from(table).select(selectValue);
+        if (eqKey && eqValue !== undefined) {
+          supabaseQuery = supabaseQuery.eq(eqKey, eqValue);
+        }
+        supabaseQuery = supabaseQuery.limit(limitValue);
+
+        const { data, error } = await supabaseQuery;
 
         if (error) throw error;
         setData(data as T);
@@ -39,7 +48,7 @@ export function useSupabaseQuery<T>(
     };
 
     fetchData();
-  }, [table, JSON.stringify(query), options?.enabled]);
+  }, [table, query.select, query.eq?.key, query.eq?.value, query.limit, options?.enabled]);
 
   return { data, loading, error, refetch: () => window.location.reload() };
 }
@@ -124,10 +133,10 @@ export function useUserBookings() {
 }
 
 // Real-time hooks
-export function useRealtimeSubscription<T>(
+export function useRealtimeSubscription<T>( // T reserved for future typed payload
   table: string,
   filter?: string,
-  callback?: (payload: any) => void
+  callback?: (payload: unknown) => void
 ) {
   useEffect(() => {
     const channel = supabase
@@ -165,7 +174,7 @@ export function useLiveAvailability(equipmentId: string) {
           table: 'availability_blocks',
           filter: `equipment_id=eq.${equipmentId}`,
         },
-        payload => {
+        (payload) => {
           setAvailability(payload.new);
         }
       )
@@ -177,7 +186,7 @@ export function useLiveAvailability(equipmentId: string) {
           table: 'bookings',
           filter: `equipmentId=eq.${equipmentId}`,
         },
-        payload => {
+        (payload) => {
           setAvailability(payload.new);
         }
       )
@@ -206,7 +215,7 @@ export function useLiveBookingStatus(bookingId: string) {
           table: 'bookings',
           filter: `id=eq.${bookingId}`,
         },
-        payload => {
+        (payload) => {
           setBooking(payload.new as Tables<'bookings'>);
         }
       )

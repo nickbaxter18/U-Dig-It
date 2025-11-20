@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get('dateRange') || 'month';
@@ -40,11 +43,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch analytics data using RPC function
-    const { data: analyticsData, error: analyticsError } = await supabase.rpc('get_analytics_aggregated', {
-      p_metric_type: 'all',
-      p_start_date: startDate.toISOString(),
-      p_end_date: now.toISOString(),
-    });
+    const { data: analyticsData, error: analyticsError } = await supabase.rpc(
+      'get_analytics_aggregated',
+      {
+        p_metric_type: 'all',
+        p_start_date: startDate.toISOString(),
+        p_end_date: now.toISOString(),
+      }
+    );
 
     if (analyticsError) {
       throw analyticsError;
@@ -59,7 +65,7 @@ export async function GET(request: NextRequest) {
 
       // Revenue section
       const revenueHeaders = ['Date', 'Revenue', 'Bookings'];
-      const revenueRows = revenueData.map((item: any) => [
+      const revenueRows = revenueData.map((item: unknown) => [
         item.date,
         parseFloat(item.revenue || '0').toFixed(2),
         parseInt(item.bookings || '0', 10),
@@ -67,7 +73,7 @@ export async function GET(request: NextRequest) {
 
       // Bookings section
       const bookingsHeaders = ['Date', 'Total Bookings', 'Completed', 'Cancelled'];
-      const bookingsRows = bookingsData.map((item: any) => [
+      const bookingsRows = bookingsData.map((item: unknown) => [
         item.date,
         parseInt(item.total || '0', 10),
         parseInt(item.completed || '0', 10),
@@ -75,8 +81,13 @@ export async function GET(request: NextRequest) {
       ]);
 
       // Equipment section
-      const equipmentHeaders = ['Equipment ID', 'Equipment Name', 'Utilization Rate (%)', 'Revenue'];
-      const equipmentRows = equipmentData.map((item: any) => [
+      const equipmentHeaders = [
+        'Equipment ID',
+        'Equipment Name',
+        'Utilization Rate (%)',
+        'Revenue',
+      ];
+      const equipmentRows = equipmentData.map((item: unknown) => [
         item.equipment_id,
         item.equipment_name,
         parseFloat(item.utilization_rate || '0').toFixed(2),
@@ -85,7 +96,7 @@ export async function GET(request: NextRequest) {
 
       // Customers section
       const customersHeaders = ['Date', 'New Customers', 'Returning Customers'];
-      const customersRows = customersData.map((item: any) => [
+      const customersRows = customersData.map((item: unknown) => [
         item.date,
         parseInt(item.new_customers || '0', 10),
         parseInt(item.returning_customers || '0', 10),
@@ -99,19 +110,27 @@ export async function GET(request: NextRequest) {
         '',
         'REVENUE DATA',
         revenueHeaders.join(','),
-        ...revenueRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        ...revenueRows.map((row: unknown[]) =>
+          row.map((cell: unknown) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+        ),
         '',
         'BOOKINGS DATA',
         bookingsHeaders.join(','),
-        ...bookingsRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        ...bookingsRows.map((row: unknown[]) =>
+          row.map((cell: unknown) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+        ),
         '',
         'EQUIPMENT UTILIZATION',
         equipmentHeaders.join(','),
-        ...equipmentRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        ...equipmentRows.map((row: unknown[]) =>
+          row.map((cell: unknown) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+        ),
         '',
         'CUSTOMERS DATA',
         customersHeaders.join(','),
-        ...customersRows.map((row: any[]) => row.map((cell: any) => `"${String(cell).replace(/"/g, '""')}"`).join(',')),
+        ...customersRows.map((row: unknown[]) =>
+          row.map((cell: unknown) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+        ),
         '',
         'SUMMARY',
         `Total Revenue,${parseFloat(analyticsData.revenue?.total_revenue || '0').toFixed(2)}`,

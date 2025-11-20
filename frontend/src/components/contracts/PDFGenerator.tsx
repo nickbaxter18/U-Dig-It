@@ -3,12 +3,17 @@
 import React from 'react';
 
 interface PDFGeneratorProps {
-  data?: any;
+  data?: unknown;
   onGenerate?: (pdf: Blob) => void;
   className?: string;
 }
 
-export default function PDFGenerator({ data, onGenerate, className = '' }: PDFGeneratorProps) {
+export default function PDFGenerator({
+  data: _data,
+  onGenerate,
+  className = '',
+}: PDFGeneratorProps) {
+  // _data reserved for future PDF generation
   const handleGenerate = () => {
     // Placeholder for PDF generation
     if (onGenerate) {
@@ -29,4 +34,3 @@ export default function PDFGenerator({ data, onGenerate, className = '' }: PDFGe
     </div>
   );
 }
-

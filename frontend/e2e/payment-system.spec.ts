@@ -5,7 +5,7 @@ const TEST_CREDENTIALS = {
   email: 'aitest2@udigit.ca',
   password: 'TestAI2024!@#$',
   firstName: 'AI',
-  lastName: 'Tester'
+  lastName: 'Tester',
 };
 
 async function login(page: Page) {
@@ -94,7 +94,7 @@ test.describe('Payment System Tests', () => {
       // Take screenshot of invoice
       await page.screenshot({
         path: '/tmp/invoice-display.png',
-        fullPage: true
+        fullPage: true,
       });
       console.log('📸 Screenshot saved: /tmp/invoice-display.png');
 
@@ -109,7 +109,10 @@ test.describe('Payment System Tests', () => {
     }
   });
 
-  test('should create Stripe checkout session for invoice payment', async ({ page, context }) => {
+  test('should create Stripe checkout session for invoice payment', async ({
+    page,
+    context: _context,
+  }) => {
     await login(page);
 
     console.log('\n💳 Testing Stripe Checkout Session Creation (Invoice)...');
@@ -131,12 +134,14 @@ test.describe('Payment System Tests', () => {
 
       // Listen for network requests to the API
       const apiPromise = page.waitForResponse(
-        response => response.url().includes('/api/stripe/create-checkout-session'),
+        (response) => response.url().includes('/api/stripe/create-checkout-session'),
         { timeout: 30000 }
       );
 
       // Click the payment button (look for green button with "Proceed to Secure Checkout")
-      const checkoutButton = page.getByRole('button', { name: /proceed to secure checkout|pay.*total/i });
+      const checkoutButton = page.getByRole('button', {
+        name: /proceed to secure checkout|pay.*total/i,
+      });
 
       if (await checkoutButton.isVisible()) {
         console.log('✅ Found checkout button, clicking...');
@@ -164,7 +169,7 @@ test.describe('Payment System Tests', () => {
           await page.waitForTimeout(2000); // Let Stripe page fully load
           await page.screenshot({
             path: '/tmp/stripe-checkout-invoice.png',
-            fullPage: true
+            fullPage: true,
           });
           console.log('📸 Screenshot saved: /tmp/stripe-checkout-invoice.png');
 
@@ -208,12 +213,14 @@ test.describe('Payment System Tests', () => {
 
       // Listen for network requests
       const apiPromise = page.waitForResponse(
-        response => response.url().includes('/api/stripe/create-checkout-session'),
+        (response) => response.url().includes('/api/stripe/create-checkout-session'),
         { timeout: 30000 }
       );
 
       // Click the deposit payment button
-      const checkoutButton = page.getByRole('button', { name: /proceed to secure checkout|pay.*deposit/i });
+      const checkoutButton = page.getByRole('button', {
+        name: /proceed to secure checkout|pay.*deposit/i,
+      });
 
       if (await checkoutButton.isVisible()) {
         console.log('✅ Found deposit checkout button, clicking...');
@@ -239,7 +246,7 @@ test.describe('Payment System Tests', () => {
           await page.waitForTimeout(2000);
           await page.screenshot({
             path: '/tmp/stripe-checkout-deposit.png',
-            fullPage: true
+            fullPage: true,
           });
           console.log('📸 Screenshot saved: /tmp/stripe-checkout-deposit.png');
 
@@ -256,4 +263,3 @@ test.describe('Payment System Tests', () => {
     }
   });
 });
-

@@ -1,11 +1,15 @@
 'use client';
 
+import { ArrowLeft, FileText, Save } from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
+import { useParams, useRouter } from 'next/navigation';
+
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { ArrowLeft, FileText, Save } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 export default function EditTemplatePage() {
   const { user, loading: authLoading } = useAuth();
@@ -21,7 +25,7 @@ export default function EditTemplatePage() {
     templateType: 'marketing',
     htmlContent: '',
     textContent: '',
-    isActive: true
+    isActive: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [previewMode, setPreviewMode] = useState(false);
@@ -35,9 +39,9 @@ export default function EditTemplatePage() {
     if (user && templateId) {
       fetchTemplate();
     }
-  }, [user, authLoading, router, templateId]);
+  }, [user, authLoading, router, templateId, fetchTemplate]);
 
-  const fetchTemplate = async () => {
+  const fetchTemplate = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetchWithAuth(`/api/admin/communications/templates/${templateId}`);
@@ -51,18 +55,22 @@ export default function EditTemplatePage() {
         templateType: data.template.templateType || 'marketing',
         htmlContent: data.template.htmlContent || '',
         textContent: data.template.textContent || '',
-        isActive: data.template.isActive ?? true
+        isActive: data.template.isActive ?? true,
       });
     } catch (error) {
-      logger.error('Failed to fetch template', {
-        component: 'EditTemplatePage',
-        action: 'fetch_template_error'
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to fetch template',
+        {
+          component: 'EditTemplatePage',
+          action: 'fetch_template_error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       setErrors({ general: 'Failed to load template' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [templateId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,8 +100,8 @@ export default function EditTemplatePage() {
           templateType: formData.templateType,
           htmlContent: formData.htmlContent,
           textContent: formData.textContent,
-          isActive: formData.isActive
-        })
+          isActive: formData.isActive,
+        }),
       });
 
       if (!response.ok) {
@@ -104,18 +112,22 @@ export default function EditTemplatePage() {
       logger.info('Template updated successfully', {
         component: 'EditTemplatePage',
         action: 'update_template',
-        metadata: { templateId }
+        metadata: { templateId },
       });
 
       router.push('/admin/communications');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setErrors({ general: errorMessage });
-      logger.error('Failed to update template', {
-        component: 'EditTemplatePage',
-        action: 'update_template_error',
-        metadata: { error: errorMessage }
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to update template',
+        {
+          component: 'EditTemplatePage',
+          action: 'update_template_error',
+          metadata: { error: errorMessage },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     } finally {
       setSaving(false);
     }
@@ -130,7 +142,7 @@ export default function EditTemplatePage() {
       equipmentName: 'Kubota SVL-75',
       totalAmount: '$2,500.00',
       startDate: 'January 15, 2025',
-      endDate: 'January 20, 2025'
+      endDate: 'January 20, 2025',
     };
 
     Object.entries(sampleData).forEach(([key, value]) => {
@@ -210,9 +222,7 @@ export default function EditTemplatePage() {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -223,9 +233,7 @@ export default function EditTemplatePage() {
 
           {/* Subject */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email Subject *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email Subject *</label>
             <input
               type="text"
               value={formData.subject}
@@ -280,7 +288,9 @@ export default function EditTemplatePage() {
                 }`}
               />
             )}
-            {errors.htmlContent && <p className="mt-1 text-sm text-red-600">{errors.htmlContent}</p>}
+            {errors.htmlContent && (
+              <p className="mt-1 text-sm text-red-600">{errors.htmlContent}</p>
+            )}
           </div>
 
           {/* Text Content */}
@@ -328,5 +338,3 @@ export default function EditTemplatePage() {
     </div>
   );
 }
-
-

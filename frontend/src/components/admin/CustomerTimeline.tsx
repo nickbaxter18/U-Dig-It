@@ -1,16 +1,41 @@
 'use client';
 
-import { useAdminToast } from './AdminToastProvider';
+import {
+  Calendar,
+  CreditCard,
+  FileText,
+  Mail,
+  MessageSquare,
+  Package,
+  Plus,
+  RefreshCw,
+  Tag,
+  Ticket,
+  X,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useState } from 'react';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { Calendar, CreditCard, FileText, Mail, MessageSquare, Package, Plus, RefreshCw, Tag, Ticket, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+
+import { useAdminToast } from './AdminToastProvider';
 
 interface TimelineEvent {
   id: string;
   customer_id: string;
-  event_type: 'booking_created' | 'booking_completed' | 'booking_cancelled' | 'payment_received' | 'payment_refunded' | 'ticket_created' | 'ticket_resolved' | 'note_added' | 'tag_added' | 'status_changed';
+  event_type:
+    | 'booking_created'
+    | 'booking_completed'
+    | 'booking_cancelled'
+    | 'payment_received'
+    | 'payment_refunded'
+    | 'ticket_created'
+    | 'ticket_resolved'
+    | 'note_added'
+    | 'tag_added'
+    | 'status_changed';
   occurred_at: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -27,47 +52,55 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
   const [eventTypeFilter, setEventTypeFilter] = useState<string[]>([]);
   const toast = useAdminToast();
 
+  const fetchEvents = useCallback(
+    async (cursor?: string | null) => {
+      try {
+        if (cursor) {
+          setLoadingMore(true);
+        } else {
+          setLoading(true);
+        }
+
+        const params = new URLSearchParams();
+        params.append('limit', '20');
+        if (cursor) params.append('cursor', cursor);
+        if (eventTypeFilter.length > 0) {
+          eventTypeFilter.forEach((type) => params.append('eventTypes', type));
+        }
+
+        const response = await fetchWithAuth(
+          `/api/admin/customers/${customerId}/timeline?${params.toString()}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to load timeline');
+        }
+
+        const data = await response.json();
+
+        if (cursor) {
+          setEvents((prev) => [...prev, ...(data.events || [])]);
+        } else {
+          setEvents(data.events || []);
+        }
+
+        setNextCursor(data.nextCursor || null);
+      } catch (error) {
+        toast.error(
+          'Failed to load timeline',
+          error instanceof Error ? error.message : 'Unable to fetch customer timeline'
+        );
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [customerId, eventTypeFilter, toast]
+  );
+
   useEffect(() => {
     fetchEvents();
-  }, [customerId, eventTypeFilter]);
-
-  const fetchEvents = async (cursor?: string | null) => {
-    try {
-      if (cursor) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-      }
-
-      const params = new URLSearchParams();
-      params.append('limit', '20');
-      if (cursor) params.append('cursor', cursor);
-      if (eventTypeFilter.length > 0) {
-        eventTypeFilter.forEach(type => params.append('eventTypes', type));
-      }
-
-      const response = await fetchWithAuth(`/api/admin/customers/${customerId}/timeline?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load timeline');
-      }
-
-      const data = await response.json();
-
-      if (cursor) {
-        setEvents(prev => [...prev, ...(data.events || [])]);
-      } else {
-        setEvents(data.events || []);
-      }
-
-      setNextCursor(data.nextCursor || null);
-    } catch (error) {
-      toast.error('Failed to load timeline', error instanceof Error ? error.message : 'Unable to fetch customer timeline');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+  }, [fetchEvents]);
 
   const loadMore = () => {
     if (nextCursor && !loadingMore) {
@@ -167,10 +200,8 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
   ];
 
   const toggleEventTypeFilter = (eventType: string) => {
-    setEventTypeFilter(prev =>
-      prev.includes(eventType)
-        ? prev.filter(t => t !== eventType)
-        : [...prev, eventType]
+    setEventTypeFilter((prev) =>
+      prev.includes(eventType) ? prev.filter((t) => t !== eventType) : [...prev, eventType]
     );
   };
 
@@ -197,7 +228,7 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
 
       {/* Event Type Filters */}
       <div className="flex flex-wrap gap-2">
-        {eventTypeOptions.map(option => (
+        {eventTypeOptions.map((option) => (
           <button
             key={option.value}
             onClick={() => toggleEventTypeFilter(option.value)}
@@ -242,9 +273,7 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
               className={`relative rounded-lg border-l-4 p-4 ${getEventColor(event.event_type)}`}
             >
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">
-                  {getEventIcon(event.event_type)}
-                </div>
+                <div className="mt-0.5 flex-shrink-0">{getEventIcon(event.event_type)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -289,4 +318,3 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
     </div>
   );
 }
-

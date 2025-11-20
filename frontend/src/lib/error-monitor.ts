@@ -18,7 +18,7 @@ export class ErrorMonitor {
       //   tracesSampleRate: 1.0,
       //   environment: process.env.NODE_ENV,
       //   attachStacktrace: true,
-      //   beforeSend: (event: any, hint: any) => {
+      //   beforeSend: (event: unknown, hint: unknown) => {
       //     // Sanitize sensitive data
       //     if (event.extra) {
       //       delete event.extra.password;
@@ -41,7 +41,7 @@ export class ErrorMonitor {
   }
 
   private static setupGlobalErrorHandlers() {
-    window.addEventListener('error', event => {
+    window.addEventListener('error', (event) => {
       this.captureError(event.error, {
         component: 'GlobalErrorHandler',
         action: 'window.error',
@@ -49,7 +49,7 @@ export class ErrorMonitor {
       });
     });
 
-    window.addEventListener('unhandledrejection', event => {
+    window.addEventListener('unhandledrejection', (event) => {
       this.captureError(event.reason, {
         component: 'GlobalErrorHandler',
         action: 'unhandledrejection',
@@ -67,15 +67,19 @@ export class ErrorMonitor {
     };
 
     if (process.env.NODE_ENV !== 'production') {
-      logger.error('Error captured:', {
-        component: 'error-monitor',
-        action: 'error',
-        metadata: fullContext,
-      }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Error captured:',
+        {
+          component: 'error-monitor',
+          action: 'error',
+          metadata: fullContext,
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
 
     if (process.env.NODE_ENV === 'production') {
-      // Sentry.withScope((scope: any) => {
+      // Sentry.withScope((scope: unknown) => {
       //   scope.setTag('component', context.component || 'Unknown');
       //   scope.setTag('action', context.action || 'Unknown');
       //   if (context.correlationId) {
@@ -104,13 +108,13 @@ export class ErrorMonitor {
         logger.debug(`State snapshot for ${component}:`, {
           component: 'error-monitor',
           action: 'debug',
-          metadata: this.sanitizeState(state) as Record<string, any> | undefined,
+          metadata: this.sanitizeState(state) as Record<string, unknown> | undefined,
         });
       }
     }
 
     if (process.env.NODE_ENV === 'production') {
-      // Sentry.withScope((scope: any) => {
+      // Sentry.withScope((scope: unknown) => {
       //   scope.setTag('component', component);
       //   scope.setContext('stateSnapshot', this.sanitizeState(state));
       //   scope.addBreadcrumb({
@@ -135,11 +139,13 @@ export class ErrorMonitor {
     const sanitized = { ...state };
 
     const sanitizeObject = (obj: unknown) => {
-      for (const key in obj as any) {
-        if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
-          (obj as any)[key] = '[REDACTED]';
-        } else if (typeof (obj as any)[key] === 'object' && (obj as any)[key] !== null) {
-          sanitizeObject((obj as any)[key]);
+      if (typeof obj !== 'object' || obj === null) return;
+      const objRecord = obj as Record<string, unknown>;
+      for (const key in objRecord) {
+        if (sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))) {
+          objRecord[key] = '[REDACTED]';
+        } else if (typeof objRecord[key] === 'object' && objRecord[key] !== null) {
+          sanitizeObject(objRecord[key]);
         }
       }
     };
@@ -151,7 +157,7 @@ export class ErrorMonitor {
   private static getCurrentCorrelationId(): string | undefined {
     // Try to get correlation ID from current request context
     if (typeof window !== 'undefined') {
-      return (window as any).__CORRELATION_ID__;
+      return (window as unknown as { __CORRELATION_ID__?: string }).__CORRELATION_ID__;
     }
     return undefined;
   }
@@ -159,7 +165,7 @@ export class ErrorMonitor {
   private static getCurrentUserId(): string | undefined {
     // Try to get user ID from current user context
     if (typeof window !== 'undefined') {
-      return (window as any).__USER_ID__;
+      return (window as unknown as { __USER_ID__?: string }).__USER_ID__;
     }
     return undefined;
   }

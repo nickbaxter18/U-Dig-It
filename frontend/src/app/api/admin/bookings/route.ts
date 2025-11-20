@@ -1,9 +1,10 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+
 interface BookingListResponse {
-  bookings: any[];
+  bookings: unknown[];
   total: number;
   page: number;
   pageSize: number;
@@ -26,7 +27,8 @@ export async function GET(request: NextRequest) {
   const customerId = searchParams.get('customerId');
   const search = searchParams.get('search');
   const sortByParam = searchParams.get('sortBy') || 'createdAt';
-  const sortOrder = (searchParams.get('sortOrder') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const sortOrder =
+    (searchParams.get('sortOrder') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
   const sortColumn = SORT_COLUMN_MAP[sortByParam] ?? 'created_at';
 
@@ -37,12 +39,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const rangeStart = (page - 1) * pageSize;
@@ -84,30 +82,36 @@ export async function GET(request: NextRequest) {
     const { data, error: queryError, count } = await query.range(rangeStart, rangeEnd);
 
     if (queryError) {
-      logger.error('Admin bookings fetch failed', {
-        component: 'admin-bookings-api',
-        action: 'fetch_error',
-        metadata: { message: queryError.message },
-      }, queryError);
+      logger.error(
+        'Admin bookings fetch failed',
+        {
+          component: 'admin-bookings-api',
+          action: 'fetch_error',
+          metadata: { message: queryError.message },
+        },
+        queryError
+      );
       return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
     }
 
     const response: BookingListResponse = {
       bookings: data ?? [],
-      total: count ?? (data?.length ?? 0),
+      total: count ?? data?.length ?? 0,
       page,
       pageSize,
     };
 
     return NextResponse.json(response);
   } catch (error) {
-    logger.error('Unexpected admin bookings error', {
-      component: 'admin-bookings-api',
-      action: 'unexpected_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Unexpected admin bookings error',
+      {
+        component: 'admin-bookings-api',
+        action: 'unexpected_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

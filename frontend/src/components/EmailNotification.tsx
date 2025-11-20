@@ -9,14 +9,35 @@
 // } from '@/lib/email-service';
 import { useState } from 'react';
 
-// Temporary type placeholders until email-service is refactored
-type BookingEmailData = any;
-type PaymentEmailData = any;
-type ReminderEmailData = any;
+// Email data types based on email-service signatures
+interface BookingEmailData {
+  bookingNumber: string;
+  customerName?: string;
+  equipmentName?: string;
+  startDate?: string;
+  endDate?: string;
+  deliveryAddress?: string;
+  totalAmount?: number | string;
+  securityDeposit?: number;
+  deliveryFee?: number;
+  [key: string]: unknown; // Allow additional properties
+}
+
+interface PaymentEmailData {
+  bookingNumber?: string;
+  amount?: number | string;
+  method?: string;
+  status?: string;
+  [key: string]: unknown; // Allow additional properties
+}
+
+interface ReminderEmailData extends BookingEmailData {
+  hoursUntilStart?: number;
+}
 
 interface EmailNotificationProps {
   type: 'booking' | 'payment' | 'reminder' | 'admin';
-  data: BookingEmailData | PaymentEmailData | ReminderEmailData | any;
+  data: BookingEmailData | PaymentEmailData | ReminderEmailData | Record<string, unknown>;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }

@@ -1,11 +1,9 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,12 +11,8 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { id } = params;
@@ -54,29 +48,29 @@ export async function GET(
       createdAt: campaign.created_at,
       htmlContent: campaign.html_content,
       textContent: campaign.text_content,
-      recipientFilter: campaign.recipient_filter
+      recipientFilter: campaign.recipient_filter,
     };
 
     logger.info('Campaign detail fetched successfully', {
       component: 'communications-api',
       action: 'fetch_campaign_detail',
-      metadata: { campaignId: id }
+      metadata: { campaignId: id },
     });
 
     return NextResponse.json({
-      campaign: transformedCampaign
+      campaign: transformedCampaign,
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch campaign detail', {
-      component: 'communications-api',
-      action: 'fetch_campaign_detail_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch campaign detail' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch campaign detail',
+      {
+        component: 'communications-api',
+        action: 'fetch_campaign_detail_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch campaign detail' }, { status: 500 });
   }
 }
-

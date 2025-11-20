@@ -6,7 +6,7 @@ export interface FeatureFlag {
   enabled: boolean;
   percentage?: number; // For percentage-based rollouts
   userIds?: string[]; // For specific user targeting
-  conditions?: Record<string, any>; // Custom conditions
+  conditions?: Record<string, unknown>; // Custom conditions
 }
 
 export interface FeatureFlagContext {
@@ -15,7 +15,7 @@ export interface FeatureFlagContext {
   userEmail?: string;
   environment?: string;
   version?: string;
-  customAttributes?: Record<string, any>;
+  customAttributes?: Record<string, unknown>;
 }
 
 // Default feature flags (can be overridden by environment)
@@ -117,10 +117,14 @@ class FeatureFlagManager {
         // this.updateFlags(externalFlags);
       } catch (error) {
         if (process.env.NODE_ENV !== 'production') {
-          logger.error('Failed to load external feature flags:', {
-            component: 'feature-flags',
-            action: 'warning',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to load external feature flags:',
+            {
+              component: 'feature-flags',
+              action: 'warning',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       }
     }
@@ -180,7 +184,7 @@ class FeatureFlagManager {
   // Get all enabled features for current user
   getEnabledFeatures(): string[] {
     return Array.from(this.flags.entries())
-      .filter(([key, flag]) => this.isEnabled(key))
+      .filter(([key, _flag]) => this.isEnabled(key))
       .map(([key]) => key);
   }
 
@@ -217,7 +221,7 @@ class FeatureFlagManager {
   }
 
   // Track feature usage for analytics
-  trackFeatureUsage(flagKey: string, metadata?: Record<string, any>) {
+  trackFeatureUsage(flagKey: string, metadata?: Record<string, unknown>) {
     if (process.env.NODE_ENV === 'production') {
       // Send to analytics service
       if (process.env.NODE_ENV !== 'production') {
@@ -233,7 +237,7 @@ class FeatureFlagManager {
   // Get all feature flags (for debugging)
   getAllFlags(): Record<string, FeatureFlag> {
     const result: Record<string, FeatureFlag> = {};
-    this.flags.forEach((flag: any, key: any) => {
+    this.flags.forEach((flag: unknown, key: unknown) => {
       result[key] = { ...flag };
     });
     return result;

@@ -1,13 +1,12 @@
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-
 import {
   EquipmentMediaCreateInput,
   EquipmentMediaDeleteInput,
   MaintenanceAlertCreateInput,
   MaintenanceAlertPatchInput,
+  MaintenanceAlertQueryInput,
   MaintenanceLogCreateInput,
   MaintenanceLogUpdateInput,
-  MaintenanceAlertQueryInput,
   TelematicsSnapshotCreateInput,
 } from '@/lib/validators/admin/equipment';
 
@@ -17,7 +16,7 @@ export async function fetchEquipmentMedia(equipmentId: string) {
     throw new Error('Failed to load equipment media');
   }
   const data = await response.json();
-  return data.media as any[];
+  return data.media as unknown[];
 }
 
 export async function createEquipmentMedia(
@@ -62,7 +61,7 @@ export async function fetchMaintenanceLogs(equipmentId: string) {
     throw new Error('Failed to load maintenance logs');
   }
   const data = await response.json();
-  return data.maintenanceLogs as any[];
+  return data.maintenanceLogs as unknown[];
 }
 
 export async function createMaintenanceLog(
@@ -124,7 +123,7 @@ export async function fetchMaintenanceAlerts(query: MaintenanceAlertQueryInput =
     throw new Error('Failed to load maintenance alerts');
   }
   const data = await response.json();
-  return data.alerts as any[];
+  return data.alerts as unknown[];
 }
 
 export async function createMaintenanceAlert(payload: MaintenanceAlertCreateInput) {
@@ -180,4 +179,3 @@ export async function fetchLatestTelematicsSnapshot(equipmentId: string) {
   const data = await response.json();
   return data.snapshot ?? null;
 }
-

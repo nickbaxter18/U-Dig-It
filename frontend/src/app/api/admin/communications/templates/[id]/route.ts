@@ -1,11 +1,9 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+import { logger } from '@/lib/logger';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
+
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,12 +11,8 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { id } = params;
@@ -40,7 +34,7 @@ export async function GET(
     logger.info('Template fetched successfully', {
       component: 'communications-api',
       action: 'fetch_template',
-      metadata: { templateId: id }
+      metadata: { templateId: id },
     });
 
     return NextResponse.json({
@@ -55,27 +49,25 @@ export async function GET(
         variables: template.variables,
         isActive: template.is_active,
         createdAt: template.created_at,
-        updatedAt: template.updated_at
-      }
+        updatedAt: template.updated_at,
+      },
     });
-  } catch (error: any) {
-    logger.error('Failed to fetch template', {
-      component: 'communications-api',
-      action: 'fetch_template_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to fetch template' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to fetch template',
+      {
+        component: 'communications-api',
+        action: 'fetch_template_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
   }
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -86,14 +78,16 @@ export async function PATCH(
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { id } = params;
     const body = await request.json();
 
     // Build update object
     const updateData: any = {
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
 
     if (body.name !== undefined) updateData.name = body.name;
@@ -140,21 +134,20 @@ export async function PATCH(
         textContent: template.text_content,
         variables: template.variables,
         isActive: template.is_active,
-        updatedAt: template.updated_at
-      }
+        updatedAt: template.updated_at,
+      },
     });
-  } catch (error: any) {
-    logger.error('Failed to update template', {
-      component: 'communications-api',
-      action: 'update_template_error',
-      metadata: { error: error.message }
-    }, error);
-
-    return NextResponse.json(
-      { error: 'Failed to update template' },
-      { status: 500 }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to update template',
+      {
+        component: 'communications-api',
+        action: 'update_template_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to update template' }, { status: 500 });
   }
 }
-
-

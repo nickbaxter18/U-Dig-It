@@ -1,26 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { z } from 'zod';
 
 const notificationRuleUpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
-  ruleType: z.enum([
-    'booking_deposit_due',
-    'booking_pickup_reminder',
-    'booking_return_reminder',
-    'booking_confirmation',
-    'maintenance_due',
-    'maintenance_overdue',
-    'payment_due',
-    'payment_overdue',
-    'insurance_expiring',
-    'contract_pending_signature',
-    'equipment_available',
-    'custom',
-  ]).optional(),
+  ruleType: z
+    .enum([
+      'booking_deposit_due',
+      'booking_pickup_reminder',
+      'booking_return_reminder',
+      'booking_confirmation',
+      'maintenance_due',
+      'maintenance_overdue',
+      'payment_due',
+      'payment_overdue',
+      'insurance_expiring',
+      'contract_pending_signature',
+      'equipment_available',
+      'custom',
+    ])
+    .optional(),
   triggerConditions: z.record(z.string(), z.unknown()).optional(),
   channels: z.array(z.enum(['email', 'sms', 'push', 'inapp'])).optional(),
   templateId: z.string().uuid().optional().nullable(),
@@ -28,10 +31,7 @@ const notificationRuleUpdateSchema = z.object({
   priority: z.number().int().optional(),
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -39,30 +39,27 @@ export async function PATCH(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const payload = notificationRuleUpdateSchema.parse(body);
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
     if (payload.name !== undefined) updateData.name = payload.name;
     if (payload.ruleType !== undefined) updateData.rule_type = payload.ruleType;
-    if (payload.triggerConditions !== undefined) updateData.trigger_conditions = payload.triggerConditions;
+    if (payload.triggerConditions !== undefined)
+      updateData.trigger_conditions = payload.triggerConditions;
     if (payload.channels !== undefined) updateData.channels = payload.channels;
     if (payload.templateId !== undefined) updateData.template_id = payload.templateId;
     if (payload.isActive !== undefined) updateData.is_active = payload.isActive;
@@ -85,10 +82,7 @@ export async function PATCH(
         },
         updateError
       );
-      return NextResponse.json(
-        { error: 'Unable to update notification rule' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to update notification rule' }, { status: 500 });
     }
 
     logger.info('Notification rule updated', {
@@ -119,10 +113,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -130,19 +121,15 @@ export async function DELETE(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { error: deleteError } = await supabase
       .from('automated_notification_rules')
@@ -159,10 +146,7 @@ export async function DELETE(
         },
         deleteError
       );
-      return NextResponse.json(
-        { error: 'Unable to delete notification rule' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to delete notification rule' }, { status: 500 });
     }
 
     logger.info('Notification rule deleted', {
@@ -185,5 +169,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

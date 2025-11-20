@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 type DateRangeKey = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
@@ -90,22 +91,12 @@ export async function GET(request: NextRequest) {
 
     const adminResult = await requireAdmin(request);
 
-
     if (adminResult.error) return adminResult.error;
-
 
     const supabase = adminResult.supabase;
 
-
-    
-
-
     if (!supabase) {
-
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
-
     }
 
     const { currentStart, currentEnd, previousStart, previousEnd } = resolveDateRanges(range);
@@ -176,7 +167,12 @@ export async function GET(request: NextRequest) {
         .eq('status', 'cancelled')
         .gte('createdAt', currentStart.toISOString())
         .lte('createdAt', currentEnd.toISOString()),
-      supabase.from('mv_dashboard_kpis').select('*').order('snapshot_date', { ascending: false }).limit(1).maybeSingle(),
+      supabase
+        .from('mv_dashboard_kpis')
+        .select('*')
+        .order('snapshot_date', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabase
         .from('bookings')
         .select(
@@ -303,10 +299,11 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const recentBookings = (recentBookingsResult.data ?? []).map((booking: any) => {
-      const customerName = `${booking.customer?.firstName ?? ''} ${booking.customer?.lastName ?? ''}`
-        .trim()
-        .replace(/\s+/g, ' ');
+    const recentBookings = (recentBookingsResult.data ?? []).map((booking: unknown) => {
+      const customerName =
+        `${booking.customer?.firstName ?? ''} ${booking.customer?.lastName ?? ''}`
+          .trim()
+          .replace(/\s+/g, ' ');
       return [
         booking.bookingNumber || booking.id,
         booking.status || 'unknown',
@@ -332,7 +329,7 @@ export async function GET(request: NextRequest) {
       ...recentBookings,
     ];
 
-    const csvContent = csvSections.map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = csvSections.map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `dashboard-export-${range}-${currentEndISO}.csv`;
 
     return new NextResponse(csvContent, {

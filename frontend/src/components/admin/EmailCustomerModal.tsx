@@ -1,19 +1,20 @@
 'use client';
 
-import { logger } from '@/lib/logger';
 import {
-    CheckCircle,
-    Clock,
-    CreditCard,
-    Edit3,
-    FileText,
-    Heart,
-    Mail,
-    Send,
-    X
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Edit3,
+  FileText,
+  Heart,
+  Mail,
+  Send,
+  X,
 } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
 
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface EmailTemplate {
@@ -53,11 +54,11 @@ export function EmailCustomerModal({
   // Map template types to icons
   const getTemplateIcon = (templateType: string) => {
     const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-      'booking_confirmation': CheckCircle,
-      'delivery_reminder': Clock,
-      'payment_reminder': CreditCard,
-      'thank_you': Heart,
-      'custom': Edit3,
+      booking_confirmation: CheckCircle,
+      delivery_reminder: Clock,
+      payment_reminder: CreditCard,
+      thank_you: Heart,
+      custom: Edit3,
     };
 
     const IconComponent = iconMap[templateType] || Mail;
@@ -78,7 +79,11 @@ export function EmailCustomerModal({
         setTemplates(data.templates || []);
       }
     } catch (error) {
-      logger.error('Failed to fetch email templates', { component: 'EmailCustomerModal' }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to fetch email templates',
+        { component: 'EmailCustomerModal' },
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   };
 
@@ -122,7 +127,8 @@ export function EmailCustomerModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId,
-          email: customerEmail,
+          recipientEmail: customerEmail,
+          recipientName: customerName || '',
           subject,
           message,
         }),
@@ -141,7 +147,11 @@ export function EmailCustomerModal({
       alert(`✅ Email sent successfully to ${customerEmail}!`);
       onClose();
     } catch (error) {
-      logger.error('Failed to send email', { component: 'EmailCustomerModal', action: 'send_email_error', metadata: { bookingId } }, error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'Failed to send email',
+        { component: 'EmailCustomerModal', action: 'send_email_error', metadata: { bookingId } },
+        error instanceof Error ? error : new Error(String(error))
+      );
       alert('❌ Failed to send email. Please try again.');
     } finally {
       setSending(false);
@@ -179,7 +189,7 @@ export function EmailCustomerModal({
                 Select Email Template
               </h4>
               <div className="space-y-2">
-                {templates.map((template: any) => {
+                {templates.map((template: unknown) => {
                   const TemplateIcon = getTemplateIcon(template.template_type);
                   const isSelected = selectedTemplate?.id === template.id;
 
@@ -195,17 +205,21 @@ export function EmailCustomerModal({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1">
-                          <div className={`rounded-lg p-2 ${
-                            isSelected
-                              ? 'bg-kubota-orange text-white'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
+                          <div
+                            className={`rounded-lg p-2 ${
+                              isSelected
+                                ? 'bg-kubota-orange text-white'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
                             <TemplateIcon className="h-5 w-5" />
                           </div>
                           <div>
-                            <p className={`font-medium ${
-                              isSelected ? 'text-kubota-orange' : 'text-gray-900'
-                            }`}>
+                            <p
+                              className={`font-medium ${
+                                isSelected ? 'text-kubota-orange' : 'text-gray-900'
+                              }`}
+                            >
                               {template.name}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">{template.subject}</p>
@@ -236,19 +250,23 @@ export function EmailCustomerModal({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-                      <div className={`rounded-lg p-2 ${
-                        selectedTemplate === null && (subject || message)
-                          ? 'bg-kubota-orange text-white'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <div
+                        className={`rounded-lg p-2 ${
+                          selectedTemplate === null && (subject || message)
+                            ? 'bg-kubota-orange text-white'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
                         <Edit3 className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className={`font-medium ${
-                          selectedTemplate === null && (subject || message)
-                            ? 'text-kubota-orange'
-                            : 'text-gray-900'
-                        }`}>
+                        <p
+                          className={`font-medium ${
+                            selectedTemplate === null && (subject || message)
+                              ? 'text-kubota-orange'
+                              : 'text-gray-900'
+                          }`}
+                        >
                           Custom Email
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Write your own message</p>
@@ -301,13 +319,11 @@ export function EmailCustomerModal({
                 <>
                   {/* Subject */}
                   <div className="mb-3">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Subject
-                    </label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
                     <input
                       type="text"
                       value={subject}
-                      onChange={(e: any) => setSubject(e.target.value)}
+                      onChange={(e: unknown) => setSubject(e.target.value)}
                       placeholder="Email subject line"
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-opacity-50"
                     />
@@ -315,12 +331,10 @@ export function EmailCustomerModal({
 
                   {/* Message */}
                   <div className="mb-3">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Message
-                    </label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
                     <textarea
                       value={message}
-                      onChange={(e: any) => setMessage(e.target.value)}
+                      onChange={(e: unknown) => setMessage(e.target.value)}
                       placeholder="Email message (you can edit the template or write your own)"
                       rows={12}
                       className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-opacity-50"
@@ -329,9 +343,7 @@ export function EmailCustomerModal({
 
                   {/* Available Variables */}
                   <div className="rounded-md bg-blue-50 p-3">
-                    <p className="mb-1 text-xs font-semibold text-blue-900">
-                      Available Variables:
-                    </p>
+                    <p className="mb-1 text-xs font-semibold text-blue-900">Available Variables:</p>
                     <p className="text-xs text-blue-700">
                       <span className="font-mono">{'{{bookingNumber}}'}</span>,{' '}
                       <span className="font-mono">{'{{customerName}}'}</span>,{' '}
@@ -381,7 +393,7 @@ export function EmailCustomerModal({
                 disabled={sending || !subject || !message}
                 className="flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all whitespace-nowrap min-w-[140px]"
                 style={{
-                  backgroundColor: (sending || !subject || !message) ? '#9CA3AF' : '#A90F0F'
+                  backgroundColor: sending || !subject || !message ? '#9CA3AF' : '#A90F0F',
                 }}
               >
                 {sending ? (
@@ -403,4 +415,3 @@ export function EmailCustomerModal({
     </div>
   );
 }
-

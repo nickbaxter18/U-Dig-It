@@ -1,6 +1,6 @@
 import { FullConfig } from '@playwright/test';
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup(_config: FullConfig) {
   console.log('🚀 Global test setup starting...');
 
   // Set up test environment variables (using Object.assign for readonly properties)

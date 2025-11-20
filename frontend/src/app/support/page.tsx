@@ -1,12 +1,15 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
+
+import Link from 'next/link';
+
 import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
 
 interface SupportTicket {
   id: string;
@@ -56,41 +59,7 @@ export default function SupportPage() {
   });
 
   // MIGRATED: Fetch support tickets from Supabase
-  useEffect(() => {
-    if (user && activeTab === 'tickets') {
-      fetchTickets();
-
-      // Subscribe to real-time ticket updates
-      const channel = supabase
-        .channel(`support-tickets-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'support_tickets',
-            filter: `customer_id=eq.${user.id}`,
-          },
-          payload => {
-            if (process.env.NODE_ENV === 'development') {
-              logger.debug('[Support] Ticket change detected', {
-                component: 'app-page',
-                action: 'debug',
-                metadata: { payload },
-              });
-            }
-            fetchTickets();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [user, activeTab]);
-
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -132,16 +101,54 @@ export default function SupportPage() {
       setTickets(transformed);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('[Support] Failed to fetch tickets', {
-          component: 'app-page',
-          action: 'error',
-        }, err instanceof Error ? err : undefined);
+        logger.error(
+          '[Support] Failed to fetch tickets',
+          {
+            component: 'app-page',
+            action: 'error',
+          },
+          err instanceof Error ? err : undefined
+        );
       }
       setTickets([]);
     } finally {
       setTicketsLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user && activeTab === 'tickets') {
+      fetchTickets();
+
+      // Subscribe to real-time ticket updates
+      const channel = supabase
+        .channel(`support-tickets-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'support_tickets',
+            filter: `customer_id=eq.${user.id}`,
+          },
+          (payload) => {
+            if (process.env.NODE_ENV === 'development') {
+              logger.debug('[Support] Ticket change detected', {
+                component: 'app-page',
+                action: 'debug',
+                metadata: { payload },
+              });
+            }
+            fetchTickets();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, activeTab, fetchTickets]);
 
   const faqItems: FAQItem[] = [
     {
@@ -262,10 +269,14 @@ export default function SupportPage() {
       // Refresh tickets list
       fetchTickets();
     } catch (err) {
-      logger.error('[Support] Failed to create ticket', {
-        component: 'app-page',
-        action: 'error',
-      }, err instanceof Error ? err : undefined);
+      logger.error(
+        '[Support] Failed to create ticket',
+        {
+          component: 'app-page',
+          action: 'error',
+        },
+        err instanceof Error ? err : undefined
+      );
       alert('Failed to create support ticket. Please try again or contact us directly.');
     }
   };
@@ -414,9 +425,9 @@ export default function SupportPage() {
                         />
                       </svg>
                       My Tickets
-                      {tickets.filter(t => t.status !== 'closed').length > 0 && (
+                      {tickets.filter((t) => t.status !== 'closed').length > 0 && (
                         <span className="ml-2 rounded-full bg-blue-600 px-2 py-1 text-xs text-white">
-                          {tickets.filter(t => t.status !== 'closed').length}
+                          {tickets.filter((t) => t.status !== 'closed').length}
                         </span>
                       )}
                     </div>
@@ -464,7 +475,7 @@ export default function SupportPage() {
 
                 {/* FAQ Categories */}
                 <div className="space-y-4">
-                  {faqItems.map((item: any, index: any) => (
+                  {faqItems.map((item: unknown, index: unknown) => (
                     <div key={index} className="overflow-hidden rounded-lg border border-gray-200">
                       <button
                         onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
@@ -621,7 +632,7 @@ export default function SupportPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {tickets.map(ticket => (
+                        {tickets.map((ticket) => (
                           <div
                             key={ticket.id}
                             className="rounded-lg border border-gray-200 bg-white p-6 transition-shadow hover:shadow-md"
@@ -711,7 +722,7 @@ export default function SupportPage() {
                                 id="ticket-subject"
                                 required
                                 value={ticketForm.subject}
-                                onChange={e =>
+                                onChange={(e) =>
                                   setTicketForm({ ...ticketForm, subject: e.target.value })
                                 }
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -731,7 +742,7 @@ export default function SupportPage() {
                                   id="ticket-category"
                                   required
                                   value={ticketForm.category}
-                                  onChange={e =>
+                                  onChange={(e) =>
                                     setTicketForm({ ...ticketForm, category: e.target.value })
                                   }
                                   className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -757,7 +768,7 @@ export default function SupportPage() {
                                   id="ticket-priority"
                                   required
                                   value={ticketForm.priority}
-                                  onChange={e =>
+                                  onChange={(e) =>
                                     setTicketForm({ ...ticketForm, priority: e.target.value })
                                   }
                                   className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -782,7 +793,7 @@ export default function SupportPage() {
                                 required
                                 rows={6}
                                 value={ticketForm.description}
-                                onChange={e =>
+                                onChange={(e) =>
                                   setTicketForm({ ...ticketForm, description: e.target.value })
                                 }
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -900,7 +911,7 @@ export default function SupportPage() {
                         id="contact-name"
                         required
                         value={contactForm.name}
-                        onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                        onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -917,7 +928,7 @@ export default function SupportPage() {
                         id="contact-email"
                         required
                         value={contactForm.email}
-                        onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                        onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -934,7 +945,7 @@ export default function SupportPage() {
                       type="tel"
                       id="contact-phone"
                       value={contactForm.phone}
-                      onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                      onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="(506) 123-4567"
                     />
@@ -952,7 +963,7 @@ export default function SupportPage() {
                       id="contact-subject"
                       required
                       value={contactForm.subject}
-                      onChange={e => setContactForm({ ...contactForm, subject: e.target.value })}
+                      onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="How can we help you?"
                     />
@@ -970,7 +981,7 @@ export default function SupportPage() {
                       required
                       rows={6}
                       value={contactForm.message}
-                      onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                      onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Please provide details about your inquiry..."
                     />

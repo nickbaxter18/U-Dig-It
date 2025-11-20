@@ -8,21 +8,22 @@
  *   4. Record in booking_payments
  *   5. Schedule T-48 security hold job
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
 
-const VERIFY_HOLD_AMOUNT_CENTS = 5000; // $50
-const CURRENCY = 'cad';
+// import Stripe from 'stripe'; // Reserved for future type usage
+
+const _VERIFY_HOLD_AMOUNT_CENTS = 5000; // $50 - Reserved for future use
+const _CURRENCY = 'cad'; // Reserved for future use
 
 export async function POST(request: NextRequest) {
-  const stripe = createStripeClient(await getStripeSecretKey());
-  
+  const _stripe = createStripeClient(await getStripeSecretKey());
+
   try {
     // 1. Request validation
     const validation = await validateRequest(request, {
@@ -42,14 +43,17 @@ export async function POST(request: NextRequest) {
 
     // 3. Auth verification
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 4. Parse request
     const body = await request.json();
-    const { bookingId, setupIntentId, paymentMethodId, customerId, startDate, totalAmount } = body;
+    const { bookingId, setupIntentId, paymentMethodId } = body;
 
     if (!bookingId || !paymentMethodId) {
       return NextResponse.json(
@@ -61,7 +65,11 @@ export async function POST(request: NextRequest) {
     logger.info('Saving payment method from card verification', {
       component: 'place-verify-hold',
       action: 'start',
-      metadata: { bookingId, setupIntentId: setupIntentId?.substring(0, 15) + '...', paymentMethodId: paymentMethodId.substring(0, 10) + '...' },
+      metadata: {
+        bookingId,
+        setupIntentId: setupIntentId?.substring(0, 15) + '...',
+        paymentMethodId: paymentMethodId.substring(0, 10) + '...',
+      },
     });
 
     // 5. For temporary bookings, just return success
@@ -83,7 +91,8 @@ export async function POST(request: NextRequest) {
     // 7. For real bookings, verify ownership
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select(`
+      .select(
+        `
         id,
         customerId,
         totalAmount,
@@ -91,7 +100,8 @@ export async function POST(request: NextRequest) {
         stripe_payment_method_id,
         stripe_customer_id,
         startDate
-      `)
+      `
+      )
       .eq('id', bookingId)
       .single();
 
@@ -147,7 +157,7 @@ export async function POST(request: NextRequest) {
 
     // 12. Schedule T-48 security hold job
     const bookingStartDate = new Date(booking.startDate);
-    const holdPlacementTime = new Date(bookingStartDate.getTime() - (48 * 60 * 60 * 1000)); // 48 hours before
+    const holdPlacementTime = new Date(bookingStartDate.getTime() - 48 * 60 * 60 * 1000); // 48 hours before
 
     // Only schedule if start date is > 48 hours away
     const now = new Date();
@@ -197,17 +207,21 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Card verified and saved successfully.',
       paymentMethodId,
-      nextStep: holdPlacementTime > now
-        ? `$500 security hold will be placed on ${holdPlacementTime.toLocaleString()}`
-        : 'Security hold placement needed (booking within 48h)',
+      nextStep:
+        holdPlacementTime > now
+          ? `$500 security hold will be placed on ${holdPlacementTime.toLocaleString()}`
+          : 'Security hold placement needed (booking within 48h)',
     });
-
-  } catch (error: any) {
-    logger.error('Failed to place/void verification hold', {
-      component: 'place-verify-hold',
-      action: 'error',
-      metadata: { error: error.message },
-    }, error);
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to place/void verification hold',
+      {
+        component: 'place-verify-hold',
+        action: 'error',
+        metadata: { error: error.message },
+      },
+      error
+    );
 
     return NextResponse.json(
       { error: 'Failed to process verification hold', details: error.message },
@@ -215,4 +229,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

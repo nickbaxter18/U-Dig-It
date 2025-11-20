@@ -5,14 +5,15 @@
 
 'use client';
 
-import { logger } from '@/lib/logger';
-import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
-import { supabase } from '@/lib/supabase/client';
 import { useState } from 'react';
+
+import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
+import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
 
 interface InsuranceUploadSectionProps {
   bookingId: string;
-  existingDocuments: any[];
+  existingDocuments: unknown[];
   onUploadComplete: () => void;
 }
 
@@ -109,10 +110,14 @@ export default function InsuranceUploadSection({
           });
         }
       } catch (completionError) {
-        logger.error('Error checking completion after insurance upload', {
-          component: 'InsuranceUploadSection',
-          action: 'completion_check_error',
-        }, completionError as Error);
+        logger.error(
+          'Error checking completion after insurance upload',
+          {
+            component: 'InsuranceUploadSection',
+            action: 'completion_check_error',
+          },
+          completionError as Error
+        );
         // Don't fail upload if completion check fails
       }
 
@@ -123,11 +128,15 @@ export default function InsuranceUploadSection({
       setTimeout(() => {
         onUploadComplete();
       }, 500);
-    } catch (error: any) {
-      logger.error('Upload error:', {
-        component: 'InsuranceUploadSection',
-        action: 'error',
-      }, error instanceof Error ? error : new Error(String(error)));
+    } catch (error: unknown) {
+      logger.error(
+        'Upload error:',
+        {
+          component: 'InsuranceUploadSection',
+          action: 'error',
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       alert(`Upload failed: ${error.message}`);
     } finally {
       setUploading(false);
@@ -206,7 +215,7 @@ export default function InsuranceUploadSection({
         <div>
           <h3 className="mb-3 font-semibold text-gray-900">📎 Uploaded Documents</h3>
           <div className="space-y-2">
-            {existingDocuments.map((doc: any) => (
+            {existingDocuments.map((doc: unknown) => (
               <div
                 key={doc.id}
                 className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
@@ -260,11 +269,15 @@ export default function InsuranceUploadSection({
 
                         window.open(data.signedUrl, '_blank', 'noopener');
                       } catch (viewError) {
-                        logger.error('Failed to open insurance document', {
-                          component: 'InsuranceUploadSection',
-                          action: 'view_document_error',
-                          metadata: { documentId: doc.id },
-                        }, viewError instanceof Error ? viewError : new Error(String(viewError)));
+                        logger.error(
+                          'Failed to open insurance document',
+                          {
+                            component: 'InsuranceUploadSection',
+                            action: 'view_document_error',
+                            metadata: { documentId: doc.id },
+                          },
+                          viewError instanceof Error ? viewError : new Error(String(viewError))
+                        );
                         alert('Unable to open document. Please try again or contact support.');
                       }
                     }}

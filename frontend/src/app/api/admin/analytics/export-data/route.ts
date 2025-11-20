@@ -1,6 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/admin/analytics/export-data
@@ -21,7 +22,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { searchParams } = new URL(request.url);
     const dataType = searchParams.get('type') || 'bookings';
@@ -47,7 +50,7 @@ export async function GET(request: NextRequest) {
         startDate.setDate(startDate.getDate() - 30);
     }
 
-    let exportData: any[] = [];
+    let exportData: unknown[] = [];
     let filename = '';
 
     if (dataType === 'bookings') {
@@ -113,12 +116,14 @@ export async function GET(request: NextRequest) {
       const headers = Object.keys(exportData[0]);
       const csvRows = [
         headers.join(','),
-        ...exportData.map(row =>
-          headers.map((header: any) => {
-            const value = row[header];
-            return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
-          }).join(',')
-        )
+        ...exportData.map((row) =>
+          headers
+            .map((header: unknown) => {
+              const value = row[header];
+              return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+            })
+            .join(',')
+        ),
       ];
 
       const csv = csvRows.join('\n');
@@ -126,7 +131,12 @@ export async function GET(request: NextRequest) {
       logger.info('Data exported successfully', {
         component: 'analytics-export-api',
         action: 'export_data',
-        metadata: { dataType, format, recordCount: exportData.length, userId: user?.id || 'unknown' }
+        metadata: {
+          dataType,
+          format,
+          recordCount: exportData.length,
+          userId: user?.id || 'unknown',
+        },
       });
 
       return new NextResponse(csv, {
@@ -140,33 +150,42 @@ export async function GET(request: NextRequest) {
       logger.info('Data exported successfully', {
         component: 'analytics-export-api',
         action: 'export_data',
-        metadata: { dataType, format, recordCount: exportData.length, userId: user?.id || 'unknown' }
-      });
-
-      return NextResponse.json({
-        data: exportData,
-        count: exportData.length,
-        exportedAt: new Date().toISOString(),
-        dateRange: {
-          start: startDate.toISOString(),
-          end: new Date().toISOString()
-        }
-      }, {
-        headers: {
-          'Content-Disposition': `attachment; filename="${filename}.json"`,
+        metadata: {
+          dataType,
+          format,
+          recordCount: exportData.length,
+          userId: user?.id || 'unknown',
         },
       });
-    }
-  } catch (error: any) {
-    logger.error('Failed to export data', {
-      component: 'analytics-export-api',
-      action: 'export_data_error',
-      metadata: { error: error.message }
-    }, error);
 
-    return NextResponse.json(
-      { error: 'Failed to export data' },
-      { status: 500 }
+      return NextResponse.json(
+        {
+          data: exportData,
+          count: exportData.length,
+          exportedAt: new Date().toISOString(),
+          dateRange: {
+            start: startDate.toISOString(),
+            end: new Date().toISOString(),
+          },
+        },
+        {
+          headers: {
+            'Content-Disposition': `attachment; filename="${filename}.json"`,
+          },
+        }
+      );
+    }
+  } catch (error: unknown) {
+    logger.error(
+      'Failed to export data',
+      {
+        component: 'analytics-export-api',
+        action: 'export_data_error',
+        metadata: { error: error.message },
+      },
+      error
     );
+
+    return NextResponse.json({ error: 'Failed to export data' }, { status: 500 });
   }
 }

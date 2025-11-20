@@ -47,7 +47,7 @@ export class FrontendPerformanceMonitor {
 
   private monitorRenderPerformance() {
     if (typeof window !== 'undefined') {
-      const observer = new PerformanceObserver(list => {
+      const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           if (entry.entryType === 'measure') {
             this.metrics.renderTime = entry.duration;
@@ -65,10 +65,10 @@ export class FrontendPerformanceMonitor {
     if (typeof window !== 'undefined') {
       const resources = performance.getEntriesByType('resource');
       const jsResources = resources.filter(
-        resource => resource.name.includes('.js') && !resource.name.includes('node_modules')
+        (resource) => resource.name.includes('.js') && !resource.name.includes('node_modules')
       );
 
-      const totalSize = jsResources.reduce((sum: any, resource: any) => {
+      const totalSize = jsResources.reduce((sum: unknown, resource: unknown) => {
         return sum + (resource as PerformanceResourceTiming).transferSize;
       }, 0);
 
@@ -79,7 +79,7 @@ export class FrontendPerformanceMonitor {
 
   private monitorErrors() {
     if (typeof window !== 'undefined') {
-      window.addEventListener('error', event => {
+      window.addEventListener('error', (event) => {
         const error = {
           message: event.message,
           filename: event.filename,
@@ -92,7 +92,7 @@ export class FrontendPerformanceMonitor {
         this.reportError(error);
       });
 
-      window.addEventListener('unhandledrejection', event => {
+      window.addEventListener('unhandledrejection', (event) => {
         const error = {
           message: event.reason?.message || 'Unhandled Promise Rejection',
           timestamp: Date.now(),
@@ -108,8 +108,8 @@ export class FrontendPerformanceMonitor {
     if (typeof window !== 'undefined') {
       const interactionTypes = ['click', 'scroll', 'keydown', 'resize'];
 
-      interactionTypes.forEach(type => {
-        window.addEventListener(type, event => {
+      interactionTypes.forEach((type) => {
+        window.addEventListener(type, (event) => {
           const interaction = {
             type,
             timestamp: Date.now(),
@@ -137,12 +137,16 @@ export class FrontendPerformanceMonitor {
           timestamp: Date.now(),
           url: window.location.href,
         }),
-      }).catch(error => {
+      }).catch((error) => {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to report metric:', {
-            component: 'performance-monitor',
-            action: 'warning',
-          }, error instanceof Error ? error : new Error(String(error)));
+          logger.error(
+            'Failed to report metric:',
+            {
+              component: 'performance-monitor',
+              action: 'warning',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
         }
       });
     }
@@ -161,12 +165,16 @@ export class FrontendPerformanceMonitor {
           url: window.location.href,
           userAgent: navigator.userAgent,
         }),
-      }).catch(err => {
+      }).catch((err) => {
         if (process.env.NODE_ENV === 'development') {
-          logger.error('Failed to report error:', {
-            component: 'performance-monitor',
-            action: 'warning',
-          }, err instanceof Error ? err : new Error(String(err)));
+          logger.error(
+            'Failed to report error:',
+            {
+              component: 'performance-monitor',
+              action: 'warning',
+            },
+            err instanceof Error ? err : new Error(String(err))
+          );
         }
       });
     }

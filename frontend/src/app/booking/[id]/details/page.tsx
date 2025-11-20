@@ -1,16 +1,18 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
 
 import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
+import BookingInvoiceCard from '@/components/booking/BookingInvoiceCard';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import BookingInvoiceCard from '@/components/booking/BookingInvoiceCard';
 
 import { cancelBooking, getCancellationPreview } from '../actions';
 
@@ -134,7 +136,8 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   no_show: { label: 'No Show', color: 'bg-gray-100 text-gray-800' },
 };
 
-const formatStatus = (status: string) => STATUS_MAP[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+const formatStatus = (status: string) =>
+  STATUS_MAP[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
 
 export default function BookingDetailsPage() {
   const params = useParams();
@@ -224,13 +227,17 @@ export default function BookingDetailsPage() {
             .order('createdAt', { ascending: false }),
           supabase
             .from('payments')
-            .select('id, paymentNumber, amount, status, type, method, stripePaymentIntentId, processedAt, createdAt')
+            .select(
+              'id, paymentNumber, amount, status, type, method, stripePaymentIntentId, processedAt, createdAt'
+            )
             .eq('bookingId', params.id as string)
             .order('createdAt', { ascending: false }),
           supabase
             .from('insurance_documents')
-            .select('id, documentNumber, fileName, fileUrl, status, type, insuranceCompany, policyNumber, createdAt')
-            .eq('bookingId', params.id as string)
+            .select(
+              'id, documentNumber, fileName, fileUrl, status, type, insuranceCompany, policyNumber, createdAt'
+            )
+            .eq('bookingId', params.id as string),
         ]);
 
         const contractsResponseError = contractsResponse.error;
@@ -275,41 +282,41 @@ export default function BookingDetailsPage() {
           });
         }
 
-        const contractsData = (contractsResponse.data ?? []) as any[];
-        const contracts = contractsData.map((contract: any) => ({
-            id: contract.id,
-            contractNumber: contract.contractNumber ?? null,
-            status: contract.status ?? null,
-            type: contract.type ?? null,
-            documentUrl: contract.documentUrl ?? null,
-            signedAt: contract.signedAt ?? null,
-            createdAt: contract.createdAt ?? null,
+        const contractsData = (contractsResponse.data ?? []) as unknown[];
+        const contracts = contractsData.map((contract: unknown) => ({
+          id: contract.id,
+          contractNumber: contract.contractNumber ?? null,
+          status: contract.status ?? null,
+          type: contract.type ?? null,
+          documentUrl: contract.documentUrl ?? null,
+          signedAt: contract.signedAt ?? null,
+          createdAt: contract.createdAt ?? null,
         }));
 
-        const paymentsData = (paymentsResponse.data ?? []) as any[];
-        const payments = paymentsData.map((payment: any) => ({
-            id: payment.id,
-            paymentNumber: payment.paymentNumber ?? null,
-            amount: typeof payment.amount === 'string' ? Number(payment.amount) : payment.amount,
-            status: payment.status ?? null,
-            type: payment.type ?? null,
-            method: payment.method ?? null,
-            stripePaymentIntentId: payment.stripePaymentIntentId ?? null,
-            processedAt: payment.processedAt ?? null,
-            createdAt: payment.createdAt ?? null,
+        const paymentsData = (paymentsResponse.data ?? []) as unknown[];
+        const payments = paymentsData.map((payment: unknown) => ({
+          id: payment.id,
+          paymentNumber: payment.paymentNumber ?? null,
+          amount: typeof payment.amount === 'string' ? Number(payment.amount) : payment.amount,
+          status: payment.status ?? null,
+          type: payment.type ?? null,
+          method: payment.method ?? null,
+          stripePaymentIntentId: payment.stripePaymentIntentId ?? null,
+          processedAt: payment.processedAt ?? null,
+          createdAt: payment.createdAt ?? null,
         }));
 
-        const insuranceData = (insuranceResponse.data ?? []) as any[];
-        const insuranceDocuments = insuranceData.map((document: any) => ({
-            id: document.id,
-            documentNumber: document.documentNumber ?? null,
-            fileName: document.fileName ?? null,
-            fileUrl: document.fileUrl ?? null,
-            status: document.status ?? null,
-            type: document.type ?? null,
-            insuranceCompany: document.insuranceCompany ?? null,
-            policyNumber: document.policyNumber ?? null,
-            createdAt: document.createdAt ?? null,
+        const insuranceData = (insuranceResponse.data ?? []) as unknown[];
+        const insuranceDocuments = insuranceData.map((document: unknown) => ({
+          id: document.id,
+          documentNumber: document.documentNumber ?? null,
+          fileName: document.fileName ?? null,
+          fileUrl: document.fileUrl ?? null,
+          status: document.status ?? null,
+          type: document.type ?? null,
+          insuranceCompany: document.insuranceCompany ?? null,
+          policyNumber: document.policyNumber ?? null,
+          createdAt: document.createdAt ?? null,
         }));
 
         setBooking({
@@ -322,11 +329,15 @@ export default function BookingDetailsPage() {
       } catch (err: unknown) {
         const derivedMessage = err instanceof Error ? err.message : String(err);
 
-        logger.error('Error fetching booking', {
-          component: 'app-page',
-          action: 'error',
-          metadata: { error: derivedMessage }
-        }, err instanceof Error ? err : undefined);
+        logger.error(
+          'Error fetching booking',
+          {
+            component: 'app-page',
+            action: 'error',
+            metadata: { error: derivedMessage },
+          },
+          err instanceof Error ? err : undefined
+        );
         setError(derivedMessage || 'Failed to load booking details');
       } finally {
         setLoading(false);
@@ -338,18 +349,21 @@ export default function BookingDetailsPage() {
 
   const signedContract = useMemo(() => {
     if (!booking) return undefined;
-    return booking.contracts.find(contract => contract.status === 'signed' || contract.status === 'completed')
-      ?? booking.contracts[0];
+    return (
+      booking.contracts.find(
+        (contract) => contract.status === 'signed' || contract.status === 'completed'
+      ) ?? booking.contracts[0]
+    );
   }, [booking]);
 
   const primaryInvoice = useMemo(() => {
     if (!booking) return undefined;
-    return booking.payments.find(payment => payment.type === 'payment');
+    return booking.payments.find((payment) => payment.type === 'payment');
   }, [booking]);
 
   const securityDepositPayment = useMemo(() => {
     if (!booking) return undefined;
-    return booking.payments.find(payment => payment.type === 'deposit');
+    return booking.payments.find((payment) => payment.type === 'deposit');
   }, [booking]);
 
   const insuranceDocs = useMemo(() => booking?.insuranceDocuments ?? [], [booking]);
@@ -492,7 +506,9 @@ export default function BookingDetailsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">End Date:</span>
-                    <span className="font-semibold text-gray-900">{formatDate(booking.endDate)}</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatDate(booking.endDate)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Rental Type:</span>
@@ -566,7 +582,8 @@ export default function BookingDetailsPage() {
                             Invoice {primaryInvoice.paymentNumber ?? '—'}
                           </p>
                           <p className="text-xs uppercase tracking-wide text-gray-500">
-                            {primaryInvoice.status ?? 'Unknown'} • {formatCurrency(Number(primaryInvoice.amount ?? 0))}
+                            {primaryInvoice.status ?? 'Unknown'} •{' '}
+                            {formatCurrency(Number(primaryInvoice.amount ?? 0))}
                           </p>
                           {primaryInvoice.processedAt && (
                             <p className="mt-1 text-xs text-gray-500">
@@ -592,7 +609,10 @@ export default function BookingDetailsPage() {
                     <div className="rounded-lg border border-gray-200 p-4">
                       <p className="font-semibold text-gray-900">Security Deposit</p>
                       <p className="text-xs uppercase tracking-wide text-gray-500">
-                        {securityDepositPayment.status ?? 'Pending'} • {formatCurrency(Number(securityDepositPayment.amount ?? booking.securityDeposit))}
+                        {securityDepositPayment.status ?? 'Pending'} •{' '}
+                        {formatCurrency(
+                          Number(securityDepositPayment.amount ?? booking.securityDeposit)
+                        )}
                       </p>
                       {securityDepositPayment.processedAt && (
                         <p className="mt-1 text-xs text-gray-500">
@@ -624,7 +644,9 @@ export default function BookingDetailsPage() {
                           Download contract
                         </a>
                       ) : (
-                        <p className="mt-3 text-xs text-gray-500">Document link not yet available.</p>
+                        <p className="mt-3 text-xs text-gray-500">
+                          Document link not yet available.
+                        </p>
                       )}
                     </div>
                   ) : (
@@ -637,7 +659,7 @@ export default function BookingDetailsPage() {
                     <div className="space-y-2">
                       <p className="font-semibold text-gray-900">Insurance Documents</p>
                       <ul className="space-y-2 text-xs text-gray-600">
-                        {insuranceDocs.map(doc => (
+                        {insuranceDocs.map((doc) => (
                           <li key={doc.id} className="flex items-start justify-between gap-3">
                             <div>
                               <p className="font-semibold text-gray-900">
@@ -645,7 +667,9 @@ export default function BookingDetailsPage() {
                               </p>
                               <p className="text-xs text-gray-500">
                                 {doc.status ?? 'Pending'}
-                                {doc.createdAt ? ` • Uploaded ${formatDateTime(doc.createdAt)}` : ''}
+                                {doc.createdAt
+                                  ? ` • Uploaded ${formatDateTime(doc.createdAt)}`
+                                  : ''}
                               </p>
                             </div>
                             {doc.fileUrl ? (

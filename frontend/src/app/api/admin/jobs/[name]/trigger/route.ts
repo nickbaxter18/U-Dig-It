@@ -8,10 +8,7 @@ import { createServiceClient } from '@/lib/supabase/service';
  * POST /api/admin/jobs/[name]/trigger
  * Manually trigger a background job
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { name: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { name: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -19,19 +16,15 @@ export async function POST(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const supabaseAdmin = createServiceClient();
     if (!supabaseAdmin) {
@@ -70,17 +63,14 @@ export async function POST(
         },
         createError
       );
-      return NextResponse.json(
-        { error: 'Unable to create job run record' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create job run record' }, { status: 500 });
     }
 
     // Trigger the appropriate job based on name
     let result;
     try {
       switch (jobName) {
-        case 'process_notifications':
+        case 'process_notifications': {
           // Call notification processor
           const notificationResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cron/process-notifications`,
@@ -93,8 +83,9 @@ export async function POST(
           );
           result = await notificationResponse.json();
           break;
+        }
 
-        case 'generate_notifications':
+        case 'generate_notifications': {
           // Call notification generator
           const generateResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cron/generate-notifications`,
@@ -107,8 +98,9 @@ export async function POST(
           );
           result = await generateResponse.json();
           break;
+        }
 
-        case 'process_scheduled_reports':
+        case 'process_scheduled_reports': {
           // Call scheduled reports processor
           const reportsResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cron/process-scheduled-reports`,
@@ -121,8 +113,9 @@ export async function POST(
           );
           result = await reportsResponse.json();
           break;
+        }
 
-        case 'process_scheduled_jobs':
+        case 'process_scheduled_jobs': {
           // Call scheduled jobs processor
           const jobsResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/jobs/process`,
@@ -135,8 +128,9 @@ export async function POST(
           );
           result = await jobsResponse.json();
           break;
+        }
 
-        case 'reconcile_stripe_payouts':
+        case 'reconcile_stripe_payouts': {
           // Call payout reconciliation processor
           const payoutResponse = await fetch(
             `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/cron/reconcile-stripe-payouts`,
@@ -149,6 +143,7 @@ export async function POST(
           );
           result = await payoutResponse.json();
           break;
+        }
 
         default:
           throw new Error(`Unknown job name: ${jobName}`);
@@ -213,4 +208,3 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

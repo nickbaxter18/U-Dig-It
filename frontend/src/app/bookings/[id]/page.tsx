@@ -1,14 +1,17 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
+
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+
 import Footer from '@/components/Footer';
 import Navigation from '@/components/Navigation';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface BookingDetails {
   id: string;
@@ -50,13 +53,7 @@ export default function BookingDetailsPage() {
     }
   }, [user, isLoading, router, bookingId]);
 
-  useEffect(() => {
-    if (user && bookingId) {
-      fetchBookingDetails();
-    }
-  }, [user, bookingId]);
-
-  const fetchBookingDetails = async () => {
+  const fetchBookingDetails = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -91,11 +88,15 @@ export default function BookingDetailsPage() {
         .single();
 
       if (error) {
-        logger.error('Failed to fetch booking', {
-          component: 'app-page',
-          action: 'error',
-          metadata: { error: error.message }
-        }, error);
+        logger.error(
+          'Failed to fetch booking',
+          {
+            component: 'app-page',
+            action: 'error',
+            metadata: { error: error.message },
+          },
+          error
+        );
         throw error;
       }
 
@@ -142,17 +143,27 @@ export default function BookingDetailsPage() {
       setBooking(bookingDetails);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch booking details', {
-          component: 'app-page',
-          action: 'error',
-          metadata: { error: error instanceof Error ? error.message : String(error) }
-        }, error instanceof Error ? error : undefined);
+        logger.error(
+          'Failed to fetch booking details',
+          {
+            component: 'app-page',
+            action: 'error',
+            metadata: { error: error instanceof Error ? error.message : String(error) },
+          },
+          error instanceof Error ? error : undefined
+        );
       }
       setBooking(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, bookingId]);
+
+  useEffect(() => {
+    if (user && bookingId) {
+      fetchBookingDetails();
+    }
+  }, [user, bookingId, fetchBookingDetails]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

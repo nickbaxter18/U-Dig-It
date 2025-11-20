@@ -1,9 +1,10 @@
 'use server';
 
+import { z } from 'zod';
+
 import { sendBookingConfirmationEmail } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
 import { supabaseApi } from '@/lib/supabase/api-client';
-import { z } from 'zod';
 
 // Validation schema for booking form
 const bookingSchema = z.object({
@@ -100,7 +101,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       };
     }
 
-    const equipment = equipmentList[0] as any;
+    const equipment = equipmentList[0] as { id?: string } | undefined;
     const equipmentId = equipment?.id;
 
     // Check availability for the selected dates
@@ -151,24 +152,12 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
     });
 
     // Send confirmation emails
-      try {
-        const emailData = {
-          bookingNumber: (booking as any)?.bookingNumber,
-        customerName: validatedData.customerName,
-        customerEmail: validatedData.customerEmail,
-        equipmentName: 'Kubota SVL-75 Compact Track Loader',
-        startDate: validatedData.startDate,
-        endDate: validatedData.endDate,
-        total: total,
-        deliveryAddress: `${validatedData.deliveryAddress}, ${validatedData.deliveryCity}`,
-        status: 'confirmed' as const,
-      };
-
+    try {
       // Send customer confirmation email
       await sendBookingConfirmationEmail(
         {
-          id: (booking as any).id,
-          bookingNumber: (booking as any).bookingNumber,
+          id: (booking as { id?: string } | null)?.id,
+          bookingNumber: (booking as { bookingNumber?: string } | null)?.bookingNumber,
           startDate: validatedData.startDate,
           endDate: validatedData.endDate,
           totalAmount: total,
@@ -183,11 +172,17 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       // Note: sendAdminNotification doesn't exist as an export, commenting out for now
       // TODO: Add admin notification email function if needed
     } catch (emailError) {
-      logger.error('Email sending failed', {
-        component: 'app-actions',
-        action: 'error',
-        metadata: { error: emailError instanceof Error ? emailError.message : String(emailError) },
-      }, emailError instanceof Error ? emailError : undefined);
+      logger.error(
+        'Email sending failed',
+        {
+          component: 'app-actions',
+          action: 'error',
+          metadata: {
+            error: emailError instanceof Error ? emailError.message : String(emailError),
+          },
+        },
+        emailError instanceof Error ? emailError : undefined
+      );
       // Don't fail the booking if email fails
     }
 
@@ -198,7 +193,7 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
 
     return {
       success: true,
-      bookingNumber: (booking as any)?.bookingNumber,
+      bookingNumber: (booking as { bookingNumber?: string } | null)?.bookingNumber,
       pricing: {
         dailyRate,
         days: diffDays,
@@ -209,11 +204,15 @@ export async function createBooking(formData: FormData): Promise<BookingResult> 
       },
     };
   } catch (error) {
-    logger.error('Booking creation error', {
-      component: 'app-actions',
-      action: 'error',
-      metadata: { error: error instanceof Error ? error.message : String(error) }
-    }, error instanceof Error ? error : undefined);
+    logger.error(
+      'Booking creation error',
+      {
+        component: 'app-actions',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
 
     if (error instanceof z.ZodError) {
       return {
@@ -249,7 +248,7 @@ export async function checkAvailability(startDate: string, endDate: string) {
       };
     }
 
-    const equipmentId = (equipment[0] as any)?.id;
+    const equipmentId = (equipment[0] as { id?: string } | undefined)?.id;
 
     // Check availability for the selected dates
     const availabilityResponse = await supabaseApi.checkAvailability(
@@ -274,11 +273,15 @@ export async function checkAvailability(startDate: string, endDate: string) {
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
-      logger.error('Availability check error', {
-        component: 'app-actions',
-        action: 'error',
-        metadata: { error: error instanceof Error ? error.message : String(error) }
-      }, error instanceof Error ? error : undefined);
+      logger.error(
+        'Availability check error',
+        {
+          component: 'app-actions',
+          action: 'error',
+          metadata: { error: error instanceof Error ? error.message : String(error) },
+        },
+        error instanceof Error ? error : undefined
+      );
     }
     return {
       available: false,

@@ -1,7 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
+
+import Link from 'next/link';
 
 interface UploadStatus {
   status: 'idle' | 'uploading' | 'success' | 'error';
@@ -67,7 +68,7 @@ export default function InsuranceUploadPage() {
           message: result.error || 'Upload failed. Please try again.',
         });
       }
-    } catch (_error) {
+    } catch {
       setUploadStatus({
         status: 'error',
         message: 'Network error. Please check your connection and try again.',

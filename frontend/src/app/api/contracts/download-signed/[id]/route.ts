@@ -2,10 +2,10 @@
  * Download Signed Contract API Route
  * Generates signed contract HTML on-the-fly from database
  */
-
-import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -64,13 +64,21 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         'Content-Disposition': `attachment; filename="Contract-${contract.booking.bookingNumber}-Signed.html"`,
       },
     });
-  } catch (error: any) {
-    logger.error('Download error', { component: 'api-[id]', action: 'error', metadata: { error: error instanceof Error ? error.message : String(error) } }, error instanceof Error ? error : undefined);
+  } catch (error: unknown) {
+    logger.error(
+      'Download error',
+      {
+        component: 'api-[id]',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
     return new NextResponse('Failed to generate contract', { status: 500 });
   }
 }
 
-function generateSignedContractHTML(contract: any): string {
+function generateSignedContractHTML(contract: unknown): string {
   const booking = contract.booking;
   const customer = booking.customer;
   const equipment = booking.equipment;

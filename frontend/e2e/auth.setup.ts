@@ -1,15 +1,17 @@
 // Authentication setup script - creates and saves admin session
 // Uses API-based authentication to bypass UI login flow
 import { test as setup } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
 
 const ADMIN_TEST_ACCOUNT = {
   email: 'aitest2@udigit.ca',
   password: 'TestAI2024!@#$',
 };
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bnimazxnqligusckahab.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc';
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bnimazxnqligusckahab.supabase.co';
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3NjY0OTksImV4cCI6MjA3NTM0MjQ5OX0.FSURILCc3fVVeBTjFxVu7YsLU0t7PLcnIjEuuvcGDPc';
 
 const authFile = 'e2e/.auth/admin.json';
 
@@ -27,7 +29,9 @@ setup('authenticate as admin', async ({ page, context }) => {
     async ([url, anonKey, email, password]) => {
       try {
         // Dynamically import Supabase
-        const { createBrowserClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/ssr@0.5.2/+esm');
+        const { createBrowserClient } = await import(
+          'https://cdn.jsdelivr.net/npm/@supabase/ssr@0.5.2/+esm'
+        );
 
         // Create browser client (this will handle cookies automatically)
         const supabase = createBrowserClient(url, anonKey);
@@ -51,8 +55,8 @@ setup('authenticate as admin', async ({ page, context }) => {
           user: data.user,
           session: {
             access_token: data.session.access_token.substring(0, 20) + '...',
-            expires_at: data.session.expires_at
-          }
+            expires_at: data.session.expires_at,
+          },
         };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -114,4 +118,3 @@ setup('authenticate as admin', async ({ page, context }) => {
   console.log('✅ Authentication setup complete!');
   console.log(`   State saved to: ${authFile}`);
 });
-

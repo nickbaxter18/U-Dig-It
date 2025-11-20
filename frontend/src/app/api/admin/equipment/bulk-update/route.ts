@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -22,27 +24,28 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const body = await request.json();
     const validated = equipmentBulkUpdateSchema.parse(body);
 
     const supabaseAdmin = createServiceClient();
     if (!supabaseAdmin) {
-      logger.error('Service role client not initialized', { component: 'admin-equipment-bulk-api' });
-      return NextResponse.json({ error: 'Internal server error: Service client unavailable' }, { status: 500 });
+      logger.error('Service role client not initialized', {
+        component: 'admin-equipment-bulk-api',
+      });
+      return NextResponse.json(
+        { error: 'Internal server error: Service client unavailable' },
+        { status: 500 }
+      );
     }
 
     const { equipmentIds, action, status } = validated;
@@ -63,8 +66,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to verify equipment status' }, { status: 500 });
       }
 
-      const rentedIds = new Set((rentedEquipment || []).map((b: any) => b.equipmentId));
-      const cannotDelete = equipmentIds.filter(id => rentedIds.has(id));
+      const rentedIds = new Set((rentedEquipment || []).map((b: unknown) => b.equipmentId));
+      const cannotDelete = equipmentIds.filter((id) => rentedIds.has(id));
 
       if (cannotDelete.length > 0) {
         return NextResponse.json(
@@ -83,11 +86,15 @@ export async function POST(request: NextRequest) {
         .in('id', equipmentIds);
 
       if (deleteError) {
-        logger.error('Failed to delete equipment', {
-          component: 'admin-equipment-bulk-api',
-          action: 'delete_error',
-          metadata: { equipmentIds, adminId: user?.id || 'unknown' },
-        }, deleteError);
+        logger.error(
+          'Failed to delete equipment',
+          {
+            component: 'admin-equipment-bulk-api',
+            action: 'delete_error',
+            metadata: { equipmentIds, adminId: user?.id || 'unknown' },
+          },
+          deleteError
+        );
         return NextResponse.json({ error: 'Failed to delete equipment' }, { status: 500 });
       }
 
@@ -124,11 +131,15 @@ export async function POST(request: NextRequest) {
         .in('id', equipmentIds);
 
       if (updateError) {
-        logger.error('Failed to update equipment status', {
-          component: 'admin-equipment-bulk-api',
-          action: 'update_status_error',
-          metadata: { equipmentIds, status, adminId: user?.id || 'unknown' },
-        }, updateError);
+        logger.error(
+          'Failed to update equipment status',
+          {
+            component: 'admin-equipment-bulk-api',
+            action: 'update_status_error',
+            metadata: { equipmentIds, status, adminId: user?.id || 'unknown' },
+          },
+          updateError
+        );
         return NextResponse.json({ error: 'Failed to update equipment status' }, { status: 500 });
       }
 
@@ -171,13 +182,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.error('Unexpected error in equipment bulk update', {
-      component: 'admin-equipment-bulk-api',
-      action: 'unexpected_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Unexpected error in equipment bulk update',
+      {
+        component: 'admin-equipment-bulk-api',
+        action: 'unexpected_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

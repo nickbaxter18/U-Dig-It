@@ -1,11 +1,11 @@
-import { Page, expect, test } from '@playwright/test';
+import { Page, test } from '@playwright/test';
 
 // Test credentials
 const TEST_CREDENTIALS = {
   email: 'aitest2@udigit.ca',
   password: 'TestAI2024!@#$',
   firstName: 'AI',
-  lastName: 'Tester'
+  lastName: 'Tester',
 };
 
 async function login(page: Page) {
@@ -51,7 +51,7 @@ test.describe('Complete Booking and Payment Flow', () => {
     // Take screenshot of booking page
     await page.screenshot({
       path: '/tmp/booking-form-step1.png',
-      fullPage: true
+      fullPage: true,
     });
 
     console.log('\n📋 Step 2: Filling Equipment Details...');
@@ -89,7 +89,7 @@ test.describe('Complete Booking and Payment Flow', () => {
     // Take screenshot after filling dates
     await page.screenshot({
       path: '/tmp/booking-form-step2.png',
-      fullPage: true
+      fullPage: true,
     });
 
     console.log('\n📋 Step 3: Checking for Continue/Next Button...');
@@ -110,7 +110,7 @@ test.describe('Complete Booking and Payment Flow', () => {
     // Take screenshot of current state
     await page.screenshot({
       path: '/tmp/booking-form-step3.png',
-      fullPage: true
+      fullPage: true,
     });
 
     console.log('\n📋 Step 4: Looking for Submit Button...');
@@ -124,7 +124,7 @@ test.describe('Complete Booking and Payment Flow', () => {
       // Take screenshot before submit
       await page.screenshot({
         path: '/tmp/booking-form-before-submit.png',
-        fullPage: true
+        fullPage: true,
       });
 
       console.log('🚀 Submitting booking...');
@@ -136,7 +136,7 @@ test.describe('Complete Booking and Payment Flow', () => {
       // Take screenshot after submit
       await page.screenshot({
         path: '/tmp/booking-form-after-submit.png',
-        fullPage: true
+        fullPage: true,
       });
 
       console.log('✅ Booking submitted');
@@ -153,7 +153,7 @@ test.describe('Complete Booking and Payment Flow', () => {
     // Take final screenshot
     await page.screenshot({
       path: '/tmp/booking-flow-final.png',
-      fullPage: true
+      fullPage: true,
     });
 
     // Check if we're on booking management page
@@ -184,7 +184,7 @@ test.describe('Complete Booking and Payment Flow', () => {
         // Take screenshot of invoice
         await page.screenshot({
           path: '/tmp/invoice-section.png',
-          fullPage: true
+          fullPage: true,
         });
 
         // Check for invoice elements
@@ -195,14 +195,16 @@ test.describe('Complete Booking and Payment Flow', () => {
         console.log(`   Total Due: ${totalDue > 0 ? '✅ Found' : '❌ Not found'}`);
 
         // Look for checkout button
-        const checkoutButton = page.getByRole('button', { name: /proceed to.*checkout|pay.*total/i });
+        const checkoutButton = page.getByRole('button', {
+          name: /proceed to.*checkout|pay.*total/i,
+        });
 
         if (await checkoutButton.isVisible()) {
           console.log('✅ Found checkout button');
 
           // Listen for API call
           const apiPromise = page.waitForResponse(
-            response => response.url().includes('/api/stripe/create-checkout-session'),
+            (response) => response.url().includes('/api/stripe/create-checkout-session'),
             { timeout: 15000 }
           );
 
@@ -227,12 +229,12 @@ test.describe('Complete Booking and Payment Flow', () => {
               await page.waitForTimeout(2000);
               await page.screenshot({
                 path: '/tmp/stripe-checkout-page.png',
-                fullPage: true
+                fullPage: true,
               });
 
               console.log('📸 Screenshot saved: /tmp/stripe-checkout-page.png');
             }
-          } catch (error) {
+          } catch {
             console.log('⚠️  No redirect to Stripe (may have errored)');
           }
         }
@@ -250,4 +252,3 @@ test.describe('Complete Booking and Payment Flow', () => {
     console.log('   • Current URL:', currentUrl);
   });
 });
-

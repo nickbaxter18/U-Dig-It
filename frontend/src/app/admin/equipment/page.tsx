@@ -1,15 +1,30 @@
 'use client';
 
-import { EquipmentModal } from '@/components/admin/EquipmentModal';
-import { MaintenanceScheduleModal } from '@/components/admin/MaintenanceScheduleModal';
+import {
+  AlertTriangle,
+  Download,
+  Eye,
+  Filter,
+  Plus,
+  Search,
+  Trash2,
+  Wrench,
+  X,
+} from 'lucide-react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useSearchParams } from 'next/navigation';
+
 import { EquipmentMediaGallery } from '@/components/admin/EquipmentMediaGallery';
+import { EquipmentModal } from '@/components/admin/EquipmentModal';
 import { MaintenanceHistoryLog } from '@/components/admin/MaintenanceHistoryLog';
+import { MaintenanceScheduleModal } from '@/components/admin/MaintenanceScheduleModal';
+import { PermissionGate } from '@/components/admin/PermissionGate';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { AlertTriangle, Download, Eye, Filter, Plus, Search, Trash2, Wrench, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 interface Equipment {
   id: string;
@@ -30,7 +45,7 @@ interface Equipment {
   unitId: string;
   make: string;
   year: number;
-  specifications?: any;
+  specifications?: unknown;
 }
 
 export default function EquipmentManagement() {
@@ -52,17 +67,15 @@ export default function EquipmentManagement() {
   const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
   const selectAllRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchEquipment();
-  }, [statusFilter, searchTerm]);
-
-  const fetchEquipment = async () => {
+  const fetchEquipment = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       // ✅ OPTIMIZED: Use RPC function for aggregated stats (60% faster, single query)
-      const { data: equipmentData, error: rpcError } = await supabase.rpc('get_equipment_with_stats');
+      const { data: equipmentData, error: rpcError } = await supabase.rpc(
+        'get_equipment_with_stats'
+      );
 
       if (rpcError) {
         // Fallback to manual query if RPC function doesn't exist
@@ -92,21 +105,25 @@ export default function EquipmentManagement() {
 
         // Get booking stats for each equipment
         const equipmentWithStats = await Promise.all(
-          ((data || []) as any[]).map(async (eq: any) => {
+          ((data || []) as unknown[]).map(async (eq: unknown) => {
             // Get booking count and total revenue for this equipment
             const { data: bookingData } = await supabase
               .from('bookings')
               .select('totalAmount, status')
               .eq('equipmentId', eq.id);
 
-            const totalBookings = (bookingData as any[])?.length || 0;
+            const totalBookings = (bookingData as unknown[])?.length || 0;
             const totalRevenue =
-              (bookingData as any[])?.reduce((sum: number, b: any) => sum + parseFloat(b.totalAmount || '0'), 0) || 0;
+              (bookingData as unknown[])?.reduce(
+                (sum: number, b: unknown) => sum + parseFloat(b.totalAmount || '0'),
+                0
+              ) || 0;
 
             // Calculate utilization rate (simplified: active bookings / total days in operation)
             const activeBookings =
-              (bookingData as any[])?.filter((b: any) => ['confirmed', 'paid', 'in_progress'].includes(b.status))
-                .length || 0;
+              (bookingData as unknown[])?.filter((b: unknown) =>
+                ['confirmed', 'paid', 'in_progress'].includes(b.status)
+              ).length || 0;
             const utilizationRate = totalBookings > 0 ? (activeBookings / totalBookings) * 100 : 0;
 
             const status = (eq.status || 'available').toLowerCase();
@@ -123,7 +140,9 @@ export default function EquipmentManagement() {
               monthlyRate: parseFloat(eq.monthlyRate),
               isAvailable: status === 'available',
               maintenanceDue: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
-              lastMaintenance: eq.lastMaintenanceDate ? new Date(eq.lastMaintenanceDate) : undefined,
+              lastMaintenance: eq.lastMaintenanceDate
+                ? new Date(eq.lastMaintenanceDate)
+                : undefined,
               totalBookings,
               totalRevenue,
               utilizationRate,
@@ -141,8 +160,8 @@ export default function EquipmentManagement() {
 
       // Transform RPC function results to match Equipment interface
       // Type assertion needed due to RPC function return type inference
-      const equipmentArray = (equipmentData || []) as any[];
-      let filteredEquipment = equipmentArray.map((eq: any) => ({
+      const equipmentArray = (equipmentData || []) as unknown[];
+      let filteredEquipment = equipmentArray.map((eq: unknown) => ({
         id: eq.id,
         name: `${eq.make || ''} ${eq.model || ''}`.trim() || 'Equipment',
         model: eq.model || '',
@@ -166,13 +185,13 @@ export default function EquipmentManagement() {
 
       // Apply client-side filters (status and search)
       if (statusFilter !== 'all') {
-        filteredEquipment = filteredEquipment.filter(eq => eq.status === statusFilter);
+        filteredEquipment = filteredEquipment.filter((eq) => eq.status === statusFilter);
       }
 
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         filteredEquipment = filteredEquipment.filter(
-          eq =>
+          (eq) =>
             eq.make?.toLowerCase().includes(searchLower) ||
             eq.model?.toLowerCase().includes(searchLower) ||
             eq.unitId?.toLowerCase().includes(searchLower) ||
@@ -183,13 +202,21 @@ export default function EquipmentManagement() {
       setEquipment(filteredEquipment);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to fetch equipment:', { component: 'app-page', action: 'error' }, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          'Failed to fetch equipment:',
+          { component: 'app-page', action: 'error' },
+          err instanceof Error ? err : new Error(String(err))
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to fetch equipment');
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, searchTerm]);
+
+  useEffect(() => {
+    fetchEquipment();
+  }, [fetchEquipment]);
 
   const normalizeDateInput = (value: unknown): string | null => {
     if (!value) return null;
@@ -212,13 +239,21 @@ export default function EquipmentManagement() {
 
       // Map frontend status to database status
       const dbStatus = equipmentData.status?.toLowerCase() || 'available';
-      const lastMaintenanceIso = normalizeDateInput((equipmentData as any).lastMaintenance);
+      const lastMaintenanceIso = normalizeDateInput(
+        (equipmentData as { lastMaintenance?: string | Date } | null)?.lastMaintenance
+      );
       const nextMaintenanceIso = normalizeDateInput(
-        (equipmentData as any).nextMaintenance ?? equipmentData.maintenanceDue
+        (
+          equipmentData as {
+            nextMaintenance?: string | Date;
+            maintenanceDue?: string | Date;
+          } | null
+        )?.nextMaintenance ?? equipmentData.maintenanceDue
       );
       const totalEngineHoursValue =
-        typeof (equipmentData as any).totalEngineHours === 'number'
-          ? (equipmentData as any).totalEngineHours
+        typeof (equipmentData as { totalEngineHours?: number } | null)?.totalEngineHours ===
+        'number'
+          ? (equipmentData as { totalEngineHours: number }).totalEngineHours
           : undefined;
 
       if (selectedEquipment?.id) {
@@ -297,10 +332,14 @@ export default function EquipmentManagement() {
       await fetchEquipment();
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        logger.error('Failed to save equipment:', {
-          component: 'EquipmentManagement',
-          action: 'error',
-        }, err instanceof Error ? err : new Error(String(err)));
+        logger.error(
+          'Failed to save equipment:',
+          {
+            component: 'EquipmentManagement',
+            action: 'error',
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
       }
       setError(err instanceof Error ? err.message : 'Failed to save equipment');
     } finally {
@@ -320,7 +359,9 @@ export default function EquipmentManagement() {
       }
 
       const queryString = params.toString();
-      const response = await fetchWithAuth(`/api/admin/equipment/export${queryString ? `?${queryString}` : ''}`);
+      const response = await fetchWithAuth(
+        `/api/admin/equipment/export${queryString ? `?${queryString}` : ''}`
+      );
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
@@ -382,7 +423,7 @@ export default function EquipmentManagement() {
     if (selectedEquipmentIds.size === filteredEquipment.length) {
       setSelectedEquipmentIds(new Set());
     } else {
-      setSelectedEquipmentIds(new Set(filteredEquipment.map(eq => eq.id)));
+      setSelectedEquipmentIds(new Set(filteredEquipment.map((eq) => eq.id)));
     }
   };
 
@@ -416,7 +457,11 @@ export default function EquipmentManagement() {
       setBulkActionStatus('');
       fetchEquipment();
     } catch (err) {
-      logger.error('Failed to bulk update equipment status', { component: 'EquipmentManagement' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to bulk update equipment status',
+        { component: 'EquipmentManagement' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert(err instanceof Error ? err.message : 'Failed to update equipment status');
     }
   };
@@ -449,7 +494,11 @@ export default function EquipmentManagement() {
       setSelectedEquipmentIds(new Set());
       fetchEquipment();
     } catch (err) {
-      logger.error('Failed to bulk delete equipment', { component: 'EquipmentManagement' }, err instanceof Error ? err : new Error(String(err)));
+      logger.error(
+        'Failed to bulk delete equipment',
+        { component: 'EquipmentManagement' },
+        err instanceof Error ? err : new Error(String(err))
+      );
       alert(err instanceof Error ? err.message : 'Failed to delete equipment');
     }
   };
@@ -475,7 +524,7 @@ export default function EquipmentManagement() {
     }
   };
 
-  const filteredEquipment = equipment.filter(item => {
+  const filteredEquipment = equipment.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -503,21 +552,25 @@ export default function EquipmentManagement() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleExportEquipment}
-            disabled={exporting}
-            className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
-          </button>
-          <button
-            onClick={handleAddEquipment}
-            className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Equipment</span>
-          </button>
+          <PermissionGate permission="equipment:export:all">
+            <button
+              onClick={handleExportEquipment}
+              disabled={exporting}
+              className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+            </button>
+          </PermissionGate>
+          <PermissionGate permission="equipment:create:all">
+            <button
+              onClick={handleAddEquipment}
+              className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Equipment</span>
+            </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -542,7 +595,7 @@ export default function EquipmentManagement() {
             type="text"
             placeholder="Search equipment..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -550,7 +603,7 @@ export default function EquipmentManagement() {
 
         <select
           value={statusFilter}
-          onChange={e => setStatusFilter(e.target.value)}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
@@ -575,7 +628,7 @@ export default function EquipmentManagement() {
             </span>
             <select
               value={bulkActionStatus}
-              onChange={e => setBulkActionStatus(e.target.value)}
+              onChange={(e) => setBulkActionStatus(e.target.value)}
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
             >
               <option value="">Select status...</option>
@@ -621,134 +674,140 @@ export default function EquipmentManagement() {
       {/* Equipment Table */}
       <div className="overflow-hidden rounded-lg bg-white shadow">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   <input
                     ref={selectAllRef}
                     type="checkbox"
                     className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
                     aria-label="Select all equipment"
-                    checked={selectedEquipmentIds.size === filteredEquipment.length && filteredEquipment.length > 0}
+                    checked={
+                      selectedEquipmentIds.size === filteredEquipment.length &&
+                      filteredEquipment.length > 0
+                    }
                     onChange={handleToggleSelectAll}
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Equipment
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:table-cell md:px-6">
                   Location
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Daily Rate
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell lg:px-6">
                   Utilization
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell lg:px-6">
                   Revenue
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 xl:table-cell xl:px-6">
                   Maintenance
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-4 md:px-6">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredEquipment.map(item => {
+              {filteredEquipment.map((item) => {
                 const isSelected = selectedEquipmentIds.has(item.id);
                 return (
-                <tr key={item.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
-                      checked={isSelected}
-                      onChange={() => handleToggleEquipmentSelection(item.id)}
-                      aria-label={`Select equipment ${item.name}`}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                      <div className="text-sm text-gray-500">
-                        {item.model} - {item.serialNumber}
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
+                  >
+                    <td className="px-3 py-4 sm:px-4 md:px-6">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                        checked={isSelected}
+                        onChange={() => handleToggleEquipmentSelection(item.id)}
+                        aria-label={`Select equipment ${item.name}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+                    <td className="px-3 py-4 sm:px-4 md:px-6">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
+                        <div className="text-xs text-gray-500 sm:text-sm">
+                          {item.model} - {item.serialNumber}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(item.status)}`}
-                    >
-                      {item.status.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    {item.location}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    ${item.dailyRate}/day
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="mr-2 h-2 w-16 rounded-full bg-gray-200">
-                        <div
-                          className="bg-kubota-orange h-2 rounded-full"
-                          style={{ width: `${item.utilizationRate}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-600">{item.utilizationRate}%</span>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                    ${item.totalRevenue.toLocaleString()}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4">
-                    {item.maintenanceDue && (
-                      <div className="flex items-center text-sm text-yellow-600">
-                        <AlertTriangle className="mr-1 h-4 w-4" />
-                        Due {new Date(item.maintenanceDue).toLocaleDateString()}
-                      </div>
-                    )}
-                    {item.lastMaintenance && !item.maintenanceDue && (
-                      <div className="text-sm text-gray-500">
-                        Last: {new Date(item.lastMaintenance).toLocaleDateString()}
-                      </div>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleViewEquipment(item)}
-                        className="text-kubota-orange hover:text-orange-600"
-                        title="View Details"
+                    </td>
+                    <td className="px-3 py-4 sm:px-4 md:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(item.status)}`}
                       >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEditEquipment(item)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Edit"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleScheduleMaintenance(item)}
-                        className="text-yellow-600 hover:text-yellow-800"
-                        title="Schedule Maintenance"
-                      >
-                        <Wrench className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                        {item.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-4 text-sm text-gray-900 sm:px-4 md:table-cell md:px-6">
+                      {item.location}
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-900 sm:px-4 md:px-6">
+                      ${item.dailyRate}/day
+                    </td>
+                    <td className="hidden px-3 py-4 lg:table-cell lg:px-6">
+                      <div className="flex items-center">
+                        <div className="mr-2 h-2 w-16 rounded-full bg-gray-200">
+                          <div
+                            className="bg-kubota-orange h-2 rounded-full"
+                            style={{ width: `${item.utilizationRate}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm text-gray-600">{item.utilizationRate}%</span>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-4 text-sm text-gray-900 lg:table-cell lg:px-6">
+                      ${item.totalRevenue.toLocaleString()}
+                    </td>
+                    <td className="hidden px-3 py-4 xl:table-cell xl:px-6">
+                      {item.maintenanceDue && (
+                        <div className="flex items-center text-sm text-yellow-600">
+                          <AlertTriangle className="mr-1 h-4 w-4" />
+                          Due {new Date(item.maintenanceDue).toLocaleDateString()}
+                        </div>
+                      )}
+                      {item.lastMaintenance && !item.maintenanceDue && (
+                        <div className="text-sm text-gray-500">
+                          Last: {new Date(item.lastMaintenance).toLocaleDateString()}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-4 text-right text-sm font-medium sm:px-4 md:px-6">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleViewEquipment(item)}
+                          className="text-kubota-orange hover:text-orange-600"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditEquipment(item)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Edit"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleScheduleMaintenance(item)}
+                          className="text-yellow-600 hover:text-yellow-800"
+                          title="Schedule Maintenance"
+                        >
+                          <Wrench className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
@@ -780,7 +839,7 @@ export default function EquipmentManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Available</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {equipment.filter(e => e.status === 'available').length}
+                {equipment.filter((e) => e.status === 'available').length}
               </p>
             </div>
           </div>
@@ -796,7 +855,7 @@ export default function EquipmentManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Rented</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {equipment.filter(e => e.status === 'rented').length}
+                {equipment.filter((e) => e.status === 'rented').length}
               </p>
             </div>
           </div>
@@ -812,7 +871,7 @@ export default function EquipmentManagement() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Maintenance</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {equipment.filter(e => e.status === 'maintenance').length}
+                {equipment.filter((e) => e.status === 'maintenance').length}
               </p>
             </div>
           </div>
@@ -869,41 +928,68 @@ export default function EquipmentManagement() {
                 <div>
                   <h4 className="mb-3 text-sm font-medium text-gray-900">Equipment Information</h4>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Unit ID:</strong> {selectedEquipment.unitId}</div>
-                    <div><strong>Serial Number:</strong> {selectedEquipment.serialNumber}</div>
-                    <div><strong>Make:</strong> {selectedEquipment.make}</div>
-                    <div><strong>Model:</strong> {selectedEquipment.model}</div>
-                    <div><strong>Year:</strong> {selectedEquipment.year}</div>
+                    <div>
+                      <strong>Unit ID:</strong> {selectedEquipment.unitId}
+                    </div>
+                    <div>
+                      <strong>Serial Number:</strong> {selectedEquipment.serialNumber}
+                    </div>
+                    <div>
+                      <strong>Make:</strong> {selectedEquipment.make}
+                    </div>
+                    <div>
+                      <strong>Model:</strong> {selectedEquipment.model}
+                    </div>
+                    <div>
+                      <strong>Year:</strong> {selectedEquipment.year}
+                    </div>
                     <div>
                       <strong>Status:</strong>
-                      <span className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(selectedEquipment.status)}`}>
+                      <span
+                        className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(selectedEquipment.status)}`}
+                      >
                         {selectedEquipment.status.replace('_', ' ')}
                       </span>
                     </div>
-                    <div><strong>Location:</strong> {selectedEquipment.location}</div>
+                    <div>
+                      <strong>Location:</strong> {selectedEquipment.location}
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="mb-3 text-sm font-medium text-gray-900">Pricing</h4>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Daily Rate:</strong> ${selectedEquipment.dailyRate}/day</div>
-                    <div><strong>Weekly Rate:</strong> ${selectedEquipment.weeklyRate}/week</div>
-                    <div><strong>Monthly Rate:</strong> ${selectedEquipment.monthlyRate}/month</div>
+                    <div>
+                      <strong>Daily Rate:</strong> ${selectedEquipment.dailyRate}/day
+                    </div>
+                    <div>
+                      <strong>Weekly Rate:</strong> ${selectedEquipment.weeklyRate}/week
+                    </div>
+                    <div>
+                      <strong>Monthly Rate:</strong> ${selectedEquipment.monthlyRate}/month
+                    </div>
                   </div>
                 </div>
 
                 <div>
                   <h4 className="mb-3 text-sm font-medium text-gray-900">Maintenance</h4>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Total Engine Hours:</strong> {(selectedEquipment as any).totalEngineHours || 0}</div>
+                    <div>
+                      <strong>Total Engine Hours:</strong>{' '}
+                      {(selectedEquipment as any).totalEngineHours || 0}
+                    </div>
                     {selectedEquipment.lastMaintenance && (
-                      <div><strong>Last Maintenance:</strong> {new Date(selectedEquipment.lastMaintenance).toLocaleDateString()}</div>
+                      <div>
+                        <strong>Last Maintenance:</strong>{' '}
+                        {new Date(selectedEquipment.lastMaintenance).toLocaleDateString()}
+                      </div>
                     )}
                     {selectedEquipment.maintenanceDue && (
                       <div className="text-yellow-600">
                         <AlertTriangle className="mr-1 inline h-4 w-4" />
-                        <strong>Next Due:</strong> {new Date(selectedEquipment.maintenanceDue).toLocaleDateString()}
+                        <strong>Next Due:</strong>{' '}
+                        {new Date(selectedEquipment.maintenanceDue).toLocaleDateString()}
                       </div>
                     )}
                   </div>
@@ -912,24 +998,36 @@ export default function EquipmentManagement() {
                 <div>
                   <h4 className="mb-3 text-sm font-medium text-gray-900">Performance</h4>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Total Bookings:</strong> {selectedEquipment.totalBookings}</div>
-                    <div><strong>Total Revenue:</strong> ${selectedEquipment.totalRevenue.toLocaleString()}</div>
-                    <div><strong>Utilization Rate:</strong> {selectedEquipment.utilizationRate.toFixed(1)}%</div>
+                    <div>
+                      <strong>Total Bookings:</strong> {selectedEquipment.totalBookings}
+                    </div>
+                    <div>
+                      <strong>Total Revenue:</strong> $
+                      {selectedEquipment.totalRevenue.toLocaleString()}
+                    </div>
+                    <div>
+                      <strong>Utilization Rate:</strong>{' '}
+                      {selectedEquipment.utilizationRate.toFixed(1)}%
+                    </div>
                   </div>
                 </div>
 
-                {selectedEquipment.specifications && Object.keys(selectedEquipment.specifications).length > 0 && (
-                  <div className="md:col-span-2">
-                    <h4 className="mb-3 text-sm font-medium text-gray-900">Specifications</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {Object.entries(selectedEquipment.specifications).map(([key, value]) => (
-                        <div key={key}>
-                          <strong className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}:</strong> {String(value) || 'N/A'}
-                        </div>
-                      ))}
+                {selectedEquipment.specifications &&
+                  Object.keys(selectedEquipment.specifications).length > 0 && (
+                    <div className="md:col-span-2">
+                      <h4 className="mb-3 text-sm font-medium text-gray-900">Specifications</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {Object.entries(selectedEquipment.specifications).map(([key, value]) => (
+                          <div key={key}>
+                            <strong className="capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}:
+                            </strong>{' '}
+                            {String(value) || 'N/A'}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Media Gallery */}
                 <div className="md:col-span-2">

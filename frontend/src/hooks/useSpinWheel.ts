@@ -3,7 +3,6 @@
  *
  * Manages spin wheel state and API interactions.
  */
-
 import { useCallback, useState } from 'react';
 
 interface SpinSession {
@@ -23,7 +22,12 @@ interface UseSpinWheelReturn {
   openSpinWheel: () => void;
   closeSpinWheel: () => void;
   createSession: () => Promise<SpinSession | null>;
-  updateSpin: (sessionId: string, spinNumber: number, result: string, prize?: { percentage: number; promoCode: string }) => Promise<SpinSession | null>;
+  updateSpin: (
+    sessionId: string,
+    spinNumber: number,
+    result: string,
+    prize?: { percentage: number; promoCode: string }
+  ) => Promise<SpinSession | null>;
   getSession: (sessionId: string) => Promise<SpinSession | null>;
 }
 
@@ -59,54 +63,66 @@ export function useSpinWheel(): UseSpinWheelReturn {
       if (typeof window !== 'undefined') {
         // Client-side: use logger if available, otherwise silent fail
         const logger = require('@/lib/logger').logger;
-        logger?.error('Failed to create spin session', {
-          component: 'useSpinWheel',
-          action: 'create_session_failed',
-        }, error as Error);
+        logger?.error(
+          'Failed to create spin session',
+          {
+            component: 'useSpinWheel',
+            action: 'create_session_failed',
+          },
+          error as Error
+        );
       }
       return null;
     }
   }, []);
 
-  const updateSpin = useCallback(async (
-    sessionId: string,
-    spinNumber: number,
-    result: string,
-    prize?: { percentage: number; promoCode: string }
-  ): Promise<SpinSession | null> => {
-    try {
-      // Use the secure /api/spin/roll route instead
-      const response = await fetch('/api/spin/roll', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          spinNumber,
-        }),
-      });
+  const updateSpin = useCallback(
+    async (
+      _sessionId: string, // Reserved for future session tracking
+      spinNumber: number,
+      _result: string, // Reserved for future result processing
+      _prize?: { percentage: number; promoCode: string } // Reserved for future prize processing
+    ): Promise<SpinSession | null> => {
+      try {
+        // Use the secure /api/spin/roll route instead
+        const response = await fetch('/api/spin/roll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            spinNumber,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to update spin');
+        if (!response.ok) {
+          throw new Error('Failed to update spin');
+        }
+
+        const _outcome = await response.json(); // Reserved for future outcome processing
+        // The secure route returns outcome, not session
+        // Fetch updated session separately if needed
+        return null; // Hook may need refactoring to match new API
+      } catch (error) {
+        // Use logger instead of console.error
+        if (typeof window !== 'undefined') {
+          const logger = require('@/lib/logger').logger;
+          logger?.error(
+            'Failed to update spin',
+            {
+              component: 'useSpinWheel',
+              action: 'update_spin_failed',
+            },
+            error as Error
+          );
+        }
+        return null;
       }
+    },
+    []
+  );
 
-      const outcome = await response.json();
-      // The secure route returns outcome, not session
-      // Fetch updated session separately if needed
-      return null; // Hook may need refactoring to match new API
-    } catch (error) {
-      // Use logger instead of console.error
-      if (typeof window !== 'undefined') {
-        const logger = require('@/lib/logger').logger;
-        logger?.error('Failed to update spin', {
-          component: 'useSpinWheel',
-          action: 'update_spin_failed',
-        }, error as Error);
-      }
-      return null;
-    }
-  }, []);
-
-  const getSession = useCallback(async (sessionId: string): Promise<SpinSession | null> => {
+  const getSession = useCallback(async (_sessionId: string): Promise<SpinSession | null> => {
+    // Reserved for future session retrieval
     try {
       // Use Supabase directly with RLS protection, or create a secure API route
       // For now, return null - session should be fetched via /api/spin/start
@@ -116,10 +132,14 @@ export function useSpinWheel(): UseSpinWheelReturn {
       // Use logger instead of console.error
       if (typeof window !== 'undefined') {
         const logger = require('@/lib/logger').logger;
-        logger?.error('Failed to get session', {
-          component: 'useSpinWheel',
-          action: 'get_session_failed',
-        }, error as Error);
+        logger?.error(
+          'Failed to get session',
+          {
+            component: 'useSpinWheel',
+            action: 'get_session_failed',
+          },
+          error as Error
+        );
       }
       return null;
     }

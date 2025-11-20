@@ -2,12 +2,13 @@
  * Create Stripe Checkout Session API
  * Creates a Stripe Checkout session for booking payments (invoice or deposit)
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { createClient } from '@/lib/supabase/server';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { createClient } from '@/lib/supabase/server';
+
+// import Stripe from 'stripe'; // Unused - type only
 
 export async function POST(req: NextRequest) {
   const stripe = createStripeClient(await getStripeSecretKey());
@@ -22,15 +23,56 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      logger.error('Authentication failed', {
-        component: 'create-checkout-session',
-        action: 'auth_failed',
-        metadata: { error: authError?.message },
-      }, authError || undefined);
+      logger.error(
+        'Authentication failed',
+        {
+          component: 'create-checkout-session',
+          action: 'auth_failed',
+          metadata: { error: authError?.message },
+        },
+        authError || undefined
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { bookingId, paymentType = 'invoice' } = await req.json();
+
+    // Get base URL with proper fallback
+    const getBaseUrl = () => {
+      // Priority 1: Use NEXT_PUBLIC_SITE_URL if set and valid
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+      if (siteUrl) {
+        try {
+          const url = new URL(siteUrl);
+          return url.origin;
+        } catch {
+          // Invalid URL, continue to next option
+        }
+      }
+
+      // Priority 2: Use request origin (from headers)
+      const origin = req.headers.get('origin') || req.headers.get('host');
+      if (origin) {
+        // Check if origin already has scheme
+        if (origin.startsWith('http://') || origin.startsWith('https://')) {
+          try {
+            const url = new URL(origin);
+            return url.origin;
+          } catch {
+            // Invalid, continue
+          }
+        } else {
+          // Add scheme based on environment
+          const scheme = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+          return `${scheme}://${origin}`;
+        }
+      }
+
+      // Priority 3: Default fallback for development
+      return 'http://localhost:3000';
+    };
+
+    const baseUrl = getBaseUrl();
 
     if (!bookingId) {
       return NextResponse.json({ error: 'Booking ID required' }, { status: 400 });
@@ -56,11 +98,15 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (bookingError || !booking) {
-      logger.error('Booking not found', {
-        component: 'create-checkout-session',
-        action: 'booking_error',
-        metadata: { bookingId, error: bookingError?.message },
-      }, bookingError || undefined);
+      logger.error(
+        'Booking not found',
+        {
+          component: 'create-checkout-session',
+          action: 'booking_error',
+          metadata: { bookingId, error: bookingError?.message },
+        },
+        bookingError || undefined
+      );
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
@@ -75,13 +121,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine amount based on payment type
-    const amount = paymentType === 'deposit'
-      ? Number(booking.securityDeposit)
-      : Number(booking.totalAmount);
+    const amount =
+      paymentType === 'deposit' ? Number(booking.securityDeposit) : Number(booking.totalAmount);
 
-    const description = paymentType === 'deposit'
-      ? `Security Deposit: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`
-      : `Rental Invoice: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
+    const description =
+      paymentType === 'deposit'
+        ? `Security Deposit: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`
+        : `Rental Invoice: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
 
     logger.info('Creating Stripe checkout session', {
       component: 'create-checkout-session',
@@ -90,7 +136,7 @@ export async function POST(req: NextRequest) {
         bookingId,
         paymentType,
         amount,
-        customerEmail: booking.customer.email
+        customerEmail: booking.customer.email,
       },
     });
 
@@ -125,8 +171,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/booking/${bookingId}/manage?payment=success&type=${paymentType}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/booking/${bookingId}/manage?payment=cancelled&type=${paymentType}`,
+      success_url: `${baseUrl}/booking/${bookingId}/manage?payment=success&type=${paymentType}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/booking/${bookingId}/manage?payment=cancelled&type=${paymentType}`,
       customer_email: booking.customer.email,
       metadata: sessionMetadata,
     });
@@ -138,12 +184,12 @@ export async function POST(req: NextRequest) {
         bookingId,
         paymentType,
         sessionId: session.id,
-        sessionUrl: session.url
+        sessionUrl: session.url,
       },
     });
 
     // Normalize payment type for database ('invoice' -> 'payment')
-    const dbPaymentType = (paymentType === 'invoice') ? 'payment' : paymentType;
+    const dbPaymentType = paymentType === 'invoice' ? 'payment' : paymentType;
 
     // Generate payment number
     const paymentNumber = `PAY-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -157,19 +203,23 @@ export async function POST(req: NextRequest) {
         amount,
         type: dbPaymentType,
         status: 'pending',
-        method: 'credit_card',  // Required field - must match enum
-        stripePaymentIntentId: session.payment_intent as string || null,
+        method: 'credit_card', // Required field - must match enum
+        stripePaymentIntentId: (session.payment_intent as string) || null,
         stripeCheckoutSessionId: session.id,
       })
       .select('id')
       .single();
 
     if (paymentInsertError) {
-      logger.error('Failed to create payment record', {
-        component: 'create-checkout-session',
-        action: 'payment_insert_failed',
-        metadata: { bookingId, paymentType: dbPaymentType, error: paymentInsertError.message },
-      }, paymentInsertError);
+      logger.error(
+        'Failed to create payment record',
+        {
+          component: 'create-checkout-session',
+          action: 'payment_insert_failed',
+          metadata: { bookingId, paymentType: dbPaymentType, error: paymentInsertError.message },
+        },
+        paymentInsertError
+      );
       // Don't fail the request - payment record can be created later via webhook
     } else if (paymentRecord?.id) {
       try {
@@ -180,16 +230,21 @@ export async function POST(req: NextRequest) {
           },
         });
       } catch (metadataError) {
-        const errorMessage = metadataError instanceof Error ? metadataError.message : 'Unknown error';
-        logger.error('Failed to attach paymentId to checkout session metadata', {
-          component: 'create-checkout-session',
-          action: 'metadata_update_failed',
-          metadata: {
-            sessionId: session.id,
-            paymentId: paymentRecord.id,
-            error: errorMessage,
+        const errorMessage =
+          metadataError instanceof Error ? metadataError.message : 'Unknown error';
+        logger.error(
+          'Failed to attach paymentId to checkout session metadata',
+          {
+            component: 'create-checkout-session',
+            action: 'metadata_update_failed',
+            metadata: {
+              sessionId: session.id,
+              paymentId: paymentRecord.id,
+              error: errorMessage,
+            },
           },
-        }, metadataError instanceof Error ? metadataError : undefined);
+          metadataError instanceof Error ? metadataError : undefined
+        );
       }
     }
 
@@ -197,15 +252,19 @@ export async function POST(req: NextRequest) {
       sessionUrl: session.url,
       sessionId: session.id,
     });
-  } catch (error: any) {
-    logger.error('Checkout session creation error', {
-      component: 'create-checkout-session',
-      action: 'error',
-      metadata: {
-        message: error.message,
-        stack: error.stack,
+  } catch (error: unknown) {
+    logger.error(
+      'Checkout session creation error',
+      {
+        component: 'create-checkout-session',
+        action: 'error',
+        metadata: {
+          message: error.message,
+          stack: error.stack,
+        },
       },
-    }, error);
+      error
+    );
 
     return NextResponse.json(
       {

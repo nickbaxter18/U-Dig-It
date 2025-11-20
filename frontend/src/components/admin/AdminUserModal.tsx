@@ -1,9 +1,13 @@
 'use client';
 
+import { X } from 'lucide-react';
+
+import { useEffect, useMemo, useState } from 'react';
+
+import { useAdminToast } from '@/components/admin/AdminToastProvider';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-import { X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 
 type AdminRole = 'admin' | 'super_admin';
 type AdminStatus = 'active' | 'inactive' | 'suspended';
@@ -26,6 +30,7 @@ interface AdminUserModalProps {
 
 export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserModalProps) {
   const isEditMode = Boolean(user);
+  const toast = useAdminToast();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -63,7 +68,7 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
   );
 
   const handleChange = (field: keyof typeof formData, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
@@ -100,14 +105,47 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.error || 'Failed to save admin user');
+        const errorMessage = errorBody?.error || 'Failed to save admin user';
+        const errorDetails = errorBody?.details;
+
+        // Show error toast with details if available
+        if (errorDetails) {
+          toast.error(errorMessage, errorDetails);
+        } else {
+          toast.error(errorMessage);
+        }
+
+        throw new Error(errorMessage);
       }
+
+      const responseData = await response.json().catch(() => null);
+      const wasUpgraded = responseData?.upgraded === true;
 
       logger.info('Admin user saved successfully', {
         component: 'AdminUserModal',
-        action: isEditMode ? 'admin_user_updated' : 'admin_user_created',
-        metadata: { userId: user?.id, email: formData.email },
+        action: isEditMode
+          ? 'admin_user_updated'
+          : wasUpgraded
+            ? 'admin_user_upgraded'
+            : 'admin_user_created',
+        metadata: {
+          userId: user?.id || responseData?.data?.id,
+          email: formData.email,
+          upgraded: wasUpgraded,
+        },
       });
+
+      // Show success toast
+      if (wasUpgraded) {
+        toast.success(
+          'User Upgraded to Admin',
+          `${formData.email} has been successfully upgraded to ${formData.role === 'super_admin' ? 'Super Admin' : 'Admin'}.`
+        );
+      } else if (isEditMode) {
+        toast.success('Admin User Updated', 'The admin user has been updated successfully.');
+      } else {
+        toast.success('Admin User Invited', `An invitation has been sent to ${formData.email}.`);
+      }
 
       onSuccess();
       onClose();
@@ -146,7 +184,7 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
               <p className="mt-1 text-sm text-gray-500">
                 {isEditMode
                   ? 'Update role, status, or details for this admin user.'
-                  : 'Send an invitation email to a new admin user.'}
+                  : 'Send an invitation email to a new admin user. If the email already exists, the user will be upgraded to admin.'}
               </p>
             </div>
             <button
@@ -167,7 +205,10 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label htmlFor="admin-email" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="admin-email"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Email *
                 </label>
                 <input
@@ -175,13 +216,15 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
                   type="email"
                   required
                   value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
+                  onChange={(e) => handleChange('email', e.target.value)}
                   disabled={isEditMode}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100"
                   placeholder="admin@kubota-rental.ca"
                 />
                 {isEditMode && (
-                  <p className="mt-1 text-xs text-gray-500">Email cannot be changed after invitation.</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Email cannot be changed after invitation.
+                  </p>
                 )}
               </div>
 
@@ -197,7 +240,7 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
                   type="text"
                   required
                   value={formData.firstName}
-                  onChange={e => handleChange('firstName', e.target.value)}
+                  onChange={(e) => handleChange('firstName', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
@@ -214,19 +257,22 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
                   type="text"
                   required
                   value={formData.lastName}
-                  onChange={e => handleChange('lastName', e.target.value)}
+                  onChange={(e) => handleChange('lastName', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
               <div>
-                <label htmlFor="admin-role" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="admin-role"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Role *
                 </label>
                 <select
                   id="admin-role"
                   value={formData.role}
-                  onChange={e => handleChange('role', e.target.value)}
+                  onChange={(e) => handleChange('role', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="admin">Admin</option>
@@ -235,13 +281,16 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
               </div>
 
               <div>
-                <label htmlFor="admin-status" className="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="admin-status"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Status *
                 </label>
                 <select
                   id="admin-status"
                   value={formData.status}
-                  onChange={e => handleChange('status', e.target.value)}
+                  onChange={(e) => handleChange('status', e.target.value)}
                   className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="active">Active</option>
@@ -273,5 +322,3 @@ export function AdminUserModal({ isOpen, user, onClose, onSuccess }: AdminUserMo
     </div>
   );
 }
-
-

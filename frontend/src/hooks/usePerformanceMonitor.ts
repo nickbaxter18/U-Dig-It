@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { ErrorMonitor } from '../lib/error-monitor';
+
 import { logger } from '@/lib/logger';
+
+import { ErrorMonitor } from '../lib/error-monitor';
 
 export const usePerformanceMonitor = (componentName: string) => {
   const mountTime = useRef<number>(Date.now());
 
   useEffect(() => {
-    const mountDuration = Date.now() - mountTime.current;
+    const mountTimeValue = mountTime.current;
+    const mountDuration = Date.now() - mountTimeValue;
 
     if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
       if (process.env.NODE_ENV === 'development') {
@@ -27,7 +30,7 @@ export const usePerformanceMonitor = (componentName: string) => {
     }
 
     return () => {
-      const unmountDuration = Date.now() - mountTime.current;
+      const unmountDuration = Date.now() - mountTimeValue;
 
       if (process.env.NEXT_PUBLIC_DEBUG_MODE === 'true') {
         if (process.env.NODE_ENV === 'development') {

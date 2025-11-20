@@ -1,17 +1,18 @@
 'use client';
 
 import {
-    Calendar,
-    CheckCircle,
-    ChevronLeft,
-    ChevronRight,
-    Hand,
-    Maximize2,
-    Pause,
-    Phone,
-    Play,
-    Volume2,
+  Calendar,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Hand,
+  Maximize2,
+  Pause,
+  Phone,
+  Play,
+  Volume2,
 } from 'lucide-react';
+
 import { useEffect, useRef, useState } from 'react';
 
 interface MobileEquipmentShowcaseProps {
@@ -97,7 +98,7 @@ export default function MobileEquipmentShowcase({ className = '' }: MobileEquipm
   useEffect(() => {
     if (isAutoPlaying) {
       autoPlayRef.current = setInterval(() => {
-        setCurrentImageIndex(prev => (prev + 1) % equipmentImages.length);
+        setCurrentImageIndex((prev) => (prev + 1) % equipmentImages.length);
       }, 4000);
     } else {
       if (autoPlayRef.current) {
@@ -152,12 +153,12 @@ export default function MobileEquipmentShowcase({ className = '' }: MobileEquipm
 
   // Navigation functions
   const goToNextImage = () => {
-    setCurrentImageIndex(prev => (prev + 1) % equipmentImages.length);
+    setCurrentImageIndex((prev) => (prev + 1) % equipmentImages.length);
     triggerHapticFeedback();
   };
 
   const goToPreviousImage = () => {
-    setCurrentImageIndex(prev => (prev - 1 + equipmentImages.length) % equipmentImages.length);
+    setCurrentImageIndex((prev) => (prev - 1 + equipmentImages.length) % equipmentImages.length);
     triggerHapticFeedback();
   };
 
@@ -263,7 +264,7 @@ export default function MobileEquipmentShowcase({ className = '' }: MobileEquipm
             className="flex transition-transform duration-300 ease-in-out"
             style={{ transform: `translateX(-${currentImageIndex * 100}%)` }}
           >
-            {equipmentImages.map((image: any, index: any) => (
+            {equipmentImages.map((image: unknown, index: unknown) => (
               <div key={index} className="relative w-full flex-shrink-0">
                 <img src={image.src} alt={image.alt} className="h-64 w-full object-cover sm:h-80" />
                 <div className="absolute inset-0 flex items-end bg-black bg-opacity-20">
@@ -328,7 +329,7 @@ export default function MobileEquipmentShowcase({ className = '' }: MobileEquipm
         <div>
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Specifications</h3>
           <div className="grid grid-cols-2 gap-4">
-            {equipmentSpecs.map((spec: any, index: any) => (
+            {equipmentSpecs.map((spec: unknown, index: unknown) => (
               <div key={index} className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
                 <span className="text-2xl">{spec.icon}</span>
                 <div>
@@ -344,7 +345,7 @@ export default function MobileEquipmentShowcase({ className = '' }: MobileEquipm
         <div>
           <h3 className="mb-4 text-lg font-semibold text-gray-900">Key Features</h3>
           <div className="space-y-3">
-            {features.map((feature: any, index: any) => (
+            {features.map((feature: unknown, index: unknown) => (
               <div key={index} className="flex items-start space-x-3">
                 <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
                 <span className="text-gray-700">{feature}</span>

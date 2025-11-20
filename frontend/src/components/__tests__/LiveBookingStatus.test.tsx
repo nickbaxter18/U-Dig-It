@@ -1,7 +1,8 @@
+import { createTestBooking } from '@/test-utils';
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import LiveBookingStatus from '../LiveBookingStatus';
-import { createTestBooking } from '@/test-utils';
 
 const mockSupabase = {
   channel: vi.fn().mockReturnValue({
@@ -39,7 +40,7 @@ describe('LiveBookingStatus', () => {
   });
 
   it('should update status when receiving realtime event', async () => {
-    let callback: any;
+    let callback: unknown;
     mockSupabase.channel.mockReturnValue({
       on: vi.fn().mockImplementation((event, filter, cb) => {
         callback = cb;
@@ -66,4 +67,3 @@ describe('LiveBookingStatus', () => {
     expect(mockSupabase.removeChannel).toHaveBeenCalled();
   });
 });
-

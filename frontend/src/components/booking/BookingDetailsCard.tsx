@@ -6,7 +6,7 @@
 'use client';
 
 interface BookingDetailsCardProps {
-  booking: any;
+  booking: unknown;
 }
 
 export default function BookingDetailsCard({ booking }: BookingDetailsCardProps) {
@@ -66,12 +66,14 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
           {(() => {
             const startDate = new Date(booking.startDate);
             const endDate = new Date(booking.endDate);
-            const rentalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const rentalDays = Math.ceil(
+              (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
             const dailyRate = booking.equipment?.dailyRate || 450;
-            const subtotal = booking.subtotal || (dailyRate * rentalDays);
+            const subtotal = booking.subtotal || dailyRate * rentalDays;
             const deliveryFee = booking.floatFee || booking.deliveryFee || 300;
-            const taxes = booking.taxes || ((subtotal + deliveryFee) * 0.15);
-            const totalAmount = booking.totalAmount || (subtotal + deliveryFee + taxes);
+            const taxes = booking.taxes || (subtotal + deliveryFee) * 0.15;
+            const _totalAmount = booking.totalAmount || subtotal + deliveryFee + taxes; // Reserved for future total display
 
             // Use actual distance and fees from booking
             const actualDistanceKm = booking.distanceKm || 0;
@@ -82,8 +84,8 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
             const expectedBaseFee = 150; // Standard base fee per direction
             // Distance is already rounded to 1 decimal in LocationPicker
             const hasAdditionalMileage = actualDistanceKm > includedKm;
-            const extraKm = hasAdditionalMileage ? (actualDistanceKm - includedKm) : 0;
-            const additionalMileageFeePerDirection = hasAdditionalMileage ? (extraKm * 3) : 0;
+            const extraKm = hasAdditionalMileage ? actualDistanceKm - includedKm : 0;
+            const additionalMileageFeePerDirection = hasAdditionalMileage ? extraKm * 3 : 0;
 
             // Determine what to display
             const displayBaseFee = hasAdditionalMileage ? expectedBaseFee : baseFeePerDirection;
@@ -93,22 +95,23 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                 {/* Equipment Rental */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">
-                    Equipment Rental ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} @ ${dailyRate}/day)
+                    Equipment Rental ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} @ $
+                    {dailyRate}/day)
                   </span>
                   <span className="font-medium text-gray-900">${subtotal.toFixed(2)}</span>
                 </div>
 
                 {/* Transportation & Staging */}
                 <div className="border-l-2 border-gray-300 pl-3">
-                  <div className="mb-1 text-xs font-medium text-gray-700">Transportation & Staging</div>
+                  <div className="mb-1 text-xs font-medium text-gray-700">
+                    Transportation & Staging
+                  </div>
 
                   {/* Delivery Breakdown */}
                   <div className="mb-2 ml-2 space-y-0.5">
                     <div className="flex justify-between text-xs font-medium text-gray-700">
                       <span>• Delivery to site:</span>
-                      {!hasAdditionalMileage && (
-                        <span>${baseFeePerDirection.toFixed(2)}</span>
-                      )}
+                      {!hasAdditionalMileage && <span>${baseFeePerDirection.toFixed(2)}</span>}
                     </div>
                     {hasAdditionalMileage && extraKm > 0 && (
                       <div className="ml-3 space-y-0.5 text-gray-600">
@@ -122,7 +125,9 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                         </div>
                         <div className="flex justify-between border-t border-gray-300 pt-0.5 text-xs font-medium text-gray-700">
                           <span>Subtotal:</span>
-                          <span>${(displayBaseFee + additionalMileageFeePerDirection).toFixed(2)}</span>
+                          <span>
+                            ${(displayBaseFee + additionalMileageFeePerDirection).toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -132,9 +137,7 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                   <div className="ml-2 space-y-0.5">
                     <div className="flex justify-between text-xs font-medium text-gray-700">
                       <span>• Pickup from site:</span>
-                      {!hasAdditionalMileage && (
-                        <span>${baseFeePerDirection.toFixed(2)}</span>
-                      )}
+                      {!hasAdditionalMileage && <span>${baseFeePerDirection.toFixed(2)}</span>}
                     </div>
                     {hasAdditionalMileage && extraKm > 0 && (
                       <div className="ml-3 space-y-0.5 text-gray-600">
@@ -148,7 +151,9 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                         </div>
                         <div className="flex justify-between border-t border-gray-300 pt-0.5 text-xs font-medium text-gray-700">
                           <span>Subtotal:</span>
-                          <span>${(displayBaseFee + additionalMileageFeePerDirection).toFixed(2)}</span>
+                          <span>
+                            ${(displayBaseFee + additionalMileageFeePerDirection).toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -156,7 +161,13 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
 
                   <div className="mt-2 flex justify-between border-t border-gray-400 pt-1 text-xs font-medium">
                     <span>Transport Total:</span>
-                    <span>${(hasAdditionalMileage ? ((displayBaseFee + additionalMileageFeePerDirection) * 2) : deliveryFee).toFixed(2)}</span>
+                    <span>
+                      $
+                      {(hasAdditionalMileage
+                        ? (displayBaseFee + additionalMileageFeePerDirection) * 2
+                        : deliveryFee
+                      ).toFixed(2)}
+                    </span>
                   </div>
                 </div>
 
@@ -164,7 +175,8 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                 {booking.waiver_selected && booking.waiver_rate_cents && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">
-                      Damage Waiver ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} × ${(booking.waiver_rate_cents / 100).toFixed(2)})
+                      Damage Waiver ({rentalDays} {rentalDays === 1 ? 'day' : 'days'} × $
+                      {(booking.waiver_rate_cents / 100).toFixed(2)})
                     </span>
                     <span className="font-medium text-gray-900">
                       ${((booking.waiver_rate_cents / 100) * rentalDays).toFixed(2)}
@@ -178,66 +190,126 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                     Subtotal (Equipment + Transport{booking.waiver_selected ? ' + Waiver' : ''})
                   </span>
                   <span className="font-semibold text-gray-900">
-                    ${(() => {
+                    $
+                    {(() => {
                       // ✅ FIX: Use corrected transport fee including additional mileage
-                      const correctTransportFee = hasAdditionalMileage ? ((displayBaseFee + additionalMileageFeePerDirection) * 2) : deliveryFee;
-                      return (subtotal + correctTransportFee + (booking.waiver_selected && booking.waiver_rate_cents ? (booking.waiver_rate_cents / 100) * rentalDays : 0)).toFixed(2);
+                      const correctTransportFee = hasAdditionalMileage
+                        ? (displayBaseFee + additionalMileageFeePerDirection) * 2
+                        : deliveryFee;
+                      return (
+                        subtotal +
+                        correctTransportFee +
+                        (booking.waiver_selected && booking.waiver_rate_cents
+                          ? (booking.waiver_rate_cents / 100) * rentalDays
+                          : 0)
+                      ).toFixed(2);
                     })()}
                   </span>
                 </div>
 
                 {/* Coupon Discount - Calculate dynamically */}
-                {booking.couponCode && (() => {
-                  // ✅ FIX: Use corrected transport fee including additional mileage
-                  const correctTransportFee = hasAdditionalMileage ? ((displayBaseFee + additionalMileageFeePerDirection) * 2) : deliveryFee;
-                  const subtotalBeforeDiscount = subtotal + correctTransportFee + (booking.waiver_selected && booking.waiver_rate_cents ? (booking.waiver_rate_cents / 100) * rentalDays : 0);
+                {booking.couponCode &&
+                  (() => {
+                    // ✅ FIX: Use corrected transport fee including additional mileage
+                    const correctTransportFee = hasAdditionalMileage
+                      ? (displayBaseFee + additionalMileageFeePerDirection) * 2
+                      : deliveryFee;
+                    const subtotalBeforeDiscount =
+                      subtotal +
+                      correctTransportFee +
+                      (booking.waiver_selected && booking.waiver_rate_cents
+                        ? (booking.waiver_rate_cents / 100) * rentalDays
+                        : 0);
 
-                  let discountAmount = 0;
-                  if (booking.couponType && booking.couponValue !== null && booking.couponValue !== undefined) {
-                    // Calculate dynamically from metadata
-                    if (booking.couponType === 'percentage') {
-                      discountAmount = subtotalBeforeDiscount * (parseFloat(booking.couponValue) / 100);
-                    } else if (booking.couponType === 'fixed' || booking.couponType === 'fixed_amount') {
-                      // ✅ FIX: Handle both 'fixed' and 'fixed_amount' (Spin to Win) coupon types
-                      discountAmount = Math.min(parseFloat(booking.couponValue), subtotalBeforeDiscount);
+                    let discountAmount = 0;
+                    if (
+                      booking.couponType &&
+                      booking.couponValue !== null &&
+                      booking.couponValue !== undefined
+                    ) {
+                      // Calculate dynamically from metadata
+                      if (booking.couponType === 'percentage') {
+                        discountAmount =
+                          subtotalBeforeDiscount * (parseFloat(booking.couponValue) / 100);
+                      } else if (
+                        booking.couponType === 'fixed' ||
+                        booking.couponType === 'fixed_amount'
+                      ) {
+                        // ✅ FIX: Handle both 'fixed' and 'fixed_amount' (Spin to Win) coupon types
+                        discountAmount = Math.min(
+                          parseFloat(booking.couponValue),
+                          subtotalBeforeDiscount
+                        );
+                      }
+                    } else if (booking.couponDiscount) {
+                      // Fallback to stored amount for backwards compatibility
+                      discountAmount = parseFloat(booking.couponDiscount);
                     }
-                  } else if (booking.couponDiscount) {
-                    // Fallback to stored amount for backwards compatibility
-                    discountAmount = parseFloat(booking.couponDiscount);
-                  }
 
-                  return discountAmount > 0 ? (
-                    <>
-                      <div className="flex justify-between text-green-600">
-                        <span className="flex items-center font-medium">
-                          <svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                          </svg>
-                          Discount ({booking.couponCode}{booking.couponType === 'percentage' ? ` - ${booking.couponValue}%` : ''})
-                        </span>
-                        <span className="font-medium">-${discountAmount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold text-gray-900">
-                        <span>Subtotal after discount</span>
-                        <span>${(subtotalBeforeDiscount - discountAmount).toFixed(2)}</span>
-                      </div>
-                    </>
-                  ) : null;
-                })()}
+                    return discountAmount > 0 ? (
+                      <>
+                        <div className="flex justify-between text-green-600">
+                          <span className="flex items-center font-medium">
+                            <svg
+                              className="mr-1 h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                              />
+                            </svg>
+                            Discount ({booking.couponCode}
+                            {booking.couponType === 'percentage'
+                              ? ` - ${booking.couponValue}%`
+                              : ''}
+                            )
+                          </span>
+                          <span className="font-medium">-${discountAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-gray-200 pt-2 font-semibold text-gray-900">
+                          <span>Subtotal after discount</span>
+                          <span>${(subtotalBeforeDiscount - discountAmount).toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : null;
+                  })()}
 
                 {/* Taxes - Recalculate if discount applied */}
                 {(() => {
                   // ✅ FIX: Use corrected transport fee including additional mileage
-                  const correctTransportFee = hasAdditionalMileage ? ((displayBaseFee + additionalMileageFeePerDirection) * 2) : deliveryFee;
+                  const correctTransportFee = hasAdditionalMileage
+                    ? (displayBaseFee + additionalMileageFeePerDirection) * 2
+                    : deliveryFee;
                   // Calculate final taxes and total including discount
-                  const subtotalBeforeDiscount = subtotal + correctTransportFee + (booking.waiver_selected && booking.waiver_rate_cents ? (booking.waiver_rate_cents / 100) * rentalDays : 0);
+                  const subtotalBeforeDiscount =
+                    subtotal +
+                    correctTransportFee +
+                    (booking.waiver_selected && booking.waiver_rate_cents
+                      ? (booking.waiver_rate_cents / 100) * rentalDays
+                      : 0);
 
                   let discountAmount = 0;
-                  if (booking.couponType && booking.couponValue !== null && booking.couponValue !== undefined) {
+                  if (
+                    booking.couponType &&
+                    booking.couponValue !== null &&
+                    booking.couponValue !== undefined
+                  ) {
                     if (booking.couponType === 'percentage') {
-                      discountAmount = subtotalBeforeDiscount * (parseFloat(booking.couponValue) / 100);
-                    } else if (booking.couponType === 'fixed' || booking.couponType === 'fixed_amount') {
-                      discountAmount = Math.min(parseFloat(booking.couponValue), subtotalBeforeDiscount);
+                      discountAmount =
+                        subtotalBeforeDiscount * (parseFloat(booking.couponValue) / 100);
+                    } else if (
+                      booking.couponType === 'fixed' ||
+                      booking.couponType === 'fixed_amount'
+                    ) {
+                      discountAmount = Math.min(
+                        parseFloat(booking.couponValue),
+                        subtotalBeforeDiscount
+                      );
                     }
                   }
 
@@ -255,7 +327,9 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
                       {/* Total */}
                       <div className="flex justify-between border-t-2 border-gray-300 pt-2">
                         <span className="font-semibold text-gray-900">Total Amount</span>
-                        <span className="text-lg font-bold text-gray-900">${finalTotal.toFixed(2)}</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          ${finalTotal.toFixed(2)}
+                        </span>
                       </div>
                     </>
                   );

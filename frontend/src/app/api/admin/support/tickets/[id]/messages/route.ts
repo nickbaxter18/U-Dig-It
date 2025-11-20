@@ -17,7 +17,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user: _user },
+    } = await supabase.auth.getUser();
     const { data, error: fetchError } = await supabase
       .from('support_messages')
       .select(
@@ -73,7 +75,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     // Get user for logging
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const payload = supportMessageCreateSchema.parse(await request.json());
 
