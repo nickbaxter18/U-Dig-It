@@ -43,7 +43,12 @@ export async function POST(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Start building the query
-    let query = supabase.from('equipment').select('*', { count: 'exact' });
+    let query = supabase
+      .from('equipment')
+      .select(
+        'id, model, year, make, description, notes, unitId, serialNumber, replacementValue, dailyRate, weeklyRate, monthlyRate, overageHourlyRate, dailyHourAllowance, weeklyHourAllowance, lastMaintenanceDate, nextMaintenanceDue, totalEngineHours, createdAt, updatedAt, type, specifications, status, attachments, location, images, documents, rider_template_id',
+        { count: 'exact' }
+      );
 
     // Apply search query filter (searches across multiple fields)
     if (filters.query) {

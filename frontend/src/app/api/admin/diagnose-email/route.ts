@@ -7,9 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -123,4 +124,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

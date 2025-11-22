@@ -1,7 +1,9 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
-import { NextRequest, NextResponse } from 'next/server';
+import { getGoogleMapsApiKey } from '@/lib/secrets/maps';
 
 /**
  * API Route: Google Maps Distance Matrix API Proxy
@@ -11,23 +13,11 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * This ensures accurate delivery pricing based on real road distances.
  */
-
-// ✅ SECURE: API key loaded from environment variable (never commit!)
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const YARD_LOCATION = '945 Golden Grove Road, Saint John, NB E2H 2X1, Canada';
 
 export async function GET(request: NextRequest) {
-  // 1. Validate API key is configured
-  if (!GOOGLE_MAPS_API_KEY) {
-    logger.error('Google Maps API key not configured', {
-      component: 'distance-api',
-      action: 'missing_api_key',
-    });
-    return NextResponse.json(
-      { error: 'Maps service unavailable' },
-      { status: 503 }
-    );
-  }
+  // Load API key using secrets loader
+  const GOOGLE_MAPS_API_KEY = await getGoogleMapsApiKey();
 
   // 2. Request validation
   const validation = await validateRequest(request, {
@@ -50,10 +40,7 @@ export async function GET(request: NextRequest) {
   const destination = searchParams.get('destination');
 
   if (!destination) {
-    return NextResponse.json(
-      { error: 'Missing destination parameter' },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: 'Missing destination parameter' }, { status: 400 });
   }
 
   try {
@@ -146,16 +133,20 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    logger.error('Distance calculation error', {
-      component: 'distance-api',
-      action: 'error',
-      metadata: { destination },
-    }, error instanceof Error ? error : undefined);
-
-    return NextResponse.json(
-      { error: 'Failed to calculate distance' },
-      { status: 500 }
+    logger.error(
+      'Distance calculation error',
+      {
+        component: 'distance-api',
+        action: 'error',
+        metadata: {
+          destination,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      },
+      error instanceof Error ? error : undefined
     );
+
+    return NextResponse.json({ error: 'Failed to calculate distance' }, { status: 500 });
   }
 }
 

@@ -41,6 +41,15 @@ export const supportReminderSchema = z.object({
   type: z.enum(['response', 'resolution']).optional(),
 });
 
+export const supportTicketUpdateSchema = z.object({
+  priority: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+  category: z.string().optional(),
+  status: z.enum(['open', 'in_progress', 'waiting_customer', 'resolved', 'closed']).optional(),
+  resolution_notes: z.string().optional(),
+  internal_notes: z.string().optional(),
+  satisfaction_score: z.number().int().min(1).max(5).optional(),
+});
+
 export const insuranceRequestInfoSchema = z.object({
   message: z.string().min(1),
   requestedFields: z.array(z.string()).optional(),
@@ -56,5 +65,6 @@ export type SupportTemplateCreateInput = z.infer<typeof supportTemplateCreateSch
 export type SupportTemplateUpdateInput = z.infer<typeof supportTemplateUpdateSchema>;
 export type SupportAssignmentInput = z.infer<typeof supportAssignmentSchema>;
 export type SupportReminderInput = z.infer<typeof supportReminderSchema>;
+export type SupportTicketUpdateInput = z.infer<typeof supportTicketUpdateSchema>;
 export type InsuranceRequestInfoInput = z.infer<typeof insuranceRequestInfoSchema>;
 export type InsuranceReminderInput = z.infer<typeof insuranceReminderSchema>;

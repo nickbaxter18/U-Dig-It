@@ -299,7 +299,7 @@ export function PermissionManager() {
             onClick={() => setActiveTab('permissions')}
             className={`border-b-2 px-4 py-2 text-sm font-medium ${
               activeTab === 'permissions'
-                ? 'border-kubota-orange text-kubota-orange'
+                ? 'border-premium-gold text-premium-gold'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -310,7 +310,7 @@ export function PermissionManager() {
             onClick={() => setActiveTab('roles')}
             className={`border-b-2 px-4 py-2 text-sm font-medium ${
               activeTab === 'roles'
-                ? 'border-kubota-orange text-kubota-orange'
+                ? 'border-premium-gold text-premium-gold'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -321,7 +321,7 @@ export function PermissionManager() {
             onClick={() => setActiveTab('users')}
             className={`border-b-2 px-4 py-2 text-sm font-medium ${
               activeTab === 'users'
-                ? 'border-kubota-orange text-kubota-orange'
+                ? 'border-premium-gold text-premium-gold'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
             }`}
           >
@@ -419,7 +419,7 @@ export function PermissionManager() {
                   setSelectedRole(null);
                   setShowRoleModal(true);
                 }}
-                className="bg-kubota-orange flex items-center gap-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+                className="bg-blue-600 flex items-center gap-2 rounded-md px-4 py-2 text-white hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4" />
                 Create Role
@@ -476,7 +476,7 @@ export function PermissionManager() {
             <PermissionGate permission="admin_users:update:all">
               <button
                 onClick={() => setShowUserRoleModal(true)}
-                className="bg-kubota-orange flex items-center gap-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+                className="bg-blue-600 flex items-center gap-2 rounded-md px-4 py-2 text-white hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4" />
                 Assign Role

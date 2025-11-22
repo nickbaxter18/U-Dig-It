@@ -732,19 +732,30 @@ export default function LicenseUploadSection({
       });
     }
 
-    console.log('[LicenseUploadSection] Requesting camera access...', {
-      context,
-      hasMediaDevices: !!navigator.mediaDevices,
-      isSecureContext: window.isSecureContext,
+    logger.debug('Requesting camera access', {
+      component: 'LicenseUploadSection',
+      action: 'camera_access_request',
+      metadata: {
+        context,
+        hasMediaDevices: !!navigator.mediaDevices,
+        isSecureContext: window.isSecureContext,
+      },
     });
 
     try {
-      console.log('[LicenseUploadSection] Calling getUserMedia...');
+      logger.debug('Calling getUserMedia', {
+        component: 'LicenseUploadSection',
+        action: 'getUserMedia_call',
+      });
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: context === 'selfie' ? 'user' : 'environment' },
         audio: false,
       });
-      console.log('[LicenseUploadSection] getUserMedia succeeded!', { hasStream: !!mediaStream });
+      logger.debug('getUserMedia succeeded', {
+        component: 'LicenseUploadSection',
+        action: 'getUserMedia_success',
+        metadata: { hasStream: !!mediaStream },
+      });
 
       logger.debug('Camera access granted', {
         component: 'LicenseUploadSection',
@@ -767,7 +778,14 @@ export default function LicenseUploadSection({
         }
       }, 50);
     } catch (cameraError) {
-      console.error('[LicenseUploadSection] Camera access failed:', cameraError);
+      logger.error(
+        'Camera access failed',
+        {
+          component: 'LicenseUploadSection',
+          action: 'camera_access_failed',
+        },
+        cameraError instanceof Error ? cameraError : new Error(String(cameraError))
+      );
       logger.error(
         'Camera access error',
         { component: 'LicenseUploadSection', metadata: { captureContext: context } },
@@ -779,7 +797,11 @@ export default function LicenseUploadSection({
         const errorName = cameraError.name || '';
         const errorMessageText = cameraError.message || '';
 
-        console.log('[LicenseUploadSection] Error details:', { errorName, errorMessageText });
+        logger.debug('Camera error details', {
+          component: 'LicenseUploadSection',
+          action: 'camera_error_details',
+          metadata: { errorName, errorMessageText },
+        });
 
         if (
           errorName === 'NotAllowedError' ||

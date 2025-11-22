@@ -76,7 +76,7 @@ export default function EquipmentUtilizationChart({
               aria-hidden="true"
             >
               <div
-                className="h-2 rounded-full bg-kubota-orange transition-all duration-300"
+                className="h-2 rounded-full bg-premium-gold transition-all duration-300"
                 style={{ width: `${Math.min(record.utilizationPct, 100)}%` }}
               />
             </div>

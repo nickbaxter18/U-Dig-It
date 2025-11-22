@@ -24,8 +24,9 @@ export async function GET(req: NextRequest) {
     // Get all payments for this booking
     const { data: payments, error } = await supabase
       .from('payments')
-      .select('*')
-      .eq('bookingId', bookingId);
+      .select('id, bookingId, amount, currency, status, type, stripePaymentIntentId, created_at')
+      .eq('bookingId', bookingId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

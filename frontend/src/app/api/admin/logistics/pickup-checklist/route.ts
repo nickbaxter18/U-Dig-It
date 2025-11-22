@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { pickupChecklistSchema } from '@/lib/validators/admin/bookings';
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,19 +15,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = pickupChecklistSchema.parse(await request.json());
 
@@ -51,16 +46,17 @@ export async function POST(request: NextRequest) {
         },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to save pickup checklist' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to save pickup checklist' }, { status: 500 });
     }
 
     logger.info('Pickup checklist recorded', {
       component: 'admin-logistics-pickup-checklist',
       action: 'checklist_created',
-      metadata: { checklistId: data.id, bookingId: payload.bookingId, adminId: user?.id || 'unknown' },
+      metadata: {
+        checklistId: data.id,
+        bookingId: payload.bookingId,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({ checklist: data });
@@ -86,6 +82,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

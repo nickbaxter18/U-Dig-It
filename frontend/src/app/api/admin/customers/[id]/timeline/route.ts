@@ -1,89 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { customerTimelineQuerySchema } from '@/lib/validators/admin/customers';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const adminResult = await requireAdmin(request);
+export const GET = withRateLimit(
+  RateLimitPresets.MODERATE,
+  async (request: NextRequest, { params }: { params: { id: string } }) => {
+    try {
+      const adminResult = await requireAdmin(request);
 
-    if (adminResult.error) return adminResult.error;
+      if (adminResult.error) return adminResult.error;
 
-    const supabase = adminResult.supabase;
+      const supabase = adminResult.supabase;
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    }
+      if (!supabase) {
+        return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+      }
 
-    const queryParams = Object.fromEntries(new URL(request.url).searchParams);
-    const parsed = customerTimelineQuerySchema.safeParse({
-      limit: queryParams.limit ? Number(queryParams.limit) : undefined,
-      cursor: queryParams.cursor,
-      eventTypes: queryParams.eventTypes,
-    });
+      const queryParams = Object.fromEntries(new URL(request.url).searchParams);
+      const parsed = customerTimelineQuerySchema.safeParse({
+        limit: queryParams.limit ? Number(queryParams.limit) : undefined,
+        cursor: queryParams.cursor,
+        eventTypes: queryParams.eventTypes,
+      });
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Invalid query parameters', details: parsed.error.issues },
-        { status: 400 }
-      );
-    }
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Invalid query parameters', details: parsed.error.issues },
+          { status: 400 }
+        );
+      }
 
-    const { limit, cursor, eventTypes } = parsed.data;
+      const { limit, cursor, eventTypes } = parsed.data;
 
-    let query = supabase
-      .from('customer_timeline_events')
-      .select('*')
-      .eq('customer_id', params.id)
-      .order('occurred_at', { ascending: false })
-      .limit(limit + 1);
+      let query = supabase
+        .from('customer_timeline_events')
+        .select(
+          'id, customer_id, event_type, reference_table, reference_id, occurred_at, metadata, created_at'
+        )
+        .eq('customer_id', params.id)
+        .order('occurred_at', { ascending: false })
+        .limit(limit + 1);
 
-    if (cursor) {
-      query = query.lt('occurred_at', cursor);
-    }
+      if (cursor) {
+        query = query.lt('occurred_at', cursor);
+      }
 
-    if (eventTypes && eventTypes.length > 0) {
-      query = query.in('event_type', eventTypes as any);
-    }
+      if (eventTypes && eventTypes.length > 0) {
+        query = query.in('event_type', eventTypes as any);
+      }
 
-    const { data, error: fetchError } = await query;
+      const { data, error: fetchError } = await query;
 
-    if (fetchError) {
+      if (fetchError) {
+        logger.error(
+          'Failed to fetch customer timeline events',
+          {
+            component: 'admin-customer-timeline',
+            action: 'fetch_failed',
+            metadata: { customerId: params.id },
+          },
+          fetchError
+        );
+        return NextResponse.json({ error: 'Unable to load timeline events' }, { status: 500 });
+      }
+
+      const items = data ?? [];
+      let nextCursor: string | null = null;
+
+      if (items.length > limit) {
+        const next = items.pop();
+        nextCursor = next?.occurred_at ?? null;
+      }
+
+      return NextResponse.json({
+        events: items,
+        nextCursor,
+      });
+    } catch (err) {
       logger.error(
-        'Failed to fetch customer timeline events',
+        'Unexpected error fetching customer timeline events',
         {
           component: 'admin-customer-timeline',
-          action: 'fetch_failed',
+          action: 'fetch_unexpected',
           metadata: { customerId: params.id },
         },
-        fetchError
+        err instanceof Error ? err : new Error(String(err))
       );
-      return NextResponse.json({ error: 'Unable to load timeline events' }, { status: 500 });
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    const items = data ?? [];
-    let nextCursor: string | null = null;
-
-    if (items.length > limit) {
-      const next = items.pop();
-      nextCursor = next?.occurred_at ?? null;
-    }
-
-    return NextResponse.json({
-      events: items,
-      nextCursor,
-    });
-  } catch (err) {
-    logger.error(
-      'Unexpected error fetching customer timeline events',
-      {
-        component: 'admin-customer-timeline',
-        action: 'fetch_unexpected',
-        metadata: { customerId: params.id },
-      },
-      err instanceof Error ? err : new Error(String(err))
-    );
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+);

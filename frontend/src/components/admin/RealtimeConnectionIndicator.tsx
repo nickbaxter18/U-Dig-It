@@ -1,16 +1,22 @@
 'use client';
 
 import { Activity, AlertCircle, CheckCircle, Wifi, WifiOff } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
+
 import { supabase } from '@/lib/supabase/client';
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'error';
 
 interface RealtimeConnectionIndicatorProps {
   className?: string;
+  compact?: boolean;
 }
 
-export function RealtimeConnectionIndicator({ className = '' }: RealtimeConnectionIndicatorProps) {
+export function RealtimeConnectionIndicator({
+  className = '',
+  compact = false,
+}: RealtimeConnectionIndicatorProps) {
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [lastConnected, setLastConnected] = useState<Date | null>(null);
   const [channelCount, setChannelCount] = useState(0);
@@ -63,7 +69,9 @@ export function RealtimeConnectionIndicator({ className = '' }: RealtimeConnecti
         healthCheckChannel = testChannel;
 
         // Also check Supabase connection status
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) {
           setStatus('disconnected');
         }
@@ -173,6 +181,21 @@ export function RealtimeConnectionIndicator({ className = '' }: RealtimeConnecti
   const config = getStatusConfig();
   const Icon = config.icon;
 
+  // Compact variant for footer
+  if (compact) {
+    return (
+      <div className={`flex items-center gap-1.5 ${className}`}>
+        <div
+          className={`h-2 w-2 rounded-full ${status === 'connected' ? 'bg-green-500' : status === 'connecting' ? 'bg-yellow-500' : status === 'disconnected' ? 'bg-red-500' : 'bg-gray-400'} ${config.pulse ? 'animate-pulse' : ''}`}
+          title={`Real-time: ${config.label}${lastConnected ? ` (Last connected: ${lastConnected.toLocaleTimeString()})` : ''}${channelCount > 0 ? ` - ${channelCount} channels` : ''}`}
+          aria-label={`Real-time connection: ${config.label}`}
+        ></div>
+        <span className="hidden text-xs text-gray-600 xl:inline">Real-time</span>
+      </div>
+    );
+  }
+
+  // Full variant for header
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div
@@ -184,12 +207,9 @@ export function RealtimeConnectionIndicator({ className = '' }: RealtimeConnecti
           {config.label}
         </span>
         {channelCount > 0 && (
-          <span className={`text-xs ${config.color} opacity-75`}>
-            ({channelCount})
-          </span>
+          <span className={`text-xs ${config.color} opacity-75`}>({channelCount})</span>
         )}
       </div>
     </div>
   );
 }
-

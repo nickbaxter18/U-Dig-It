@@ -1,6 +1,7 @@
 'use client';
 
 import { Filter, Search, X } from 'lucide-react';
+
 import { useState } from 'react';
 
 interface BookingFiltersProps {
@@ -39,12 +40,13 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
     });
   };
 
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) =>
-    !['page', 'limit'].includes(key) &&
-    value !== undefined &&
-    value !== '' &&
-    value !== 'createdAt' &&
-    value !== 'DESC'
+  const hasActiveFilters = Object.entries(filters).some(
+    ([key, value]) =>
+      !['page', 'limit'].includes(key) &&
+      value !== undefined &&
+      value !== '' &&
+      value !== 'createdAt' &&
+      value !== 'DESC'
   );
 
   return (
@@ -59,8 +61,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
               type="text"
               placeholder="Search bookings, customers, or equipment..."
               value={filters.search || ''}
-              onChange={e => handleInputChange('search', e.target.value)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2"
+              onChange={(e) => handleInputChange('search', e.target.value)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-transparent focus:outline-none focus:ring-2"
             />
           </div>
         </div>
@@ -69,10 +71,10 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
         <div className="sm:w-48">
           <select
             value={filters.status ? filters.status.toUpperCase() : ''}
-            onChange={e =>
+            onChange={(e) =>
               handleInputChange('status', e.target.value ? e.target.value.toLowerCase() : undefined)
             }
-            className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+            className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
           >
             <option value="">All Statuses</option>
             <option value="PENDING">Pending</option>
@@ -91,11 +93,11 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
         <div className="sm:w-48">
           <select
             value={`${filters.sortBy}-${filters.sortOrder}`}
-            onChange={e => {
+            onChange={(e) => {
               const [sortBy, sortOrder] = e.target.value.split('-');
               onFilterChange({ sortBy, sortOrder });
             }}
-            className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+            className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
           >
             <option value="createdAt-DESC">Newest First</option>
             <option value="createdAt-ASC">Oldest First</option>
@@ -139,8 +141,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
             <input
               type="date"
               value={filters.startDate || ''}
-              onChange={e => handleInputChange('startDate', e.target.value || undefined)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+              onChange={(e) => handleInputChange('startDate', e.target.value || undefined)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
             />
           </div>
 
@@ -149,8 +151,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
             <input
               type="date"
               value={filters.endDate || ''}
-              onChange={e => handleInputChange('endDate', e.target.value || undefined)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+              onChange={(e) => handleInputChange('endDate', e.target.value || undefined)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
             />
           </div>
 
@@ -159,8 +161,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
             <label className="mb-1 block text-sm font-medium text-gray-700">Booking Type</label>
             <select
               value={filters.type || ''}
-              onChange={e => handleInputChange('type', e.target.value || undefined)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+              onChange={(e) => handleInputChange('type', e.target.value || undefined)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
             >
               <option value="">All Types</option>
               <option value="DAILY">Daily</option>
@@ -177,8 +179,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
               type="text"
               placeholder="Customer ID"
               value={filters.customerId || ''}
-              onChange={e => handleInputChange('customerId', e.target.value || undefined)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+              onChange={(e) => handleInputChange('customerId', e.target.value || undefined)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
             />
           </div>
         </div>
@@ -189,8 +191,8 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
         <div className="flex flex-wrap gap-2">
           {Object.entries(filters).map(([key, value]) => {
             if (
-          key === 'page' ||
-          key === 'limit' ||
+              key === 'page' ||
+              key === 'limit' ||
               value === undefined ||
               value === '' ||
               (key === 'sortBy' && value === 'createdAt') ||
@@ -200,14 +202,12 @@ export function BookingFilters({ filters, onFilterChange }: BookingFiltersProps)
             }
 
             const displayValue =
-              key === 'status' && typeof value === 'string'
-                ? value.toUpperCase()
-                : value;
+              key === 'status' && typeof value === 'string' ? value.toUpperCase() : value;
 
             return (
               <span
                 key={key}
-                className="bg-kubota-orange inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
+                className="bg-blue-600 inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-white"
               >
                 {key}: {displayValue}
                 <button

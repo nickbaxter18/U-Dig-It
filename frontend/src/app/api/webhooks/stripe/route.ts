@@ -13,6 +13,7 @@ import Stripe from 'stripe';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { recalculateBookingBalance } from '@/lib/booking/balance';
 import { checkAndCompleteBookingIfReady } from '@/lib/check-and-complete-booking';
 import { sendInvoicePaymentConfirmation } from '@/lib/email-service';
 import { logger } from '@/lib/logger';
@@ -25,7 +26,7 @@ import {
   getStripeSecretKey,
   getStripeWebhookSecret,
 } from '@/lib/stripe/config';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { formatCurrency } from '@/lib/utils';
 
 async function getStripeInstance() {
@@ -165,7 +166,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Use service role client for webhooks (no user session available)
-    const supabase = createClient();
+    const supabase = createServiceClient();
+    if (!supabase) {
+      logger.error('Supabase service client unavailable for Stripe webhook', {
+        component: 'stripe-webhook',
+        action: 'service_client_missing',
+      });
+      return NextResponse.json({ error: 'Service unavailable' }, { status: 500 });
+    }
 
     // 3. Route to appropriate handler based on event type
     switch (event.type) {

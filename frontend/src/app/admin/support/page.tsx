@@ -15,6 +15,19 @@ import {
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import MessageComposer from '@/components/admin/support/MessageComposer';
+import MessageThread from '@/components/admin/support/MessageThread';
+import SLADisplay from '@/components/admin/support/SLADisplay';
+
+import {
+  fetchSupportTickets,
+  updateSupportTicket,
+  updateSupportTicketCategory,
+  updateSupportTicketInternalNotes,
+  updateSupportTicketPriority,
+  updateSupportTicketResolutionNotes,
+  updateSupportTicketSatisfaction,
+} from '@/lib/api/admin/support';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
@@ -52,6 +65,11 @@ export default function SupportPage() {
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [assignToMe, setAssignToMe] = useState(false);
+  const [showInternalNotes, setShowInternalNotes] = useState(false);
+  const [internalNotes, setInternalNotes] = useState('');
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [satisfactionScore, setSatisfactionScore] = useState<number | null>(null);
+  const [updatingNotes, setUpdatingNotes] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
   const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
@@ -86,111 +104,22 @@ export default function SupportPage() {
       setLoading(true);
       setError(null);
 
-      // Get current user for assignment filtering
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      // Fetch support tickets with related data
-      let query = supabase.from('support_tickets').select(`
-          id,
-          ticket_number,
-          customer_id,
-          booking_id,
-          equipment_id,
-          subject,
-          description,
-          priority,
-          status,
-          category,
-          assigned_to,
-          created_at,
-          resolved_at,
-          first_response_at,
-          customer:customer_id (
-            firstName,
-            lastName,
-            email
-          ),
-          booking:booking_id (
-            bookingNumber
-          ),
-          equipment:equipment_id (
-            make,
-            model
-          ),
-          assignedUser:assigned_to (
-            firstName,
-            lastName
-          )
-        `);
-
-      // Apply filters
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (priorityFilter !== 'all') {
-        query = query.eq('priority', priorityFilter);
-      }
-
-      if (assignToMe && user) {
-        query = query.eq('assigned_to', user.id);
-      }
-
-      const { data, error: queryError } = await query.order('created_at', { ascending: false });
-
-      if (queryError) throw queryError;
-
-      // Transform data
-      const ticketsData: SupportTicket[] = (data || []).map((ticket: unknown) => {
-        const customer = ticket.customer || {};
-        const booking = ticket.booking || {};
-        const equipment = ticket.equipment || {};
-        const assignedUser = ticket.assignedUser || {};
-
-        const customerName =
-          `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
-        const equipmentName =
-          equipment.make && equipment.model ? `${equipment.make} ${equipment.model}` : undefined;
-        const assignedToName =
-          assignedUser.firstName && assignedUser.lastName
-            ? `${assignedUser.firstName} ${assignedUser.lastName}`
-            : undefined;
-
-        // Calculate response time
-        let responseTime: number | undefined;
-        if (ticket.first_response_at) {
-          const created = new Date(ticket.created_at);
-          const responded = new Date(ticket.first_response_at);
-          responseTime = (responded.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
-        }
-
-        return {
-          id: ticket.id,
-          ticketNumber: ticket.ticket_number,
-          customerId: ticket.customer_id,
-          customerName,
-          customerEmail: customer.email || 'N/A',
-          bookingId: ticket.booking_id,
-          bookingNumber: booking.bookingNumber,
-          equipmentId: ticket.equipment_id,
-          equipmentName,
-          subject: ticket.subject,
-          description: ticket.description,
-          priority: ticket.priority,
-          status: ticket.status,
-          category: ticket.category,
-          assignedTo: ticket.assigned_to,
-          assignedToName,
-          createdAt: new Date(ticket.created_at),
-          resolvedAt: ticket.resolved_at ? new Date(ticket.resolved_at) : undefined,
-          firstResponseAt: ticket.first_response_at
-            ? new Date(ticket.first_response_at)
-            : undefined,
-          responseTime,
-        };
+      // Fetch support tickets via API
+      const response = await fetchSupportTickets({
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        assignedTo: assignToMe ? 'me' : undefined,
+        search: searchTerm || undefined,
       });
+
+      // Response format: { tickets: SupportTicket[], total: number, page: number, pageSize: number }
+      // Transform dates from strings to Date objects
+      const ticketsData: SupportTicket[] = (response.tickets || []).map((ticket: any) => ({
+        ...ticket,
+        createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+        resolvedAt: ticket.resolvedAt ? new Date(ticket.resolvedAt) : undefined,
+        firstResponseAt: ticket.firstResponseAt ? new Date(ticket.firstResponseAt) : undefined,
+      }));
 
       setTickets(ticketsData);
     } catch (err) {
@@ -203,12 +132,38 @@ export default function SupportPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, assignToMe]);
+  }, [statusFilter, priorityFilter, assignToMe, searchTerm]);
 
   useEffect(() => {
     fetchTickets();
     fetchAdminUsers();
   }, [fetchTickets, fetchAdminUsers]);
+
+  // Load ticket details (notes, satisfaction) when ticket is selected
+  useEffect(() => {
+    if (selectedTicket) {
+      const loadTicketDetails = async () => {
+        try {
+          const response = await fetchWithAuth(`/api/admin/support/tickets/${selectedTicket.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.ticket) {
+              setInternalNotes(data.ticket.internal_notes || '');
+              setResolutionNotes(data.ticket.resolution_notes || '');
+              setSatisfactionScore(data.ticket.satisfaction_score || null);
+            }
+          }
+        } catch (err) {
+          logger.warn(
+            'Failed to load ticket details',
+            { component: 'SupportPage', action: 'load_ticket_details_failed' },
+            err instanceof Error ? err : undefined
+          );
+        }
+      };
+      loadTicketDetails();
+    }
+  }, [selectedTicket?.id]);
 
   const handleAssignTicket = async (ticketId: string, adminId?: string) => {
     try {
@@ -243,41 +198,109 @@ export default function SupportPage() {
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
     try {
-      const updateData: any = {
-        status: newStatus,
-      };
-
-      // Add resolved_at timestamp if resolving
-      if (newStatus === 'resolved' || newStatus === 'closed') {
-        updateData.resolved_at = new Date().toISOString();
-      }
-
-      // Add first_response_at if responding for first time
-      const ticket = tickets.find((t) => t.id === ticketId);
-      if (ticket && !ticket.firstResponseAt && newStatus === 'in_progress') {
-        updateData.first_response_at = new Date().toISOString();
-      }
-
-      const supabaseClient2: any = supabase;
-      const { error: updateError } = await supabaseClient2
-        .from('support_tickets')
-        .update(updateData)
-        .eq('id', ticketId);
-
-      if (updateError) throw updateError;
-
+      await updateSupportTicket(ticketId, { status: newStatus as any });
       await fetchTickets();
-      setShowDetails(false);
-      setSelectedTicket(null);
+      // Update selected ticket if it's the one being updated
+      if (selectedTicket && selectedTicket.id === ticketId) {
+        setSelectedTicket({ ...selectedTicket, status: newStatus as any });
+      }
       alert(`✅ Ticket status updated to ${newStatus}!`);
     } catch (err) {
       logger.error(
         'Failed to update ticket status',
-        {},
+        { component: 'SupportPage', action: 'update_status_failed' },
         err instanceof Error ? err : new Error(String(err))
       );
       alert('Failed to update ticket status');
     }
+  };
+
+  const handleUpdatePriority = async (ticketId: string, priority: string) => {
+    try {
+      await updateSupportTicketPriority(ticketId, priority);
+      await fetchTickets();
+      if (selectedTicket && selectedTicket.id === ticketId) {
+        setSelectedTicket({ ...selectedTicket, priority: priority as any });
+      }
+    } catch (err) {
+      logger.error(
+        'Failed to update priority',
+        { component: 'SupportPage', action: 'update_priority_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to update priority');
+    }
+  };
+
+  const handleUpdateCategory = async (ticketId: string, category: string) => {
+    try {
+      await updateSupportTicketCategory(ticketId, category);
+      await fetchTickets();
+      if (selectedTicket && selectedTicket.id === ticketId) {
+        setSelectedTicket({ ...selectedTicket, category });
+      }
+    } catch (err) {
+      logger.error(
+        'Failed to update category',
+        { component: 'SupportPage', action: 'update_category_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to update category');
+    }
+  };
+
+  const handleSaveInternalNotes = async (ticketId: string) => {
+    try {
+      setUpdatingNotes(true);
+      await updateSupportTicketInternalNotes(ticketId, internalNotes);
+      await fetchTickets();
+    } catch (err) {
+      logger.error(
+        'Failed to save internal notes',
+        { component: 'SupportPage', action: 'save_internal_notes_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to save internal notes');
+    } finally {
+      setUpdatingNotes(false);
+    }
+  };
+
+  const handleSaveResolutionNotes = async (ticketId: string) => {
+    try {
+      setUpdatingNotes(true);
+      await updateSupportTicketResolutionNotes(ticketId, resolutionNotes);
+      await fetchTickets();
+    } catch (err) {
+      logger.error(
+        'Failed to save resolution notes',
+        { component: 'SupportPage', action: 'save_resolution_notes_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to save resolution notes');
+    } finally {
+      setUpdatingNotes(false);
+    }
+  };
+
+  const handleSaveSatisfaction = async (ticketId: string, score: number) => {
+    try {
+      await updateSupportTicketSatisfaction(ticketId, score);
+      await fetchTickets();
+      setSatisfactionScore(score);
+    } catch (err) {
+      logger.error(
+        'Failed to save satisfaction score',
+        { component: 'SupportPage', action: 'save_satisfaction_failed' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to save satisfaction score');
+    }
+  };
+
+  const handleMessageSent = () => {
+    // Refresh tickets to update response time
+    fetchTickets();
   };
 
   const handleExportTickets = async () => {
@@ -495,7 +518,7 @@ export default function SupportPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -578,7 +601,7 @@ export default function SupportPage() {
             placeholder="Search tickets..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+            className="focus:ring-premium-gold rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
@@ -586,7 +609,7 @@ export default function SupportPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+          className="focus:ring-premium-gold rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
           <option value="open">Open</option>
@@ -599,7 +622,7 @@ export default function SupportPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value)}
-          className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+          className="focus:ring-premium-gold rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Priority</option>
           <option value="critical">Critical</option>
@@ -613,7 +636,7 @@ export default function SupportPage() {
             type="checkbox"
             checked={assignToMe}
             onChange={(e) => setAssignToMe(e.target.checked)}
-            className="text-kubota-orange focus:ring-kubota-orange rounded"
+            className="text-premium-gold focus:ring-premium-gold rounded"
           />
           <span>Assigned to Me</span>
         </label>
@@ -621,7 +644,7 @@ export default function SupportPage() {
 
       {/* Bulk Actions Toolbar */}
       {selectedTicketIds.size > 0 && (
-        <div className="flex flex-col gap-3 rounded-lg border border-kubota-orange bg-orange-50 px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-lg border border-premium-gold bg-premium-gold-50 px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-900">
               {selectedTicketIds.size} ticket(s) selected
@@ -643,7 +666,7 @@ export default function SupportPage() {
               <select
                 value={bulkAssignTo}
                 onChange={(e) => setBulkAssignTo(e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
               >
                 <option value="">Select admin...</option>
                 {adminUsers.map((admin) => (
@@ -655,7 +678,7 @@ export default function SupportPage() {
               <button
                 onClick={handleBulkAssign}
                 disabled={!bulkAssignTo}
-                className="rounded-md bg-kubota-orange px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Assign
               </button>
@@ -664,7 +687,7 @@ export default function SupportPage() {
               <select
                 value={bulkActionStatus}
                 onChange={(e) => setBulkActionStatus(e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
               >
                 <option value="">Select status...</option>
                 <option value="open">Open</option>
@@ -676,7 +699,7 @@ export default function SupportPage() {
               <button
                 onClick={handleBulkStatusUpdate}
                 disabled={!bulkActionStatus}
-                className="rounded-md bg-kubota-orange px-4 py-1.5 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Update Status
               </button>
@@ -695,7 +718,7 @@ export default function SupportPage() {
                   <input
                     ref={selectAllRef}
                     type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                    className="h-4 w-4 rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
                     aria-label="Select all tickets"
                     checked={
                       selectedTicketIds.size === filteredTickets.length &&
@@ -736,12 +759,12 @@ export default function SupportPage() {
                 return (
                   <tr
                     key={ticket.id}
-                    className={`hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
+                    className={`hover:bg-gray-50 ${isSelected ? 'bg-premium-gold-50/30' : ''}`}
                   >
                     <td className="whitespace-nowrap px-6 py-4">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                        className="h-4 w-4 rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
                         checked={isSelected}
                         onChange={() => handleToggleTicketSelection(ticket.id)}
                         aria-label={`Select ticket ${ticket.ticketNumber}`}
@@ -810,7 +833,7 @@ export default function SupportPage() {
                           setSelectedTicket(ticket);
                           setShowDetails(true);
                         }}
-                        className="text-kubota-orange hover:text-orange-600"
+                        className="text-premium-gold hover:text-premium-gold-dark"
                       >
                         View
                       </button>
@@ -826,7 +849,7 @@ export default function SupportPage() {
       {/* Ticket Details Modal */}
       {showDetails && selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-xl">
             <div className="p-6">
               <div className="mb-6 flex items-start justify-between">
                 <div>
@@ -841,6 +864,10 @@ export default function SupportPage() {
                   onClick={() => {
                     setShowDetails(false);
                     setSelectedTicket(null);
+                    setShowInternalNotes(false);
+                    setInternalNotes('');
+                    setResolutionNotes('');
+                    setSatisfactionScore(null);
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -876,13 +903,18 @@ export default function SupportPage() {
                   <div>
                     <h4 className="mb-3 text-sm font-medium text-gray-900">Ticket Details</h4>
                     <div className="space-y-2 text-sm">
-                      <div>
+                      <div className="flex items-center gap-2">
                         <strong>Priority:</strong>
-                        <span
-                          className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPriorityColor(selectedTicket.priority)}`}
+                        <select
+                          value={selectedTicket.priority}
+                          onChange={(e) => handleUpdatePriority(selectedTicket.id, e.target.value)}
+                          className={`rounded-md border px-2 py-1 text-xs font-semibold ${getPriorityColor(selectedTicket.priority)} focus:outline-none focus:ring-2`}
                         >
-                          {selectedTicket.priority}
-                        </span>
+                          <option value="low">Low</option>
+                          <option value="medium">Medium</option>
+                          <option value="high">High</option>
+                          <option value="critical">Critical</option>
+                        </select>
                       </div>
                       <div>
                         <strong>Status:</strong>
@@ -892,11 +924,24 @@ export default function SupportPage() {
                           {selectedTicket.status.replace('_', ' ')}
                         </span>
                       </div>
-                      {selectedTicket.category && (
-                        <div>
-                          <strong>Category:</strong> {selectedTicket.category}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <strong>Category:</strong>
+                        <input
+                          type="text"
+                          value={selectedTicket.category || ''}
+                          onChange={(e) => {
+                            const newCategory = e.target.value;
+                            setSelectedTicket({ ...selectedTicket, category: newCategory });
+                          }}
+                          onBlur={(e) => {
+                            if (e.target.value !== selectedTicket.category) {
+                              handleUpdateCategory(selectedTicket.id, e.target.value);
+                            }
+                          }}
+                          placeholder="Enter category"
+                          className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2"
+                        />
+                      </div>
                       {selectedTicket.assignedToName && (
                         <div>
                           <strong>Assigned To:</strong> {selectedTicket.assignedToName}
@@ -912,6 +957,13 @@ export default function SupportPage() {
                   </div>
                 </div>
 
+                {/* SLA Display */}
+                <SLADisplay
+                  ticketId={selectedTicket.id}
+                  priority={selectedTicket.priority}
+                  createdAt={selectedTicket.createdAt.toISOString()}
+                />
+
                 {/* Subject & Description */}
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-gray-900">Subject</h4>
@@ -926,6 +978,97 @@ export default function SupportPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Message Thread */}
+                <MessageThread ticketId={selectedTicket.id} onMessageSent={handleMessageSent} />
+
+                {/* Message Composer */}
+                <MessageComposer
+                  ticketId={selectedTicket.id}
+                  onMessageSent={handleMessageSent}
+                  customerName={selectedTicket.customerName}
+                  ticketNumber={selectedTicket.ticketNumber}
+                />
+
+                {/* Internal Notes */}
+                <div className="border-t border-gray-200 pt-4">
+                  <button
+                    onClick={() => setShowInternalNotes(!showInternalNotes)}
+                    className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-900"
+                  >
+                    <span>Internal Notes</span>
+                    <span className="text-xs text-gray-500">(Admin only)</span>
+                    {showInternalNotes ? <X className="h-4 w-4" /> : <span>+</span>}
+                  </button>
+                  {showInternalNotes && (
+                    <div className="space-y-2">
+                      <textarea
+                        value={internalNotes}
+                        onChange={(e) => setInternalNotes(e.target.value)}
+                        onBlur={() => {
+                          if (internalNotes.trim()) {
+                            handleSaveInternalNotes(selectedTicket.id);
+                          }
+                        }}
+                        placeholder="Add internal notes (only visible to admins)..."
+                        rows={3}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                        disabled={updatingNotes}
+                      />
+                      {updatingNotes && <p className="text-xs text-gray-500">Saving...</p>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Resolution Notes & Satisfaction (when resolved/closed) */}
+                {(selectedTicket.status === 'resolved' || selectedTicket.status === 'closed') && (
+                  <div className="space-y-4 border-t border-gray-200 pt-4">
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-gray-900">Resolution Notes</h4>
+                      <textarea
+                        value={resolutionNotes}
+                        onChange={(e) => setResolutionNotes(e.target.value)}
+                        onBlur={() => {
+                          if (resolutionNotes.trim()) {
+                            handleSaveResolutionNotes(selectedTicket.id);
+                          }
+                        }}
+                        placeholder="Add resolution notes..."
+                        rows={3}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                        disabled={updatingNotes}
+                      />
+                      {updatingNotes && <p className="text-xs text-gray-500">Saving...</p>}
+                    </div>
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-gray-900">
+                        Customer Satisfaction
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {[1, 2, 3, 4, 5].map((score) => (
+                          <button
+                            key={score}
+                            type="button"
+                            onClick={() => handleSaveSatisfaction(selectedTicket.id, score)}
+                            className={`h-8 w-8 rounded-full text-lg ${
+                              satisfactionScore && satisfactionScore >= score
+                                ? 'text-yellow-400'
+                                : 'text-gray-300 hover:text-gray-400'
+                            }`}
+                            aria-label={`Rate ${score} stars`}
+                          >
+                            ⭐
+                          </button>
+                        ))}
+                        {satisfactionScore && (
+                          <span className="text-sm text-gray-600">
+                            {satisfactionScore} / 5 stars
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="border-t border-gray-200 pt-6">
@@ -981,7 +1124,7 @@ export default function SupportPage() {
                         onClick={() =>
                           (window.location.href = `/admin/bookings/${selectedTicket.bookingId}`)
                         }
-                        className="bg-kubota-orange rounded-md px-4 py-2 text-sm text-white hover:bg-orange-600"
+                        className="bg-blue-600 rounded-md px-4 py-2 text-sm text-white hover:bg-blue-700"
                       >
                         View Booking
                       </button>

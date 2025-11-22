@@ -1,5 +1,5 @@
 ---
-description: "Supabase backend operations, RLS, migrations, and database best practices for Kubota Rental Platform"
+description: "Supabase backend operations with MCP tools only. Includes database design standards (snake_case, UUIDs, timestamps, foreign keys, indexes), RLS policies with (SELECT auth.uid()) wrapper, query optimization with specific columns and pagination, migration safety patterns, and storage best practices. All patterns include @filename references to actual migrations and queries."
 alwaysApply: true
 ---
 
@@ -13,6 +13,8 @@ alwaysApply: true
 ---
 
 ## 1) Supabase Priority Rule
+
+**Note**: This rule is comprehensive (513 lines) to cover all Supabase patterns. While the [Cursor documentation](https://cursor.com/docs/context/rules) recommends rules under 500 lines, this rule is intentionally comprehensive to provide complete database patterns in one place. It's organized into clear sections for easy reference.
 
 ### Mandatory Tool Usage
 ```typescript
@@ -80,22 +82,87 @@ status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (
 ```
 
 ### Indexing (MANDATORY)
+
+**Reference actual migrations**:
+- Critical FK indexes: @supabase/migrations/20250122000004_add_critical_fk_indexes.sql
+- More FK indexes: @supabase/migrations/20250122000006_add_more_fk_indexes.sql
+- Missing indexes (RLS & availability): @supabase/migrations/20251118_add_missing_indexes.sql
+- Performance optimizations: @supabase/migrations/20250121000006_performance_optimizations.sql
+
+**Always index these**:
+1. **Foreign keys** - Every FK column must have an index
+2. **WHERE clause columns** - Columns used in WHERE clauses
+3. **RLS policy columns** - ALL columns referenced in RLS policies
+4. **Sort columns** - Columns used in ORDER BY
+5. **Composite indexes** - For common query patterns
+6. **Partial indexes** - For filtered queries (WHERE clause in index)
+7. **GIN indexes** - For JSONB and array columns
+8. **BRIN indexes** - For large tables with sequential/time series data
+
+**Basic Index Examples**:
 ```sql
--- ✅ ALWAYS index these:
--- 1. Foreign keys
+-- ✅ Example 1: Foreign key index
 CREATE INDEX CONCURRENTLY idx_bookings_customer_id ON bookings(customer_id);
 
--- 2. WHERE clause columns
+-- ✅ Example 2: WHERE clause index
 CREATE INDEX CONCURRENTLY idx_bookings_status ON bookings(status);
 
--- 3. RLS policy columns
+-- ✅ Example 3: RLS policy column index
 CREATE INDEX CONCURRENTLY idx_bookings_customer_status
 ON bookings(customer_id, status);
 
--- 4. Sort columns
+-- ✅ Example 4: Sort column index
 CREATE INDEX CONCURRENTLY idx_bookings_created_desc
 ON bookings(created_at DESC);
 ```
+
+**Advanced Index Examples from Actual Migrations**:
+```sql
+-- ✅ Example 5: Partial index for availability queries
+CREATE INDEX CONCURRENTLY idx_bookings_availability
+ON bookings(equipment_id, start_date, end_date)
+WHERE status NOT IN ('cancelled', 'rejected', 'completed');
+```
+**Index Type Reference**:
+- Partial indexes: Use `WHERE` clause to index subset of rows (smaller index, faster queries)
+- GIN indexes: Use `USING gin()` for JSONB, arrays, full-text search (faster containment queries)
+- BRIN indexes: Use `USING brin()` for large tables with sequential data (smaller index, good for time series)
+- Composite indexes: Multiple columns in single index (order matters - most selective first)
+
+See full examples:
+- Partial indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:145-149
+- GIN indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:157-163
+- BRIN indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:165-167
+- Composite indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:151-155
+
+```sql
+-- ✅ Example 6: Partial index for active bookings
+CREATE INDEX CONCURRENTLY idx_bookings_active_period
+ON bookings(start_date, end_date)
+WHERE status IN ('confirmed', 'active');
+```
+See: @supabase/migrations/20250121000006_performance_optimizations.sql:146
+
+```sql
+-- ✅ Example 7: GIN index for JSONB columns
+CREATE INDEX CONCURRENTLY idx_equipment_specifications
+ON equipment USING gin(specifications);
+```
+See: @supabase/migrations/20250121000006_performance_optimizations.sql:158
+
+```sql
+-- ✅ Example 8: BRIN index for time series data
+CREATE INDEX CONCURRENTLY idx_bookings_created_at_brin
+ON bookings USING brin(created_at);
+```
+See: @supabase/migrations/20250121000006_performance_optimizations.sql:167
+
+```sql
+-- ✅ Example 9: Composite index for complex queries
+CREATE INDEX CONCURRENTLY idx_bookings_equipment_customer
+ON bookings(equipment_id, customer_id, status, start_date);
+```
+See: @supabase/migrations/20250121000006_performance_optimizations.sql:152
 
 ### Updated_at Trigger
 ```sql
@@ -125,6 +192,11 @@ EXECUTE FUNCTION update_updated_at_column();
 4. ✅ **Index ALL columns in policies**
 
 ### Pattern 1: Customer Ownership (Bookings, Contracts)
+
+**Reference actual migrations**:
+- Initial RLS policies: @supabase/migrations/20250121000002_rls_policies.sql:26-58
+- Optimized with (SELECT auth.uid()): @supabase/migrations/20251118_fix_rls_auth_uid_wrapper.sql
+
 ```sql
 -- Enable RLS
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
@@ -133,7 +205,7 @@ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "bookings_select" ON bookings
 FOR SELECT TO authenticated
 USING (
-  "customerId" = (SELECT auth.uid())
+  "customerId" = (SELECT auth.uid())  -- ✅ Use (SELECT auth.uid()) wrapper for 30% faster plan caching
   OR
   EXISTS (
     SELECT 1 FROM users
@@ -161,21 +233,24 @@ ON bookings("customerId");
 ```
 
 ### Pattern 2: Public Read, Admin Write (Equipment)
+
+**Reference actual migration**: @supabase/migrations/20250121000002_rls_policies.sql:11-24
+
 ```sql
 ALTER TABLE equipment ENABLE ROW LEVEL SECURITY;
 
 -- Public can read all
-CREATE POLICY "equipment_public_read" ON equipment
+CREATE POLICY "Equipment is viewable by everyone" ON equipment
 FOR SELECT TO public
 USING (true);
 
 -- Only admins can modify
-CREATE POLICY "equipment_admin_write" ON equipment
+CREATE POLICY "Equipment is manageable by admins" ON equipment
 FOR ALL TO authenticated
 USING (
   EXISTS (
     SELECT 1 FROM users
-    WHERE id = (SELECT auth.uid())
+    WHERE id = (SELECT auth.uid())  -- ✅ Use wrapper for better performance
     AND role IN ('admin', 'super_admin')
   )
 );
@@ -284,7 +359,8 @@ const { data } = await supabase
 
 ### Specific Columns + Pagination
 ```typescript
-// ✅ CORRECT - Specific columns, pagination
+// ✅ CORRECT - Specific columns, pagination (From YOUR Codebase)
+// See actual implementation: @frontend/src/app/api/bookings/route.ts:147-153
 const { data, error, count } = await supabase
   .from('bookings')
   .select('id, bookingNumber, status, totalAmount', { count: 'exact' })
@@ -294,11 +370,28 @@ const { data, error, count } = await supabase
   .range(0, 19)
   .limit(20);
 
-// ❌ WRONG - SELECT *, no pagination
+// ✅ REAL EXAMPLE from your codebase:
+// Equipment query with specific columns: @frontend/src/app/api/bookings/route.ts:147-153
+const { data: equipment } = await supabase
+  .from('equipment')
+  .select('id, model, dailyRate, weeklyRate, monthlyRate, overageHourlyRate, dailyHourAllowance, weeklyHourAllowance')
+  .eq('id', sanitized.equipmentId)
+  .single();
+
+// ❌ WRONG - SELECT *, no pagination (found in discount code endpoint - should be optimized)
+// Reference: @frontend/src/app/api/discount-codes/validate/route.ts:61-66
 const { data } = await supabase
   .from('bookings')
   .select('*'); // Returns ALL!
 ```
+
+**Reference actual queries from YOUR codebase**:
+- Optimized equipment query: @frontend/src/app/api/bookings/route.ts:147-153
+- Availability check query: @frontend/src/app/api/bookings/route.ts:165-170
+- Audit logs with specific columns: @frontend/src/app/api/admin/audit/route.ts:25-31
+- Equipment summary with count: @frontend/src/app/api/admin/dashboard/overview/route.ts:176-179
+- Query with joins (users relation): @frontend/src/app/api/admin/audit/export/route.ts:29-48
+- Discount code query (needs optimization - uses SELECT *): @frontend/src/app/api/discount-codes/validate/route.ts:61-66
 
 ### Use Indexes
 ```typescript

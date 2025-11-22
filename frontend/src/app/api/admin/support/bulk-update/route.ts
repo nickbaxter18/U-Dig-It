@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 
@@ -15,7 +18,7 @@ const supportBulkUpdateSchema = z.object({
  * POST /api/admin/support/bulk-update
  * Perform bulk operations on support tickets (assignment or status update)
  */
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,19 +26,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const validated = supportBulkUpdateSchema.parse(body);
@@ -43,7 +39,10 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service role client not initialized', { component: 'admin-support-bulk-api' });
-      return NextResponse.json({ error: 'Internal server error: Service client unavailable' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Internal server error: Service client unavailable' },
+        { status: 500 }
+      );
     }
 
     const { ticketIds, action, assignedTo, status } = validated;
@@ -60,11 +59,15 @@ export async function POST(request: NextRequest) {
         .in('id', ticketIds);
 
       if (updateError) {
-        logger.error('Failed to assign tickets', {
-          component: 'admin-support-bulk-api',
-          action: 'assign_error',
-          metadata: { ticketIds, assignedTo, adminId: user?.id || 'unknown' },
-        }, updateError);
+        logger.error(
+          'Failed to assign tickets',
+          {
+            component: 'admin-support-bulk-api',
+            action: 'assign_error',
+            metadata: { ticketIds, assignedTo, adminId: user?.id || 'unknown' },
+          },
+          updateError
+        );
         return NextResponse.json({ error: 'Failed to assign tickets' }, { status: 500 });
       }
 
@@ -114,11 +117,15 @@ export async function POST(request: NextRequest) {
         .in('id', ticketIds);
 
       if (updateError) {
-        logger.error('Failed to update ticket status', {
-          component: 'admin-support-bulk-api',
-          action: 'update_status_error',
-          metadata: { ticketIds, status, adminId: user?.id || 'unknown' },
-        }, updateError);
+        logger.error(
+          'Failed to update ticket status',
+          {
+            component: 'admin-support-bulk-api',
+            action: 'update_status_error',
+            metadata: { ticketIds, status, adminId: user?.id || 'unknown' },
+          },
+          updateError
+        );
         return NextResponse.json({ error: 'Failed to update ticket status' }, { status: 500 });
       }
 
@@ -151,7 +158,10 @@ export async function POST(request: NextRequest) {
         updatedCount: ticketIds.length,
       });
     } else {
-      return NextResponse.json({ error: 'Invalid action or missing required fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid action or missing required fields' },
+        { status: 400 }
+      );
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -161,13 +171,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.error('Unexpected error in support bulk update', {
-      component: 'admin-support-bulk-api',
-      action: 'unexpected_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Unexpected error in support bulk update',
+      {
+        component: 'admin-support-bulk-api',
+        action: 'unexpected_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+});

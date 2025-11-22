@@ -1,10 +1,23 @@
+import { z } from 'zod';
+import { ZodError } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { sendAdminEmail } from '@/lib/sendgrid';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function POST(request: NextRequest) {
+const sendEmailSchema = z.object({
+  bookingId: z.string().uuid('Invalid booking ID format'),
+  recipientEmail: z.string().email('Invalid recipient email format'),
+  recipientName: z.string().min(1).max(200).optional(),
+  subject: z.string().min(1).max(200),
+  message: z.string().min(1).max(10000),
+  templateId: z.string().uuid('Invalid template ID format').optional(),
+});
+
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -17,40 +30,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
+    const { user } = adminResult;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    // ✅ Parse request body
+    // ✅ Parse and validate request body
     const body = await request.json();
-    const { bookingId, recipientEmail, recipientName, subject, message, templateId } = body;
-
-    // Validate required fields with detailed error messages
-    const missingFields: string[] = [];
-    if (!bookingId) missingFields.push('bookingId');
-    if (!recipientEmail) missingFields.push('recipientEmail');
-    if (!subject) missingFields.push('subject');
-    if (!message) missingFields.push('message');
-
-    if (missingFields.length > 0) {
-      logger.error('Missing required fields in send-email request', {
-        component: 'send-email-api',
-        action: 'validation_error',
-        metadata: {
-          missingFields,
-          receivedFields: Object.keys(body),
-        },
-      });
-      return NextResponse.json(
-        {
-          error: 'Missing required fields',
-          missingFields,
-          receivedFields: Object.keys(body),
-        },
-        { status: 400 }
-      );
-    }
+    const validated = sendEmailSchema.parse(body);
+    const { bookingId, recipientEmail, recipientName, subject, message, templateId } = validated;
 
     // ✅ Get booking to verify it exists
     const { data: booking, error: bookingError } = await supabase
@@ -97,17 +82,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ Initialize SendGrid with API key
-    const sendgridApiKey = process.env.SENDGRID_API_KEY || process.env.EMAIL_API_KEY;
+    const { getSendGridApiKey } = await import('@/lib/secrets/email');
+    const sendgridApiKey = await getSendGridApiKey();
     const emailFrom = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
     const emailFromName = process.env.EMAIL_FROM_NAME || 'U-Dig It Rentals';
-
-    if (!sendgridApiKey) {
-      logger.error('SendGrid API key not configured', {
-        component: 'send-email-api',
-        action: 'missing_api_key',
-      });
-      return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
-    }
 
     // ✅ Get template HTML if templateId provided
     let emailHtml = message;
@@ -206,16 +184,23 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error) {
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: err.issues },
+        { status: 400 }
+      );
+    }
+
     logger.error(
       'Failed to send email',
       {
         component: 'send-email-api',
         action: 'send_email_error',
       },
-      error instanceof Error ? error : new Error(String(error))
+      err instanceof Error ? err : new Error(String(err))
     );
 
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
-}
+});

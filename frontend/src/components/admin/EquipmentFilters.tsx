@@ -1,6 +1,7 @@
 'use client';
 
 import { Filter, X } from 'lucide-react';
+
 import { useState } from 'react';
 
 interface EquipmentFiltersProps {
@@ -42,7 +43,7 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
     onFiltersChange(clearedFilters);
   };
 
-  const hasActiveFilters = Object.values(filters).some(value => value !== '');
+  const hasActiveFilters = Object.values(filters).some((value) => value !== '');
 
   return (
     <div className="mb-6 rounded-lg bg-white p-4 shadow">
@@ -74,8 +75,8 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
           type="text"
           placeholder="Search by unit ID, serial number, or model..."
           value={filters.search}
-          onChange={e => handleFilterChange('search', e.target.value)}
-          className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
         />
       </div>
 
@@ -86,8 +87,8 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
             <select
               value={filters.status}
-              onChange={e => handleFilterChange('status', e.target.value)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
             >
               <option value="">All Statuses</option>
               <option value="AVAILABLE">Available</option>
@@ -101,8 +102,8 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">Location</label>
             <select
               value={filters.location}
-              onChange={e => handleFilterChange('location', e.target.value)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+              onChange={(e) => handleFilterChange('location', e.target.value)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
             >
               <option value="">All Locations</option>
               <option value="Main Yard">Main Yard</option>
@@ -117,8 +118,8 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">Make</label>
             <select
               value={filters.make}
-              onChange={e => handleFilterChange('make', e.target.value)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+              onChange={(e) => handleFilterChange('make', e.target.value)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
             >
               <option value="">All Makes</option>
               <option value="Kubota">Kubota</option>
@@ -134,8 +135,8 @@ export function EquipmentFilters({ onFiltersChange }: EquipmentFiltersProps) {
               type="text"
               placeholder="e.g., SVL-75"
               value={filters.model}
-              onChange={e => handleFilterChange('model', e.target.value)}
-              className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+              onChange={(e) => handleFilterChange('model', e.target.value)}
+              className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
             />
           </div>
         </div>

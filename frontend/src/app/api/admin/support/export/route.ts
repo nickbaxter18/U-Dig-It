@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 function formatCsvValue(value: unknown) {
@@ -8,7 +9,7 @@ function formatCsvValue(value: unknown) {
   return `"${asString.replace(/"/g, '""')}"`;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -21,10 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') ?? 'all';
@@ -184,4 +182,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export support tickets' }, { status: 500 });
   }
-}
+});

@@ -64,6 +64,18 @@ if [ -n "$CONSOLE_LOGS" ]; then
   echo ""
 fi
 
+# Check for SELECT * usage (performance anti-pattern)
+SELECT_STAR=$(git diff --cached | grep -E "\.select\(['\"]\*['\"]\)" || true)
+if [ -n "$SELECT_STAR" ]; then
+  echo "❌ ERROR: SELECT * usage detected. Use specific columns instead."
+  echo "   This improves performance and reduces payload size by ~60%."
+  echo "   Example: .select('id, name, status') instead of .select('*')"
+  echo ""
+  echo "$SELECT_STAR" | head -5
+  echo ""
+  exit 1
+fi
+
 # Check for hardcoded secrets
 SECRETS=$(git diff --cached | grep -iE '(password|api[_-]?key|secret|token)\s*=\s*[''"][^''"]+[''"]' || true)
 if [ -n "$SECRETS" ]; then

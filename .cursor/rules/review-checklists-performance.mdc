@@ -1,0 +1,142 @@
+# Performance Review Checklist
+
+## Purpose
+Detailed performance review checklist for proactive code review. Reference this when reviewing code for performance issues.
+
+---
+
+## Performance Review Checklist
+
+### Database Queries
+
+- [ ] **No N+1 queries**
+  ```typescript
+  // ❌ WRONG - N+1 queries
+  for (const booking of bookings) {
+    const equipment = await getEquipment(booking.equipmentId);
+  }
+
+  // ✅ CORRECT - Single query with join
+  const { data } = await supabase
+    .from('bookings')
+    .select('*, equipment:equipmentId(*)')
+    .eq('customerId', userId);
+  ```
+
+- [ ] **Pagination implemented** (for lists)
+  ```typescript
+  // ✅ CORRECT
+  .range(0, 19)
+  .limit(20)
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:147-153 (pagination pattern)
+
+- [ ] **Indexes exist for filters**
+  ```typescript
+  // ✅ CORRECT - Uses indexed column
+  .eq('customerId', userId) // Has idx_bookings_customer_id
+  .eq('status', 'confirmed') // Has idx_bookings_status
+  ```
+
+  **Reference**: @supabase/migrations/20251118_add_missing_indexes.sql (index patterns)
+
+- [ ] **Specific columns selected** (not SELECT *)
+  ```typescript
+  // ✅ CORRECT
+  .select('id, bookingNumber, status, totalAmount')
+
+  // ❌ WRONG
+  .select('*')
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:147-153 (specific columns)
+
+  **Performance Impact**: 60% payload reduction, 200ms → 15ms query time
+
+---
+
+### React Performance
+
+- [ ] **Memoization used** (expensive calculations)
+  ```typescript
+  // ✅ CORRECT
+  const totalCost = useMemo(() => {
+    return calculateBookingTotal(pricingFactors);
+  }, [pricingFactors]);
+  ```
+
+  **Reference**: @frontend/src/components/EnhancedBookingFlowV2.tsx:136-179 (memoized calculations)
+
+- [ ] **Callbacks memoized** (prevent re-renders)
+  ```typescript
+  // ✅ CORRECT
+  const handleSubmit = useCallback(() => {
+    performAction(id);
+  }, [id]);
+  ```
+
+- [ ] **Dynamic imports** (large components)
+  ```typescript
+  // ✅ CORRECT
+  const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
+    loading: () => <Spinner />,
+    ssr: false
+  });
+  ```
+
+---
+
+### Bundle Size
+
+- [ ] **Bundle size checked** (if new dependencies)
+  ```bash
+  # ✅ CORRECT - Check impact
+  pnpm size
+  ```
+
+- [ ] **Tree shaking enabled** (import only what's needed)
+  ```typescript
+  // ✅ CORRECT - Named imports
+  import { useState, useEffect } from 'react';
+
+  // ❌ WRONG - Full import
+  import * as React from 'react';
+  ```
+
+---
+
+### Caching
+
+- [ ] **Appropriate caching strategy** (if applicable)
+  ```typescript
+  // ✅ CORRECT - Cache expensive operations
+  const cacheKey = `${startDate}-${endDate}-${equipmentId}`;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  ```
+
+  **Reference**: @frontend/src/lib/availability-service.ts:45-63 (caching pattern)
+
+---
+
+## Performance Anti-Patterns
+
+### Always Avoid
+- ❌ SELECT * without pagination
+- ❌ N+1 database queries
+- ❌ Unindexed filters in WHERE clauses
+- ❌ Unmemoized expensive calculations
+- ❌ Full library imports when only specific functions needed
+- ❌ No pagination on list endpoints
+
+### Performance Wins
+- ✅ Specific columns → 60% payload reduction
+- ✅ Pagination → Prevents memory issues
+- ✅ Indexed filters → 200ms → 15ms query time
+- ✅ Memoization → Prevents unnecessary re-renders
+- ✅ Dynamic imports → Reduces initial bundle size
+
+---
+
+**Remember**: Performance matters. Always optimize queries, memoize calculations, and check bundle size.

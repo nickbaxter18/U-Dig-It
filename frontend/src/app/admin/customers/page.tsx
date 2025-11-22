@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { CustomerAvatar } from '@/components/admin/CustomerAvatar';
 import { CustomerEditModal } from '@/components/admin/CustomerEditModal';
 import { EmailCustomerModal } from '@/components/admin/EmailCustomerModal';
 import { PermissionGate } from '@/components/admin/PermissionGate';
@@ -32,6 +33,7 @@ interface Customer {
   lastBooking?: Date;
   registrationDate: Date;
   status: 'active' | 'suspended' | 'pending_verification';
+  avatarUrl?: string | null;
 }
 
 export default function CustomerManagement() {
@@ -75,7 +77,9 @@ export default function CustomerManagement() {
 
         const { data: usersData, error: usersError } = await supabase
           .from('users')
-          .select('*')
+          .select(
+            'id, firstName, lastName, email, phone, companyName, address, city, province, postalCode, emailVerified, status, createdAt, avatar_url'
+          )
           .order('createdAt', { ascending: false });
 
         if (usersError) throw usersError;
@@ -139,6 +143,7 @@ export default function CustomerManagement() {
             lastBooking,
             registrationDate: new Date(user.createdAt),
             status,
+            avatarUrl: user.avatar_url || null,
           };
         });
 
@@ -151,8 +156,9 @@ export default function CustomerManagement() {
             totalSpent: parseFloat(customer.totalSpent || '0'),
             lastBooking: customer.lastBooking ? new Date(customer.lastBooking) : undefined,
             registrationDate: new Date(customer.registrationDate),
+            avatarUrl: customer.avatar_url || null,
           })
-        );
+        ) as Customer[];
 
         setCustomers(transformedCustomers);
       }
@@ -296,14 +302,11 @@ export default function CustomerManagement() {
                 <tr key={customer.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        <div className="bg-kubota-orange flex h-10 w-10 items-center justify-between rounded-full">
-                          <span className="text-sm font-medium text-white">
-                            {customer.firstName?.[0] || '?'}
-                            {customer.lastName?.[0] || '?'}
-                          </span>
-                        </div>
-                      </div>
+                      <CustomerAvatar
+                        firstName={customer.firstName}
+                        lastName={customer.lastName}
+                        avatarUrl={customer.avatarUrl}
+                      />
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
                           {customer.firstName} {customer.lastName}
@@ -550,7 +553,7 @@ export default function CustomerManagement() {
                         });
                         setShowEmailModal(true);
                       }}
-                      className="bg-kubota-orange w-full rounded-md px-3 py-2 text-sm text-white hover:bg-orange-600"
+                      className="flex items-center justify-center space-x-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                     >
                       Send Email
                     </button>

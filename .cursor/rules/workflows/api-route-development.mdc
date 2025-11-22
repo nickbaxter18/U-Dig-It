@@ -1,0 +1,146 @@
+---
+description: "Complete API route development workflow with 8-step pattern from actual codebase. Includes rate limiting, request validation, authentication, sanitization, Zod validation, business logic, structured logging, and JSON responses. All steps reference @frontend/src/app/api/bookings/route.ts:72-297 with specific line numbers. Includes webhook patterns with service role client."
+globs: ["**/app/api/**/*.ts", "**/app/api/**/*.tsx"]
+alwaysApply: false
+---
+
+## API Route Development Workflow
+
+When creating or modifying API routes, follow this workflow.
+
+**Quick Reference**: @frontend/src/app/api/AGENTS.md
+**Detailed Patterns**: @frontend/src/app/api/.cursor/rules/api-route-patterns.mdc
+
+### Pre-Implementation
+
+1. **Check Existing Routes**
+   - Review @docs/reference/API_ROUTES_INDEX.md
+   - Find similar endpoints
+   - Reference actual implementation: @frontend/src/app/api/bookings/route.ts
+
+2. **Understand Pattern**
+   - Review 8-step pattern: @frontend/src/app/api/bookings/route.ts:72-297
+   - See rate limiter: @frontend/src/lib/rate-limiter.ts
+   - See request validator: @frontend/src/lib/request-validator.ts
+   - See logger: @frontend/src/lib/logger.ts
+
+### Implementation
+
+Follow the exact 8-step pattern from YOUR codebase:
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:72-297
+
+1. **Rate limit FIRST** (line 73-87)
+   ```typescript
+   const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+   if (!rateLimitResult.success) {
+     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+   }
+   ```
+
+2. **Validate request size/content-type** (line 90-97)
+   ```typescript
+   const requestValidation = await validateRequest(request, {
+     maxSize: 128 * 1024,
+     allowedContentTypes: ['application/json'],
+   });
+   if (!requestValidation.valid) {
+     return requestValidation.error!;
+   }
+   ```
+
+3. **Authenticate** (line 133-145)
+   ```typescript
+   const supabase = await createClient();
+   const { data: { user }, error: authError } = await supabase.auth.getUser();
+   if (authError || !user) {
+     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+   }
+   ```
+
+4. **Sanitize input** (line 101-102)
+   ```typescript
+   const rawBody = await request.json();
+   const parsedBody = schema.parse(rawBody);
+   const sanitized = sanitizeBookingPayload(parsedBody);
+   ```
+
+5. **Validate with Zod** (line 100-101)
+   ```typescript
+   const schema = z.object({ /* ... */ });
+   const validated = schema.parse(body);
+   ```
+
+6. **Process business logic** (line 147-214)
+   - Fetch data with specific columns (never SELECT *)
+   - Use pagination with .range() and .limit()
+   - Check availability/validity
+   - Calculate/process
+
+   **Query examples**:
+   - Equipment query: @frontend/src/app/api/bookings/route.ts:147-153
+   - Audit logs: @frontend/src/app/api/admin/audit/route.ts:25-31
+   - With joins: @frontend/src/app/api/admin/audit/export/route.ts:29-48
+
+7. **Log with structured logger** (line 226-235)
+   ```typescript
+   logger.info('Operation success', {
+     component: 'api-route-name',
+     action: 'operation',
+     metadata: { /* ... */ }
+   });
+
+   // For errors: logger.error('message', context, error) - error LAST
+   logger.error('Operation error', {
+     component: 'api-route-name',
+     action: 'error',
+     metadata: { error: error instanceof Error ? error.message : String(error) }
+   }, error instanceof Error ? error : undefined);
+   ```
+
+8. **Return JSON response** (line 237-266)
+   ```typescript
+   return NextResponse.json({
+     success: true,
+     data: result
+   }, { status: 200 });
+   ```
+
+### Webhook Routes
+
+For webhooks, use service client (bypasses RLS):
+```typescript
+import { createServiceClient } from '@/lib/supabase/service';
+const supabase = createServiceClient(); // Bypasses RLS
+```
+
+**Why**: Webhooks are server-to-server with no user session, so RLS blocks updates.
+
+**Real Examples**:
+- ✅ Correct: IDKit webhook: @frontend/src/app/api/webhooks/idkit/route.ts:79 (uses `createServiceClient()`)
+- ✅ Correct: SendGrid webhook: @frontend/src/app/api/webhooks/sendgrid/route.ts:19 (uses `createServiceClient()`)
+- ⚠️ Should update: Stripe webhook: @frontend/src/app/api/webhooks/stripe/route.ts:168 (uses `createClient()` - webhooks need service client to bypass RLS)
+
+Reference: @.cursor/rules/CODING_SAVANT_PATTERNS.mdc - Webhook Service Role Client section
+
+### Post-Implementation
+
+1. **Linter Checks**
+   - read_lints on route file
+   - Fix type errors
+   - Fix linting errors
+
+2. **Error Handling**
+   - Test error scenarios
+   - Verify proper error responses
+   - Check logging
+
+3. **Documentation**
+   - Auto-update @docs/reference/API_ROUTES_INDEX.md
+   - Document request/response format
+
+4. **Tests**
+   - Suggest integration tests
+   - Test rate limiting
+   - Test authentication
+   - Test validation

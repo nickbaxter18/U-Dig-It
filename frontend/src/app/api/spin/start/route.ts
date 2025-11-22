@@ -125,7 +125,9 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     const { data: existingSessions, error: checkError } = await supabase
       .from('spin_sessions')
-      .select('*')
+      .select(
+        'id, session_token, user_id, email, phone, spins_allowed, spins_used, outcomes, prize_pct, coupon_code, completed, expires_at, created_at'
+      )
       .eq('completed', false)
       .or(user ? `user_id.eq.${user.id}` : `email.eq.${email}`)
       .maybeSingle();

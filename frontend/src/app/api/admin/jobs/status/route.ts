@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * GET /api/admin/jobs/status
  * Get status summary for all background jobs
  */
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -108,7 +109,9 @@ export async function GET(request: NextRequest) {
     if (jobName) {
       const query = supabase
         .from('job_runs')
-        .select('*')
+        .select(
+          'id, job_name, job_type, status, started_at, finished_at, duration_ms, processed_count, success_count, failure_count, error_message, metadata, triggered_by, created_at'
+        )
         .eq('job_name', jobName)
         .order('started_at', { ascending: false })
         .limit(limit);
@@ -142,4 +145,4 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

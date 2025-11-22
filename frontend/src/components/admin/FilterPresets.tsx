@@ -1,6 +1,7 @@
 'use client';
 
 import { Bookmark, BookmarkCheck, Save, Trash2, X } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
 
 export interface FilterPreset {
@@ -47,9 +48,11 @@ export function FilterPresets({
   };
 
   const hasActiveFilters =
-    (currentFilters.dateRange?.start || currentFilters.dateRange?.end) ||
+    currentFilters.dateRange?.start ||
+    currentFilters.dateRange?.end ||
     (currentFilters.operators && currentFilters.operators.length > 0) ||
-    (currentFilters.multiSelects && Object.values(currentFilters.multiSelects).some(v => v.length > 0));
+    (currentFilters.multiSelects &&
+      Object.values(currentFilters.multiSelects).some((v) => v.length > 0));
 
   return (
     <div className={`relative ${className}`}>
@@ -61,16 +64,14 @@ export function FilterPresets({
           <Bookmark className="h-4 w-4" />
           <span>Presets</span>
           {presets.length > 0 && (
-            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs">
-              {presets.length}
-            </span>
+            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs">{presets.length}</span>
           )}
         </button>
 
         {hasActiveFilters && (
           <button
             onClick={() => setShowSaveModal(true)}
-            className="flex items-center space-x-2 rounded-md border border-kubota-orange bg-white px-3 py-1.5 text-sm font-medium text-kubota-orange hover:bg-orange-50"
+            className="flex items-center space-x-2 rounded-md border border-premium-gold bg-white px-3 py-1.5 text-sm font-medium text-premium-gold hover:bg-premium-gold-50"
           >
             <Save className="h-4 w-4" />
             <span>Save Preset</span>
@@ -96,10 +97,10 @@ export function FilterPresets({
           <input
             type="text"
             value={presetName}
-            onChange={e => setPresetName(e.target.value)}
+            onChange={(e) => setPresetName(e.target.value)}
             placeholder="Preset name..."
-            className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
-            onKeyDown={e => {
+            className="mb-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
+            onKeyDown={(e) => {
               if (e.key === 'Enter') handleSave();
               if (e.key === 'Escape') {
                 setShowSaveModal(false);
@@ -121,7 +122,7 @@ export function FilterPresets({
             <button
               onClick={handleSave}
               disabled={!presetName.trim()}
-              className="rounded-md bg-kubota-orange px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Save
             </button>
@@ -134,12 +135,10 @@ export function FilterPresets({
         <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-gray-200 bg-white shadow-lg">
           <div className="max-h-96 overflow-y-auto p-2">
             {presets.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-500">
-                No saved presets
-              </div>
+              <div className="py-4 text-center text-sm text-gray-500">No saved presets</div>
             ) : (
               <div className="space-y-1">
-                {presets.map(preset => (
+                {presets.map((preset) => (
                   <div
                     key={preset.id}
                     className="group flex items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
@@ -151,7 +150,7 @@ export function FilterPresets({
                       }}
                       className="flex flex-1 items-center space-x-2 text-left"
                     >
-                      <BookmarkCheck className="h-4 w-4 text-kubota-orange" />
+                      <BookmarkCheck className="h-4 w-4 text-premium-gold" />
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">{preset.name}</div>
                         <div className="text-xs text-gray-500">
@@ -187,4 +186,3 @@ export function FilterPresets({
     </div>
   );
 }
-

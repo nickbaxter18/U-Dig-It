@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { logPermissionChange } from '@/lib/permissions/audit';
 import { checkPermission } from '@/lib/permissions/middleware';
+import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 // Schema for user update
@@ -26,6 +27,15 @@ export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
+  // Rate limit FIRST - strict for user management
+  const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests', message: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: rateLimitResult.headers }
+    );
+  }
+
   try {
     // Handle Next.js 15 async params
     const params = await Promise.resolve(context.params);
@@ -151,7 +161,7 @@ export async function PATCH(
       if (currentUser.role === 'super_admin' && validatedData.role === 'admin') {
         const { count } = await supabase
           .from('users')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('role', 'super_admin')
           .eq('status', 'active');
 

@@ -130,9 +130,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
-    // Get date range parameter
+    // Get date range and pagination parameters
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get('dateRange') || '30d';
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     // Calculate date filter
     let dateFilter = new Date();
@@ -151,12 +155,20 @@ export async function GET(request: NextRequest) {
         break;
     }
 
-    // ✅ Fetch campaigns from Supabase
-    const { data: campaigns, error: campaignsError } = await supabase
+    // ✅ Fetch campaigns from Supabase with pagination
+    const {
+      data: campaigns,
+      error: campaignsError,
+      count,
+    } = await supabase
       .from('email_campaigns')
-      .select('*')
+      .select(
+        'id, name, description, template_id, subject, status, recipient_count, recipient_filter, scheduled_at, sent_at, completed_at, emails_sent, emails_delivered, emails_opened, emails_clicked, emails_bounced, emails_failed, created_at, updated_at',
+        { count: 'exact' }
+      )
       .gte('created_at', dateFilter.toISOString())
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (campaignsError) {
       throw new Error(`Database error: ${campaignsError.message}`);
@@ -179,9 +191,9 @@ export async function GET(request: NextRequest) {
       createdAt: campaign.created_at,
     }));
 
-    // ✅ Calculate stats
+    // ✅ Calculate stats (using total from pagination, not just current page)
     const stats = {
-      totalCampaigns: transformedCampaigns.length,
+      totalCampaigns: count || 0,
       activeCampaigns: transformedCampaigns.filter((c) =>
         ['scheduled', 'sending', 'sent'].includes(c.status)
       ).length,
@@ -218,6 +230,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       campaigns: transformedCampaigns,
       stats,
+      total: count || 0,
+      page,
+      pageSize,
     });
   } catch (error: unknown) {
     logger.error(
@@ -249,9 +264,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const {

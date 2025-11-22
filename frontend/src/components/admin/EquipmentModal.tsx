@@ -1,7 +1,10 @@
 'use client';
 
 import { X } from 'lucide-react';
+
 import { useEffect, useState } from 'react';
+
+import { AdminModal } from '@/components/admin/AdminModal';
 
 interface Equipment {
   id: string;
@@ -52,12 +55,14 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
 
   useEffect(() => {
     if (equipment) {
-      const specs = equipment.specifications as {
-        engine?: string;
-        horsepower?: string;
-        operatingWeight?: string;
-        bucketCapacity?: string;
-      } | undefined;
+      const specs = equipment.specifications as
+        | {
+            engine?: string;
+            horsepower?: string;
+            operatingWeight?: string;
+            bucketCapacity?: string;
+          }
+        | undefined;
       setFormData({
         unitId: equipment.unitId,
         serialNumber: equipment.serialNumber,
@@ -106,14 +111,14 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
   };
 
   const handleInputChange = (field: string, value: unknown) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
   const handleSpecificationChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       specifications: {
         ...prev.specifications,
@@ -123,22 +128,18 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
-      <div className="relative top-20 mx-auto w-11/12 max-w-4xl rounded-md border bg-white p-5 shadow-lg">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">
-            {equipment ? 'Edit Equipment' : 'Add New Equipment'}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
+    <AdminModal
+      isOpen={true}
+      onClose={onClose}
+      title={equipment ? 'Edit Equipment' : 'Add New Equipment'}
+      maxWidth="4xl"
+    >
+      <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Basic Information */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-gray-900">Basic Information</h4>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Unit ID *</label>
@@ -146,8 +147,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   type="text"
                   required
                   value={formData.unitId}
-                  onChange={e => handleInputChange('unitId', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('unitId', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., SVL75-001"
                 />
               </div>
@@ -160,8 +161,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   type="text"
                   required
                   value={formData.serialNumber}
-                  onChange={e => handleInputChange('serialNumber', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('serialNumber', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., KUBOTA-SVL75-2025-001"
                 />
               </div>
@@ -172,8 +173,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   type="text"
                   required
                   value={formData.make}
-                  onChange={e => handleInputChange('make', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('make', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -183,8 +184,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   type="text"
                   required
                   value={formData.model}
-                  onChange={e => handleInputChange('model', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('model', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., SVL-75-3"
                 />
               </div>
@@ -197,8 +198,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   min="2000"
                   max={new Date().getFullYear() + 1}
                   value={formData.year}
-                  onChange={e => handleInputChange('year', parseInt(e.target.value))}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('year', parseInt(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -207,8 +208,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <select
                   required
                   value={formData.location}
-                  onChange={e => handleInputChange('location', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 >
                   <option value="Main Yard">Main Yard</option>
                   <option value="Service Bay">Service Bay</option>
@@ -223,8 +224,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <select
                   required
                   value={formData.status}
-                  onChange={e => handleInputChange('status', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 >
                   <option value="AVAILABLE">Available</option>
                   <option value="RENTED">Rented</option>
@@ -236,7 +237,7 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
 
             {/* Pricing */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-gray-900">Pricing</h4>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing</h3>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Daily Rate *</label>
@@ -246,8 +247,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   min="0"
                   step="0.01"
                   value={formData.dailyRate}
-                  onChange={e => handleInputChange('dailyRate', parseFloat(e.target.value))}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('dailyRate', parseFloat(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -261,8 +262,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   min="0"
                   step="0.01"
                   value={formData.weeklyRate}
-                  onChange={e => handleInputChange('weeklyRate', parseFloat(e.target.value))}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('weeklyRate', parseFloat(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -276,8 +277,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   min="0"
                   step="0.01"
                   value={formData.monthlyRate}
-                  onChange={e => handleInputChange('monthlyRate', parseFloat(e.target.value))}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('monthlyRate', parseFloat(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -289,8 +290,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   type="number"
                   min="0"
                   value={formData.totalEngineHours}
-                  onChange={e => handleInputChange('totalEngineHours', parseInt(e.target.value))}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('totalEngineHours', parseInt(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -301,8 +302,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <input
                   type="date"
                   value={formData.lastMaintenance}
-                  onChange={e => handleInputChange('lastMaintenance', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('lastMaintenance', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
 
@@ -313,8 +314,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <input
                   type="date"
                   value={formData.nextMaintenance}
-                  onChange={e => handleInputChange('nextMaintenance', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleInputChange('nextMaintenance', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                 />
               </div>
             </div>
@@ -322,15 +323,15 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
 
           {/* Specifications */}
           <div className="space-y-4">
-            <h4 className="text-md font-medium text-gray-900">Specifications</h4>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Specifications</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Engine</label>
                 <input
                   type="text"
                   value={formData.specifications.engine || ''}
-                  onChange={e => handleSpecificationChange('engine', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleSpecificationChange('engine', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., Kubota V3800-CR-TE4"
                 />
               </div>
@@ -340,8 +341,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <input
                   type="text"
                   value={formData.specifications.horsepower || ''}
-                  onChange={e => handleSpecificationChange('horsepower', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleSpecificationChange('horsepower', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., 74.3 HP"
                 />
               </div>
@@ -353,8 +354,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <input
                   type="text"
                   value={formData.specifications.operatingWeight || ''}
-                  onChange={e => handleSpecificationChange('operatingWeight', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleSpecificationChange('operatingWeight', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., 8,818 lbs"
                 />
               </div>
@@ -366,8 +367,8 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                 <input
                   type="text"
                   value={formData.specifications.bucketCapacity || ''}
-                  onChange={e => handleSpecificationChange('bucketCapacity', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  onChange={(e) => handleSpecificationChange('bucketCapacity', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
                   placeholder="e.g., 1.25 cu yd"
                 />
               </div>
@@ -375,23 +376,23 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
           </div>
 
           {/* Form actions */}
-          <div className="flex justify-end space-x-3 border-t border-gray-200 pt-6">
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-kubota-orange rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               {equipment ? 'Update Equipment' : 'Add Equipment'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </AdminModal>
   );
 }

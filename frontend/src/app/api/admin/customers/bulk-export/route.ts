@@ -10,7 +10,7 @@ const bulkExportSchema = z.object({
   format: z.enum(['csv', 'pdf']).default('csv'),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,14 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    }
+    const { user } = adminResult;
 
     const payload = bulkExportSchema.parse(await request.json());
     const { customerIds, format } = payload;
@@ -50,7 +43,9 @@ export async function POST(request: NextRequest) {
       // Fallback to manual query
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('*')
+        .select(
+          'id, firstName, lastName, email, phone, companyName, address, city, province, postalCode, emailVerified, status, createdAt'
+        )
         .in('id', customerIds)
         .not('role', 'in', '("admin","super_admin")')
         .order('createdAt', { ascending: false });
@@ -256,4 +251,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to perform bulk export' }, { status: 500 });
   }
-}
+});

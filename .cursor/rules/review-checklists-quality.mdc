@@ -1,0 +1,139 @@
+# Code Quality Review Checklist
+
+## Purpose
+Detailed code quality review checklist for proactive code review. Reference this when reviewing code for quality standards.
+
+---
+
+## Code Quality Review Checklist
+
+### TypeScript Types
+
+- [ ] **TypeScript types correct** (no `any`)
+  ```typescript
+  // ✅ CORRECT
+  interface BookingData {
+    equipmentId: string;
+    startDate: string;
+    endDate: string;
+  }
+
+  // ❌ WRONG
+  const data: any = ...;
+  ```
+
+  **Reference**: See `@.cursor/rules/type-safety-patterns.mdc` for type safety patterns
+
+---
+
+### Error Handling
+
+- [ ] **Error handling comprehensive**
+  ```typescript
+  // ✅ CORRECT
+  try {
+    const result = await operation();
+    if (!result.success) {
+      logger.error('Operation failed', {
+        component: 'component-name',
+        action: 'operation',
+        metadata: { ...metadata }
+      });
+      return { error: 'User-friendly message' };
+    }
+  } catch (error) {
+    // IMPORTANT: Logger signature is logger.error('message', context, error) - error LAST
+    logger.error('Unexpected error', {
+      component: 'component-name',
+      action: 'error',
+      metadata: { error: error instanceof Error ? error.message : String(error) }
+    }, error instanceof Error ? error : undefined);
+    return { error: 'Something went wrong' };
+  }
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:267-299 (error handling pattern)
+  **Reference**: @frontend/src/lib/logger.ts:202-210 (logger signature)
+
+---
+
+### Logging
+
+- [ ] **Logging structured** (not console.log)
+  ```typescript
+  // ✅ CORRECT
+  logger.info('Booking created', {
+    component: 'booking-api',
+    action: 'create',
+    metadata: { bookingId, customerId }
+  });
+
+  // ❌ WRONG
+  console.log('Booking created');
+  ```
+
+  **Reference**: @frontend/src/lib/logger.ts (structured logging)
+
+---
+
+### Code Organization
+
+- [ ] **No TODOs/FIXMEs** (or documented)
+  ```typescript
+  // ✅ CORRECT - Documented TODO
+  // TODO: Add caching for equipment list (performance optimization)
+  // Issue: https://github.com/.../issues/123
+
+  // ❌ WRONG - Undocumented TODO
+  // TODO: Fix this later
+  ```
+
+- [ ] **Code formatted** (Prettier)
+  ```bash
+  # ✅ CORRECT - Auto-formats on save
+  # Prettier configured in .prettierrc
+  ```
+
+- [ ] **Imports optimized** (no unused)
+  ```typescript
+  // ✅ CORRECT - Only what's needed
+  import { useState, useEffect } from 'react';
+
+  // ❌ WRONG - Unused imports
+  import { useState, useEffect, useMemo, useCallback } from 'react';
+  ```
+
+---
+
+### Code Patterns
+
+- [ ] **Follows established patterns** (API routes, components, etc.)
+  - API routes: Follow 8-step pattern
+  - Components: Follow component structure pattern
+  - Database: Use Supabase MCP tools only
+
+  **Reference**: See `@.cursor/rules/CODING_SAVANT_PATTERNS.mdc` for codebase patterns
+
+---
+
+## Code Quality Standards
+
+### Always Check
+- ✅ No `any` types (use `unknown` with type guards or proper types)
+- ✅ Comprehensive error handling (try/catch, user-friendly messages)
+- ✅ Structured logging (logger, not console.log)
+- ✅ Code follows established patterns
+- ✅ No undocumented TODOs
+- ✅ Code formatted with Prettier
+- ✅ No unused imports
+
+### Common Quality Issues
+- ❌ Using `any` instead of proper types
+- ❌ Silent error swallowing (catch without logging)
+- ❌ Console.log instead of structured logger
+- ❌ Not following established patterns
+- ❌ Undocumented TODOs left in code
+
+---
+
+**Remember**: Code quality prevents bugs and makes code maintainable. Always follow standards and patterns.

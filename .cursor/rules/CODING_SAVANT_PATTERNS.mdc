@@ -1,5 +1,5 @@
 ---
-description: "Codebase-specific coding patterns, common mistakes, and performance optimizations learned from real bugs and fixes"
+description: "Codebase-specific patterns learned from real bugs: API route 8-step pattern, Supabase query optimization, RLS policies, webhook service role client, secrets management, frontend startup script, and common mistakes to avoid. All patterns include @filename references to actual codebase implementations."
 alwaysApply: true
 ---
 
@@ -13,17 +13,44 @@ These patterns capture codebase-specific expertise learned from fixing real bugs
 ## 🔥 Critical Patterns (Always Use)
 
 ### API Route Pattern
-For all API routes in this codebase, ALWAYS follow this exact 8-step pattern:
-1. Rate limit FIRST with `rateLimit(request, RateLimitPresets.STRICT)`
-2. Validate request size/content-type
-3. Authenticate with `supabase.auth.getUser()`
-4. Sanitize input with `sanitizeBookingFormData()`
-5. Validate with Zod schema
-6. Process business logic
-7. Log with structured logger
-8. Return JSON response
+For all API routes in this codebase, ALWAYS follow this exact 8-step pattern from YOUR actual codebase:
+
+**Reference the actual implementation**: @frontend/src/app/api/bookings/route.ts:72-297
+
+This real code shows the complete pattern:
+1. Rate limit FIRST with `rateLimit(request, RateLimitPresets.STRICT)` (line 73-87)
+   - Reference: @frontend/src/lib/rate-limiter.ts
+2. Validate request size/content-type (lines 90-97)
+   - Reference: @frontend/src/lib/request-validator.ts
+3. Authenticate with `supabase.auth.getUser()` (lines 133-145)
+   - Reference: @frontend/src/lib/supabase/server.ts
+4. Sanitize input with `sanitizeBookingFormData()` (line 101-102)
+   - Reference: @frontend/src/lib/input-sanitizer.ts
+5. Validate with Zod schema (line 100-101)
+   - Schema validation pattern
+6. Process business logic (lines 147-214)
+   - Equipment fetch, availability check, pricing calculation
+7. Log with structured logger (lines 226-235, 268-276)
+   - Reference: @frontend/src/lib/logger.ts:202-210
+   - **IMPORTANT**: Error signature is `logger.error('message', context, error)` - error LAST
+8. Return JSON response (lines 237-266)
+   - Proper response format with status codes
 
 **Why**: This pattern was established after fixing payment webhooks failing silently, booking creation failures, and rate limit bypasses.
+
+**Additional examples**:
+- Discount code validation: @frontend/src/app/api/discount-codes/validate/route.ts:14-214
+- Spin wheel start: @frontend/src/app/api/spin/start/route.ts:49-374
+  - Complex validation with multiple checks (lines 49-150)
+  - Non-blocking background operations (lines 277-342)
+  - Structured logging pattern (lines 260-275, 396-407)
+- ID verification submit: @frontend/src/app/api/id-verification/submit/route.ts:40-419
+  - File upload handling (lines 100-150)
+  - External API integration pattern (lines 200-300)
+  - Error recovery pattern (lines 350-389)
+- Contact form: @frontend/src/app/api/contact/route.ts:17-131
+  - Public endpoint pattern (no auth required)
+  - Malicious content detection (lines 58-70)
 
 ### Supabase Query Pattern
 For all Supabase queries in this codebase, ALWAYS:
@@ -32,6 +59,16 @@ For all Supabase queries in this codebase, ALWAYS:
 - Use indexed filters (check which columns have indexes)
 - Handle errors with logging
 - Always check for empty results before proceeding
+
+**Reference actual queries from YOUR codebase**:
+- ✅ Equipment query with specific columns: @frontend/src/app/api/bookings/route.ts:147-153
+- ✅ Availability check query: @frontend/src/app/api/bookings/route.ts:165-170
+- ✅ Audit logs with specific columns: @frontend/src/app/api/admin/audit/route.ts:25-31
+- ✅ Equipment summary with pagination: @frontend/src/app/api/admin/dashboard/overview/route.ts:176-179
+- ✅ Query with joins (users relation): @frontend/src/app/api/admin/audit/export/route.ts:29-48
+- ✅ All API routes now use specific columns (6 SELECT * queries fixed during audit)
+- ✅ ESLint rule prevents new SELECT * usage
+- ✅ Pre-commit hook blocks commits with SELECT * usage
 
 **Why**: This pattern reduces payload size by 60% and improves query time from 200ms to 15ms.
 
@@ -44,7 +81,18 @@ For all RLS policies in this codebase, ALWAYS:
 **Why**: This pattern was established after fixing RLS performance issues that caused slow queries.
 
 ### Webhook Service Role Client
-For all webhook endpoints in this codebase, ALWAYS use service role client (`createAdminClient` with `SUPABASE_SERVICE_ROLE_KEY`), not regular `createClient()`.
+For all webhook endpoints in this codebase, ALWAYS use service client (`createServiceClient()` from `@/lib/supabase/service`), not regular `createClient()`.
+
+**Correct Pattern**:
+```typescript
+import { createServiceClient } from '@/lib/supabase/service';
+const supabase = createServiceClient(); // Bypasses RLS
+```
+
+**Real Examples**:
+- ✅ Correct: IDKit webhook: @frontend/src/app/api/webhooks/idkit/route.ts:79
+- ✅ Correct: SendGrid webhook: @frontend/src/app/api/webhooks/sendgrid/route.ts:19
+- ⚠️ Should update: Stripe webhook: @frontend/src/app/api/webhooks/stripe/route.ts:168 (uses regular client)
 
 **Why**: Webhooks are server-to-server calls with NO user session, so RLS blocks updates with regular client. This was the root cause of payment webhooks failing silently - they returned 200 OK but didn't update the database.
 
@@ -101,6 +149,23 @@ Be careful with `setTimeout` cleanup in React `useEffect`. Don't clear timers pr
 
 **Why**: The payment success overlay stuck on "Updating..." because cleanup cleared the redirect timer before the 3-second delay completed.
 
+**Proper pattern**:
+```typescript
+useEffect(() => {
+  let mounted = true;
+  const timer = setTimeout(() => {
+    if (mounted) {
+      // Do action
+    }
+  }, 3000);
+
+  return () => {
+    mounted = false;
+    clearTimeout(timer);
+  };
+}, []);
+```
+
 ### Using Regular Client for Webhooks
 Never use regular `createClient()` for webhook endpoints - always use service role client.
 
@@ -111,10 +176,30 @@ Never access `process.env` directly for API keys or secrets - always use secrets
 
 **Why**: This codebase uses Supabase Edge Function secrets and `system_config` table. Direct `process.env` access bypasses the unified secrets system, causing services to fail when secrets are stored in Supabase or database. This was the root cause of emails not sending and payment buttons failing.
 
-### SELECT * Without Pagination
-Never use `SELECT *` without pagination - always specify columns and add `.range()` / `.limit()`.
+### SELECT * Usage (FORBIDDEN)
+**NEVER use `SELECT *`** - Always specify columns. This is now enforced by ESLint rule and pre-commit hook.
 
-**Why**: Causes memory issues and slow queries (200ms+ vs 15ms with optimization).
+**Pattern**:
+```typescript
+// ❌ FORBIDDEN - ESLint will error, pre-commit will block
+const { data } = await supabase.from('bookings').select('*');
+
+// ✅ REQUIRED - Use specific columns
+const { data } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status, totalAmount')
+  .range(0, 19)
+  .limit(20);
+```
+
+**Why**:
+- 60% payload reduction (specific columns vs SELECT *)
+- 200ms → 15ms query time improvement
+- Prevents memory issues
+- ESLint rule: Automatically detects and errors
+- Pre-commit hook: Blocks commits with SELECT * usage
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:147-153
 
 ### Missing RLS Policy Indexes
 Always index columns referenced in RLS policies.

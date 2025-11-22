@@ -1,8 +1,17 @@
 'use client';
 
-import { AlertTriangle, Calendar, Download, List, RefreshCw, Truck } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  List,
+  RefreshCw,
+  Truck,
+} from 'lucide-react';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -11,6 +20,8 @@ import { BookingCalendarView } from '@/components/admin/BookingCalendarView';
 import { BookingDetailsModal } from '@/components/admin/BookingDetailsModal';
 import { BookingFilters } from '@/components/admin/BookingFilters';
 import { BookingsTable } from '@/components/admin/BookingsTable';
+import { BulkEmailModal } from '@/components/admin/BulkEmailModal';
+import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
@@ -160,6 +171,9 @@ export default function AdminBookingsPage() {
   const [flaggedBookings, setFlaggedBookings] = useState<unknown[]>([]);
   const [upcomingDeliveries, setUpcomingDeliveries] = useState<LogisticsItem[]>([]);
   const [upcomingReturns, setUpcomingReturns] = useState<LogisticsItem[]>([]);
+  const [nextReturnDate, setNextReturnDate] = useState<LogisticsItem | null>(null);
+  const [showAllDeliveries, setShowAllDeliveries] = useState(false);
+  const [showAllReturns, setShowAllReturns] = useState(false);
   const [isConnected, setIsConnected] = useState(true); // Supabase connection status
   const [advancedFilters, setAdvancedFilters] = useState<{
     dateRange?: DateRange;
@@ -170,91 +184,140 @@ export default function AdminBookingsPage() {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [bulkActionError, setBulkActionError] = useState<string | null>(null);
   const [bulkActionMessage, setBulkActionMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchBookings = useCallback(
-    async (newFilters?: BookingFilters) => {
+    async (newFilters?: BookingFilters, retryAttempt = 0) => {
+      // Cancel previous request if still pending
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new AbortController for this request
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       try {
         setLoading(true);
         setError(null);
 
         const currentFilters = { ...filters, ...newFilters };
 
-        // Build Supabase query
-        let query = supabase.from('bookings').select(
-          `
-          id,
-          bookingNumber,
-          startDate,
-          endDate,
-          status,
-          totalAmount,
-          createdAt,
-          deliveryAddress,
-          specialInstructions,
-          internalNotes,
-          depositAmount,
-          balanceAmount:balance_amount,
-          balanceDueAt:balance_due_at,
-          billingStatus:billing_status,
-          equipment:equipmentId (
-            id,
-            make,
-            model
-          ),
-          customer:customerId (
-            id,
-            firstName,
-            lastName,
-            email,
-            phone
-          )
-        `,
-          { count: 'exact' }
-        );
+        // Build API URL with query parameters
+        const params = new URLSearchParams();
+        const page = currentFilters.page || 1;
+        const limit = currentFilters.limit || 20;
+        params.append('page', String(page));
+        params.append('limit', String(limit));
 
-        // Apply filters
         if (currentFilters.status) {
           const statusFilter = normalizeStatusValue(currentFilters.status);
           if (statusFilter) {
-            query = query.eq('status', statusFilter);
+            params.append('status', statusFilter);
           }
         }
         if (currentFilters.customerId) {
-          query = query.eq('customerId', currentFilters.customerId);
+          params.append('customerId', currentFilters.customerId);
         }
         if (currentFilters.equipmentId) {
-          query = query.eq('equipmentId', currentFilters.equipmentId);
+          params.append('equipmentId', currentFilters.equipmentId);
         }
         if (currentFilters.startDate) {
-          query = query.gte('startDate', currentFilters.startDate);
+          params.append('startDate', currentFilters.startDate);
         }
         if (currentFilters.endDate) {
-          query = query.lte('endDate', currentFilters.endDate);
+          params.append('endDate', currentFilters.endDate);
         }
         if (currentFilters.search) {
-          query = query.or(
-            `bookingNumber.ilike.%${currentFilters.search}%,deliveryAddress.ilike.%${currentFilters.search}%`
-          );
+          params.append('search', currentFilters.search);
+        }
+        if (currentFilters.sortBy) {
+          params.append('sortBy', currentFilters.sortBy);
+        }
+        if (currentFilters.sortOrder) {
+          params.append('sortOrder', currentFilters.sortOrder);
         }
 
-        // Apply sorting
-        const sortField = currentFilters.sortBy || 'createdAt';
-        const sortAscending = currentFilters.sortOrder === 'ASC';
-        query = query.order(sortField, { ascending: sortAscending });
+        const response = await fetchWithAuth(`/api/admin/bookings?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+          signal: abortController.signal,
+        });
 
-        // Apply pagination
-        const page = currentFilters.page || 1;
-        const limit = currentFilters.limit || 20;
-        const from = (page - 1) * limit;
-        const to = from + limit - 1;
-        query = query.range(from, to);
+        if (!response.ok) {
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          try {
+            const body = await response.json();
+            errorMessage = body?.error || errorMessage;
+            logger.error(
+              'Bookings API returned error',
+              {
+                component: 'app-page',
+                action: 'api_error',
+                metadata: {
+                  status: response.status,
+                  statusText: response.statusText,
+                  error: body?.error,
+                  body,
+                },
+              },
+              new Error(errorMessage)
+            );
+          } catch (parseError) {
+            const text = await response.text().catch(() => 'Unable to read response');
+            logger.error(
+              'Failed to parse error response',
+              {
+                component: 'app-page',
+                action: 'parse_error_response',
+                metadata: {
+                  status: response.status,
+                  statusText: response.statusText,
+                  responseText: text.substring(0, 500),
+                },
+              },
+              parseError instanceof Error ? parseError : new Error(String(parseError))
+            );
+          }
+          throw new Error(errorMessage);
+        }
 
-        const { data, error, count } = await query;
+        const result = await response.json().catch((parseError) => {
+          logger.error(
+            'Failed to parse bookings response',
+            {
+              component: 'app-page',
+              action: 'parse_error',
+              metadata: { status: response.status, statusText: response.statusText },
+            },
+            parseError instanceof Error ? parseError : new Error(String(parseError))
+          );
+          throw new Error('Invalid response from server');
+        });
 
-        if (error) throw error;
+        const data = result.bookings || [];
+        const total = result.total || 0;
+
+        if (!Array.isArray(data)) {
+          logger.error(
+            'Invalid bookings data format',
+            {
+              component: 'app-page',
+              action: 'data_format_error',
+              metadata: { resultType: typeof result, resultKeys: Object.keys(result || {}) },
+            },
+            new Error('Bookings data is not an array')
+          );
+          throw new Error('Invalid data format received from server');
+        }
 
         // Transform data
-        const bookingsData: Booking[] = ((data || []) as unknown[]).map((booking: unknown) => ({
+        const bookingsData: Booking[] = (data as unknown[]).map((booking: unknown) => ({
           id: booking.id,
           bookingNumber: booking.bookingNumber,
           customer: {
@@ -272,7 +335,7 @@ export default function AdminBookingsPage() {
           startDate: booking.startDate,
           endDate: booking.endDate,
           status: booking.status,
-          total: parseFloat(booking.totalAmount),
+          total: parseFloat(booking.totalAmount || 0),
           createdAt: booking.createdAt,
           deliveryAddress: booking.deliveryAddress ?? null,
           specialInstructions: booking.specialInstructions ?? null,
@@ -282,13 +345,11 @@ export default function AdminBookingsPage() {
               ? Number(booking.depositAmount)
               : null,
           balanceAmount:
-            booking.balanceAmount !== undefined && booking.balanceAmount !== null
-              ? Number(booking.balanceAmount)
-              : booking.balance_amount !== undefined && booking.balance_amount !== null
-                ? Number(booking.balance_amount)
-                : null,
-          balanceDueAt: booking.balanceDueAt ?? booking.balance_due_at ?? null,
-          billingStatus: booking.billingStatus ?? booking.billing_status ?? null,
+            booking.balance_amount !== undefined && booking.balance_amount !== null
+              ? Number(booking.balance_amount)
+              : null,
+          balanceDueAt: booking.balance_due_at ?? null,
+          billingStatus: booking.billing_status ?? null,
         }));
 
         setBookings(bookingsData);
@@ -298,27 +359,48 @@ export default function AdminBookingsPage() {
         setPagination({
           page,
           limit,
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / limit),
+          total,
+          totalPages: Math.ceil(total / limit),
         });
       } catch (err) {
-        if (process.env.NODE_ENV === 'development') {
-          logger.error(
-            'Failed to fetch bookings:',
-            { component: 'app-page', action: 'error' },
-            err instanceof Error ? err : new Error(String(err))
-          );
+        // Don't retry if request was aborted
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
         }
-        // Error handled in logger above
+
+        // Retry on network errors
+        if (
+          retryAttempt < 3 &&
+          (err instanceof TypeError || (err as Error).message.includes('fetch'))
+        ) {
+          const delay = Math.min(1000 * Math.pow(2, retryAttempt), 10000);
+          setTimeout(() => {
+            fetchBookings(newFilters, retryAttempt + 1);
+          }, delay);
+          return;
+        }
+
+        logger.error(
+          'Failed to fetch bookings',
+          {
+            component: 'app-page',
+            action: 'fetch_bookings_error',
+            metadata: { retryAttempt },
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
         setError(err instanceof Error ? err.message : 'Failed to fetch bookings');
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
+        abortControllerRef.current = null;
       }
     },
     [filters]
   );
 
-  const fetchFlaggedBookings = useCallback(async () => {
+  const fetchFlaggedBookings = useCallback(async (retryAttempt = 0) => {
     try {
       // Query bookings that might need attention (pending insurance, missing documents, etc.)
       const { data, error } = await supabase
@@ -343,8 +425,28 @@ export default function AdminBookingsPage() {
 
       if (error) throw error;
       setFlaggedBookings(data || []);
-    } catch {
-      // Error logged in development mode only
+    } catch (err) {
+      // Retry on network errors
+      if (
+        retryAttempt < 2 &&
+        (err instanceof TypeError || (err as Error).message.includes('fetch'))
+      ) {
+        const delay = Math.min(1000 * Math.pow(2, retryAttempt), 5000);
+        setTimeout(() => {
+          fetchFlaggedBookings(retryAttempt + 1);
+        }, delay);
+        return;
+      }
+
+      logger.error(
+        'Failed to fetch flagged bookings',
+        {
+          component: 'app-page',
+          action: 'fetch_flagged_error',
+          metadata: { retryAttempt },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setFlaggedBookings([]);
     }
   }, []);
@@ -352,10 +454,14 @@ export default function AdminBookingsPage() {
   const fetchUpcomingDeliveries = useCallback(async () => {
     try {
       // Query bookings with upcoming start dates (next 7 days)
+      // Use start of today (midnight) to include bookings starting today
       const now = new Date();
-      const weekFromNow = new Date();
+      now.setHours(0, 0, 0, 0); // Start of today
+      const weekFromNow = new Date(now);
       weekFromNow.setDate(weekFromNow.getDate() + 7);
+      weekFromNow.setHours(23, 59, 59, 999); // End of day 7 days from now
 
+      // Include all statuses that represent scheduled bookings (not yet started)
       const { data, error } = await supabase
         .from('bookings')
         .select(
@@ -378,7 +484,14 @@ export default function AdminBookingsPage() {
         )
         .gte('startDate', now.toISOString())
         .lte('startDate', weekFromNow.toISOString())
-        .in('status', ['confirmed', 'paid'])
+        .in('status', [
+          'confirmed',
+          'paid',
+          'insurance_verified',
+          'verify_hold_ok',
+          'hold_placed',
+          'deposit_scheduled',
+        ])
         .order('startDate', { ascending: true })
         .limit(10);
 
@@ -399,18 +512,31 @@ export default function AdminBookingsPage() {
             undefined,
         })) ?? [];
       setUpcomingDeliveries(mapped);
-    } catch {
-      // Error logged in development mode only
+    } catch (err) {
+      logger.error(
+        'Failed to fetch upcoming deliveries',
+        {
+          component: 'app-page',
+          action: 'fetch_deliveries_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setUpcomingDeliveries([]);
     }
   }, []);
 
   const fetchUpcomingReturns = useCallback(async () => {
     try {
+      // Use start of today (midnight) to include bookings ending today
       const now = new Date();
-      const weekFromNow = new Date();
+      now.setHours(0, 0, 0, 0); // Start of today
+      const weekFromNow = new Date(now);
       weekFromNow.setDate(weekFromNow.getDate() + 7);
+      weekFromNow.setHours(23, 59, 59, 999); // End of day 7 days from now
 
+      // First, query for returns in the next 7 days
+      // Include active rentals AND confirmed/paid bookings (scheduled to return)
+      // Include all statuses that represent active or scheduled rentals
       const { data, error } = await supabase
         .from('bookings')
         .select(
@@ -433,7 +559,17 @@ export default function AdminBookingsPage() {
         )
         .gte('endDate', now.toISOString())
         .lte('endDate', weekFromNow.toISOString())
-        .in('status', ['in_progress', 'ready_for_pickup', 'delivered'])
+        .in('status', [
+          'in_progress',
+          'ready_for_pickup',
+          'delivered',
+          'confirmed',
+          'paid',
+          'insurance_verified',
+          'verify_hold_ok',
+          'hold_placed',
+          'deposit_scheduled',
+        ])
         .order('endDate', { ascending: true })
         .limit(10);
 
@@ -454,9 +590,79 @@ export default function AdminBookingsPage() {
             undefined,
         })) ?? [];
       setUpcomingReturns(mapped);
-    } catch {
-      // Error logged in development mode only
+
+      // If no returns in the next week, find the next upcoming return (any future date)
+      if (mapped.length === 0) {
+        const { data: nextData, error: nextError } = await supabase
+          .from('bookings')
+          .select(
+            `
+            id,
+            bookingNumber,
+            endDate,
+            status,
+            deliveryAddress,
+            customer:customerId (
+              firstName,
+              lastName,
+              phone
+            ),
+            equipment:equipmentId (
+              make,
+              model
+            )
+          `
+          )
+          .gte('endDate', now.toISOString())
+          .in('status', [
+            'in_progress',
+            'ready_for_pickup',
+            'delivered',
+            'confirmed',
+            'paid',
+            'insurance_verified',
+            'verify_hold_ok',
+            'hold_placed',
+            'deposit_scheduled',
+          ])
+          .order('endDate', { ascending: true })
+          .limit(1);
+
+        if (!nextError && nextData && nextData.length > 0) {
+          const nextReturn: LogisticsItem = {
+            id: nextData[0].id,
+            bookingNumber: nextData[0].bookingNumber,
+            status: nextData[0].status,
+            scheduledAt: nextData[0].endDate,
+            address: nextData[0].deliveryAddress,
+            customerName:
+              [nextData[0].customer?.firstName, nextData[0].customer?.lastName]
+                .filter(Boolean)
+                .join(' ') || undefined,
+            customerPhone: nextData[0].customer?.phone ?? null,
+            equipmentName:
+              [nextData[0].equipment?.make, nextData[0].equipment?.model]
+                .filter(Boolean)
+                .join(' ') || undefined,
+          };
+          setNextReturnDate(nextReturn);
+        } else {
+          setNextReturnDate(null);
+        }
+      } else {
+        setNextReturnDate(null);
+      }
+    } catch (err) {
+      logger.error(
+        'Failed to fetch upcoming returns',
+        {
+          component: 'app-page',
+          action: 'fetch_returns_error',
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setUpcomingReturns([]);
+      setNextReturnDate(null);
     }
   }, []);
 
@@ -496,11 +702,13 @@ export default function AdminBookingsPage() {
               metadata: { payload },
             });
           }
-          // Refresh bookings when changes detected
-          fetchBookings();
-          fetchFlaggedBookings();
-          fetchUpcomingDeliveries();
-          fetchUpcomingReturns();
+          // Debounce real-time updates to prevent excessive refreshes
+          setTimeout(() => {
+            fetchBookings();
+            fetchFlaggedBookings();
+            fetchUpcomingDeliveries();
+            fetchUpcomingReturns();
+          }, 500);
         }
       )
       .subscribe((status) => {
@@ -510,6 +718,10 @@ export default function AdminBookingsPage() {
     // Cleanup subscription on unmount
     return () => {
       supabase.removeChannel(channel);
+      // Cancel any pending requests on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [fetchBookings, fetchFlaggedBookings, fetchUpcomingDeliveries, fetchUpcomingReturns]);
 
@@ -626,14 +838,14 @@ export default function AdminBookingsPage() {
   };
 
   const handleBulkDelete = () => {
-    if (
-      selectedBookingIds.length > 0 &&
-      confirm(
-        `Delete ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'}? This cannot be undone.`
-      )
-    ) {
-      performBulkAction({ operation: 'delete' });
+    if (selectedBookingIds.length > 0) {
+      setShowDeleteConfirm(true);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    setShowDeleteConfirm(false);
+    performBulkAction({ operation: 'delete' });
   };
 
   const handleBulkExport = async () => {
@@ -683,17 +895,14 @@ export default function AdminBookingsPage() {
     }
   };
 
-  const handleBulkEmail = async () => {
+  const handleBulkEmail = () => {
     if (selectedBookingIds.length === 0 || bulkActionLoading) return;
+    setShowEmailModal(true);
+  };
 
-    const subject = prompt('Email Subject:', 'Booking Update');
-    if (!subject) return;
-
-    const message = prompt(
-      'Email Message (use {{customerName}} and {{bookingNumber}} as placeholders):',
-      'Dear {{customerName}},\n\nThis is regarding your booking {{bookingNumber}}.\n\nThank you.'
-    );
-    if (!message) return;
+  const submitBulkEmail = async (subject: string, message: string) => {
+    setShowEmailModal(false);
+    if (!subject.trim() || !message.trim()) return;
 
     try {
       setBulkActionLoading(true);
@@ -707,8 +916,8 @@ export default function AdminBookingsPage() {
         },
         body: JSON.stringify({
           bookingIds: selectedBookingIds,
-          subject,
-          message,
+          subject: subject.trim(),
+          message: message.trim(),
           emailType: 'custom',
         }),
       });
@@ -724,6 +933,15 @@ export default function AdminBookingsPage() {
       );
       setSelectedBookingIds([]);
     } catch (emailError) {
+      logger.error(
+        'Failed to send bulk emails',
+        {
+          component: 'app-page',
+          action: 'bulk_email_error',
+          metadata: { bookingCount: selectedBookingIds.length },
+        },
+        emailError instanceof Error ? emailError : new Error(String(emailError))
+      );
       setBulkActionError(
         emailError instanceof Error ? emailError.message : 'Failed to send emails'
       );
@@ -832,8 +1050,16 @@ export default function AdminBookingsPage() {
       };
 
       return booking;
-    } catch {
-      // Error logged in development mode only
+    } catch (err) {
+      logger.error(
+        'Failed to fetch booking by ID',
+        {
+          component: 'app-page',
+          action: 'fetch_booking_by_id_error',
+          metadata: { bookingId },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       return null;
     }
   }, []);
@@ -874,14 +1100,18 @@ export default function AdminBookingsPage() {
 
   const handleBookingUpdate = async (bookingId: string, updates: Record<string, unknown>) => {
     try {
-      // MIGRATED: Update booking in Supabase
-      const supabaseClient: any = supabase;
-      const { error: updateError } = await supabaseClient
-        .from('bookings')
-        .update(updates)
-        .eq('id', bookingId);
+      const response = await fetchWithAuth(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to update booking');
+      }
 
       if (process.env.NODE_ENV === 'development') {
         logger.debug('[Admin Bookings] Booking updated successfully:', {
@@ -897,21 +1127,33 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      // Error logged in development mode only
+      logger.error(
+        'Failed to update booking',
+        {
+          component: 'app-page',
+          action: 'update_booking_error',
+          metadata: { bookingId },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to update booking');
     }
   };
 
   const handleStatusUpdate = async (bookingId: string, status: string) => {
     try {
-      // MIGRATED: Update booking status in Supabase
-      const supabaseClient: any = supabase;
-      const { error: updateError } = await supabaseClient
-        .from('bookings')
-        .update({ status })
-        .eq('id', bookingId);
+      const response = await fetchWithAuth(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to update booking status');
+      }
 
       if (process.env.NODE_ENV === 'development') {
         logger.debug('[Admin Bookings] Booking status updated:', {
@@ -927,25 +1169,37 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      // Error logged in development mode only
+      logger.error(
+        'Failed to update booking status',
+        {
+          component: 'app-page',
+          action: 'update_status_error',
+          metadata: { bookingId, status },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to update booking status');
     }
   };
 
   const handleCancelBooking = async (bookingId: string, reason?: string) => {
     try {
-      // MIGRATED: Cancel booking in Supabase
-      const supabaseClient: any = supabase;
-      const { error: updateError } = await supabaseClient
-        .from('bookings')
-        .update({
+      const response = await fetchWithAuth(`/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           status: 'cancelled',
           cancelledAt: new Date().toISOString(),
           cancellationReason: reason || 'Cancelled by admin',
-        })
-        .eq('id', bookingId);
+        }),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Failed to cancel booking');
+      }
 
       if (process.env.NODE_ENV === 'development') {
         logger.debug('[Admin Bookings] Booking cancelled:', {
@@ -961,7 +1215,15 @@ export default function AdminBookingsPage() {
       fetchUpcomingDeliveries();
       fetchUpcomingReturns();
     } catch (err) {
-      // Error logged in development mode only
+      logger.error(
+        'Failed to cancel booking',
+        {
+          component: 'app-page',
+          action: 'cancel_booking_error',
+          metadata: { bookingId, reason },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
       setError(err instanceof Error ? err.message : 'Failed to cancel booking');
     }
   };
@@ -1005,46 +1267,66 @@ export default function AdminBookingsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        Skip to main content
+      </a>
+
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Booking Management</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-900" id="page-title">
+            Booking Management
+          </h1>
+          <p className="text-gray-600" id="page-description">
             Manage all bookings, view schedules, and track deliveries.
           </p>
         </div>
 
         <div className="flex items-center space-x-4">
           {/* WebSocket connection indicator */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2" role="status" aria-live="polite">
             <div
               className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+              aria-hidden="true"
             ></div>
-            <span className="text-sm text-gray-500">{isConnected ? 'Live' : 'Offline'}</span>
+            <span
+              className="text-sm text-gray-500"
+              aria-label={`Connection status: ${isConnected ? 'Live' : 'Offline'}`}
+            >
+              {isConnected ? 'Live' : 'Offline'}
+            </span>
           </div>
 
           {/* View mode toggle */}
-          <div className="flex rounded-lg bg-gray-100 p-1">
+          <div className="flex rounded-lg bg-gray-100 p-1" role="group" aria-label="View mode">
             <button
               onClick={() => handleViewModeChange('table')}
+              aria-pressed={viewMode === 'table'}
+              aria-label="View bookings as table"
               className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
                 viewMode === 'table'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <List className="mr-1 inline h-4 w-4" />
+              <List className="mr-1 inline h-4 w-4" aria-hidden="true" />
               Table
             </button>
             <button
               onClick={() => handleViewModeChange('calendar')}
+              aria-pressed={viewMode === 'calendar'}
+              aria-label="View bookings as calendar"
               className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
                 viewMode === 'calendar'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <Calendar className="mr-1 inline h-4 w-4" />
+              <Calendar className="mr-1 inline h-4 w-4" aria-hidden="true" />
               Calendar
             </button>
           </div>
@@ -1052,18 +1334,21 @@ export default function AdminBookingsPage() {
           {/* Action buttons */}
           <button
             onClick={handleExport}
+            aria-label="Export bookings to CSV"
             className="flex items-center space-x-2 rounded-md bg-gray-100 px-3 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
-            <Download className="h-4 w-4" />
+            <Download className="h-4 w-4" aria-hidden="true" />
             <span>Export</span>
           </button>
 
           <button
             onClick={handleRefresh}
             disabled={loading}
+            aria-label="Refresh bookings data"
+            aria-busy={loading}
             className="flex items-center space-x-2 rounded-md bg-blue-600 px-3 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span>Refresh</span>
           </button>
         </div>
@@ -1071,11 +1356,15 @@ export default function AdminBookingsPage() {
 
       {/* Alerts */}
       {flaggedBookings.length > 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+        <div
+          className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
+          role="alert"
+          aria-live="polite"
+        >
           <div className="flex">
-            <AlertTriangle className="mt-0.5 h-5 w-5 text-yellow-500" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 text-yellow-500" aria-hidden="true" />
             <div className="ml-3 flex-1">
-              <h3 className="text-sm font-semibold text-yellow-900">
+              <h3 className="text-sm font-semibold text-yellow-900" id="flagged-bookings-title">
                 {flaggedBookings.length} booking
                 {flaggedBookings.length === 1 ? '' : 's'} need attention
               </h3>
@@ -1155,10 +1444,16 @@ export default function AdminBookingsPage() {
       )}
 
       {(upcomingDeliveries.length > 0 || upcomingReturns.length > 0) && (
-        <div className="rounded-lg bg-white p-4 shadow">
+        <div
+          className="rounded-lg bg-white p-4 shadow"
+          role="region"
+          aria-labelledby="logistics-schedule-title"
+        >
           <div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Delivery & Return Schedule</h2>
+              <h2 id="logistics-schedule-title" className="text-lg font-semibold text-gray-900">
+                Delivery & Return Schedule
+              </h2>
               <p className="text-sm text-gray-500">
                 Logistics tasks scheduled over the next seven days.
               </p>
@@ -1172,9 +1467,12 @@ export default function AdminBookingsPage() {
           </div>
 
           <div className="mt-4 grid gap-6 md:grid-cols-2">
-            <div>
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700">
-                <Truck className="h-4 w-4" />
+            <div role="region" aria-labelledby="deliveries-title">
+              <h3
+                id="deliveries-title"
+                className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-700"
+              >
+                <Truck className="h-4 w-4" aria-hidden="true" />
                 Upcoming Deliveries
               </h3>
               <div className="space-y-3">
@@ -1183,125 +1481,201 @@ export default function AdminBookingsPage() {
                     No deliveries scheduled in the next week.
                   </p>
                 ) : (
-                  upcomingDeliveries.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{booking.bookingNumber}</span>
-                        <span className="text-xs uppercase tracking-wide text-blue-500">
-                          {formatStatusLabel(booking.status)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-blue-700">
-                        {formatDateTime(booking.scheduledAt)}
-                      </p>
-                      {booking.equipmentName && (
-                        <p className="mt-2 text-xs text-blue-800">
-                          Equipment: <span className="font-medium">{booking.equipmentName}</span>
-                        </p>
-                      )}
-                      {booking.address && (
-                        <p className="mt-1 text-xs text-blue-800">
-                          Address: <span className="font-medium">{booking.address}</span>
-                        </p>
-                      )}
-                      {booking.customerName && (
-                        <p className="mt-1 text-xs text-blue-800">
-                          Customer: <span className="font-medium">{booking.customerName}</span>
-                        </p>
-                      )}
-                      <div className="mt-3 flex items-center justify-between">
-                        <button
-                          onClick={() => {
-                            const match = bookings.find((b) => b.id === booking.id);
-                            if (match) {
-                              handleBookingSelect(match);
-                            }
-                          }}
-                          className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                  <>
+                    {(showAllDeliveries ? upcomingDeliveries : upcomingDeliveries.slice(0, 1)).map(
+                      (booking) => (
+                        <div
+                          key={booking.id}
+                          className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900"
                         >
-                          View booking
-                        </button>
-                        {booking.customerPhone && (
-                          <a
-                            href={`tel:${booking.customerPhone}`}
-                            className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                          >
-                            Call customer
-                          </a>
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{booking.bookingNumber}</span>
+                            <span className="text-xs uppercase tracking-wide text-blue-500">
+                              {formatStatusLabel(booking.status)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-blue-700">
+                            {formatDateTime(booking.scheduledAt)}
+                          </p>
+                          {booking.equipmentName && (
+                            <p className="mt-2 text-xs text-blue-800">
+                              Equipment:{' '}
+                              <span className="font-medium">{booking.equipmentName}</span>
+                            </p>
+                          )}
+                          {booking.address && (
+                            <p className="mt-1 text-xs text-blue-800">
+                              Address: <span className="font-medium">{booking.address}</span>
+                            </p>
+                          )}
+                          {booking.customerName && (
+                            <p className="mt-1 text-xs text-blue-800">
+                              Customer: <span className="font-medium">{booking.customerName}</span>
+                            </p>
+                          )}
+                          <div className="mt-3 flex items-center justify-between">
+                            <button
+                              onClick={() => {
+                                const match = bookings.find((b) => b.id === booking.id);
+                                if (match) {
+                                  handleBookingSelect(match);
+                                }
+                              }}
+                              aria-label={`View booking ${booking.bookingNumber}`}
+                              className="text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                              View booking
+                            </button>
+                            {booking.customerPhone && (
+                              <a
+                                href={`tel:${booking.customerPhone}`}
+                                aria-label={`Call customer for booking ${booking.bookingNumber}`}
+                                className="text-xs font-medium text-blue-600 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                              >
+                                Call customer
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                    {upcomingDeliveries.length > 1 && (
+                      <button
+                        onClick={() => setShowAllDeliveries(!showAllDeliveries)}
+                        aria-expanded={showAllDeliveries}
+                        aria-controls="deliveries-list"
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        {showAllDeliveries ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                            <span>Show less</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                            <span>See all ({upcomingDeliveries.length - 1} more)</span>
+                          </>
                         )}
-                      </div>
-                    </div>
-                  ))
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
 
-            <div>
-              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                <Calendar className="h-4 w-4" />
+            <div role="region" aria-labelledby="returns-title">
+              <h3
+                id="returns-title"
+                className="mb-3 flex items-center gap-2 text-sm font-semibold text-emerald-700"
+              >
+                <Calendar className="h-4 w-4" aria-hidden="true" />
                 Upcoming Returns
               </h3>
               <div className="space-y-3">
                 {upcomingReturns.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                    No returns scheduled in the next week.
-                  </p>
-                ) : (
-                  upcomingReturns.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{booking.bookingNumber}</span>
-                        <span className="text-xs uppercase tracking-wide text-emerald-500">
-                          {formatStatusLabel(booking.status)}
+                  nextReturnDate ? (
+                    <div className="rounded-md border border-dashed border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                      <p className="mb-2 font-medium">No returns scheduled in the next week.</p>
+                      <p className="text-xs">
+                        Next return:{' '}
+                        <span className="font-semibold">{nextReturnDate.bookingNumber}</span> on{' '}
+                        <span className="font-semibold">
+                          {formatDateTime(nextReturnDate.scheduledAt)}
                         </span>
-                      </div>
-                      <p className="mt-1 text-xs text-emerald-700">
-                        {formatDateTime(booking.scheduledAt)}
-                      </p>
-                      {booking.equipmentName && (
-                        <p className="mt-2 text-xs text-emerald-800">
-                          Equipment: <span className="font-medium">{booking.equipmentName}</span>
-                        </p>
-                      )}
-                      {booking.address && (
-                        <p className="mt-1 text-xs text-emerald-800">
-                          Return to: <span className="font-medium">{booking.address}</span>
-                        </p>
-                      )}
-                      {booking.customerName && (
-                        <p className="mt-1 text-xs text-emerald-800">
-                          Customer: <span className="font-medium">{booking.customerName}</span>
-                        </p>
-                      )}
-                      <div className="mt-3 flex items-center justify-between">
-                        <button
-                          onClick={() => {
-                            const match = bookings.find((b) => b.id === booking.id);
-                            if (match) {
-                              handleBookingSelect(match);
-                            }
-                          }}
-                          className="text-xs font-medium text-emerald-600 hover:text-emerald-800"
-                        >
-                          View booking
-                        </button>
-                        {booking.customerPhone && (
-                          <a
-                            href={`tel:${booking.customerPhone}`}
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-800"
-                          >
-                            Call customer
-                          </a>
+                        {nextReturnDate.equipmentName && (
+                          <span className="block mt-1">
+                            Equipment:{' '}
+                            <span className="font-medium">{nextReturnDate.equipmentName}</span>
+                          </span>
                         )}
-                      </div>
+                      </p>
                     </div>
-                  ))
+                  ) : (
+                    <p className="rounded-md border border-dashed border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                      No returns scheduled in the next week.
+                    </p>
+                  )
+                ) : (
+                  <>
+                    {(showAllReturns ? upcomingReturns : upcomingReturns.slice(0, 1)).map(
+                      (booking) => (
+                        <div
+                          key={booking.id}
+                          className="rounded-md border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-900"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{booking.bookingNumber}</span>
+                            <span className="text-xs uppercase tracking-wide text-emerald-500">
+                              {formatStatusLabel(booking.status)}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-emerald-700">
+                            {formatDateTime(booking.scheduledAt)}
+                          </p>
+                          {booking.equipmentName && (
+                            <p className="mt-2 text-xs text-emerald-800">
+                              Equipment:{' '}
+                              <span className="font-medium">{booking.equipmentName}</span>
+                            </p>
+                          )}
+                          {booking.address && (
+                            <p className="mt-1 text-xs text-emerald-800">
+                              Return to: <span className="font-medium">{booking.address}</span>
+                            </p>
+                          )}
+                          {booking.customerName && (
+                            <p className="mt-1 text-xs text-emerald-800">
+                              Customer: <span className="font-medium">{booking.customerName}</span>
+                            </p>
+                          )}
+                          <div className="mt-3 flex items-center justify-between">
+                            <button
+                              onClick={() => {
+                                const match = bookings.find((b) => b.id === booking.id);
+                                if (match) {
+                                  handleBookingSelect(match);
+                                }
+                              }}
+                              aria-label={`View booking ${booking.bookingNumber}`}
+                              className="text-xs font-medium text-emerald-600 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                            >
+                              View booking
+                            </button>
+                            {booking.customerPhone && (
+                              <a
+                                href={`tel:${booking.customerPhone}`}
+                                aria-label={`Call customer for booking ${booking.bookingNumber}`}
+                                className="text-xs font-medium text-emerald-600 hover:text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                              >
+                                Call customer
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                    {upcomingReturns.length > 1 && (
+                      <button
+                        onClick={() => setShowAllReturns(!showAllReturns)}
+                        aria-expanded={showAllReturns}
+                        aria-controls="returns-list"
+                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                      >
+                        {showAllReturns ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                            <span>Show less</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                            <span>See all ({upcomingReturns.length - 1} more)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1311,26 +1685,51 @@ export default function AdminBookingsPage() {
 
       {/* Error message */}
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4">
+        <div
+          className="rounded-md border border-red-200 bg-red-50 p-4"
+          role="alert"
+          aria-live="assertive"
+        >
           <div className="flex">
+            <AlertTriangle className="h-5 w-5 text-red-500" aria-hidden="true" />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <div className="mt-2 text-sm text-red-700">
+              <h3 className="text-sm font-medium text-red-800" id="error-title">
+                Error
+              </h3>
+              <div className="mt-2 text-sm text-red-700" id="error-message">
                 <p>{error}</p>
               </div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchBookings();
+                }}
+                className="mt-3 text-sm font-medium text-red-800 underline hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                aria-label="Retry fetching bookings"
+              >
+                Retry
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {bulkActionError && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div
+          className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+          role="alert"
+          aria-live="assertive"
+        >
           {bulkActionError}
         </div>
       )}
 
       {bulkActionMessage && (
-        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+        <div
+          className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-700"
+          role="status"
+          aria-live="polite"
+        >
           {bulkActionMessage}
         </div>
       )}
@@ -1387,8 +1786,15 @@ export default function AdminBookingsPage() {
       )}
 
       {/* Filters */}
-      <div className="space-y-4 rounded-lg bg-white p-4 shadow">
-        <div className="flex flex-wrap gap-3">
+      <div
+        className="space-y-4 rounded-lg bg-white p-4 shadow"
+        role="region"
+        aria-labelledby="filters-title"
+      >
+        <h2 id="filters-title" className="sr-only">
+          Booking Filters
+        </h2>
+        <div className="flex flex-wrap gap-3" role="group" aria-label="Booking status filters">
           {OPERATIONAL_DRILLDOWNS.map((drilldown) => {
             const drilldownStatus = drilldown.status;
             const currentStatus = filters.status;
@@ -1399,9 +1805,11 @@ export default function AdminBookingsPage() {
               <button
                 key={drilldown.id}
                 onClick={() => handleDrilldownSelect(drilldown.status)}
-                className={`flex min-w-[12rem] flex-col rounded-lg border px-3 py-2 text-left transition ${
+                aria-pressed={isActive}
+                aria-label={`Filter by ${drilldown.label.toLowerCase()}`}
+                className={`flex min-w-[12rem] flex-col rounded-lg border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-premium-gold focus:ring-offset-2 ${
                   isActive
-                    ? 'border-kubota-orange bg-orange-50 text-orange-900 shadow-sm'
+                    ? 'border-premium-gold bg-premium-gold-50 text-premium-gold-dark shadow-sm'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
@@ -1467,7 +1875,12 @@ export default function AdminBookingsPage() {
       </div>
 
       {/* Content */}
-      <div className="rounded-lg bg-white shadow">
+      <div
+        id="main-content"
+        className="rounded-lg bg-white shadow"
+        role="main"
+        aria-labelledby="page-title"
+      >
         {viewMode === 'table' ? (
           <BookingsTable
             bookings={bookings}
@@ -1506,6 +1919,27 @@ export default function AdminBookingsPage() {
           onCancel={handleCancelBooking}
         />
       )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
+        title="Delete Bookings"
+        message={`Are you sure you want to delete ${selectedBookingIds.length} booking${selectedBookingIds.length === 1 ? '' : 's'}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={bulkActionLoading}
+      />
+
+      {/* Bulk Email Modal */}
+      <BulkEmailModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onSubmit={submitBulkEmail}
+        isLoading={bulkActionLoading}
+      />
     </div>
   );
 }

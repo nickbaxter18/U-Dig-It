@@ -16,6 +16,8 @@ import {
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 import { useAdminToast } from './AdminToastProvider';
@@ -238,7 +240,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
             });
             setShowCreateModal(true);
           }}
-          className="inline-flex items-center rounded-md bg-kubota-orange px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
         >
           <Plus className="mr-2 h-4 w-4" /> Create Rule
         </button>
@@ -261,7 +263,7 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
               });
               setShowCreateModal(true);
             }}
-            className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+            className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
           >
             Create your first rule
           </button>
@@ -342,172 +344,160 @@ export function NotificationRulesManager({ onRuleChange }: NotificationRulesMana
       )}
 
       {/* Create/Edit Rule Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900">Create Notification Rule</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingRule(null);
-                  setFormData({
-                    name: '',
-                    ruleType: 'booking_pickup_reminder',
-                    daysBefore: 1,
-                    channels: ['email'],
-                    isActive: true,
-                    priority: 0,
-                  });
-                }}
-                className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateRule} className="p-6 space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Rule Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="e.g., Pickup Reminder 24h Before"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Rule Type</label>
-                <select
-                  value={formData.ruleType}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, ruleType: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                >
-                  {RULE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Days Before Event
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="30"
-                  value={formData.daysBefore}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, daysBefore: parseInt(e.target.value) || 0 }))
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  How many days before the event should the notification be sent?
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Notification Channels
-                </label>
-                <div className="mt-2 flex flex-wrap gap-3">
-                  {CHANNELS.map((channel) => {
-                    const Icon = channel.icon;
-                    const isSelected = formData.channels.includes(channel.value);
-                    return (
-                      <button
-                        key={channel.value}
-                        type="button"
-                        onClick={() => toggleChannel(channel.value)}
-                        className={`flex items-center rounded-md border px-3 py-2 text-sm font-medium transition ${
-                          isSelected
-                            ? 'border-kubota-orange bg-orange-50 text-kubota-orange'
-                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        <Icon className="mr-2 h-4 w-4" />
-                        {channel.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {formData.channels.length === 0 && (
-                  <p className="mt-1 text-xs text-red-500">At least one channel must be selected</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={formData.priority}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, priority: parseInt(e.target.value) || 0 }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Higher priority rules are processed first
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.isActive}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
-                      }
-                      className="rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Active</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setEditingRule(null);
-                    setFormData({
-                      name: '',
-                      ruleType: 'booking_pickup_reminder',
-                      daysBefore: 1,
-                      channels: ['email'],
-                      isActive: true,
-                      priority: 0,
-                    });
-                  }}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={formData.channels.length === 0}
-                  className="inline-flex items-center rounded-md bg-kubota-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  Create Rule
-                </button>
-              </div>
-            </form>
+      <AdminModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingRule(null);
+          setFormData({
+            name: '',
+            ruleType: 'booking_pickup_reminder',
+            daysBefore: 1,
+            channels: ['email'],
+            isActive: true,
+            priority: 0,
+          });
+        }}
+        title="Create Notification Rule"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleCreateRule} className="p-6 space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Rule Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="e.g., Pickup Reminder 24h Before"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Rule Type</label>
+            <select
+              value={formData.ruleType}
+              onChange={(e) => setFormData((prev) => ({ ...prev, ruleType: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              {RULE_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Days Before Event
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="30"
+              value={formData.daysBefore}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, daysBefore: parseInt(e.target.value) || 0 }))
+              }
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              required
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              How many days before the event should the notification be sent?
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Notification Channels
+            </label>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {CHANNELS.map((channel) => {
+                const Icon = channel.icon;
+                const isSelected = formData.channels.includes(channel.value);
+                return (
+                  <button
+                    key={channel.value}
+                    type="button"
+                    onClick={() => toggleChannel(channel.value)}
+                    className={`flex items-center rounded-md border px-3 py-2 text-sm font-medium transition ${
+                      isSelected
+                        ? 'border-premium-gold bg-premium-gold-50 text-premium-gold'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="mr-2 h-4 w-4" />
+                    {channel.label}
+                  </button>
+                );
+              })}
+            </div>
+            {formData.channels.length === 0 && (
+              <p className="mt-1 text-xs text-red-500">At least one channel must be selected</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Priority</label>
+              <input
+                type="number"
+                min="0"
+                max="10"
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, priority: parseInt(e.target.value) || 0 }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Higher priority rules are processed first
+              </p>
+            </div>
+            <div className="flex items-center">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))}
+                  className="rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
+                />
+                <span className="text-sm font-medium text-gray-700">Active</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreateModal(false);
+                setEditingRule(null);
+                setFormData({
+                  name: '',
+                  ruleType: 'booking_pickup_reminder',
+                  daysBefore: 1,
+                  channels: ['email'],
+                  isActive: true,
+                  priority: 0,
+                });
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={formData.channels.length === 0}
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 inline-flex items-center px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:shadow-none"
+            >
+              Create Rule
+            </button>
+          </div>
+        </form>
+      </AdminModal>
     </div>
   );
 }

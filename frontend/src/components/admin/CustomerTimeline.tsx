@@ -208,7 +208,7 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
   if (loading) {
     return (
       <div className="flex h-32 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-kubota-orange border-t-transparent"></div>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-premium-gold border-t-transparent"></div>
       </div>
     );
   }
@@ -234,7 +234,7 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
             onClick={() => toggleEventTypeFilter(option.value)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               eventTypeFilter.includes(option.value)
-                ? 'bg-kubota-orange text-white'
+                ? 'bg-premium-gold text-black'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -259,7 +259,7 @@ export function CustomerTimeline({ customerId, onEventChange }: CustomerTimeline
           {eventTypeFilter.length > 0 && (
             <button
               onClick={() => setEventTypeFilter([])}
-              className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+              className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
             >
               Clear filters to see all events
             </button>

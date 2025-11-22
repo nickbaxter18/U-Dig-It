@@ -6,9 +6,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { checkPermission } from '@/lib/permissions/middleware';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     // This allows us to provide helpful error messages when migrations aren't applied
     const { data: permissions, error: permError } = await supabase
       .from('permissions')
-      .select('*')
+      .select('id, name, description, resource, action, created_at, updated_at')
       .limit(1);
 
     if (permError) {
@@ -141,12 +142,27 @@ export async function GET(request: NextRequest) {
       return permissionResult.error || NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(
+      Math.max(parseInt(searchParams.get('pageSize') || '100', 10), 1),
+      500
+    );
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
     // Now fetch all permissions (we already checked table exists)
-    const { data: allPermissions, error: fetchError } = await supabase
+    const {
+      data: allPermissions,
+      error: fetchError,
+      count,
+    } = await supabase
       .from('permissions')
-      .select('*')
+      .select('id, name, description, resource, action, created_at, updated_at', { count: 'exact' })
       .order('resource', { ascending: true })
-      .order('action', { ascending: true });
+      .order('action', { ascending: true })
+      .range(rangeStart, rangeEnd);
 
     if (fetchError) {
       logger.error('Failed to fetch permissions', {
@@ -175,6 +191,12 @@ export async function GET(request: NextRequest) {
         category: p.category,
         isSystem: p.is_system,
       })),
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
     });
   } catch (error) {
     logger.error('Unexpected error fetching permissions', {
@@ -184,4 +206,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

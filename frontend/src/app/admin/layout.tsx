@@ -4,10 +4,11 @@ import { ReactNode, useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { AdminBreadcrumb } from '@/components/admin/AdminBreadcrumb';
+import { AdminFooter } from '@/components/admin/AdminFooter';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminToastProvider } from '@/components/admin/AdminToastProvider';
+import { ErrorBoundary } from '@/components/admin/ErrorBoundary';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 
 import { logger } from '@/lib/logger';
@@ -57,7 +58,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -76,7 +77,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="bg-kubota-orange rounded-md px-4 py-2 text-white hover:bg-orange-600"
+            className="bg-blue-600 rounded-md px-4 py-2 text-white hover:bg-blue-700"
           >
             Go to Dashboard
           </button>
@@ -88,22 +89,39 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <AdminQueryClientProvider>
       <AdminToastProvider>
-        <div className="flex h-screen bg-gray-50 overflow-hidden">
-          {/* Sidebar */}
-          <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex h-screen flex-col bg-gray-50 overflow-hidden">
+          {/* Skip to main content link for keyboard navigation */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-md focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Skip to main content
+          </a>
+          {/* Header - Full width at top */}
+          <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
 
-          {/* Main content */}
-          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-            {/* Header */}
-            <AdminHeader onMenuClick={() => setSidebarOpen(true)} />
+          {/* Content area with sidebar and main */}
+          <div className="flex flex-1 overflow-hidden min-h-0">
+            {/* Sidebar */}
+            <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            {/* Breadcrumb */}
-            <AdminBreadcrumb />
+            {/* Main content */}
+            <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+              {/* Page content */}
+              <main
+                id="main-content"
+                className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 min-h-0"
+                role="main"
+                aria-label="Dashboard content"
+              >
+                <ErrorBoundary>
+                  <div className="mx-auto w-full max-w-7xl h-full">{children}</div>
+                </ErrorBoundary>
+              </main>
 
-            {/* Page content */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 min-h-0">
-              <div className="mx-auto w-full max-w-7xl h-full">{children}</div>
-            </main>
+              {/* Footer */}
+              <AdminFooter />
+            </div>
           </div>
         </div>
       </AdminToastProvider>

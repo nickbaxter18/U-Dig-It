@@ -3,10 +3,11 @@ import { ZodError } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { supportTemplateCreateSchema } from '@/lib/validators/admin/support';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -14,27 +15,46 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    const { data, error: fetchError } = await supabase
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
+    const {
+      data,
+      error: fetchError,
+      count,
+    } = await supabase
       .from('support_templates')
-      .select('*')
-      .order('name', { ascending: true });
+      .select('id, name, channel, subject, body, created_by, created_at, updated_at', {
+        count: 'exact',
+      })
+      .order('name', { ascending: true })
+      .range(rangeStart, rangeEnd);
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch support templates',
-        { component: 'admin-support-templates', action: 'fetch_failed' });
+      logger.error('Failed to fetch support templates', {
+        component: 'admin-support-templates',
+        action: 'fetch_failed',
+      });
       return NextResponse.json({ error: 'Unable to load support templates' }, { status: 500 });
     }
 
-    return NextResponse.json({ templates: data ?? [] });
+    return NextResponse.json({
+      templates: data ?? [],
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
+    });
   } catch (err) {
     logger.error(
       'Unexpected error fetching support templates',
@@ -43,9 +63,9 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -53,19 +73,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = supportTemplateCreateSchema.parse(await request.json());
 
@@ -116,4 +129,4 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

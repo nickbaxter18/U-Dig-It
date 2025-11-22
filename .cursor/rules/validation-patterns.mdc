@@ -1,0 +1,404 @@
+# Validation Patterns
+
+## Purpose
+Comprehensive validation patterns for input, business logic, state, and database validation to prevent invalid data and security vulnerabilities.
+
+---
+
+## Core Principles
+
+1. **Validate on server-side ALWAYS** - Client-side validation is for UX only
+2. **Sanitize before validate** - Clean input before checking
+3. **Use Zod for schema validation** - Type-safe, composable validation
+4. **Validate business rules separately** - Domain logic validation
+5. **Check database constraints** - Enforce data integrity
+
+---
+
+## Pattern 1: Server-Side Input Validation (API Routes)
+
+**Why**: Client-side validation can be bypassed. Server-side validation is mandatory for security.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - 8-step API route pattern with validation
+export async function POST(request: NextRequest) {
+  // 1. Rate limit
+  const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+
+  // 2. Validate request size/content-type
+  const requestValidation = await validateRequest(request, {
+    maxSize: 128 * 1024,
+    allowedContentTypes: ['application/json'],
+  });
+
+  // 3. Authenticate
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // 4. Sanitize input
+  const rawBody = await request.json();
+  const sanitized = sanitizeBookingFormData(rawBody);
+
+  // 5. Validate with Zod schema
+  const parsedBody = bookingSchema.parse(sanitized);
+
+  // 6-8. Process business logic, log, return response
+}
+```
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:72-102 (complete validation pattern)
+
+**Zod Schema Pattern**:
+```typescript
+// ✅ CORRECT - Comprehensive Zod schema
+const bookingSchema = z.object({
+  equipmentId: z.string().min(1, 'Equipment ID is required'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
+  customerInfo: z.object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Invalid email address'),
+    phone: z.string().min(1, 'Phone number is required'),
+  }).optional(),
+  deliveryAddress: z.object({
+    street: z.string().min(1, 'Street address is required'),
+    city: z.string().min(1, 'City is required'),
+    postalCode: z.string().min(1, 'Postal code is required'),
+    distanceKm: z.number().min(0).max(500).optional(),
+  }),
+  notes: z.string().max(MAX_NOTES_LENGTH).optional(),
+});
+```
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:24-59 (Zod schema definition)
+
+---
+
+## Pattern 2: Input Sanitization
+
+**Why**: Sanitize user input to remove dangerous characters and prevent XSS/injection attacks.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Sanitize before validation
+import { sanitizeBookingFormData } from '@/lib/input-sanitizer';
+
+const rawBody = await request.json();
+const sanitized = sanitizeBookingFormData(rawBody);
+const validated = schema.parse(sanitized);
+```
+
+**Sanitization Functions**:
+- `sanitizeTextInput()` - Removes control characters, null bytes, dangerous Unicode
+- `sanitizeEmail()` - Validates email format, removes invalid characters
+- `sanitizePhone()` - Normalizes phone number format
+- `sanitizeBookingFormData()` - Sanitizes booking form data
+- `detectMaliciousInput()` - Detects SQL injection, XSS attempts
+
+**Reference**: @frontend/src/lib/input-sanitizer.ts (complete sanitization utilities)
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:101 (sanitization before validation)
+
+---
+
+## Pattern 3: Business Logic Validation
+
+**Why**: Business rules (dates, pricing, availability) must be validated separately from input validation.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Validate business rules
+const validateBookingDates = (startDate: string, endDate: string): string | undefined => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (start < today) {
+    return 'Start date cannot be in the past';
+  }
+
+  if (end <= start) {
+    return 'End date must be after start date';
+  }
+
+  const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  if (daysDiff > 365) {
+    return 'Maximum rental period is 1 year';
+  }
+
+  return undefined;
+};
+```
+
+**Reference**: @frontend/src/components/EnhancedBookingFlowV2.tsx:381-409 (date validation)
+
+**Reference**: @frontend/src/lib/validation.ts:48-57 (date range validation)
+
+**Business Rule Validation Checklist**:
+- [ ] Date ranges valid (start < end, not in past)
+- [ ] Equipment availability checked
+- [ ] Pricing calculated correctly
+- [ ] Discount codes valid and applicable
+- [ ] Delivery location valid
+- [ ] Maximum rental period enforced
+
+---
+
+## Pattern 4: Form State Validation (Client-Side)
+
+**Why**: Client-side validation provides immediate feedback to users, improving UX.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Real-time form validation with debouncing
+import { useFormValidation } from '@/hooks/useFormValidation';
+
+const validationRules: ValidationRule<FormData>[] = [
+  {
+    field: 'startDate',
+    validate: (value, formData) => {
+      if (!value) return 'Start date is required';
+      const startDate = new Date(value as string);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (startDate < today) return 'Start date cannot be in the past';
+      return undefined;
+    },
+    debounceMs: 500,
+  },
+  {
+    field: 'endDate',
+    validate: (value, formData) => {
+      if (!value) return 'End date is required';
+      if (formData.startDate && value) {
+        const start = new Date(formData.startDate as string);
+        const end = new Date(value as string);
+        if (end <= start) return 'End date must be after start date';
+      }
+      return undefined;
+    },
+    debounceMs: 500,
+  },
+];
+
+const { errors, validateAll, touchField } = useFormValidation(formData, validationRules);
+```
+
+**Reference**: @frontend/src/hooks/useFormValidation.ts (form validation hook)
+
+**Component Validation Pattern**:
+```typescript
+// ✅ CORRECT - Validate on step change
+const validateStep = (step: number): boolean => {
+  const newErrors: Record<string, string> = {};
+
+  if (step >= 1) {
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    } else {
+      const startDate = new Date(formData.startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (startDate < today) {
+        newErrors.startDate = 'Start date cannot be in the past';
+      }
+    }
+
+    if (!formData.endDate) {
+      newErrors.endDate = 'End date is required';
+    } else if (formData.startDate && formData.endDate) {
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      if (endDate <= startDate) {
+        newErrors.endDate = 'End date must be after start date';
+      }
+    }
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+```
+
+**Reference**: @frontend/src/components/EnhancedBookingFlowV2.tsx:373-430 (step-by-step validation)
+
+---
+
+## Pattern 5: Database Constraint Validation
+
+**Why**: Database constraints enforce data integrity at the database level.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Validate before database insert
+const { data, error } = await supabase
+  .from('bookings')
+  .insert({
+    equipmentId: validated.equipmentId,
+    startDate: validated.startDate,
+    endDate: validated.endDate,
+    // ... other fields
+  })
+  .select()
+  .single();
+
+if (error) {
+  // Handle database constraint violations
+  if (error.code === '23505') { // Unique constraint violation
+    return { error: 'Booking already exists' };
+  }
+  if (error.code === '23503') { // Foreign key constraint violation
+    return { error: 'Invalid equipment ID' };
+  }
+  throw error;
+}
+```
+
+**Database Constraints to Validate**:
+- Unique constraints (booking numbers, email addresses)
+- Foreign key constraints (equipmentId, customerId)
+- Check constraints (status values, date ranges)
+- NOT NULL constraints (required fields)
+
+---
+
+## Pattern 6: Request Size and Content-Type Validation
+
+**Why**: Prevent DoS attacks from large payloads and ensure correct content type.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Validate request before processing
+import { validateRequest } from '@/lib/request-validator';
+
+const requestValidation = await validateRequest(request, {
+  maxSize: 128 * 1024, // 128KB for booking payloads
+  allowedContentTypes: ['application/json'],
+});
+
+if (!requestValidation.valid) {
+  return requestValidation.error!;
+}
+
+const body = await request.json();
+```
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:90-97 (request validation)
+
+---
+
+## Pattern 7: Malicious Input Detection
+
+**Why**: Detect and block SQL injection, XSS, and other attack patterns.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Detect malicious input
+import { detectMaliciousInput } from '@/lib/input-sanitizer';
+
+const maliciousCheck = detectMaliciousInput(userInput);
+if (maliciousCheck.isMalicious) {
+  logger.warn('Malicious input detected', {
+    component: 'input-sanitizer',
+    action: 'malicious_detection',
+    metadata: { reason: maliciousCheck.reason },
+  });
+  return { error: 'Invalid input detected' };
+}
+```
+
+**Reference**: @frontend/src/lib/input-sanitizer.ts:422-470 (malicious input detection)
+
+**Reference**: @frontend/src/app/api/contact/route.ts:58-70 (malicious content detection)
+
+---
+
+## Common Validation Mistakes to Avoid
+
+### Mistake 1: Client-Side Only Validation
+
+```typescript
+// ❌ WRONG - Client-side only
+function handleSubmit() {
+  if (!email) {
+    alert('Email required');
+    return;
+  }
+  // Submit without server validation
+}
+
+// ✅ CORRECT - Always validate server-side
+// Client validation is for UX, server validation is for security
+```
+
+### Mistake 2: No Sanitization Before Validation
+
+```typescript
+// ❌ WRONG - Validate dirty input
+const validated = schema.parse(rawBody); // May contain malicious content
+
+// ✅ CORRECT - Sanitize then validate
+const sanitized = sanitizeBookingFormData(rawBody);
+const validated = schema.parse(sanitized);
+```
+
+### Mistake 3: Missing Business Rule Validation
+
+```typescript
+// ❌ WRONG - Only validate input format
+const validated = bookingSchema.parse(body); // Passes if dates are invalid
+
+// ✅ CORRECT - Validate business rules too
+const validated = bookingSchema.parse(body);
+const dateError = validateBookingDates(validated.startDate, validated.endDate);
+if (dateError) return { error: dateError };
+```
+
+---
+
+## Validation Checklist
+
+### For API Routes
+- [ ] Request size/content-type validated
+- [ ] Input sanitized before validation
+- [ ] Zod schema validation applied
+- [ ] Business rules validated
+- [ ] Database constraints checked
+- [ ] Malicious input detected
+
+### For Forms (Client-Side)
+- [ ] Real-time validation with debouncing
+- [ ] Step-by-step validation
+- [ ] User-friendly error messages
+- [ ] Validation on blur/submit
+- [ ] Server-side validation confirmed
+
+---
+
+## References
+
+**Input Validation**:
+- Zod schemas: @frontend/src/app/api/bookings/route.ts:24-59
+- Sanitization: @frontend/src/lib/input-sanitizer.ts
+- Request validation: @frontend/src/app/api/bookings/route.ts:90-97
+
+**Business Logic Validation**:
+- Date validation: @frontend/src/components/EnhancedBookingFlowV2.tsx:381-409
+- Form validation: @frontend/src/lib/validation.ts
+
+**Form State Validation**:
+- Form validation hook: @frontend/src/hooks/useFormValidation.ts
+- Component validation: @frontend/src/components/EnhancedBookingFlowV2.tsx:373-430
+
+**Malicious Input Detection**:
+- Detection function: @frontend/src/lib/input-sanitizer.ts:422-470
+- Usage example: @frontend/src/app/api/contact/route.ts:58-70
+
+---
+
+**Remember**: Validate server-side ALWAYS. Client-side validation is for UX only. Sanitize before validating. Validate business rules separately.

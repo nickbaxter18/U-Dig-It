@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     const now = new Date().toISOString();
     const { data: queuedNotifications, error: fetchError } = await supabaseAdmin
       .from('notification_queue')
-      .select('*')
+      .select('id, user_id, channel, template_name, data, scheduled_at, retry_count, max_retries')
       .eq('status', 'queued')
       .lte('scheduled_at', now)
       .order('scheduled_at', { ascending: true })

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   const paymentId = request.nextUrl.searchParams.get('paymentId');
 
   if (!paymentId) {
@@ -131,4 +132,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

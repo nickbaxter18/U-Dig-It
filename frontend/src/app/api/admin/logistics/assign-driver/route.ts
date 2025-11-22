@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { assignDriverSchema } from '@/lib/validators/admin/bookings';
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,19 +15,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = assignDriverSchema.parse(await request.json());
 
@@ -118,20 +113,25 @@ export async function POST(request: NextRequest) {
       : await supabase.from('delivery_assignments').insert(assignmentRecord);
 
     if (assignmentError) {
-      logger.warn(
-        'Driver assignment succeeded but delivery assignment sync failed',
-        {
-          component: 'admin-logistics-assign-driver',
-          action: 'delivery_assignment_failed',
-          metadata: { taskId: payload.taskId, driverId: payload.driverId, error: assignmentError?.message },
-        }
-      );
+      logger.warn('Driver assignment succeeded but delivery assignment sync failed', {
+        component: 'admin-logistics-assign-driver',
+        action: 'delivery_assignment_failed',
+        metadata: {
+          taskId: payload.taskId,
+          driverId: payload.driverId,
+          error: assignmentError?.message,
+        },
+      });
     }
 
     logger.info('Driver assigned to logistics task', {
       component: 'admin-logistics-assign-driver',
       action: 'driver_assigned',
-      metadata: { taskId: payload.taskId, driverId: payload.driverId, adminId: user?.id || 'unknown' },
+      metadata: {
+        taskId: payload.taskId,
+        driverId: payload.driverId,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({ task: updatedTask });
@@ -157,6 +157,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

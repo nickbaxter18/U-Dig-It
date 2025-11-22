@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const bulkEmailSchema = z.object({
@@ -12,7 +13,7 @@ const bulkEmailSchema = z.object({
   emailType: z.enum(['confirmation', 'reminder', 'custom']).default('custom'),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.VERY_STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -25,14 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    }
+    const { user } = adminResult;
 
     const payload = bulkEmailSchema.parse(await request.json());
     const { bookingIds, subject, message, emailType } = payload;
@@ -144,4 +138,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to perform bulk email' }, { status: 500 });
   }
-}
+});

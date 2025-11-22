@@ -83,6 +83,7 @@ export default function AnalyticsDashboard() {
       }
 
       // MIGRATED: Fetch revenue analytics from Supabase
+      // Include both bookings (for booking-based metrics) and actual payments (for revenue)
       const { data: currentBookings, error: revenueError } = await supabase
         .from('bookings')
         .select('totalAmount, createdAt, status, customerId')
@@ -101,13 +102,108 @@ export default function AnalyticsDashboard() {
         .lt('createdAt', startDate.toISOString())
         .returns<Array<{ totalAmount: string }>>();
 
-      // Aggregate revenue by date
+      // Fetch actual payments (Stripe + manual) for accurate revenue
+      const [currentStripePayments, currentManualPayments] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('amount, status, createdAt')
+          .in('status', ['completed', 'succeeded'])
+          .eq('type', 'payment')
+          .gte('createdAt', startDate.toISOString())
+          .lte('createdAt', now.toISOString())
+          .is('deleted_at', null),
+        supabase
+          .from('manual_payments')
+          .select('amount, status, created_at')
+          .eq('status', 'completed')
+          .is('deleted_at', null)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', now.toISOString()),
+      ]);
+
+      if (currentStripePayments.error) throw currentStripePayments.error;
+      if (currentManualPayments.error) throw currentManualPayments.error;
+
+      // Fetch previous period payments
+      const [previousStripePayments, previousManualPayments] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('amount, status, createdAt')
+          .in('status', ['completed', 'succeeded'])
+          .eq('type', 'payment')
+          .gte('createdAt', previousStartDate.toISOString())
+          .lt('createdAt', startDate.toISOString())
+          .is('deleted_at', null),
+        supabase
+          .from('manual_payments')
+          .select('amount, status, created_at')
+          .eq('status', 'completed')
+          .is('deleted_at', null)
+          .gte('created_at', previousStartDate.toISOString())
+          .lt('created_at', startDate.toISOString()),
+      ]);
+
+      if (previousStripePayments.error) throw previousStripePayments.error;
+      if (previousManualPayments.error) throw previousManualPayments.error;
+
+      // Calculate revenue from actual payments (more accurate than booking totals)
+      const currentStripeRevenue =
+        (currentStripePayments.data ?? []).reduce(
+          (sum: number, p: unknown) => sum + Number((p as { amount: number | string }).amount ?? 0),
+          0
+        ) || 0;
+      const currentManualRevenue =
+        (currentManualPayments.data ?? []).reduce(
+          (sum: number, p: unknown) => sum + Number((p as { amount: number | string }).amount ?? 0),
+          0
+        ) || 0;
+      const totalRevenue = currentStripeRevenue + currentManualRevenue;
+
+      const previousStripeRevenue =
+        (previousStripePayments.data ?? []).reduce(
+          (sum: number, p: unknown) => sum + Number((p as { amount: number | string }).amount ?? 0),
+          0
+        ) || 0;
+      const previousManualRevenue =
+        (previousManualPayments.data ?? []).reduce(
+          (sum: number, p: unknown) => sum + Number((p as { amount: number | string }).amount ?? 0),
+          0
+        ) || 0;
+      const previousRevenue = previousStripeRevenue + previousManualRevenue;
+
+      // Aggregate revenue by date (using payment dates, not booking dates)
       const revenueByDate = new Map<string, { revenue: number; bookings: number }>();
+
+      // Add Stripe payments to date map
+      currentStripePayments.data?.forEach((payment: unknown) => {
+        const paymentDate = new Date((payment as { createdAt: string }).createdAt)
+          .toISOString()
+          .split('T')[0];
+        const current = revenueByDate.get(paymentDate) || { revenue: 0, bookings: 0 };
+        revenueByDate.set(paymentDate, {
+          revenue: current.revenue + Number((payment as { amount: number | string }).amount ?? 0),
+          bookings: current.bookings,
+        });
+      });
+
+      // Add manual payments to date map
+      currentManualPayments.data?.forEach((payment: unknown) => {
+        const paymentDate = new Date((payment as { created_at: string }).created_at)
+          .toISOString()
+          .split('T')[0];
+        const current = revenueByDate.get(paymentDate) || { revenue: 0, bookings: 0 };
+        revenueByDate.set(paymentDate, {
+          revenue: current.revenue + Number((payment as { amount: number | string }).amount ?? 0),
+          bookings: current.bookings,
+        });
+      });
+
+      // Add booking counts by date
       currentBookings?.forEach((booking) => {
         const date = new Date(booking.createdAt).toISOString().split('T')[0];
         const current = revenueByDate.get(date) || { revenue: 0, bookings: 0 };
         revenueByDate.set(date, {
-          revenue: current.revenue + parseFloat(booking.totalAmount),
+          revenue: current.revenue,
           bookings: current.bookings + 1,
         });
       });
@@ -115,16 +211,6 @@ export default function AnalyticsDashboard() {
       const revenueData = Array.from(revenueByDate.entries())
         .map(([date, { revenue, bookings }]) => ({ date, revenue, bookings }))
         .sort((a: unknown, b: unknown) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-      const totalRevenue =
-        currentBookings?.reduce((sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount), 0) ||
-        0;
-
-      const previousRevenue =
-        previousBookings?.reduce(
-          (sum: unknown, b: unknown) => sum + parseFloat(b.totalAmount),
-          0
-        ) || 0;
 
       const growthPercentage =
         previousRevenue > 0
@@ -597,7 +683,7 @@ export default function AnalyticsDashboard() {
                 );
               }
             }}
-            className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+            className="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             <Download className="h-4 w-4" />
             <span>Export</span>
@@ -707,10 +793,10 @@ export default function AnalyticsDashboard() {
               onClick={() =>
                 setSelectedChart(chart.id as 'revenue' | 'bookings' | 'equipment' | 'customers')
               }
-              className={`flex items-center space-x-2 rounded-md px-4 py-2 text-sm font-medium ${
+              className={`flex items-center space-x-2 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                 selectedChart === chart.id
-                  ? 'bg-kubota-orange text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
+                  : 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500'
               }`}
             >
               <chart.icon className="h-4 w-4" />
@@ -883,7 +969,7 @@ export default function AnalyticsDashboard() {
                       alert('Error generating report');
                     }
                   }}
-                  className="bg-kubota-orange w-full rounded-md px-4 py-2 text-sm text-white hover:bg-orange-600"
+                  className="inline-flex w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                 >
                   Generate Report
                 </button>

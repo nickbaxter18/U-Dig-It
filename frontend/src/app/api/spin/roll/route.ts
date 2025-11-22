@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
     // ========================================================================
     const { data: session, error: fetchError } = await supabase
       .from('spin_sessions')
-      .select('*')
+      .select('id, user_id, email, completed, expires_at, spins_used, spins_allowed, outcomes')
       .eq('id', sessionId)
       .single();
 
@@ -338,16 +338,20 @@ export async function POST(request: NextRequest) {
         });
       } catch (error) {
         // Log error but don't fail the spin - coupon code is still valid
-        logger.error('[Spin Roll] Stripe coupon creation failed (non-fatal)', {
-          component: 'spin-roll-api',
-          action: 'stripe_coupon_error',
-          metadata: {
-            sessionId,
-            couponCode,
-            discountAmount: prize.amount,
-            error: error instanceof Error ? error.message : 'Unknown error',
+        logger.error(
+          '[Spin Roll] Stripe coupon creation failed (non-fatal)',
+          {
+            component: 'spin-roll-api',
+            action: 'stripe_coupon_error',
+            metadata: {
+              sessionId,
+              couponCode,
+              discountAmount: prize.amount,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            },
           },
-        }, error as Error);
+          error as Error
+        );
         // Continue - coupon code is still saved to session and can be used manually
       }
     }

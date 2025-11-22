@@ -2,6 +2,13 @@
   "extends": ["next"],
   "rules": {
     "@typescript-eslint/no-unused-vars": "warn",
-    "@typescript-eslint/no-explicit-any": "warn"
+    "@typescript-eslint/no-explicit-any": "warn",
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.property.name='select'] > Literal[value='*']",
+        "message": "Use specific columns instead of SELECT *. This improves performance and reduces payload size by ~60%. Example: .select('id, name, status') instead of .select('*')"
+      }
+    ]
   }
 }

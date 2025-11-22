@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const now = new Date().toISOString();
     const { data: dueReports, error: fetchError } = await supabaseAdmin
       .from('scheduled_reports')
-      .select('*')
+      .select('id, name, report_type, parameters, created_by, next_run_at, frequency')
       .eq('is_active', true)
       .lte('next_run_at', now)
       .order('next_run_at', { ascending: true })

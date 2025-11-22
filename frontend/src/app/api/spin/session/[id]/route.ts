@@ -8,69 +8,56 @@
  * - auditLog: Array of audit events (optional)
  * - fraudFlags: Array of fraud flags (admin only)
  */
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const sessionId = params.id;
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Session ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
     // ========================================================================
     // 1. AUTHENTICATION
     // ========================================================================
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     // ========================================================================
     // 2. FETCH SESSION
     // ========================================================================
     const { data: session, error: fetchError } = await supabase
       .from('spin_sessions')
-      .select('*')
+      .select(
+        'id, user_id, email, completed, expires_at, spins_used, spins_allowed, coupon_code, outcomes, created_at, updated_at, prize_pct, spin_1_result, spin_2_result, spin_3_result, final_prize_percentage, promo_code, used_at, booking_id, session_token, current_spin, phone, device_fingerprint_hash, is_first_booking_only, ip_address, user_agent'
+      )
       .eq('id', sessionId)
       .single();
 
     if (fetchError || !session) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
     // ========================================================================
     // 3. AUTHORIZATION
     // ========================================================================
-    const isOwner = session.user_id === user?.id ||
-                    session.email === user?.email;
+    const isOwner = session.user_id === user?.id || session.email === user?.email;
 
     // Check if user is admin
     const { data: userData } = user
-      ? await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+      ? await supabase.from('users').select('role').eq('id', user.id).single()
       : { data: null };
 
     const isAdmin = userData?.role === 'admin' || userData?.role === 'super_admin';
 
     if (!isOwner && !isAdmin) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     // ========================================================================
@@ -80,7 +67,7 @@ export async function GET(
     if (request.nextUrl.searchParams.get('includeAudit') === 'true') {
       const { data: audit } = await supabase
         .from('spin_audit_log')
-        .select('*')
+        .select('id, spin_session_id, action, ip_address, user_agent, created_at')
         .eq('spin_session_id', sessionId)
         .order('created_at', { ascending: true });
 
@@ -94,7 +81,7 @@ export async function GET(
     if (session.completed && session.coupon_code) {
       const { data: couponData } = await supabase
         .from('spin_coupon_codes')
-        .select('*')
+        .select('id, spin_session_id, coupon_code, discount_amount, used_at')
         .eq('spin_session_id', sessionId)
         .single();
 
@@ -108,7 +95,7 @@ export async function GET(
     if (isAdmin && request.nextUrl.searchParams.get('includeFraud') === 'true') {
       const { data: flags } = await supabase
         .from('spin_fraud_flags')
-        .select('*')
+        .select('id, spin_session_id, flag_type, reason, severity, created_at')
         .eq('spin_session_id', sessionId);
 
       fraudFlags = flags;
@@ -121,10 +108,7 @@ export async function GET(
 
     // Auto-update expired sessions
     if (isExpired && !session.completed) {
-      await supabase
-        .from('spin_sessions')
-        .update({ completed: true })
-        .eq('id', sessionId);
+      await supabase.from('spin_sessions').update({ completed: true }).eq('id', sessionId);
 
       session.completed = true;
     }
@@ -154,17 +138,16 @@ export async function GET(
         timeRemaining: isExpired ? 0 : new Date(session.expires_at).getTime() - Date.now(),
       },
     });
-
   } catch (error) {
-    logger.error('[Spin Session] Unexpected error', {
-      component: 'spin-session-api',
-      action: 'error',
-    }, error as Error);
-
-    return NextResponse.json(
-      { error: 'An unexpected error occurred' },
-      { status: 500 }
+    logger.error(
+      '[Spin Session] Unexpected error',
+      {
+        component: 'spin-session-api',
+        action: 'error',
+      },
+      error as Error
     );
+
+    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }
-

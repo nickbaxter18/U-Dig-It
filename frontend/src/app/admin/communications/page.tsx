@@ -228,7 +228,7 @@ export default function CommunicationsPage() {
         <div className="mb-6 flex gap-4">
           <button
             onClick={() => router.push('/admin/communications/new-campaign')}
-            className="bg-kubota-orange hover:bg-kubota-orange-dark text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-md transition-colors"
+            className="focus:ring-kubota-orange flex items-center gap-2 rounded-md border border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors hover:border-kubota-orange hover:bg-gray-50 focus:border-transparent focus:outline-none focus:ring-2"
           >
             <Send className="h-5 w-5" />
             Create Campaign

@@ -1,0 +1,100 @@
+---
+description: "Component patterns from this codebase with actual code references. Includes form components (EnhancedBookingFlowV2), dashboard components (BookingManagementDashboard), and admin components (HoldManagementDashboard)."
+globs: ["**/components/**/*.tsx", "**/components/**/*.ts"]
+alwaysApply: false
+---
+
+When editing components in this codebase, use these actual patterns:
+
+## Component Structure Pattern
+
+Follow the exact structure from YOUR codebase:
+@frontend/src/components/EnhancedBookingFlowV2.tsx:97-740
+
+## Real Examples to Follow
+
+### Form Component Pattern
+@frontend/src/components/EnhancedBookingFlowV2.tsx
+- Props interface at top (lines 105-109)
+- State management (lines 110-128)
+- Memoized calculations (lines 132-140)
+- Validation function (lines 373-426)
+- 'use client' directive for interactive components
+
+### Dashboard Component Pattern
+@frontend/src/components/BookingManagementDashboard.tsx:18-372
+- Props interface (lines 18-34)
+- State with sessionStorage (lines 48-69)
+- Section management pattern
+
+### Admin Component Pattern
+@frontend/src/components/admin/HoldManagementDashboard.tsx
+- Admin-specific patterns
+- Data table patterns
+- Modal patterns
+
+## Validation Pattern
+
+Your validation logic from EnhancedBookingFlowV2.tsx:373-426:
+- Past date check (lines 380-386)
+- Date comparison (lines 392-397)
+- Max rental period (lines 402-404)
+
+Reference: @frontend/src/components/EnhancedBookingFlowV2.tsx:373-426
+
+**Pattern**:
+```typescript
+const validateForm = (step: number): boolean => {
+  const newErrors: ValidationErrors = {};
+
+  if (step >= 1) {
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    } else {
+      const startDate = new Date(formData.startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (startDate < today) {
+        newErrors.startDate = 'Start date cannot be in the past';
+      }
+    }
+    // ... more validation
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+```
+
+## State Management Patterns
+
+### Memoized Calculations
+Reference: @frontend/src/components/EnhancedBookingFlowV2.tsx:136-179
+- `useMemo` for expensive calculations
+- `useCallback` for stable function references
+- Proper dependency arrays
+
+### useState with Complex Objects
+Reference: @frontend/src/components/EnhancedBookingFlowV2.tsx:110-128
+- Structured state objects
+- Type-safe state definitions
+
+## Error Handling
+
+Use error handler from: @frontend/src/lib/error-handler.ts
+- `errorHandler.handleError()` for user-facing errors
+- `logger.error()` for structured logging
+
+## Common Mistakes to Avoid
+
+1. Don't access process.env directly - use secrets loaders
+2. Always handle errors gracefully - use @frontend/src/lib/error-handler.ts
+3. Validate on both client and server
+4. Use proper TypeScript types - no `any`
+5. Don't forget 'use client' for interactive components
+
+## Cross-References
+
+For complete workflow, see: @.cursor/rules/workflows/component-development.mdc
+For quick reference, see: @frontend/src/components/AGENTS.md

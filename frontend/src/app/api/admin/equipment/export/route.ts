@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const ACTIVE_BOOKING_STATUSES = [
@@ -16,15 +17,17 @@ function formatCsvValue(value: unknown) {
   return `"${asString.replace(/"/g, '""')}"`;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
-
     if (adminResult.error) return adminResult.error;
 
     const supabase = adminResult.supabase;
-
     if (!supabase) {
+      logger.error('Supabase client not configured for equipment export', {
+        component: 'admin-equipment-export-api',
+        action: 'client_missing',
+      });
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
@@ -50,7 +53,49 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: equipmentRows, error: equipmentError } = await equipmentQuery;
-    if (equipmentError) throw equipmentError;
+    if (equipmentError) {
+      logger.error('Failed to fetch equipment for export', {
+        component: 'admin-equipment-export-api',
+        action: 'fetch_equipment_failed',
+        metadata: { error: equipmentError.message },
+      });
+      throw equipmentError;
+    }
+
+    if (!equipmentRows || equipmentRows.length === 0) {
+      logger.warn('No equipment found for export', {
+        component: 'admin-equipment-export-api',
+        action: 'no_equipment',
+        metadata: { statusFilter, searchTerm },
+      });
+      // Return empty CSV with headers
+      const header = [
+        'Equipment',
+        'Make',
+        'Model',
+        'Unit ID',
+        'Serial Number',
+        'Status',
+        'Location',
+        'Daily Rate (CAD)',
+        'Weekly Rate (CAD)',
+        'Monthly Rate (CAD)',
+        'Total Bookings',
+        'Total Revenue (CAD)',
+        'Utilization (%)',
+        'Last Maintenance',
+        'Next Maintenance Due',
+        'Created At',
+      ];
+      const csvContent = header.map(formatCsvValue).join(',') + '\n';
+      const filename = `equipment-export-${new Date().toISOString().split('T')[0]}.csv`;
+      return new NextResponse(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
+    }
 
     const equipmentIds = (equipmentRows ?? []).map((item) => item.id);
     const bookingStats = new Map<
@@ -139,10 +184,21 @@ export async function GET(request: NextRequest) {
     const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `equipment-export-${new Date().toISOString().split('T')[0]}.csv`;
 
+    logger.info('Equipment export completed', {
+      component: 'admin-equipment-export-api',
+      action: 'export_success',
+      metadata: {
+        equipmentCount: equipmentRows.length,
+        filename,
+        csvSize: csvContent.length,
+      },
+    });
+
     return new NextResponse(csvContent, {
       headers: {
-        'Content-Type': 'text/csv',
+        'Content-Type': 'text/csv; charset=utf-8',
         'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
@@ -157,4 +213,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export equipment data' }, { status: 500 });
   }
-}
+});

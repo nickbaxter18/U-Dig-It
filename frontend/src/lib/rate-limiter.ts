@@ -266,7 +266,9 @@ export async function rateLimit(
 /**
  * Rate limit middleware wrapper for API routes
  *
- * @example
+ * Supports both static routes (no params) and dynamic routes (with params).
+ *
+ * @example Static route:
  * ```typescript
  * export const POST = withRateLimit(
  *   RateLimitPresets.STRICT,
@@ -276,12 +278,23 @@ export async function rateLimit(
  *   }
  * );
  * ```
+ *
+ * @example Dynamic route:
+ * ```typescript
+ * export const GET = withRateLimit(
+ *   RateLimitPresets.MODERATE,
+ *   async (req: NextRequest, { params }: { params: { id: string } }) => {
+ *     // Your handler code here
+ *     return NextResponse.json({ success: true });
+ *   }
+ * );
+ * ```
  */
-export function withRateLimit(
+export function withRateLimit<T extends { params?: unknown } = { params?: never }>(
   config: RateLimitConfig,
-  handler: (req: NextRequest) => Promise<NextResponse>
-) {
-  return async (req: NextRequest) => {
+  handler: (req: NextRequest, context?: T) => Promise<NextResponse>
+): (req: NextRequest, context?: T) => Promise<NextResponse> {
+  return async (req: NextRequest, context?: T) => {
     const result = await rateLimit(req, config);
 
     if (!result.success) {
@@ -299,7 +312,7 @@ export function withRateLimit(
     }
 
     // Add rate limit headers to successful responses
-    const response = await handler(req);
+    const response = await handler(req, context);
     Object.entries(result.headers).forEach(([key, value]) => {
       response.headers.set(key, value);
     });

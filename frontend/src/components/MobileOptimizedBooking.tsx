@@ -325,6 +325,9 @@ export default function MobileOptimizedBooking({
           <button
             onClick={handleVoiceInput}
             disabled={isProcessingVoice}
+            aria-label={
+              isProcessingVoice ? 'Voice input is listening' : 'Start voice input for address'
+            }
             className="flex w-full items-center justify-center space-x-2 rounded-xl border-2 border-blue-200 bg-blue-50 p-4 transition-colors hover:bg-blue-100"
             style={{ minHeight: '44px' }}
           >
@@ -347,6 +350,7 @@ export default function MobileOptimizedBooking({
       <button
         onClick={handleSubmit}
         disabled={!startDate || !endDate || !deliveryAddress || !deliveryCity}
+        aria-label="Check equipment availability for selected dates and location"
         className="bg-kubota-orange hover:bg-kubota-orange-dark w-full rounded-xl p-4 text-lg font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50"
         style={{ minHeight: '44px' }}
       >

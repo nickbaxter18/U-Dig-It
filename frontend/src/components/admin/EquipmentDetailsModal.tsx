@@ -1,6 +1,8 @@
 'use client';
 
-import { Clock, MapPin, X } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
+
+import { AdminModal } from './AdminModal';
 
 interface Equipment {
   id: string;
@@ -69,25 +71,18 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50">
-      <div className="relative top-20 mx-auto w-11/12 max-w-4xl rounded-md border bg-white p-5 shadow-lg">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900">{equipment.unitId}</h3>
-            <p className="text-gray-600">
-              {equipment.make} {equipment.model} ({equipment.year})
-            </p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <AdminModal
+      isOpen={!!equipment}
+      onClose={onClose}
+      title={`${equipment.unitId} - ${equipment.make} ${equipment.model} (${equipment.year})`}
+      maxWidth="4xl"
+    >
+      <div className="p-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Basic Information */}
           <div className="space-y-6">
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-900">Basic Information</h4>
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">Basic Information</h3>
               <dl className="grid grid-cols-1 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Unit ID</dt>
@@ -129,7 +124,7 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
 
             {/* Pricing Information */}
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-900">Pricing</h4>
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">Pricing</h3>
               <dl className="grid grid-cols-1 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Daily Rate</dt>
@@ -157,7 +152,7 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
           <div className="space-y-6">
             {/* Maintenance Information */}
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-900">Maintenance</h4>
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">Maintenance</h3>
               <dl className="grid grid-cols-1 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Total Engine Hours</dt>
@@ -195,7 +190,7 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
             {/* Specifications */}
             {equipment.specifications && (
               <div>
-                <h4 className="mb-4 text-lg font-semibold text-gray-900">Specifications</h4>
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">Specifications</h3>
                 <dl className="grid grid-cols-1 gap-4">
                   {(equipment.specifications as { engine?: string }).engine && (
                     <div>
@@ -243,7 +238,7 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
 
             {/* System Information */}
             <div>
-              <h4 className="mb-4 text-lg font-semibold text-gray-900">System Information</h4>
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">System Information</h3>
               <dl className="grid grid-cols-1 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Created</dt>
@@ -259,15 +254,15 @@ export function EquipmentDetailsModal({ equipment, onClose }: EquipmentDetailsMo
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-6">
+        <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-6">
           <button
             onClick={onClose}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
             Close
           </button>
         </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }

@@ -750,14 +750,23 @@ body {
   @apply outline-none ring-2 ring-yellow-500 ring-offset-2;
 }
 
-/* Disable focus styles for navigation links and buttons */
-nav a:focus,
-nav a:focus-visible,
-nav button:focus,
-nav button:focus-visible {
+/* Disable focus styles for navigation links and buttons (main site nav only) */
+nav:not([aria-label='Admin navigation']) a:focus,
+nav:not([aria-label='Admin navigation']) a:focus-visible,
+nav:not([aria-label='Admin navigation']) button:focus,
+nav:not([aria-label='Admin navigation']) button:focus-visible {
   @apply outline-none ring-0 ring-offset-0;
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Enable focus styles for admin navigation */
+nav[aria-label='Admin navigation'] a:focus-visible,
+nav[aria-label='Admin navigation'] button:focus-visible {
+  @apply outline-none ring-2 ring-offset-2;
+  --tw-ring-color: #b89107; /* Premium gold color */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
 /* Selection Styles */
@@ -1171,9 +1180,23 @@ nav button:focus-visible {
   clip: rect(0, 0, 0, 0);
 }
 
+.sr-only:focus,
+.sr-only:focus-visible {
+  @apply static m-0 h-auto w-auto overflow-visible whitespace-normal border p-2;
+  clip: auto;
+}
+
 /* Focus styles for keyboard navigation */
 .focus-visible {
   @apply outline-none ring-2 ring-[#b89107] ring-offset-2;
+}
+
+/* Skip link styles */
+a[href='#main-content']:focus,
+a[href='#main-content']:focus-visible {
+  @apply static m-0 h-auto w-auto overflow-visible whitespace-normal border-0 p-2;
+  clip: auto;
+  z-index: 9999;
 }
 
 /* Dark mode support (for admin areas) */
@@ -2943,4 +2966,29 @@ h3 {
 .btn-premium-gold:focus-visible {
   outline: 3px solid #1f2937;
   outline-offset: 2px;
+}
+
+/* Performance optimization for btn-premium-gold animations */
+@media (prefers-reduced-motion: no-preference) {
+  .btn-premium-gold {
+    will-change: transform, box-shadow;
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .btn-premium-gold {
+    animation: none !important;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease !important;
+  }
+
+  .btn-premium-gold:hover {
+    transform: none !important;
+  }
+
+  nav .btn-premium-gold {
+    animation: none !important;
+  }
 }

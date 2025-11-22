@@ -1,0 +1,190 @@
+---
+description: "API route patterns from this codebase with actual code references. Includes 8-step pattern with real examples from bookings, discount-codes, spin, and id-verification endpoints."
+globs: ["**/app/api/**/*.ts", "**/app/api/**/*.tsx"]
+alwaysApply: false
+---
+
+When editing API routes in this codebase, use these actual patterns:
+
+## 8-Step API Route Pattern
+
+Follow the exact pattern from YOUR codebase:
+@frontend/src/app/api/bookings/route.ts:72-297
+
+This shows the complete implementation with:
+- Rate limiting from @frontend/src/lib/rate-limiter.ts
+- Request validation from @frontend/src/lib/request-validator.ts
+- Authentication from @frontend/src/lib/supabase/server.ts
+- Input sanitization from @frontend/src/lib/input-sanitizer.ts
+- Error handling from @frontend/src/lib/error-handler.ts
+- Logging from @frontend/src/lib/logger.ts
+
+## Real Examples to Follow
+
+### Booking Creation
+@frontend/src/app/api/bookings/route.ts:72-297
+- Complete 8-step pattern implementation
+- Rate limiting (lines 73-87)
+- Request validation (lines 90-97)
+- Authentication (lines 133-145)
+- Equipment fetch with specific columns (lines 147-153)
+- Availability check (lines 165-170)
+- Pricing calculation
+- Structured logging (lines 226-235)
+
+### Discount Code Validation
+@frontend/src/app/api/discount-codes/validate/route.ts:14-214
+- Rate limiting (line 17)
+- Request validation (line 26)
+- Authentication (lines 32-44)
+- Query pattern (lines 61-66) - Note: uses SELECT *, should be optimized
+
+### Spin Wheel Start
+@frontend/src/app/api/spin/start/route.ts:49-374
+- Complex state management pattern
+- Multiple validation steps
+- Error handling pattern
+
+### ID Verification Submit
+@frontend/src/app/api/id-verification/submit/route.ts:40-419
+- File upload handling (lines 100-150)
+- External API integration (lines 200-300)
+- Error recovery with metadata updates (lines 350-389)
+- Complex status management
+
+### Contact Form (Public Endpoint)
+@frontend/src/app/api/contact/route.ts:17-131
+- Public endpoint pattern (no auth)
+- Rate limiting (line 19)
+- Input sanitization (lines 39-45)
+- Malicious content detection (lines 58-70)
+- Structured logging (lines 73-81)
+- Error handling (lines 97-125)
+
+## Common Patterns from Your Codebase
+
+### Rate Limiting
+Always use: `rateLimit(request, RateLimitPresets.STRICT)`
+See: @frontend/src/app/api/bookings/route.ts:74
+Reference: @frontend/src/lib/rate-limiter.ts
+
+### Error Response Format
+Always use: `NextResponse.json({ error: 'message' }, { status: code })`
+See: @frontend/src/app/api/bookings/route.ts:143
+Pattern: @frontend/src/lib/error-handler.ts
+
+### Logger Pattern
+Always use: `logger.info('message', { component, action, metadata })`
+See: @frontend/src/lib/logger.ts:228-235
+
+**IMPORTANT**: Error logger signature is `logger.error('message', context, error)` - error LAST
+See: @frontend/src/lib/logger.ts:202-210
+Example: @frontend/src/app/api/bookings/route.ts:268-276
+
+### Request Validation
+Use: `validateRequest(request, { maxSize, allowedContentTypes })`
+See: @frontend/src/app/api/bookings/route.ts:90-97
+Reference: @frontend/src/lib/request-validator.ts:314-373
+
+### Authentication Pattern
+```typescript
+const supabase = await createClient();
+const { data: { user }, error: authError } = await supabase.auth.getUser();
+if (authError || !user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+See: @frontend/src/app/api/bookings/route.ts:133-145
+
+### Webhook Authentication Pattern
+
+For webhooks, use service client (no user session):
+```typescript
+import { createServiceClient } from '@/lib/supabase/service';
+const supabase = createServiceClient(); // Bypasses RLS
+```
+
+**Real Examples**:
+- ✅ Correct: IDKit webhook: @frontend/src/app/api/webhooks/idkit/route.ts:79
+- ✅ Correct: SendGrid webhook: @frontend/src/app/api/webhooks/sendgrid/route.ts:19
+- ⚠️ Should update: Stripe webhook: @frontend/src/app/api/webhooks/stripe/route.ts:168 (uses regular client)
+
+**Why**: Webhooks are server-to-server calls with no user session, so RLS blocks updates with regular client.
+
+### Query with Specific Columns and Pagination
+**Example from admin audit route**:
+```typescript
+const { data: logs } = await supabase
+  .from('audit_logs')
+  .select('id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at')
+  .order('created_at', { ascending: false })
+  .limit(limit);
+```
+See: @frontend/src/app/api/admin/audit/route.ts:25-31
+
+**Example with count**:
+```typescript
+const { data, count } = await supabase
+  .from('equipment')
+  .select('id, unitId, make, model, status', { count: 'exact' })
+  .order('created_at', { ascending: false })
+  .range(offset, offset + limit - 1);
+```
+See: @frontend/src/app/api/admin/dashboard/overview/route.ts:176-179
+
+**Example with joins**:
+```typescript
+const { data } = await supabase
+  .from('audit_logs')
+  .select(`
+    id, table_name, record_id, action, user_id,
+    old_values, new_values, metadata, created_at,
+    users:user_id (firstName, lastName, email)
+  `)
+  .order('created_at', { ascending: false });
+```
+See: @frontend/src/app/api/admin/audit/export/route.ts:29-48
+
+**Example with joins and count**:
+```typescript
+const { data, count } = await supabase
+  .from('bookings')
+  .select(`
+    *,
+    customer:customerId (id, firstName, lastName, email),
+    equipment:equipmentId (id, make, model)
+  `, { count: 'exact' })
+  .order('created_at', { ascending: false })
+  .range(rangeStart, rangeEnd);
+```
+See: @frontend/src/app/api/admin/bookings/route.ts:50-68
+Note: While this example works, it uses SELECT * which should be optimized to specific columns for better performance. See optimized examples above.
+
+**❌ AVOID**: SELECT * without pagination
+```typescript
+// ❌ WRONG - Returns all columns and all rows
+const { data } = await supabase.from('bookings').select('*');
+
+// ❌ WRONG - SELECT * even with pagination (should use specific columns)
+const { data } = await supabase
+  .from('equipment')
+  .select('*', { count: 'exact' })
+  .range(0, 19)
+  .limit(20);
+```
+See: @frontend/src/app/api/equipment/search/route.ts:46 (should be optimized)
+
+```typescript
+// ✅ CORRECT - Specific columns with pagination
+const { data, count } = await supabase
+  .from('bookings')
+  .select('id, bookingNumber, status, totalAmount', { count: 'exact' })
+  .range(0, 19)
+  .limit(20);
+```
+See: @frontend/src/app/api/bookings/route.ts:147-153
+
+## Cross-References
+
+For complete workflow, see: @.cursor/rules/workflows/api-route-development.mdc
+For quick reference, see: @frontend/src/app/api/AGENTS.md

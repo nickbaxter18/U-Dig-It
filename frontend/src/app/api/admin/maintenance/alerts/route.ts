@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import {
   maintenanceAlertCreateSchema,
@@ -9,7 +11,7 @@ import {
   maintenanceAlertQuerySchema,
 } from '@/lib/validators/admin/equipment';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -17,22 +19,25 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    const filters = maintenanceAlertQuerySchema.parse(
-      Object.fromEntries(new URL(request.url).searchParams)
-    );
+    const { searchParams } = new URL(request.url);
+    const filters = maintenanceAlertQuerySchema.parse(Object.fromEntries(searchParams));
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     let query = supabase
       .from('maintenance_alerts')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(
+        'id, equipment_id, alert_type, threshold_value, triggered_at, resolved_at, resolved_by, status, created_at, updated_at',
+        { count: 'exact' }
+      )
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (filters.equipmentId) {
       query = query.eq('equipment_id', filters.equipmentId);
@@ -42,23 +47,23 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', filters.status);
     }
 
-    const { data, error: fetchError } = await query;
+    const { data, error: fetchError, count } = await query;
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch maintenance alerts',
-        {
-          component: 'admin-maintenance-alerts',
-          action: 'fetch_failed',
-          metadata: filters,
-        });
-      return NextResponse.json(
-        { error: 'Unable to load maintenance alerts' },
-        { status: 500 }
-      );
+      logger.error('Failed to fetch maintenance alerts', {
+        component: 'admin-maintenance-alerts',
+        action: 'fetch_failed',
+        metadata: filters,
+      });
+      return NextResponse.json({ error: 'Unable to load maintenance alerts' }, { status: 500 });
     }
 
-    return NextResponse.json({ alerts: data ?? [] });
+    return NextResponse.json({
+      alerts: data ?? [],
+      total: count ?? 0,
+      page,
+      pageSize,
+    });
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
@@ -77,9 +82,9 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -87,19 +92,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = maintenanceAlertCreateSchema.parse(await request.json());
 
@@ -125,16 +123,17 @@ export async function POST(request: NextRequest) {
         },
         insertError ?? new Error('Missing alert data')
       );
-      return NextResponse.json(
-        { error: 'Unable to create maintenance alert' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create maintenance alert' }, { status: 500 });
     }
 
     logger.info('Maintenance alert created', {
       component: 'admin-maintenance-alerts',
       action: 'alert_created',
-      metadata: { alertId: data.id, equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
+      metadata: {
+        alertId: data.id,
+        equipmentId: payload.equipmentId,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({ alert: data });
@@ -159,9 +158,9 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -169,19 +168,12 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = maintenanceAlertPatchSchema.parse(await request.json());
 
@@ -215,10 +207,7 @@ export async function PATCH(request: NextRequest) {
         },
         updateError
       );
-      return NextResponse.json(
-        { error: 'Unable to update maintenance alert' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to update maintenance alert' }, { status: 500 });
     }
 
     logger.info('Maintenance alert updated', {
@@ -246,6 +235,4 @@ export async function PATCH(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+});

@@ -85,11 +85,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Get booking details with equipment and customer info
+    // Include balance_amount to support partial payments
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(
         `
         *,
+        balance_amount,
         equipment:equipmentId(make, model, unitId),
         customer:customerId(email, firstName, lastName)
       `
@@ -110,24 +112,84 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
-    // Verify user owns this booking
-    if (booking.customerId !== user.id) {
+    // Fetch user role to check admin status
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isAdmin = userData?.role && ['admin', 'super_admin'].includes(userData.role);
+
+    // Verify user owns this booking OR is an admin
+    if (booking.customerId !== user.id && !isAdmin) {
       logger.warn('Unauthorized booking access attempt', {
         component: 'create-checkout-session',
         action: 'unauthorized_access',
-        metadata: { bookingId, userId: user.id, ownerId: booking.customerId },
+        metadata: { bookingId, userId: user.id, ownerId: booking.customerId, isAdmin },
       });
       return NextResponse.json({ error: 'Unauthorized access to booking' }, { status: 403 });
     }
 
+    // Log admin action if applicable
+    if (isAdmin) {
+      logger.info('Admin creating checkout session for customer booking', {
+        component: 'create-checkout-session',
+        action: 'admin_checkout_creation',
+        metadata: { bookingId, customerId: booking.customerId, adminId: user.id, paymentType },
+      });
+    }
+
     // Determine amount based on payment type
-    const amount =
-      paymentType === 'deposit' ? Number(booking.securityDeposit) : Number(booking.totalAmount);
+    // For invoice payments, use remaining balance_amount if available (supports partial payments)
+    // For deposit payments, use securityDeposit
+    let amount: number;
+    let isPartialPayment = false;
+
+    if (paymentType === 'deposit') {
+      amount = Number(booking.securityDeposit);
+    } else {
+      // For invoice payments, use balance_amount if it exists and is less than totalAmount
+      const totalAmount = Number(booking.totalAmount);
+      const balanceAmount = Number(booking.balance_amount ?? totalAmount);
+
+      // Use balance_amount if it's less than totalAmount (partial payment scenario)
+      if (balanceAmount < totalAmount && balanceAmount > 0) {
+        amount = balanceAmount;
+        isPartialPayment = true;
+      } else if (balanceAmount === 0) {
+        // Balance is already 0, don't create checkout
+        logger.warn('Cannot create checkout session - balance is already 0', {
+          component: 'create-checkout-session',
+          action: 'balance_already_zero',
+          metadata: { bookingId, paymentType },
+        });
+        return NextResponse.json(
+          { error: 'Booking balance is already paid in full' },
+          { status: 400 }
+        );
+      } else {
+        // Use totalAmount as fallback
+        amount = totalAmount;
+      }
+    }
 
     const description =
       paymentType === 'deposit'
         ? `Security Deposit: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`
-        : `Rental Invoice: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
+        : isPartialPayment
+          ? `Remaining Balance: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`
+          : `Rental Invoice: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
+
+    // Validate amount is greater than 0
+    if (amount <= 0) {
+      logger.error('Invalid payment amount', {
+        component: 'create-checkout-session',
+        action: 'invalid_amount',
+        metadata: { bookingId, paymentType, amount },
+      });
+      return NextResponse.json({ error: 'Payment amount must be greater than 0' }, { status: 400 });
+    }
 
     logger.info('Creating Stripe checkout session', {
       component: 'create-checkout-session',
@@ -136,6 +198,9 @@ export async function POST(req: NextRequest) {
         bookingId,
         paymentType,
         amount,
+        isPartialPayment,
+        totalAmount: Number(booking.totalAmount),
+        balanceAmount: Number(booking.balance_amount ?? booking.totalAmount),
         customerEmail: booking.customer.email,
       },
     });
@@ -147,6 +212,14 @@ export async function POST(req: NextRequest) {
       equipmentId: booking.equipmentId,
       paymentType,
     };
+
+    // Determine redirect URLs based on user role
+    const successUrl = isAdmin
+      ? `${baseUrl}/admin/bookings?booking=${bookingId}&payment=success&type=${paymentType}&session_id={CHECKOUT_SESSION_ID}`
+      : `${baseUrl}/booking/${bookingId}/manage?payment=success&type=${paymentType}&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = isAdmin
+      ? `${baseUrl}/admin/bookings?booking=${bookingId}&payment=cancelled&type=${paymentType}`
+      : `${baseUrl}/booking/${bookingId}/manage?payment=cancelled&type=${paymentType}`;
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -171,8 +244,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${baseUrl}/booking/${bookingId}/manage?payment=success&type=${paymentType}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/booking/${bookingId}/manage?payment=cancelled&type=${paymentType}`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       customer_email: booking.customer.email,
       metadata: sessionMetadata,
     });

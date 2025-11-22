@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -14,17 +11,15 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data, error: fetchError } = await supabase
       .from('booking_bulk_operations')
-      .select('*')
+      .select(
+        'id, admin_id, action, filter_payload, status, summary, created_at, updated_at, completed_at'
+      )
       .eq('id', params.id)
       .maybeSingle();
 
@@ -38,10 +33,7 @@ export async function GET(
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to load bulk action status' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to load bulk action status' }, { status: 500 });
     }
 
     if (!data) {
@@ -62,5 +54,3 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

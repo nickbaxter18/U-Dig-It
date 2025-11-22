@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Calendar,
   CheckCircle,
+  CreditCard,
   DollarSign,
   Loader2,
   PenSquare,
@@ -131,6 +132,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   const [stripePayments, setStripePayments] = useState<StripePayment[]>([]);
   const [creatingManualPayment, setCreatingManualPayment] = useState(false);
   const [updatingInstallment, setUpdatingInstallment] = useState<string | null>(null);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [manualPaymentForm, setManualPaymentForm] = useState<ManualPaymentFormState>({
     amount: '',
     method: 'cash',
@@ -149,6 +151,28 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     setError(null);
 
     try {
+      // Trigger balance recalculation in database to ensure it's in sync
+      // This ensures the database balance_amount is accurate before we fetch data
+      try {
+        const recalcResponse = await fetch(`/api/admin/bookings/${bookingId}/recalculate-balance`, {
+          method: 'POST',
+        });
+        if (!recalcResponse.ok) {
+          logger.warn('Balance recalculation request failed', {
+            component: 'BookingFinancePanel',
+            action: 'balance_recalc_request_failed',
+            metadata: { bookingId, status: recalcResponse.status },
+          });
+        }
+      } catch (recalcError) {
+        // Non-critical - continue with refresh even if recalculation fails
+        logger.debug('Balance recalculation request error (non-critical)', {
+          component: 'BookingFinancePanel',
+          action: 'balance_recalc_request_error',
+          metadata: { bookingId },
+        });
+      }
+
       const [manual, schedule, ledger] = await Promise.all([
         listManualPayments({ bookingId }),
         fetchInstallmentSchedule(bookingId),
@@ -159,6 +183,8 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
       setInstallments(schedule);
       setLedgerEntries(ledger);
 
+      // Fetch all Stripe payments for this booking (including pending/completed)
+      // We filter by status in the useMemo to calculate completed payments
       const { data: stripeData, error: stripeError } = await supabase
         .from('payments')
         .select('amount, status')
@@ -170,18 +196,30 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
           {
             component: 'BookingFinancePanel',
             action: 'stripe_payments_fetch',
-            metadata: { bookingId },
+            metadata: { bookingId, error: stripeError.message },
           },
           stripeError
         );
+        // Fallback to empty array - calculation will use 0 for Stripe payments
         setStripePayments([]);
       } else {
-        setStripePayments(
-          ((stripeData ?? []) as unknown[]).map((payment: unknown) => ({
-            amount: Number(payment.amount ?? 0),
-            status: payment.status ?? 'pending',
-          }))
-        );
+        const payments = ((stripeData ?? []) as unknown[]).map((payment: unknown) => ({
+          amount: Number(payment.amount ?? 0),
+          status: payment.status ?? 'pending',
+        }));
+
+        setStripePayments(payments);
+
+        // Log payment fetch for debugging
+        logger.debug('Stripe payments fetched', {
+          component: 'BookingFinancePanel',
+          action: 'stripe_payments_fetched',
+          metadata: {
+            bookingId,
+            paymentCount: payments.length,
+            totalAmount: payments.reduce((sum, p) => sum + p.amount, 0),
+          },
+        });
       }
     } catch (err) {
       logger.error(
@@ -217,7 +255,30 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   );
 
   const totalCollected = manualPaymentsCompleted + stripePaymentsCompleted;
-  const outstandingBalance = Math.max(totalAmount - totalCollected, 0);
+
+  /**
+   * Calculate outstanding balance using the formula:
+   * outstandingBalance = totalAmount - collected payments
+   *
+   * Important: The deposit is completely separate from the balance calculation.
+   * Security deposits are held separately and do not reduce what the customer owes.
+   *
+   * This calculation is performed in real-time based on fetched payment data
+   * to ensure accuracy. The database balance_amount is kept in sync via
+   * recalculateBookingBalance() calls, but we prioritize the calculated value
+   * here for immediate accuracy.
+   */
+  // Cap collected at totalAmount to prevent overpayment display issues
+  const cappedCollected = Math.min(totalCollected, totalAmount);
+
+  // Formula: balance = totalAmount - collected payments
+  // Deposit is NOT included - it's completely separate
+  const calculatedBalance = Math.max(totalAmount - cappedCollected, 0);
+
+  // Always use calculated value for accuracy - it's based on real-time payment data
+  // The database balance_amount is recalculated on refresh, but we show the calculated
+  // value immediately for better UX
+  const outstandingBalance = calculatedBalance;
 
   const nextInstallment = useMemo(() => {
     const upcoming = installments
@@ -304,8 +365,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
 
     const count = Math.max(1, installmentDraft.count);
     const frequency = Math.max(1, installmentDraft.frequencyDays);
-    const balanceToSchedule =
-      outstandingBalance > 0 ? outstandingBalance : Number(balanceAmount ?? 0);
+    const balanceToSchedule = outstandingBalance;
 
     if (balanceToSchedule <= 0) {
       setError('Outstanding balance is already settled.');
@@ -377,6 +437,65 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     }
   };
 
+  const handleCreateStripeInvoice = async () => {
+    if (outstandingBalance <= 0) {
+      setError('No outstanding balance to invoice');
+      return;
+    }
+
+    setCreatingInvoice(true);
+    setError(null);
+
+    try {
+      logger.info('Creating Stripe invoice for remaining balance', {
+        component: 'BookingFinancePanel',
+        action: 'create_stripe_invoice',
+        metadata: { bookingId, outstandingBalance },
+      });
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          paymentType: 'invoice',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create Stripe invoice');
+      }
+
+      const { sessionUrl } = await response.json();
+
+      if (sessionUrl) {
+        // Open Stripe checkout in new window
+        window.open(sessionUrl, '_blank', 'noopener,noreferrer');
+        logger.info('Stripe invoice checkout opened', {
+          component: 'BookingFinancePanel',
+          action: 'stripe_invoice_opened',
+          metadata: { bookingId },
+        });
+      } else {
+        throw new Error('No checkout session URL returned');
+      }
+    } catch (err) {
+      logger.error(
+        'Failed to create Stripe invoice',
+        {
+          component: 'BookingFinancePanel',
+          action: 'create_stripe_invoice_failed',
+          metadata: { bookingId, outstandingBalance },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      setError(err instanceof Error ? err.message : 'Unable to create Stripe invoice');
+    } finally {
+      setCreatingInvoice(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg bg-white p-6 shadow">
@@ -437,6 +556,26 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
             <p className="text-xs text-gray-500">
               Balance due {balanceDueAt ? formatDate(balanceDueAt) : 'N/A'}
             </p>
+            {outstandingBalance > 0 && (
+              <button
+                type="button"
+                onClick={handleCreateStripeInvoice}
+                disabled={creatingInvoice}
+                className="mt-3 w-full rounded-md bg-orange-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {creatingInvoice ? (
+                  <>
+                    <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-1 inline h-3 w-3" />
+                    Create Stripe Invoice
+                  </>
+                )}
+              </button>
+            )}
           </div>
           <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
             <div className="flex items-center justify-between">
@@ -549,7 +688,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
             <button
               type="submit"
               disabled={creatingManualPayment}
-              className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
             >
               {creatingManualPayment ? (
                 <>

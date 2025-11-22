@@ -1,0 +1,138 @@
+# Business Logic Review Checklist
+
+## Purpose
+Detailed business logic review checklist for proactive code review. Reference this when reviewing code for business rule correctness.
+
+---
+
+## Business Logic Review Checklist
+
+### Date Validation
+
+- [ ] **Booking dates validated**
+  ```typescript
+  // ✅ CORRECT
+  if (startDate >= endDate) {
+    return { error: 'End date must be after start date' };
+  }
+  if (startDate < new Date()) {
+    return { error: 'Start date cannot be in the past' };
+  }
+  ```
+
+  **Reference**: @frontend/src/components/EnhancedBookingFlowV2.tsx:381-409 (date validation)
+
+---
+
+### Pricing Calculation
+
+- [ ] **Pricing calculated correctly** (correct order)
+  ```typescript
+  // ✅ CORRECT - Order: base → discounts → add-ons → tax
+  const baseCost = dailyRate * days;
+  const discountedCost = applyLongTermDiscount(baseCost, days);
+  const withAddOns = discountedCost + insuranceFee + deliveryFee;
+  const subtotal = applyCoupon(withAddOns, coupon);
+  const total = subtotal * 1.15; // HST 15%
+  ```
+
+  **Order matters**: Wrong order causes incorrect totals and tax calculations
+
+- [ ] **HST 15% applied** (Canadian tax)
+  ```typescript
+  // ✅ CORRECT
+  const hst = subtotal * 0.15;
+  const total = subtotal + hst;
+  ```
+
+- [ ] **Seasonal rates applied** (if applicable)
+  ```typescript
+  // ✅ CORRECT - Apply to BASE RATES, not totals
+  const isPeakSeason = isDateInPeakSeason(startDate, endDate);
+  const multiplier = isPeakSeason ? 1.15 : 0.85;
+  const adjustedRate = dailyRate * multiplier;
+  ```
+
+  **Important**: Multiplier applies to base rates, not final totals
+
+---
+
+### Availability Checks
+
+- [ ] **Equipment availability checked**
+  ```typescript
+  // ✅ CORRECT - Check actual dates for active rentals
+  const isAvailable = await checkEquipmentAvailability(
+    equipmentId,
+    startDate,
+    endDate
+  );
+  if (!isAvailable) {
+    return { error: 'Equipment not available for selected dates' };
+  }
+  ```
+
+  **Important**: Consider `actual_start_date` and `actual_end_date` for active rentals, not just `start_date` and `end_date`
+
+  **Reference**: @frontend/src/lib/availability-service.ts (availability check pattern)
+
+---
+
+### Security Deposit
+
+- [ ] **Security deposit calculated** (30% of total)
+  ```typescript
+  // ✅ CORRECT
+  const securityDeposit = total * 0.30;
+  ```
+
+---
+
+### Business Rules
+
+- [ ] **Long-term discounts applied** (weekly 10%, monthly 20%)
+  ```typescript
+  // ✅ CORRECT
+  const days = calculateDays(startDate, endDate);
+  if (days >= 30) {
+    discount = 0.20; // Monthly 20%
+  } else if (days >= 7) {
+    discount = 0.10; // Weekly 10%
+  }
+  ```
+
+- [ ] **Delivery fees calculated** (distance-based or flat)
+  ```typescript
+  // ✅ CORRECT
+  const deliveryFee = calculateDeliveryFee(distanceKm, deliveryCity);
+  ```
+
+- [ ] **Operator fees applied** ($150/day if included)
+  ```typescript
+  // ✅ CORRECT
+  if (addons.includeOperator) {
+    const operatorFee = days * 150;
+  }
+  ```
+
+---
+
+## Business Logic Anti-Patterns
+
+### Always Avoid
+- ❌ Wrong pricing calculation order (tax before discounts)
+- ❌ Availability check using wrong date fields
+- ❌ Seasonal multiplier applied to totals instead of base rates
+- ❌ Missing availability check before booking creation
+- ❌ Security deposit calculated on wrong amount
+
+### Critical Business Rules
+- ✅ Pricing order: base → discounts → add-ons → tax
+- ✅ HST 15% on subtotal (after discounts)
+- ✅ Security deposit 30% of total
+- ✅ Availability considers actual dates for active rentals
+- ✅ Seasonal rates apply to base rates only
+
+---
+
+**Remember**: Business logic errors cause incorrect pricing, double bookings, and customer dissatisfaction. Always verify calculations and availability checks.

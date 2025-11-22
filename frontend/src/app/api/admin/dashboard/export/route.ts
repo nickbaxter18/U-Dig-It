@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 type DateRangeKey = 'today' | 'week' | 'month' | 'quarter' | 'year';
@@ -84,7 +85,7 @@ function formatCsvValue(value: unknown) {
   return `"${asString.replace(/"/g, '""')}"`;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const range = (searchParams.get('range') as DateRangeKey) ?? 'month';
@@ -120,25 +121,29 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       supabase
         .from('mv_revenue_trends')
-        .select('*')
+        .select('bucket_date, gross_revenue, refunded_amount, payments_count')
         .gte('bucket_date', currentStartISO)
         .lte('bucket_date', currentEndISO)
         .order('bucket_date', { ascending: true }),
       supabase
         .from('mv_revenue_trends')
-        .select('*')
+        .select('bucket_date, gross_revenue, refunded_amount, payments_count')
         .gte('bucket_date', previousStartISO)
         .lte('bucket_date', previousEndISO)
         .order('bucket_date', { ascending: true }),
       supabase
         .from('mv_booking_trends')
-        .select('*')
+        .select(
+          'bucket_date, total_bookings, completed_bookings, cancelled_bookings, active_bookings'
+        )
         .gte('bucket_date', currentStartISO)
         .lte('bucket_date', currentEndISO)
         .order('bucket_date', { ascending: true }),
       supabase
         .from('mv_booking_trends')
-        .select('*')
+        .select(
+          'bucket_date, total_bookings, completed_bookings, cancelled_bookings, active_bookings'
+        )
         .gte('bucket_date', previousStartISO)
         .lte('bucket_date', previousEndISO)
         .order('bucket_date', { ascending: true }),
@@ -147,29 +152,29 @@ export async function GET(request: NextRequest) {
         .select('id, status, utilization_rate, total_rental_days, revenue_generated'),
       supabase
         .from('users')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .not('role', 'in', '("admin","super_admin")'),
       supabase
         .from('bookings')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .in('status', ACTIVE_BOOKING_STATUSES)
         .gte('createdAt', currentStart.toISOString())
         .lte('createdAt', currentEnd.toISOString()),
       supabase
         .from('bookings')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'completed')
         .gte('createdAt', currentStart.toISOString())
         .lte('createdAt', currentEnd.toISOString()),
       supabase
         .from('bookings')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'cancelled')
         .gte('createdAt', currentStart.toISOString())
         .lte('createdAt', currentEnd.toISOString()),
       supabase
         .from('mv_dashboard_kpis')
-        .select('*')
+        .select('snapshot_date, generated_at')
         .order('snapshot_date', { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -350,4 +355,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export dashboard data' }, { status: 500 });
   }
-}
+});

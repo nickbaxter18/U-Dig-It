@@ -33,9 +33,14 @@ export async function generatePaymentReceiptHtml(
   options: GenerateReceiptOptions = {}
 ): Promise<{ html: string; filename: string }> {
   const allowStripeLookup = options.allowStripeLookup ?? DEFAULT_ALLOWED_STRIPE_LOOKUP;
-  const serviceSupabase = createServiceClient();
+  const serviceSupabase = await createServiceClient();
   if (!serviceSupabase) {
-    throw new Error('Failed to create service client');
+    logger.error('Failed to create service client for receipt generation', {
+      component: 'receipt-generator',
+      action: 'service_client_failed',
+      metadata: { paymentId },
+    });
+    throw new ReceiptGenerationError('Unable to generate receipt: service unavailable', 500);
   }
 
   const { data: payment, error: paymentError } = await serviceSupabase
@@ -101,7 +106,16 @@ export async function generatePaymentReceiptHtml(
   if (paymentError) {
     logger.error(
       'Failed to load payment for receipt generation',
-      { component: 'receipt-generator', action: 'load_payment_error', metadata: { paymentId } },
+      {
+        component: 'receipt-generator',
+        action: 'load_payment_error',
+        metadata: {
+          paymentId,
+          errorCode: paymentError.code,
+          errorMessage: paymentError.message,
+          errorDetails: paymentError.details,
+        },
+      },
       paymentError
     );
     throw new ReceiptGenerationError('Unable to load payment details', 500);

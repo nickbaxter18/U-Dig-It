@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { ZodError } from 'zod'; // Reserved for future validation error handling
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const scheduledReportCreateSchema = z.object({
@@ -22,7 +23,7 @@ const _scheduledReportUpdateSchema = scheduledReportCreateSchema.partial().exten
   is_active: z.boolean().optional(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -37,16 +38,26 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get('active') === 'true';
 
+    // Get pagination parameters
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
     let query = supabase
       .from('scheduled_reports')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(
+        'id, name, report_type, schedule_config, recipients, format, status, last_run_at, next_run_at, created_at, updated_at, created_by',
+        { count: 'exact' }
+      )
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (activeOnly) {
       query = query.eq('is_active', true);
     }
 
-    const { data, error: fetchError } = await query;
+    const { data, error: fetchError, count } = await query;
 
     if (fetchError) {
       logger.error('Failed to fetch scheduled reports', {
@@ -56,7 +67,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unable to fetch scheduled reports' }, { status: 500 });
     }
 
-    return NextResponse.json({ reports: data ?? [] });
+    return NextResponse.json({
+      reports: data ?? [],
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
+    });
   } catch (err) {
     logger.error(
       'Unexpected error fetching scheduled reports',
@@ -65,9 +84,9 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -80,10 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const payload = scheduledReportCreateSchema.parse(body);
@@ -210,4 +226,4 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

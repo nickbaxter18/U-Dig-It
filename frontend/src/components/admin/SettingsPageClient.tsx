@@ -100,6 +100,19 @@ export function SettingsPageClient() {
   const [adminActionError, setAdminActionError] = useState<string | null>(null);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
 
+  // Define tabs array before useEffects that reference it
+  const tabs = [
+    { id: 'reports', name: 'Reports', shortName: 'Reports', icon: FileText },
+    { id: 'jobs', name: 'Jobs', shortName: 'Jobs', icon: RefreshCw },
+    { id: 'general', name: 'General', shortName: 'General', icon: Settings },
+    { id: 'pricing', name: 'Pricing', shortName: 'Pricing', icon: DollarSign },
+    { id: 'notifications', name: 'Notifications', shortName: 'Notifications', icon: Bell },
+    { id: 'integrations', name: 'Integrations', shortName: 'Integrations', icon: Globe },
+    { id: 'security', name: 'Security', shortName: 'Security', icon: Shield },
+    { id: 'permissions', name: 'Permissions', shortName: 'Perms', icon: Key },
+    { id: 'admins', name: 'Admins', shortName: 'Admins', icon: Users },
+  ];
+
   useEffect(() => {
     fetchSettings();
     fetchAdminUsers();
@@ -108,11 +121,15 @@ export function SettingsPageClient() {
   // Debug: Log tabs to console in development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(
-        '[SettingsPage] Tabs count:',
-        8,
-        'Expected tabs: reports, jobs, general, pricing, notifications, integrations, security, admins'
-      );
+      logger.debug('Settings tabs count', {
+        component: 'SettingsPageClient',
+        action: 'tabs_debug',
+        metadata: {
+          tabsCount: tabs.length,
+          expectedTabs:
+            'reports, jobs, general, pricing, notifications, integrations, security, permissions, admins',
+        },
+      });
     }
   }, []);
 
@@ -130,7 +147,7 @@ export function SettingsPageClient() {
 
       // Transform array of settings into SystemSettings object
       const settingsMap: any = {};
-      (settingsData || ([] as unknown[])).forEach((item: unknown) => {
+      (settingsData || []).forEach((item: { category: string; settings: any }) => {
         settingsMap[item.category] = item.settings;
       });
 
@@ -203,23 +220,34 @@ export function SettingsPageClient() {
       if (error) throw error;
 
       // Transform to AdminUser format
-      const transformed: AdminUser[] = (data || ([] as unknown[])).map((user: unknown) => {
-        const roleValue = (user.role as AdminRoleValue) || 'admin';
-        const statusValue = (user.status as AdminUserStatus) || 'inactive';
+      const transformed: AdminUser[] = (data || []).map(
+        (user: {
+          id: string;
+          email: string;
+          firstName: string | null;
+          lastName: string | null;
+          role: string;
+          status: string;
+          lastLoginAt: string | null;
+          createdAt: string;
+        }) => {
+          const roleValue = (user.role as AdminRoleValue) || 'admin';
+          const statusValue = (user.status as AdminUserStatus) || 'inactive';
 
-        return {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName || 'N/A',
-          lastName: user.lastName || 'N/A',
-          role: roleValue.toUpperCase().replace('_', ' '),
-          roleValue,
-          status: statusValue,
-          isActive: statusValue === 'active',
-          lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt) : new Date(),
-          createdAt: new Date(user.createdAt),
-        };
-      });
+          return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName || 'N/A',
+            lastName: user.lastName || 'N/A',
+            role: roleValue.toUpperCase().replace('_', ' '),
+            roleValue,
+            status: statusValue,
+            isActive: statusValue === 'active',
+            lastLogin: user.lastLoginAt ? new Date(user.lastLoginAt) : new Date(),
+            createdAt: new Date(user.createdAt),
+          };
+        }
+      );
 
       setAdminUsers(transformed);
     } catch (err) {
@@ -397,23 +425,10 @@ export function SettingsPageClient() {
     });
   };
 
-  // DEBUG: Force all tabs to be visible - check if this array is being modified
-  const tabs = [
-    { id: 'reports', name: 'Reports', shortName: 'Reports', icon: FileText },
-    { id: 'jobs', name: 'Jobs', shortName: 'Jobs', icon: RefreshCw },
-    { id: 'general', name: 'General', shortName: 'General', icon: Settings },
-    { id: 'pricing', name: 'Pricing', shortName: 'Pricing', icon: DollarSign },
-    { id: 'notifications', name: 'Notifications', shortName: 'Notifications', icon: Bell },
-    { id: 'integrations', name: 'Integrations', shortName: 'Integrations', icon: Globe },
-    { id: 'security', name: 'Security', shortName: 'Security', icon: Shield },
-    { id: 'permissions', name: 'Permissions', shortName: 'Permissions', icon: Key },
-    { id: 'admins', name: 'Admins', shortName: 'Admins', icon: Users },
-  ];
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -441,7 +456,7 @@ export function SettingsPageClient() {
         <button
           onClick={handleSaveSettings}
           disabled={saving}
-          className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-blue-600 flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
           <span>{saving ? 'Saving...' : 'Save Settings'}</span>
@@ -485,12 +500,14 @@ export function SettingsPageClient() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-0.5 border-b-2 px-1.5 py-2 text-xs font-medium whitespace-nowrap sm:space-x-1 sm:px-2 sm:text-sm flex-shrink-0 ${
                   activeTab === tab.id
-                    ? 'border-kubota-orange text-kubota-orange'
+                    ? 'border-premium-gold text-premium-gold'
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                 }`}
               >
                 <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-shrink-0" />
-                <span className="truncate max-w-[80px] sm:max-w-none">{tab.shortName}</span>
+                <span className="truncate max-w-[90px] sm:max-w-none" title={tab.name}>
+                  {tab.shortName}
+                </span>
               </button>
             );
           })}
@@ -510,7 +527,7 @@ export function SettingsPageClient() {
                   type="text"
                   value={settings.general.siteName}
                   onChange={(e) => handleSettingChange('general', 'siteName', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -523,7 +540,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('general', 'defaultCurrency', e.target.value)
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="CAD">CAD - Canadian Dollar</option>
                   <option value="USD">USD - US Dollar</option>
@@ -536,7 +553,7 @@ export function SettingsPageClient() {
                 <select
                   value={settings.general.timezone}
                   onChange={(e) => handleSettingChange('general', 'timezone', e.target.value)}
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 >
                   <option value="America/Moncton">America/Moncton (Atlantic Time)</option>
                   <option value="America/Toronto">America/Toronto (Eastern Time)</option>
@@ -554,7 +571,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('general', 'maxBookingsPerDay', parseInt(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
             </div>
@@ -567,7 +584,7 @@ export function SettingsPageClient() {
                 value={settings.general.siteDescription}
                 onChange={(e) => handleSettingChange('general', 'siteDescription', e.target.value)}
                 rows={3}
-                className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
               />
             </div>
 
@@ -579,7 +596,7 @@ export function SettingsPageClient() {
                 onChange={(e) =>
                   handleSettingChange('general', 'maintenanceMode', e.target.checked)
                 }
-                className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
               />
               <label htmlFor="maintenanceMode" className="ml-2 block text-sm text-gray-900">
                 Enable maintenance mode
@@ -604,7 +621,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('pricing', 'baseDailyRate', parseFloat(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -619,7 +636,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('pricing', 'weekendMultiplier', parseFloat(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -634,7 +651,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('pricing', 'holidayMultiplier', parseFloat(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -653,7 +670,7 @@ export function SettingsPageClient() {
                       parseFloat(e.target.value) / 100
                     )
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -672,7 +689,7 @@ export function SettingsPageClient() {
                       parseFloat(e.target.value) / 100
                     )
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -687,7 +704,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('pricing', 'lateFeePerDay', parseFloat(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
             </div>
@@ -714,7 +731,7 @@ export function SettingsPageClient() {
                     onChange={(e) =>
                       handleSettingChange('notifications', 'emailEnabled', e.target.checked)
                     }
-                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                    className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                   />
                   <label htmlFor="emailEnabled" className="ml-2 block text-sm text-gray-900">
                     Enable email notifications
@@ -729,7 +746,7 @@ export function SettingsPageClient() {
                     onChange={(e) =>
                       handleSettingChange('notifications', 'smsEnabled', e.target.checked)
                     }
-                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                    className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                   />
                   <label htmlFor="smsEnabled" className="ml-2 block text-sm text-gray-900">
                     Enable SMS notifications
@@ -744,7 +761,7 @@ export function SettingsPageClient() {
                     onChange={(e) =>
                       handleSettingChange('notifications', 'adminNotifications', e.target.checked)
                     }
-                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                    className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                   />
                   <label htmlFor="adminNotifications" className="ml-2 block text-sm text-gray-900">
                     Enable admin notifications
@@ -763,7 +780,7 @@ export function SettingsPageClient() {
                         e.target.checked
                       )
                     }
-                    className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                    className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                   />
                   <label
                     htmlFor="customerNotifications"
@@ -783,7 +800,7 @@ export function SettingsPageClient() {
                     onChange={(e) =>
                       handleSettingChange('notifications', 'reminderDays', parseInt(e.target.value))
                     }
-                    className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                    className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                   />
                 </div>
               </div>
@@ -824,7 +841,7 @@ export function SettingsPageClient() {
                       onChange={(e) =>
                         handleSettingChange('integrations', 'stripeEnabled', e.target.checked)
                       }
-                      className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                      className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                     />
                     <label htmlFor="stripeEnabled" className="ml-2 block text-sm text-gray-900">
                       Enable Stripe payments
@@ -840,7 +857,7 @@ export function SettingsPageClient() {
                       onChange={(e) =>
                         handleSettingChange('integrations', 'stripePublicKey', e.target.value)
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
                   <div>
@@ -853,7 +870,7 @@ export function SettingsPageClient() {
                       onChange={(e) =>
                         handleSettingChange('integrations', 'stripeSecretKey', e.target.value)
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
                 </div>
@@ -872,7 +889,7 @@ export function SettingsPageClient() {
                       onChange={(e) =>
                         handleSettingChange('integrations', 'docusignEnabled', e.target.checked)
                       }
-                      className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                      className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                     />
                     <label htmlFor="docusignEnabled" className="ml-2 block text-sm text-gray-900">
                       Enable DocuSign integration
@@ -888,7 +905,7 @@ export function SettingsPageClient() {
                       onChange={(e) =>
                         handleSettingChange('integrations', 'docusignClientId', e.target.value)
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                     />
                   </div>
                 </div>
@@ -906,7 +923,7 @@ export function SettingsPageClient() {
                     onChange={(e) =>
                       handleSettingChange('integrations', 'googleMapsApiKey', e.target.value)
                     }
-                    className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                    className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                   />
                 </div>
               </div>
@@ -929,7 +946,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('security', 'sessionTimeout', parseInt(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -943,7 +960,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('security', 'maxLoginAttempts', parseInt(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -957,7 +974,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('security', 'passwordMinLength', parseInt(e.target.value))
                   }
-                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 />
               </div>
 
@@ -969,7 +986,7 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('security', 'requireTwoFactor', e.target.checked)
                   }
-                  className="text-kubota-orange focus:ring-kubota-orange h-4 w-4 rounded border-gray-300"
+                  className="text-premium-gold focus:ring-premium-gold h-4 w-4 rounded border-gray-300"
                 />
                 <label htmlFor="requireTwoFactor" className="ml-2 block text-sm text-gray-900">
                   Require two-factor authentication
@@ -991,7 +1008,7 @@ export function SettingsPageClient() {
                   )
                 }
                 rows={4}
-                className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
               />
             </div>
@@ -1043,7 +1060,7 @@ export function SettingsPageClient() {
               <PermissionGate permission="admin_users:create:all">
                 <button
                   onClick={handleAddAdminUser}
-                  className="bg-kubota-orange rounded-md px-4 py-2 text-white hover:bg-orange-600"
+                  className="bg-blue-600 rounded-md px-4 py-2 text-white hover:bg-blue-700"
                 >
                   Add Admin User
                 </button>
@@ -1117,7 +1134,7 @@ export function SettingsPageClient() {
                           <button
                             type="button"
                             onClick={() => handleEditAdminUser(user)}
-                            className="text-kubota-orange mr-3 hover:text-orange-600"
+                            className="text-premium-gold mr-3 hover:text-premium-gold-dark"
                           >
                             Edit
                           </button>

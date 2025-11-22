@@ -1,9 +1,30 @@
+import { z } from 'zod';
+import { ZodError } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+const templateCreateSchema = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(500).optional().nullable(),
+  subject: z.string().min(1).max(200),
+  templateType: z.enum([
+    'booking_confirmation',
+    'booking_reminder',
+    'payment_receipt',
+    'delivery_notification',
+    'custom',
+  ]),
+  htmlContent: z.string().min(1).max(50000),
+  textContent: z.string().max(50000).optional().nullable(),
+  variables: z.record(z.string(), z.unknown()).optional().nullable(),
+  isActive: z.boolean().default(true),
+});
+
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -15,11 +36,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
     // ✅ Fetch templates from Supabase
-    const { data: templates, error: templatesError } = await supabase
+    const {
+      data: templates,
+      error: templatesError,
+      count,
+    } = await supabase
       .from('email_templates')
-      .select('id, name, description, template_type, is_active')
-      .order('name', { ascending: true });
+      .select('id, name, description, template_type, is_active', { count: 'exact' })
+      .order('name', { ascending: true })
+      .range(rangeStart, rangeEnd);
 
     if (templatesError) {
       throw new Error(`Database error: ${templatesError.message}`);
@@ -42,6 +74,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       templates: transformedTemplates,
+      total: count ?? 0,
+      page,
+      pageSize,
     });
   } catch (error: unknown) {
     logger.error(
@@ -49,16 +84,16 @@ export async function GET(request: NextRequest) {
       {
         component: 'communications-api',
         action: 'fetch_templates_error',
-        metadata: { error: error.message },
+        metadata: { error: error instanceof Error ? error.message : String(error) },
       },
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
 
     return NextResponse.json({ error: 'Failed to fetch templates' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -71,12 +106,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
+    const { user } = adminResult;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    // Parse and validate request body
     const body = await request.json();
+    const validated = templateCreateSchema.parse(body);
     const {
       name,
       description,
@@ -86,15 +120,7 @@ export async function POST(request: NextRequest) {
       textContent,
       variables,
       isActive = true,
-    } = body;
-
-    // Validate required fields
-    if (!name || !subject || !templateType || !htmlContent) {
-      return NextResponse.json(
-        { error: 'Name, subject, template type, and HTML content are required' },
-        { status: 400 }
-      );
-    }
+    } = validated;
 
     // Create template
     const { data: template, error: templateError } = await supabase
@@ -135,17 +161,24 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: unknown) {
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: err.issues },
+        { status: 400 }
+      );
+    }
+
     logger.error(
       'Failed to create template',
       {
         component: 'communications-api',
         action: 'create_template_error',
-        metadata: { error: error.message },
+        metadata: { error: err instanceof Error ? err.message : String(err) },
       },
-      error
+      err instanceof Error ? err : new Error(String(err))
     );
 
     return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }
-}
+});

@@ -132,32 +132,57 @@ export function useHasPermission(
     async function check() {
       try {
         setLoading(true);
-        console.log('[useHasPermission] Starting permission check', {
-          userId: user.id,
-          permission,
+        logger.debug('Starting permission check', {
+          component: 'useHasPermission',
+          action: 'permission_check_start',
+          metadata: {
+            userId: user.id,
+            permission,
+          },
         });
         const result = await checkPermission(user.id, permission, options);
-        console.log('[useHasPermission] Permission check result', {
-          userId: user.id,
-          permission,
-          result,
+        logger.debug('Permission check result', {
+          component: 'useHasPermission',
+          action: 'permission_check_result',
+          metadata: {
+            userId: user.id,
+            permission,
+            result,
+          },
         });
         if (!cancelled) {
           setHasPermissionResult(result);
         }
       } catch (err) {
         // First, log the raw error immediately to see what we're dealing with
-        console.error('[useHasPermission] CAUGHT ERROR - Raw err:', err);
-        console.error('[useHasPermission] CAUGHT ERROR - err type:', typeof err);
-        console.error(
-          '[useHasPermission] CAUGHT ERROR - err instanceof Error:',
-          err instanceof Error
+        logger.error(
+          'Permission check raw error',
+          {
+            component: 'useHasPermission',
+            action: 'permission_check_error',
+          },
+          err instanceof Error ? err : new Error(String(err))
         );
-        console.error('[useHasPermission] CAUGHT ERROR - err constructor:', err?.constructor?.name);
-        console.error(
-          '[useHasPermission] CAUGHT ERROR - err keys:',
-          err && typeof err === 'object' ? Object.keys(err) : 'N/A'
-        );
+        logger.debug('Error type debug', {
+          component: 'useHasPermission',
+          action: 'error_type_debug',
+          metadata: { errorType: typeof err },
+        });
+        logger.debug('Error instanceof check', {
+          component: 'useHasPermission',
+          action: 'error_instanceof_debug',
+          metadata: { isInstanceOfError: err instanceof Error },
+        });
+        logger.debug('Error constructor debug', {
+          component: 'useHasPermission',
+          action: 'error_constructor_debug',
+          metadata: { constructorName: err?.constructor?.name },
+        });
+        logger.debug('Error keys debug', {
+          component: 'useHasPermission',
+          action: 'error_keys_debug',
+          metadata: { errorKeys: err && typeof err === 'object' ? Object.keys(err) : 'N/A' },
+        });
 
         // Capture error details more thoroughly
         const errorDetails: any = {
@@ -207,8 +232,16 @@ export function useHasPermission(
         }
 
         // Log to console for immediate visibility with full details
-        console.error('[useHasPermission] Error checking permission - Full Details:', errorDetails);
-        console.error('[useHasPermission] Error checking permission - Raw err again:', err);
+        logger.error(
+          'Error checking permission - Full Details',
+          {
+            component: 'useHasPermission',
+            action: 'permission_error_details',
+            metadata: errorDetails,
+          },
+          err instanceof Error ? err : new Error(String(err))
+        );
+        // Raw error already logged above
 
         // Also log via logger
         logger.error('Error checking permission in hook', {

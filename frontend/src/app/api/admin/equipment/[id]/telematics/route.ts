@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -14,17 +11,15 @@ export async function GET(
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data, error: fetchError } = await supabase
       .from('telematics_snapshots')
-      .select('*')
+      .select(
+        'id, equipment_id, location, engine_hours, fuel_level, battery_voltage, odometer, speed, heading, captured_at, metadata'
+      )
       .eq('equipment_id', params.id)
       .order('captured_at', { ascending: false })
       .limit(1)
@@ -40,10 +35,7 @@ export async function GET(
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to load telematics snapshot' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to load telematics snapshot' }, { status: 500 });
     }
 
     return NextResponse.json({ snapshot: data ?? null });
@@ -60,5 +52,3 @@ export async function GET(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

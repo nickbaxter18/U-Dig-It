@@ -120,7 +120,7 @@ export function RecentBookings() {
         aria-live="polite"
         aria-busy="true"
       >
-        <div className="border-kubota-orange h-6 w-6 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-6 w-6 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -203,7 +203,7 @@ export function RecentBookings() {
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-medium">
                   <Link
                     href={`/admin/bookings?bookingId=${booking.id}`}
-                    className="text-kubota-orange flex items-center hover:text-orange-700"
+                    className="text-premium-gold flex items-center hover:text-premium-gold-dark"
                   >
                     <Eye className="mr-1 h-4 w-4" />
                     View
@@ -220,7 +220,7 @@ export function RecentBookings() {
           <p className="text-sm text-gray-700">Showing {bookings.length} recent bookings</p>
           <Link
             href="/admin/bookings"
-            className="text-kubota-orange text-sm font-medium hover:text-orange-700"
+            className="text-premium-gold text-sm font-medium hover:text-premium-gold-dark"
           >
             View all bookings →
           </Link>

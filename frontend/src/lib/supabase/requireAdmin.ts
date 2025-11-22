@@ -1,5 +1,8 @@
 import { User } from '@supabase/supabase-js';
+
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
 
 import { createClient } from './server';
 import { createServiceClient } from './service';
@@ -7,7 +10,9 @@ import { createServiceClient } from './service';
 const ADMIN_ROLES = ['admin', 'super_admin'];
 
 interface RequireAdminSuccess {
-  supabase: ReturnType<typeof createServiceClient>;
+  supabase:
+    | Awaited<ReturnType<typeof createServiceClient>>
+    | Awaited<ReturnType<typeof createClient>>;
   user: User;
   role: string;
 }
@@ -54,7 +59,18 @@ export async function requireAdmin(request: NextRequest): Promise<RequireAdminRe
     };
   }
 
-  const serviceSupabase = createServiceClient();
+  const serviceSupabase = await createServiceClient();
+
+  // If service client creation failed, fall back to anon client
+  // Note: anon client may have RLS restrictions, but it's better than nothing
+  if (!serviceSupabase) {
+    logger.warn('Service client creation failed, using anon client (may have RLS restrictions)', {
+      component: 'requireAdmin',
+      action: 'service_client_fallback',
+      metadata: { userId: user.id },
+    });
+  }
+
   const supabaseClient = serviceSupabase ?? anonSupabase;
 
   return {

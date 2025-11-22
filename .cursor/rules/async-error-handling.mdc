@@ -1,0 +1,497 @@
+# Async Error Handling Patterns
+
+## Purpose
+Comprehensive error handling patterns for async operations, promises, timeouts, and API calls to prevent silent failures and improve error recovery.
+
+---
+
+## Core Principles
+
+1. **Always catch async errors** - Wrap async operations in try/catch
+2. **Use structured logging** - Log errors with context for debugging
+3. **Handle specific error types** - Different errors need different handling
+4. **Implement timeouts** - Prevent hanging operations
+5. **Provide user-friendly messages** - Don't expose technical errors to users
+
+---
+
+## Pattern 1: Try/Catch in Async Functions
+
+**Why**: Async functions throw unhandled errors that crash the application if not caught.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Comprehensive try/catch in async function
+export async function POST(request: NextRequest) {
+  try {
+    // Rate limit
+    const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+
+    // Validate request
+    const requestValidation = await validateRequest(request);
+
+    // Process business logic
+    const result = await processBooking(body);
+
+    // Return success response
+    return NextResponse.json({ success: true, data: result });
+  } catch (error) {
+    // IMPORTANT: Logger signature is logger.error('message', context, error) - error LAST
+    logger.error(
+      'Booking error',
+      {
+        component: 'api-bookings',
+        action: 'error',
+        metadata: { error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
+
+    // Handle specific error types
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Please check your booking information and try again.',
+          errors: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Handle Supabase errors
+    const supabaseError = handleSupabaseError(error);
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          supabaseError.message ||
+          'An error occurred while processing your booking. Please try again later.',
+      },
+      { status: 500 }
+    );
+  }
+}
+```
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:267-299 (complete async error handling)
+
+**Error Logging Pattern**:
+```typescript
+// ✅ CORRECT - Structured error logging
+logger.error(
+  'Operation failed',
+  {
+    component: 'component-name',
+    action: 'operation-name',
+    metadata: {
+      userId,
+      bookingId,
+      error: error instanceof Error ? error.message : String(error),
+    },
+  },
+  error instanceof Error ? error : undefined
+);
+```
+
+**Reference**: @frontend/src/lib/logger.ts:202-210 (logger signature - error LAST)
+
+---
+
+## Pattern 2: Promise Error Handling
+
+**Why**: Promises can reject without proper error handling, causing unhandled promise rejections.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Handle promise rejection
+async function fetchBookingData(bookingId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (error) throw error; // Convert Supabase error to thrown error
+    if (!data) throw new Error('Booking not found');
+
+    return data;
+  } catch (error) {
+    logger.error(
+      'Failed to fetch booking',
+      {
+        component: 'booking-service',
+        action: 'fetch',
+        metadata: { bookingId, error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
+    throw error; // Re-throw for caller to handle
+  }
+}
+```
+
+**Promise.all Error Handling**:
+```typescript
+// ✅ CORRECT - Handle Promise.all errors
+async function fetchMultipleBookings(bookingIds: string[]) {
+  try {
+    const promises = bookingIds.map(id => fetchBookingData(id));
+    const results = await Promise.all(promises);
+    return results;
+  } catch (error) {
+    // Promise.all rejects if ANY promise rejects
+    logger.error(
+      'Failed to fetch multiple bookings',
+      {
+        component: 'booking-service',
+        action: 'fetch-multiple',
+        metadata: { bookingIds, error: error instanceof Error ? error.message : String(error) },
+      },
+      error instanceof Error ? error : undefined
+    );
+    throw error;
+  }
+}
+
+// ✅ CORRECT - Use Promise.allSettled for partial failures
+async function fetchMultipleBookingsSafe(bookingIds: string[]) {
+  const promises = bookingIds.map(id => fetchBookingData(id));
+  const results = await Promise.allSettled(promises);
+
+  const successful = results
+    .filter((r): r is PromiseFulfilledResult<Booking> => r.status === 'fulfilled')
+    .map(r => r.value);
+
+  const failed = results
+    .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+    .map(r => r.reason);
+
+  if (failed.length > 0) {
+    logger.warn('Some bookings failed to fetch', {
+      component: 'booking-service',
+      action: 'fetch-multiple',
+      metadata: { failed: failed.length, total: bookingIds.length },
+    });
+  }
+
+  return successful;
+}
+```
+
+---
+
+## Pattern 3: Timeout Handling
+
+**Why**: Async operations can hang indefinitely without timeouts, causing poor user experience.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Wrap operations with timeout
+import { withTimeout } from '@/lib/request-validator';
+
+async function fetchBookingWithTimeout(bookingId: string) {
+  try {
+    const booking = await withTimeout(
+      fetchBookingData(bookingId),
+      5000, // 5 second timeout
+      `fetch-booking-${bookingId}`
+    );
+    return booking;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('timeout')) {
+      logger.error(
+        'Request timeout',
+        {
+          component: 'booking-service',
+          action: 'fetch',
+          metadata: { bookingId, timeout: 5000 },
+        },
+        error
+      );
+      throw new Error('Request took too long. Please try again.');
+    }
+    throw error;
+  }
+}
+```
+
+**Reference**: @frontend/src/lib/request-validator.ts:202-226 (withTimeout utility)
+
+**Timeout Utility Pattern**:
+```typescript
+// ✅ CORRECT - Create timeout promise
+function createTimeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error(`Request timeout after ${ms}ms`));
+    }, ms);
+  });
+}
+
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 30000,
+  context?: string
+): Promise<T> {
+  try {
+    return await Promise.race([promise, createTimeout(timeoutMs)]);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('timeout')) {
+      logger.error(
+        'Request timeout',
+        {
+          component: 'request-validator',
+          action: 'timeout',
+          metadata: { timeoutMs, context },
+        },
+        error
+      );
+    }
+    throw error;
+  }
+}
+```
+
+**Reference**: @frontend/src/lib/request-validator.ts:191-226 (timeout implementation)
+
+---
+
+## Pattern 4: Error Normalization
+
+**Why**: Different error types (Zod, Supabase, network) need to be normalized into a consistent format.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Normalize errors to consistent format
+class ErrorHandler {
+  normalizeError(error: unknown): AppError {
+    const appError: AppError = {
+      code: ERROR_CODES.UNKNOWN_ERROR,
+      message: ERROR_MESSAGES[ERROR_CODES.UNKNOWN_ERROR],
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Handle plain Error objects
+    if (error instanceof Error) {
+      appError.message = error.message || appError.message;
+    }
+
+    // Handle network errors
+    else if (
+      (error as { code?: string } | null)?.code === 'ECONNREFUSED' ||
+      (error as { code?: string } | null)?.code === 'ENOTFOUND'
+    ) {
+      appError.code = ERROR_CODES.NETWORK_ERROR;
+      appError.message = ERROR_MESSAGES[ERROR_CODES.NETWORK_ERROR];
+    }
+
+    // Handle timeout errors
+    else if (
+      (error as { code?: string; message?: string } | null)?.code === 'ETIMEDOUT' ||
+      (error as { code?: string; message?: string } | null)?.message?.includes('timeout')
+    ) {
+      appError.code = ERROR_CODES.TIMEOUT_ERROR;
+      appError.message = ERROR_MESSAGES[ERROR_CODES.TIMEOUT_ERROR];
+    }
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      appError.code = ERROR_CODES.VALIDATION_ERROR;
+      appError.message = 'Validation failed';
+      appError.details = error.issues;
+    }
+
+    return appError;
+  }
+}
+```
+
+**Reference**: @frontend/src/lib/error-handler.ts:67-158 (error normalization)
+
+---
+
+## Pattern 5: Error Recovery and Retry Logic
+
+**Why**: Transient errors (network, timeouts) should be retried with exponential backoff.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Retry logic with exponential backoff
+async function fetchWithRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      // Don't retry on validation errors
+      if (error instanceof z.ZodError) {
+        throw error;
+      }
+
+      // Check if error is retryable
+      const errorHandler = new ErrorHandler();
+      const appError = errorHandler.normalizeError(error);
+      if (!errorHandler.isRetryableError(appError)) {
+        throw error;
+      }
+
+      // Exponential backoff: delay * 2^attempt
+      const delay = initialDelay * Math.pow(2, attempt);
+
+      if (attempt < maxRetries - 1) {
+        logger.warn('Retrying operation', {
+          component: 'retry-logic',
+          action: 'retry',
+          metadata: { attempt: attempt + 1, maxRetries, delay },
+        });
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
+```
+
+**Reference**: @frontend/src/lib/job-scheduler.ts:168-246 (retry logic pattern)
+
+---
+
+## Pattern 6: Error Tracking and Reporting
+
+**Why**: Track errors for debugging and monitoring, but don't expose technical details to users.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Track errors without exposing details
+import { trackError, withErrorTracking } from '@/lib/error-tracker';
+
+// Wrap operations with error tracking
+const result = await withErrorTracking(
+  async () => {
+    return await fetchBookingData(bookingId);
+  },
+  {
+    component: 'booking-service',
+    action: 'fetch',
+    metadata: { bookingId },
+  }
+);
+
+// Or track errors manually
+try {
+  await operation();
+} catch (error) {
+  trackError(error as Error, {
+    component: 'component-name',
+    action: 'operation',
+    metadata: { ...context },
+  });
+  throw error;
+}
+```
+
+**Reference**: @frontend/src/lib/error-tracker.ts:132-142 (error tracking utilities)
+
+---
+
+## Common Async Error Handling Mistakes
+
+### Mistake 1: Not Catching Async Errors
+
+```typescript
+// ❌ WRONG - Unhandled promise rejection
+async function fetchData() {
+  const data = await fetch('/api/data'); // Can throw, not caught!
+  return data.json();
+}
+
+// ✅ CORRECT - Catch errors
+async function fetchData() {
+  try {
+    const data = await fetch('/api/data');
+    return data.json();
+  } catch (error) {
+    logger.error('Failed to fetch data', { error }, error);
+    throw error;
+  }
+}
+```
+
+### Mistake 2: Swallowing Errors Silently
+
+```typescript
+// ❌ WRONG - Error swallowed silently
+try {
+  await operation();
+} catch (error) {
+  // Error ignored - no logging!
+}
+
+// ✅ CORRECT - Always log errors
+try {
+  await operation();
+} catch (error) {
+  logger.error('Operation failed', { error }, error);
+  throw error; // Or handle appropriately
+}
+```
+
+### Mistake 3: No Timeout on Long Operations
+
+```typescript
+// ❌ WRONG - No timeout, can hang forever
+const data = await fetch('/api/slow-endpoint');
+
+// ✅ CORRECT - Add timeout
+const data = await withTimeout(
+  fetch('/api/slow-endpoint'),
+  5000,
+  'fetch-slow-endpoint'
+);
+```
+
+---
+
+## Async Error Handling Checklist
+
+- [ ] All async operations wrapped in try/catch
+- [ ] Errors logged with structured logger
+- [ ] Specific error types handled appropriately
+- [ ] Timeouts added to long-running operations
+- [ ] Retry logic for transient errors
+- [ ] User-friendly error messages (no technical details)
+- [ ] Error tracking implemented for monitoring
+
+---
+
+## References
+
+**Try/Catch Patterns**:
+- API route error handling: @frontend/src/app/api/bookings/route.ts:267-299
+- Error normalization: @frontend/src/lib/error-handler.ts:67-158
+- Logger signature: @frontend/src/lib/logger.ts:202-210
+
+**Timeout Patterns**:
+- Timeout utility: @frontend/src/lib/request-validator.ts:202-226
+
+**Retry Logic**:
+- Job retry pattern: @frontend/src/lib/job-scheduler.ts:168-246
+
+**Error Tracking**:
+- Error tracking utilities: @frontend/src/lib/error-tracker.ts:132-142
+
+---
+
+**Remember**: Always catch async errors, log with context, handle timeouts, and provide user-friendly messages. Never swallow errors silently.

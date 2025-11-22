@@ -16,6 +16,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import { formatDate } from '@/lib/utils';
@@ -455,161 +457,150 @@ export default function AdminContractsPage() {
       </div>
 
       {/* Contract Details Modal */}
-      {selectedContract && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-end justify-center px-4 pb-20 pt-4 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={() => setSelectedContract(null)}
-            />
-
-            <div className="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle">
-              <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 w-full text-center sm:mt-0 sm:text-left">
-                    <h3 className="mb-4 text-lg font-medium leading-6 text-gray-900">
-                      Contract Details - {selectedContract.contractNumber}
-                    </h3>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Contract Information</h4>
-                        <div className="mt-2 space-y-1 text-sm text-gray-600">
-                          <p>
-                            <span className="font-medium">Type:</span>{' '}
-                            {selectedContract.type.replace('_', ' ')}
-                          </p>
-                          <p>
-                            <span className="font-medium">Status:</span>
-                            <span
-                              className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[selectedContract.status]}`}
-                            >
-                              {selectedContract.status}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="font-medium">Created:</span>{' '}
-                            {formatDate(selectedContract.createdAt)}
-                          </p>
-                          {selectedContract.sentAt && (
-                            <p>
-                              <span className="font-medium">Sent:</span>{' '}
-                              {formatDate(selectedContract.sentAt)}
-                            </p>
-                          )}
-                          {selectedContract.signedAt && (
-                            <p>
-                              <span className="font-medium">Signed:</span>{' '}
-                              {formatDate(selectedContract.signedAt)}
-                            </p>
-                          )}
-                          {selectedContract.expiresAt && (
-                            <p>
-                              <span className="font-medium">Expires:</span>{' '}
-                              {formatDate(selectedContract.expiresAt)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="font-medium text-gray-900">Booking Information</h4>
-                        <div className="mt-2 space-y-1 text-sm text-gray-600">
-                          <p>
-                            <span className="font-medium">Booking Number:</span>{' '}
-                            {selectedContract.booking.bookingNumber}
-                          </p>
-                          <p>
-                            <span className="font-medium">Customer:</span>{' '}
-                            {selectedContract.booking.customer.name}
-                          </p>
-                          <p>
-                            <span className="font-medium">Email:</span>{' '}
-                            {selectedContract.booking.customer.email}
-                          </p>
-                          <p>
-                            <span className="font-medium">Equipment:</span>{' '}
-                            {selectedContract.booking.equipment.name} (
-                            {selectedContract.booking.equipment.model})
-                          </p>
-                          <p>
-                            <span className="font-medium">Rental Period:</span>{' '}
-                            {formatDate(selectedContract.booking.startDate)} -{' '}
-                            {formatDate(selectedContract.booking.endDate)}
-                          </p>
-                          <p>
-                            <span className="font-medium">Total Amount:</span> $
-                            {selectedContract.booking.total}
-                          </p>
-                        </div>
-                      </div>
-
-                      {selectedContract.documentMetadata && (
-                        <div>
-                          <h4 className="font-medium text-gray-900">Document Information</h4>
-                          <div className="mt-2 space-y-1 text-sm text-gray-600">
-                            <p>
-                              <span className="font-medium">File Name:</span>{' '}
-                              {selectedContract.documentMetadata.fileName}
-                            </p>
-                            <p>
-                              <span className="font-medium">File Size:</span>{' '}
-                              {(selectedContract.documentMetadata.fileSize / 1024).toFixed(1)} KB
-                            </p>
-                            <p>
-                              <span className="font-medium">Pages:</span>{' '}
-                              {selectedContract.documentMetadata.pageCount}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedContract.docusignEnvelopeId && (
-                        <div>
-                          <h4 className="font-medium text-gray-900">DocuSign Information</h4>
-                          <div className="mt-2 space-y-1 text-sm text-gray-600">
-                            <p>
-                              <span className="font-medium">Envelope ID:</span>{' '}
-                              {selectedContract.docusignEnvelopeId}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                <div className="flex space-x-2">
-                  {selectedContract.status === 'draft' && (
-                    <button
-                      onClick={() => handleSendContract(selectedContract.id)}
-                      className="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
+      <AdminModal
+        isOpen={!!selectedContract}
+        onClose={() => setSelectedContract(null)}
+        title={
+          selectedContract ? `Contract Details - ${selectedContract.contractNumber}` : undefined
+        }
+        maxWidth="2xl"
+      >
+        <div className="p-6">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Contract Information</h3>
+              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                <p>
+                  <span className="font-medium">Type:</span>{' '}
+                  {selectedContract?.type.replace('_', ' ')}
+                </p>
+                <p>
+                  <span className="font-medium">Status:</span>
+                  {selectedContract && (
+                    <span
+                      className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[selectedContract.status]}`}
                     >
-                      Send Contract
-                    </button>
+                      {selectedContract.status}
+                    </span>
                   )}
-
-                  <button
-                    onClick={() => handleDownloadContract(selectedContract.id)}
-                    className="inline-flex w-full justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Download PDF
-                  </button>
-
-                  <button
-                    onClick={() => setSelectedContract(null)}
-                    className="focus:ring-kubota-orange mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:mt-0 sm:w-auto sm:text-sm"
-                  >
-                    Close
-                  </button>
-                </div>
+                </p>
+                <p>
+                  <span className="font-medium">Created:</span>{' '}
+                  {selectedContract && formatDate(selectedContract.createdAt)}
+                </p>
+                {selectedContract?.sentAt && (
+                  <p>
+                    <span className="font-medium">Sent:</span> {formatDate(selectedContract.sentAt)}
+                  </p>
+                )}
+                {selectedContract?.signedAt && (
+                  <p>
+                    <span className="font-medium">Signed:</span>{' '}
+                    {formatDate(selectedContract.signedAt)}
+                  </p>
+                )}
+                {selectedContract?.expiresAt && (
+                  <p>
+                    <span className="font-medium">Expires:</span>{' '}
+                    {formatDate(selectedContract.expiresAt)}
+                  </p>
+                )}
               </div>
             </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Booking Information</h3>
+              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                <p>
+                  <span className="font-medium">Booking Number:</span>{' '}
+                  {selectedContract?.booking.bookingNumber}
+                </p>
+                <p>
+                  <span className="font-medium">Customer:</span>{' '}
+                  {selectedContract?.booking.customer.name}
+                </p>
+                <p>
+                  <span className="font-medium">Email:</span>{' '}
+                  {selectedContract?.booking.customer.email}
+                </p>
+                <p>
+                  <span className="font-medium">Equipment:</span>{' '}
+                  {selectedContract?.booking.equipment.name} (
+                  {selectedContract?.booking.equipment.model})
+                </p>
+                <p>
+                  <span className="font-medium">Rental Period:</span>{' '}
+                  {selectedContract && formatDate(selectedContract.booking.startDate)} -{' '}
+                  {selectedContract && formatDate(selectedContract.booking.endDate)}
+                </p>
+                <p>
+                  <span className="font-medium">Total Amount:</span> $
+                  {selectedContract?.booking.total}
+                </p>
+              </div>
+            </div>
+
+            {selectedContract?.documentMetadata && (
+              <div>
+                <h4 className="font-medium text-gray-900">Document Information</h4>
+                <div className="mt-2 space-y-1 text-sm text-gray-600">
+                  <p>
+                    <span className="font-medium">File Name:</span>{' '}
+                    {selectedContract.documentMetadata.fileName}
+                  </p>
+                  <p>
+                    <span className="font-medium">File Size:</span>{' '}
+                    {(selectedContract.documentMetadata.fileSize / 1024).toFixed(1)} KB
+                  </p>
+                  <p>
+                    <span className="font-medium">Pages:</span>{' '}
+                    {selectedContract.documentMetadata.pageCount}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {selectedContract?.docusignEnvelopeId && (
+              <div>
+                <h4 className="font-medium text-gray-900">DocuSign Information</h4>
+                <div className="mt-2 space-y-1 text-sm text-gray-600">
+                  <p>
+                    <span className="font-medium">Envelope ID:</span>{' '}
+                    {selectedContract.docusignEnvelopeId}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+          <div className="flex gap-3 justify-end">
+            {selectedContract?.status === 'draft' && (
+              <button
+                onClick={() => selectedContract && handleSendContract(selectedContract.id)}
+                className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Send Contract
+              </button>
+            )}
+
+            <button
+              onClick={() => selectedContract && handleDownloadContract(selectedContract.id)}
+              className="rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              Download PDF
+            </button>
+
+            <button
+              onClick={() => setSelectedContract(null)}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </AdminModal>
     </div>
   );
 }

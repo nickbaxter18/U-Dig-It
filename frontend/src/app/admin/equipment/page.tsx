@@ -39,12 +39,14 @@ interface Equipment {
   isAvailable: boolean;
   maintenanceDue?: Date;
   lastMaintenance?: Date;
+  nextMaintenance?: Date | string; // Added for modal compatibility
   totalBookings: number;
   totalRevenue: number;
   utilizationRate: number;
   unitId: string;
   make: string;
   year: number;
+  totalEngineHours?: number; // Added for modal compatibility
   specifications?: unknown;
 }
 
@@ -66,11 +68,26 @@ export default function EquipmentManagement() {
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<Set<string>>(new Set());
   const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const cleanupRunRef = useRef(false);
 
   const fetchEquipment = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Auto-fix orphaned maintenance due dates on first load only (once per session)
+      // This fixes equipment that have nextMaintenanceDue but no active scheduled maintenance
+      if (!cleanupRunRef.current && equipment.length === 0) {
+        cleanupRunRef.current = true;
+        try {
+          await fetchWithAuth('/api/admin/equipment/maintenance/cleanup', {
+            method: 'POST',
+          });
+        } catch (cleanupError) {
+          // Silently fail cleanup - don't block equipment fetch
+          // No logging to reduce noise
+        }
+      }
 
       // ✅ OPTIMIZED: Use RPC function for aggregated stats (60% faster, single query)
       const { data: equipmentData, error: rpcError } = await supabase.rpc(
@@ -140,6 +157,7 @@ export default function EquipmentManagement() {
               monthlyRate: parseFloat(eq.monthlyRate),
               isAvailable: status === 'available',
               maintenanceDue: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
+              nextMaintenance: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
               lastMaintenance: eq.lastMaintenanceDate
                 ? new Date(eq.lastMaintenanceDate)
                 : undefined,
@@ -148,7 +166,10 @@ export default function EquipmentManagement() {
               utilizationRate,
               unitId: eq.unitId,
               make: eq.make,
-              year: eq.year || new Date().getFullYear(),
+              year: eq.year ? parseInt(String(eq.year), 10) : new Date().getFullYear(),
+              totalEngineHours: eq.totalEngineHours
+                ? parseFloat(String(eq.totalEngineHours))
+                : undefined,
               specifications: eq.specifications || {},
             };
           })
@@ -173,14 +194,16 @@ export default function EquipmentManagement() {
         monthlyRate: parseFloat(eq.monthlyRate || '0'),
         isAvailable: (eq.status || 'available').toLowerCase() === 'available',
         maintenanceDue: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
-        lastMaintenance: eq.lastBookingDate ? new Date(eq.lastBookingDate) : undefined,
+        nextMaintenance: eq.nextMaintenanceDue ? new Date(eq.nextMaintenanceDue) : undefined,
+        lastMaintenance: eq.lastMaintenanceDate ? new Date(eq.lastMaintenanceDate) : undefined,
         totalBookings: parseInt(eq.totalBookings || '0', 10),
         totalRevenue: parseFloat(eq.totalRevenue || '0'),
         utilizationRate: parseFloat(eq.utilizationRate || '0'),
         unitId: eq.unitId || '',
         make: eq.make || '',
-        year: new Date().getFullYear(),
-        specifications: {},
+        year: eq.year ? parseInt(String(eq.year), 10) : new Date().getFullYear(),
+        totalEngineHours: eq.totalEngineHours ? parseFloat(String(eq.totalEngineHours)) : undefined,
+        specifications: eq.specifications || {},
       }));
 
       // Apply client-side filters (status and search)
@@ -237,8 +260,9 @@ export default function EquipmentManagement() {
       setSaving(true);
       setError(null);
 
-      // Map frontend status to database status
-      const dbStatus = equipmentData.status?.toLowerCase() || 'available';
+      // Map frontend status to database status (modal sends uppercase, convert to lowercase for DB)
+      const statusValue = equipmentData.status || '';
+      const dbStatus = typeof statusValue === 'string' ? statusValue.toLowerCase() : 'available';
       const lastMaintenanceIso = normalizeDateInput(
         (equipmentData as { lastMaintenance?: string | Date } | null)?.lastMaintenance
       );
@@ -284,8 +308,19 @@ export default function EquipmentManagement() {
         });
 
         if (!response.ok) {
-          const updateError = await response.json();
-          throw new Error(updateError.error || 'Failed to update equipment');
+          const updateError = await response.json().catch(() => ({ error: 'Unknown error' }));
+          const errorMessage =
+            updateError.error || updateError.details || 'Failed to update equipment';
+          logger.error('Equipment update failed', {
+            component: 'EquipmentManagement',
+            action: 'update_failed',
+            metadata: {
+              equipmentId: selectedEquipment.id,
+              status: response.status,
+              error: errorMessage,
+            },
+          });
+          throw new Error(errorMessage);
         }
 
         logger.info('Equipment updated', {
@@ -359,44 +394,169 @@ export default function EquipmentManagement() {
       }
 
       const queryString = params.toString();
-      const response = await fetchWithAuth(
-        `/api/admin/equipment/export${queryString ? `?${queryString}` : ''}`
-      );
+      const url = `/api/admin/equipment/export${queryString ? `?${queryString}` : ''}`;
+
+      logger.debug('Starting equipment export', {
+        component: 'EquipmentManagement',
+        action: 'export_start',
+        metadata: { url, statusFilter, searchTerm },
+      });
+
+      const response = await fetchWithAuth(url, {
+        method: 'GET',
+      });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.error || 'Failed to export equipment data');
+        // Try to get error message from response
+        let errorMessage = 'Failed to export equipment data';
+        try {
+          const errorBody = await response.json();
+          errorMessage = errorBody?.error || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Check if response is actually CSV
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('text/csv')) {
+        logger.warn('Unexpected content type in export response', {
+          component: 'EquipmentManagement',
+          action: 'export_warning',
+          metadata: { contentType },
+        });
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+
+      if (blob.size === 0) {
+        throw new Error('Export file is empty. Please try again.');
+      }
+
+      const blobUrl = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      anchor.href = url;
+      anchor.href = blobUrl;
       anchor.download = `equipment-export-${new Date().toISOString().split('T')[0]}.csv`;
+      anchor.style.display = 'none';
       document.body.appendChild(anchor);
       anchor.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(anchor);
+
+      // Clean up
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(anchor);
+      }, 100);
+
+      logger.info('Equipment export completed successfully', {
+        component: 'EquipmentManagement',
+        action: 'export_success',
+        metadata: { fileSize: blob.size },
+      });
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to export equipment data';
       logger.error(
         'Equipment export failed',
-        { component: 'EquipmentManagement', action: 'export_failed' },
+        {
+          component: 'EquipmentManagement',
+          action: 'export_failed',
+          metadata: { error: errorMessage },
+        },
         err instanceof Error ? err : new Error(String(err))
       );
-      alert(err instanceof Error ? err.message : 'Failed to export equipment data');
+      alert(errorMessage);
     } finally {
       setExporting(false);
     }
   };
 
   const handleViewEquipment = (item: Equipment) => {
-    setSelectedEquipment(item);
-    setShowViewModal(true);
+    try {
+      if (!item || !item.id) {
+        logger.error('Invalid equipment item for view', {
+          component: 'EquipmentManagement',
+          action: 'view_equipment_error',
+          metadata: { item },
+        });
+        setError('Invalid equipment data. Please try again.');
+        return;
+      }
+      setSelectedEquipment(item);
+      setShowViewModal(true);
+    } catch (err) {
+      logger.error(
+        'Failed to open view modal',
+        {
+          component: 'EquipmentManagement',
+          action: 'view_equipment_error',
+          metadata: { equipmentId: item?.id },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      setError('Failed to open equipment details. Please try again.');
+    }
+  };
+
+  // Transform Equipment from page format to modal format
+  const transformEquipmentForModal = (
+    item: Equipment
+  ): Parameters<typeof EquipmentModal>[0]['equipment'] => {
+    if (!item) return null;
+
+    // Convert status from lowercase to uppercase for modal
+    const statusMap: Record<string, 'AVAILABLE' | 'RENTED' | 'MAINTENANCE' | 'OUT_OF_SERVICE'> = {
+      available: 'AVAILABLE',
+      rented: 'RENTED',
+      maintenance: 'MAINTENANCE',
+      out_of_service: 'OUT_OF_SERVICE',
+    };
+
+    return {
+      id: item.id,
+      unitId: item.unitId,
+      serialNumber: item.serialNumber,
+      model: item.model,
+      year: item.year,
+      make: item.make,
+      dailyRate: item.dailyRate,
+      weeklyRate: item.weeklyRate,
+      monthlyRate: item.monthlyRate,
+      status: statusMap[item.status.toLowerCase()] || 'AVAILABLE',
+      location: item.location,
+      lastMaintenance:
+        item.lastMaintenance instanceof Date
+          ? item.lastMaintenance
+          : item.lastMaintenance
+            ? new Date(item.lastMaintenance)
+            : undefined,
+      nextMaintenance:
+        (item.nextMaintenance || item.maintenanceDue) instanceof Date
+          ? item.nextMaintenance || item.maintenanceDue
+          : item.nextMaintenance || item.maintenanceDue
+            ? new Date(item.nextMaintenance || item.maintenanceDue!)
+            : undefined,
+      totalEngineHours: item.totalEngineHours,
+      specifications: item.specifications,
+    };
   };
 
   const handleEditEquipment = (item: Equipment) => {
-    setSelectedEquipment(item);
-    setShowEditModal(true);
+    try {
+      setSelectedEquipment(item);
+      setShowEditModal(true);
+    } catch (err) {
+      logger.error(
+        'Failed to open edit modal',
+        {
+          component: 'EquipmentManagement',
+          action: 'edit_equipment_error',
+          metadata: { equipmentId: item.id },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      setError('Failed to open edit form. Please try again.');
+    }
   };
 
   const handleAddEquipment = () => {
@@ -544,31 +704,34 @@ export default function EquipmentManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Equipment Management</h1>
           <p className="text-gray-600">
             Manage your rental equipment inventory, maintenance schedules, and performance.
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:gap-3">
           <PermissionGate permission="equipment:export:all">
             <button
               onClick={handleExportEquipment}
               disabled={exporting}
-              className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center space-x-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
             >
               <Download className="h-4 w-4" />
-              <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
+              <span className="hidden sm:inline">{exporting ? 'Exporting…' : 'Export CSV'}</span>
+              <span className="sm:hidden">{exporting ? '…' : 'Export'}</span>
             </button>
           </PermissionGate>
           <PermissionGate permission="equipment:create:all">
             <button
               onClick={handleAddEquipment}
-              className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+              className="flex items-center space-x-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:px-4"
+              aria-label="Add new equipment"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Equipment</span>
+              <span className="hidden sm:inline">Add Equipment</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </PermissionGate>
         </div>
@@ -881,8 +1044,8 @@ export default function EquipmentManagement() {
       {/* Equipment Modals */}
       {(showAddModal || showEditModal) && (
         <EquipmentModal
-          equipment={selectedEquipment as any}
-          onSave={handleEquipmentSave as any}
+          equipment={selectedEquipment ? transformEquipmentForModal(selectedEquipment) : null}
+          onSave={handleEquipmentSave}
           onClose={() => {
             setShowAddModal(false);
             setShowEditModal(false);
@@ -906,167 +1069,229 @@ export default function EquipmentManagement() {
 
       {/* View Equipment Details Modal */}
       {showViewModal && selectedEquipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl">
-            <div className="p-6">
-              <div className="mb-6 flex items-start justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Equipment Details - {selectedEquipment.name}
-                </h3>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-gray-900/60 pt-20 pb-6 px-6 sm:pt-24 sm:pb-8 sm:px-8">
+          <div className="flex max-h-[calc(100vh-7rem)] w-full max-w-7xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:max-h-[calc(100vh-8rem)]">
+            {/* Header */}
+            <div className="flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white px-6 py-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{selectedEquipment.name}</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {selectedEquipment.make} {selectedEquipment.model} · {selectedEquipment.year}
+                  </p>
+                </div>
                 <button
                   onClick={() => {
                     setShowViewModal(false);
                     setSelectedEquipment(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-offset-2"
+                  aria-label="Close modal"
                 >
-                  <X className="h-6 w-6" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Equipment Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <strong>Unit ID:</strong> {selectedEquipment.unitId}
-                    </div>
-                    <div>
-                      <strong>Serial Number:</strong> {selectedEquipment.serialNumber}
-                    </div>
-                    <div>
-                      <strong>Make:</strong> {selectedEquipment.make}
-                    </div>
-                    <div>
-                      <strong>Model:</strong> {selectedEquipment.model}
-                    </div>
-                    <div>
-                      <strong>Year:</strong> {selectedEquipment.year}
-                    </div>
-                    <div>
-                      <strong>Status:</strong>
-                      <span
-                        className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(selectedEquipment.status)}`}
-                      >
-                        {selectedEquipment.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div>
-                      <strong>Location:</strong> {selectedEquipment.location}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Pricing</h4>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <strong>Daily Rate:</strong> ${selectedEquipment.dailyRate}/day
-                    </div>
-                    <div>
-                      <strong>Weekly Rate:</strong> ${selectedEquipment.weeklyRate}/week
-                    </div>
-                    <div>
-                      <strong>Monthly Rate:</strong> ${selectedEquipment.monthlyRate}/month
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Maintenance</h4>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <strong>Total Engine Hours:</strong>{' '}
-                      {(selectedEquipment as any).totalEngineHours || 0}
-                    </div>
-                    {selectedEquipment.lastMaintenance && (
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Top Row: Key Information Cards */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {/* Equipment Info Card */}
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Equipment Information
+                    </h3>
+                    <dl className="space-y-2.5">
                       <div>
-                        <strong>Last Maintenance:</strong>{' '}
-                        {new Date(selectedEquipment.lastMaintenance).toLocaleDateString()}
+                        <dt className="text-xs font-medium text-gray-500">Unit ID</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          {selectedEquipment.unitId || 'N/A'}
+                        </dd>
                       </div>
-                    )}
-                    {selectedEquipment.maintenanceDue && (
-                      <div className="text-yellow-600">
-                        <AlertTriangle className="mr-1 inline h-4 w-4" />
-                        <strong>Next Due:</strong>{' '}
-                        {new Date(selectedEquipment.maintenanceDue).toLocaleDateString()}
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Serial Number</dt>
+                        <dd className="mt-0.5 text-sm text-gray-900">
+                          {selectedEquipment.serialNumber || 'N/A'}
+                        </dd>
                       </div>
-                    )}
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Status</dt>
+                        <dd className="mt-1">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusColor(selectedEquipment.status || 'available')}`}
+                          >
+                            {(selectedEquipment.status || 'available').replace('_', ' ')}
+                          </span>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Location</dt>
+                        <dd className="mt-0.5 text-sm text-gray-900">
+                          {selectedEquipment.location || 'N/A'}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {/* Pricing Card */}
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Pricing
+                    </h3>
+                    <dl className="space-y-2.5">
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Daily Rate</dt>
+                        <dd className="mt-0.5 text-lg font-bold text-gray-900">
+                          ${(selectedEquipment.dailyRate || 0).toLocaleString()}
+                          <span className="ml-1 text-sm font-normal text-gray-500">/day</span>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Weekly Rate</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          ${(selectedEquipment.weeklyRate || 0).toLocaleString()}
+                          <span className="ml-1 text-xs font-normal text-gray-500">/week</span>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Monthly Rate</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          ${(selectedEquipment.monthlyRate || 0).toLocaleString()}
+                          <span className="ml-1 text-xs font-normal text-gray-500">/month</span>
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {/* Maintenance Card */}
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Maintenance
+                    </h3>
+                    <dl className="space-y-2.5">
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Engine Hours</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          {selectedEquipment.totalEngineHours?.toLocaleString() || 0}
+                        </dd>
+                      </div>
+                      {selectedEquipment.lastMaintenance && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Last Maintenance</dt>
+                          <dd className="mt-0.5 text-sm text-gray-900">
+                            {new Date(selectedEquipment.lastMaintenance).toLocaleDateString()}
+                          </dd>
+                        </div>
+                      )}
+                      {selectedEquipment.maintenanceDue && (
+                        <div>
+                          <dt className="text-xs font-medium text-gray-500">Next Due</dt>
+                          <dd className="mt-0.5 flex items-center text-sm font-medium text-yellow-600">
+                            <AlertTriangle className="mr-1 h-4 w-4" />
+                            {new Date(selectedEquipment.maintenanceDue).toLocaleDateString()}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+
+                  {/* Performance Card */}
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Performance
+                    </h3>
+                    <dl className="space-y-2.5">
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Total Bookings</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          {selectedEquipment.totalBookings || 0}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Total Revenue</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-green-600">
+                          ${(selectedEquipment.totalRevenue || 0).toLocaleString()}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">Utilization</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                          {(selectedEquipment.utilizationRate || 0).toFixed(1)}%
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Performance</h4>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <strong>Total Bookings:</strong> {selectedEquipment.totalBookings}
-                    </div>
-                    <div>
-                      <strong>Total Revenue:</strong> $
-                      {selectedEquipment.totalRevenue.toLocaleString()}
-                    </div>
-                    <div>
-                      <strong>Utilization Rate:</strong>{' '}
-                      {selectedEquipment.utilizationRate.toFixed(1)}%
-                    </div>
-                  </div>
-                </div>
-
+                {/* Specifications Section */}
                 {selectedEquipment.specifications &&
                   Object.keys(selectedEquipment.specifications).length > 0 && (
-                    <div className="md:col-span-2">
-                      <h4 className="mb-3 text-sm font-medium text-gray-900">Specifications</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                        Specifications
+                      </h3>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-3 lg:grid-cols-4">
                         {Object.entries(selectedEquipment.specifications).map(([key, value]) => (
-                          <div key={key}>
-                            <strong className="capitalize">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}:
-                            </strong>{' '}
-                            {String(value) || 'N/A'}
+                          <div key={key} className="border-l-2 border-gray-200 pl-3">
+                            <dt className="text-xs font-medium text-gray-500">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </dt>
+                            <dd className="mt-0.5 text-sm font-semibold text-gray-900">
+                              {String(value) || 'N/A'}
+                            </dd>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                {/* Media Gallery */}
-                <div className="md:col-span-2">
+                {/* Media Gallery Section */}
+                <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                    Media Gallery
+                  </h3>
                   <EquipmentMediaGallery
                     equipmentId={selectedEquipment.id}
                     onMediaChange={() => {
-                      // Refresh equipment data if needed
                       fetchEquipment();
                     }}
                   />
                 </div>
 
-                {/* Maintenance History */}
-                <div className="md:col-span-2">
+                {/* Maintenance History Section */}
+                <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                    Maintenance History
+                  </h3>
                   <MaintenanceHistoryLog
                     equipmentId={selectedEquipment.id}
                     onLogChange={() => {
-                      // Refresh equipment data if needed
                       fetchEquipment();
                     }}
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-6">
-                <button
-                  onClick={() => handleEditEquipment(selectedEquipment)}
-                  className="bg-kubota-orange rounded-md px-4 py-2 text-sm text-white hover:bg-orange-600"
-                >
-                  Edit Equipment
-                </button>
+            {/* Footer */}
+            <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 px-6 py-4">
+              <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
                 <button
                   onClick={() => {
                     setShowViewModal(false);
                     setSelectedEquipment(null);
                   }}
-                  className="rounded-md bg-gray-600 px-4 py-2 text-sm text-white hover:bg-gray-700"
+                  className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                 >
                   Close
+                </button>
+                <button
+                  onClick={() => handleEditEquipment(selectedEquipment)}
+                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Edit Equipment
                 </button>
               </div>
             </div>

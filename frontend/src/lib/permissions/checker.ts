@@ -34,21 +34,30 @@ export async function hasPermission(
   permission: PermissionString,
   options: PermissionCheckOptions = {}
 ): Promise<boolean> {
-  console.log('[Permission Checker] hasPermission called', {
-    userId,
-    permission,
-    isClient,
-    options,
+  logger.debug('Permission check called', {
+    component: 'PermissionChecker',
+    action: 'hasPermission_called',
+    metadata: {
+      userId,
+      permission,
+      isClient,
+      options,
+    },
   });
   try {
     // Check cache first
     const cacheKey = `${userId}:${permission}`;
     const cached = PERMISSION_CACHE.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      console.log(
-        '[Permission Checker] Using cached result:',
-        cached.permissions.includes(permission)
-      );
+      logger.debug('Using cached permission result', {
+        component: 'PermissionChecker',
+        action: 'cache_hit',
+        metadata: {
+          userId,
+          permission,
+          hasPermission: cached.permissions.includes(permission),
+        },
+      });
       return cached.permissions.includes(permission);
     }
 
@@ -57,23 +66,34 @@ export async function hasPermission(
     // Client-side: use API route
     if (isClient) {
       try {
-        console.log(
-          '[Permission Checker] Making API request for permission:',
-          permission,
-          'userId:',
-          userId
-        );
-        console.log(
-          '[Permission Checker] fetchWithAuth type:',
-          typeof fetchWithAuth,
-          'is function:',
-          typeof fetchWithAuth === 'function'
-        );
+        logger.debug('Making API request for permission', {
+          component: 'PermissionChecker',
+          action: 'api_request',
+          metadata: {
+            permission,
+            userId,
+          },
+        });
+        logger.debug('fetchWithAuth type check', {
+          component: 'PermissionChecker',
+          action: 'type_check',
+          metadata: {
+            fetchWithAuthType: typeof fetchWithAuth,
+            isFunction: typeof fetchWithAuth === 'function',
+          },
+        });
 
         // Check if fetchWithAuth is available and is a function
         if (!fetchWithAuth) {
           const error = new Error('fetchWithAuth is not available (undefined)');
-          console.error('[Permission Checker] fetchWithAuth check failed:', error);
+          logger.error(
+            'fetchWithAuth check failed',
+            {
+              component: 'PermissionChecker',
+              action: 'fetchWithAuth_check_failed',
+            },
+            error
+          );
           throw error;
         }
 
@@ -81,11 +101,21 @@ export async function hasPermission(
           const error = new Error(
             `fetchWithAuth is not a function (type: ${typeof fetchWithAuth})`
           );
-          console.error('[Permission Checker] fetchWithAuth type check failed:', error);
+          logger.error(
+            'fetchWithAuth type check failed',
+            {
+              component: 'PermissionChecker',
+              action: 'type_check_failed',
+            },
+            error
+          );
           throw error;
         }
 
-        console.log('[Permission Checker] Calling fetchWithAuth...');
+        logger.debug('Calling fetchWithAuth', {
+          component: 'PermissionChecker',
+          action: 'calling_fetchWithAuth',
+        });
         const response = await fetchWithAuth('/api/admin/permissions/check', {
           method: 'POST',
           headers: {
@@ -96,7 +126,11 @@ export async function hasPermission(
             resourceId: options.resourceId || null,
           }),
         });
-        console.log('[Permission Checker] API response status:', response.status, response.ok);
+        logger.debug('API response received', {
+          component: 'PermissionChecker',
+          action: 'api_response',
+          metadata: { status: response.status, ok: response.ok },
+        });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -145,8 +179,16 @@ export async function hasPermission(
           errorDetails.errorType = typeof apiError;
         }
 
-        console.error('[Permission Checker] API error details:', errorDetails);
-        console.error('[Permission Checker] Raw API error:', apiError);
+        logger.error(
+          'API error details',
+          {
+            component: 'PermissionChecker',
+            action: 'api_error',
+            metadata: errorDetails,
+          },
+          apiError
+        );
+        // Raw error already logged above
 
         logger.error('Permission check API error', {
           component: 'permissions-checker',

@@ -1,8 +1,17 @@
+import { z } from 'zod';
+import { ZodError } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { contractNumberFromBooking } from '@/lib/utils';
+
+const contractGenerateSchema = z.object({
+  bookingId: z.string().uuid('Invalid booking ID format'),
+  templateType: z.enum(['rental_agreement', 'insurance_waiver', 'safety_agreement']).optional(),
+});
 
 /**
  * POST /api/admin/contracts/generate
@@ -10,7 +19,7 @@ import { contractNumberFromBooking } from '@/lib/utils';
  *
  * Admin-only endpoint
  */
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     // 1. Verify authentication
     const adminResult = await requireAdmin(request);
@@ -25,28 +34,13 @@ export async function POST(request: NextRequest) {
 
     // Get user for logging
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Get user for logging - requireAdmin already verified admin role
+    const { user } = adminResult;
 
-    // 2. Verify admin role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user?.id || 'unknown')
-      .single();
-
-    if (!userData || !['admin', 'super_admin'].includes(userData.role)) {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
-    }
-
-    // 3. Parse request
+    // 3. Parse and validate request
     const body = await request.json();
-    const { bookingId, templateType = 'rental_agreement' } = body;
-
-    if (!bookingId) {
-      return NextResponse.json({ error: 'Missing bookingId' }, { status: 400 });
-    }
+    const validated = contractGenerateSchema.parse(body);
+    const { bookingId, templateType = 'rental_agreement' } = validated;
 
     // 4. Fetch booking details
     const { data: booking, error: bookingError } = await supabase
@@ -99,7 +93,7 @@ export async function POST(request: NextRequest) {
     // 5. Get template
     const { data: template, error: templateError } = await supabase
       .from('contract_templates')
-      .select('*')
+      .select('id, template_type, name, content, variables, is_active, created_at, updated_at')
       .eq('template_type', templateType)
       .eq('is_active', true)
       .single();
@@ -206,15 +200,25 @@ export async function POST(request: NextRequest) {
       contract: newContract,
       contractNumber,
     });
-  } catch (error: unknown) {
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: err.issues },
+        { status: 400 }
+      );
+    }
+
     logger.error(
       'Contract generation error',
       {
         component: 'admin-contracts-api',
         action: 'error',
       },
-      error
+      err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Internal server error' },
+      { status: 500 }
+    );
   }
-}
+});

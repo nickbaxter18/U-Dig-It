@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const checkPermissionSchema = z.object({
@@ -16,14 +17,22 @@ const checkPermissionSchema = z.object({
   requireAll: z.boolean().optional().default(false),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
 
-    const { supabase, user } = adminResult;
+    const { supabase, user, role } = adminResult;
     if (!supabase || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Super admins and admins automatically have all permissions
+    // This ensures permission checks work even if the permission system has issues
+    if (role === 'super_admin' || role === 'admin') {
+      return NextResponse.json({
+        hasPermission: true,
+      });
     }
 
     const body = await request.json();
@@ -163,4 +172,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

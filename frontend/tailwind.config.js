@@ -16,6 +16,15 @@ module.exports = {
         'brand-gradient-end': '#000000',
         'brand-breadcrumb': '#6B6B6B',
         'kubota-orange': '#A90F0F',    // Contest CTA (same as brand-secondary)
+        // Premium Gold colors (matching btn-premium-gold)
+        'premium-gold': {
+          DEFAULT: '#b8942a',          // Primary gold
+          light: '#ddb83b',             // Light gold
+          dark: '#a68523',              // Dark gold
+          darker: '#9b7a1f',           // Darker gold for hover
+          '50': '#fef9e7',              // Light gold background
+          '100': '#fef3d5',              // Very light gold
+        },
       },
       fontFamily: {
         'inter': ['var(--font-inter)', 'Inter', 'sans-serif'],

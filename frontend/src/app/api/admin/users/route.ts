@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { logPermissionChange } from '@/lib/permissions/audit';
 import { checkPermission } from '@/lib/permissions/middleware';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const createAdminUserSchema = z.object({
@@ -15,7 +16,7 @@ const createAdminUserSchema = z.object({
   status: z.enum(['active', 'inactive', 'suspended']).optional(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -31,11 +32,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all users
-    const { data: users, error: usersError } = await supabase
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
+    // Get users with pagination
+    const {
+      data: users,
+      error: usersError,
+      count,
+    } = await supabase
       .from('users')
-      .select('id, email, firstName, lastName, role, status')
-      .order('createdAt', { ascending: false });
+      .select('id, email, firstName, lastName, role, status', { count: 'exact' })
+      .order('createdAt', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (usersError) {
       logger.error('Failed to fetch users', {
@@ -54,6 +66,12 @@ export async function GET(request: NextRequest) {
         role: user.role,
         status: user.status,
       })),
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
     });
   } catch (error) {
     logger.error('Unexpected error fetching users', {
@@ -63,9 +81,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -395,4 +413,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

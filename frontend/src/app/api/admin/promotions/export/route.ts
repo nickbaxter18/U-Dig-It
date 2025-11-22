@@ -1,13 +1,15 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 function formatCsvValue(value: unknown) {
   const asString = value === null || value === undefined ? '' : String(value);
   return `"${asString.replace(/"/g, '""')}"`;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -15,12 +17,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { data, error: queryError } = await supabase
@@ -47,7 +45,7 @@ export async function GET(request: NextRequest) {
       'Created At',
     ];
 
-    const rows = (data ?? []).map(discount => [
+    const rows = (data ?? []).map((discount) => [
       discount.code ?? 'N/A',
       discount.name ?? '',
       discount.type ?? '',
@@ -64,7 +62,7 @@ export async function GET(request: NextRequest) {
       discount.created_at ? new Date(discount.created_at).toLocaleDateString() : '',
     ]);
 
-    const csvContent = [header, ...rows].map(row => row.map(formatCsvValue).join(',')).join('\n');
+    const csvContent = [header, ...rows].map((row) => row.map(formatCsvValue).join(',')).join('\n');
     const filename = `promotions-export-${new Date().toISOString().split('T')[0]}.csv`;
 
     return new NextResponse(csvContent, {
@@ -85,6 +83,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export promotions' }, { status: 500 });
   }
-}
-
-
+});

@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     // Allow internal service calls (from job scheduler)
-    const isInternalCall =
-      request.headers.get('x-internal-service-key') === process.env.INTERNAL_SERVICE_KEY;
+    const internalServiceKey = await getInternalServiceKey();
+    const isInternalCall = request.headers.get('x-internal-service-key') === internalServiceKey;
 
     if (!isInternalCall) {
       if (authError || !user) {

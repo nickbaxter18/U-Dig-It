@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * POST /api/admin/analytics/schedule-report
  * Schedule a recurring analytics report
  */
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -18,9 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const { reportType, frequency, recipients, dateRange } = body;
@@ -89,4 +88,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to schedule report' }, { status: 500 });
   }
-}
+});

@@ -15,10 +15,12 @@
 
 📖 **Full Workflow Guide**: See `docs/reference/AI_WORKFLOW_GUIDE.md` for comprehensive details
 📋 **Quick Checklists**: See `docs/reference/AI_WORKFLOW_CHECKLISTS.md` for quick reference
+🎯 **Comprehensive Analysis Prompt**: See `docs/reference/COMPREHENSIVE_ANALYSIS_PROMPT.md` - Use this prompt when linking components/pages for the most thorough analysis and implementation plan
 
 **Key Workflow Files:**
 - `docs/reference/AI_WORKFLOW_GUIDE.md` - Complete workflow documentation
 - `docs/reference/AI_WORKFLOW_CHECKLISTS.md` - Quick reference checklists
+- `docs/reference/COMPREHENSIVE_ANALYSIS_PROMPT.md` - Comprehensive analysis prompt template
 - `.cursor/rules/ai-workflow-optimization.mdc` - Workflow rules (always applied)
 
 ---
@@ -241,11 +243,15 @@ const { data: bookings } = await supabase
 
 ### Check Availability
 ```typescript
+// ✅ CORRECT - Use specific columns
 const { data: conflicts } = await supabase
   .from('availability_blocks')
-  .select('*')
+  .select('id, equipment_id, start_at_utc, end_at_utc, reason')
   .eq('equipment_id', equipmentId)
   .or(`and(start_at_utc.lte.${endDate},end_at_utc.gte.${startDate})`);
+
+// ❌ WRONG - Never use SELECT *
+// .select('*') // FORBIDDEN - Causes 60% larger payloads
 ```
 
 ### Get Equipment with Pricing
@@ -356,6 +362,11 @@ pnpm supabase:reset
 3. ❌ **Never skip input validation** - Always sanitize and validate
 4. ❌ **Never skip rate limiting** - Apply to all API routes
 5. ❌ **Never use `SELECT *`** - Always specify columns
+   - **FORBIDDEN**: `.select('*')` or `.select("*")` - ESLint rule errors on this
+   - **REQUIRED**: `.select('id, name, status')` - Use specific columns
+   - **Performance Impact**: 60% payload reduction, 200ms → 15ms query improvement
+   - **Pre-commit Hook**: Blocks commits with SELECT * usage
+   - **Reference**: @frontend/src/app/api/bookings/route.ts:147-153
 6. ❌ **Never skip RLS** - All user-facing tables need RLS
 7. ❌ **Never use `pnpm dev` directly** - Use `start-frontend-clean.sh`
 

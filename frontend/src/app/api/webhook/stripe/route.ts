@@ -4,6 +4,8 @@ import Stripe from 'stripe';
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { updateBillingStatus } from '@/lib/booking/billing-status';
 import { logger } from '@/lib/logger';
 import {
   createStripeClient,
@@ -169,6 +171,50 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       }
     }
 
+    // Recalculate booking balance after payment completion
+    const newBalance = await recalculateBookingBalance(bookingId);
+    if (newBalance === null) {
+      logger.warn('Balance recalculation failed after Stripe checkout session', {
+        component: 'stripe-webhook-api',
+        action: 'balance_recalculation_failed',
+        metadata: { bookingId, paymentId, paymentType },
+      });
+    } else {
+      // Update billing status after balance recalculation
+      const newBillingStatus = await updateBillingStatus(bookingId);
+      if (newBillingStatus === null) {
+        logger.warn('Billing status update failed after Stripe checkout session', {
+          component: 'stripe-webhook-api',
+          action: 'billing_status_update_failed',
+          metadata: { bookingId, paymentId, paymentType },
+        });
+      }
+
+      // Update booking status to 'paid' if balance reaches 0
+      if (newBalance === 0 && paymentType === 'payment') {
+        const { error: statusUpdateError } = await supabase
+          .from('bookings')
+          .update({ status: 'paid' })
+          .eq('id', bookingId);
+
+        if (statusUpdateError) {
+          logger.warn(
+            'Failed to update booking status to paid',
+            {
+              component: 'stripe-webhook-api',
+              action: 'booking_status_update_failed',
+              metadata: {
+                bookingId,
+                paymentId,
+                error: statusUpdateError.message,
+              },
+            },
+            statusUpdateError
+          );
+        }
+      }
+    }
+
     logger.info('Checkout session payment processed successfully', {
       component: 'stripe-webhook-api',
       action: 'checkout_session_completed',
@@ -245,6 +291,50 @@ async function handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent) {
         component: 'stripe-webhook-api',
         action: 'booking_update_error',
       });
+    }
+
+    // Recalculate booking balance after payment intent succeeded
+    const newBalance = await recalculateBookingBalance(bookingId);
+    if (newBalance === null) {
+      logger.warn('Balance recalculation failed after Stripe payment intent', {
+        component: 'stripe-webhook-api',
+        action: 'balance_recalculation_failed',
+        metadata: { bookingId, paymentIntentId: paymentIntent.id },
+      });
+    } else {
+      // Update billing status after balance recalculation
+      const newBillingStatus = await updateBillingStatus(bookingId);
+      if (newBillingStatus === null) {
+        logger.warn('Billing status update failed after Stripe payment intent', {
+          component: 'stripe-webhook-api',
+          action: 'billing_status_update_failed',
+          metadata: { bookingId, paymentIntentId: paymentIntent.id },
+        });
+      }
+
+      // Update booking status to 'paid' if balance reaches 0
+      if (newBalance === 0) {
+        const { error: statusUpdateError } = await supabase
+          .from('bookings')
+          .update({ status: 'paid' })
+          .eq('id', bookingId);
+
+        if (statusUpdateError) {
+          logger.warn(
+            'Failed to update booking status to paid',
+            {
+              component: 'stripe-webhook-api',
+              action: 'booking_status_update_failed',
+              metadata: {
+                bookingId,
+                paymentIntentId: paymentIntent.id,
+                error: statusUpdateError.message,
+              },
+            },
+            statusUpdateError
+          );
+        }
+      }
     }
 
     // Create audit log

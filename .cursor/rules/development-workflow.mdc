@@ -1,5 +1,5 @@
 ---
-description: "Detailed development workflow - daily operations, tools integration, and step-by-step feature development. Core workflow covered in CORE.mdc, use this for comprehensive workflow guidance."
+description: "Complete feature development workflow with automated checklists - use when creating new features, implementing user stories, or building complete functionality. Includes pre-implementation search, pattern discovery, implementation guidance, and post-implementation quality gates. References AI_WORKFLOW_CHECKLISTS.md for checklist items."
 globs: []
 alwaysApply: false
 ---

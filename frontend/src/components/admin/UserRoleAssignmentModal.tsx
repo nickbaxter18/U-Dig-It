@@ -9,6 +9,8 @@ import { Save, Search, X } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
@@ -138,18 +140,9 @@ export function UserRoleAssignmentModal({
       `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-900">Assign Role to User</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+    <AdminModal isOpen={isOpen} onClose={onClose} title="Assign Role to User" maxWidth="2xl">
+      <div className="flex flex-col">
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-6">
             {/* User Selection */}
@@ -222,14 +215,14 @@ export function UserRoleAssignmentModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="bg-kubota-orange flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
             >
               <Save className="h-4 w-4" />
               {loading ? 'Assigning...' : 'Assign Role'}
@@ -237,6 +230,6 @@ export function UserRoleAssignmentModal({
           </div>
         </form>
       </div>
-    </div>
+    </AdminModal>
   );
 }

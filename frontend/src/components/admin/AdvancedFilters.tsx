@@ -175,14 +175,14 @@ export function AdvancedFilters({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center space-x-2 rounded-md border px-4 py-2 text-sm font-medium transition ${
           hasActiveFilters
-            ? 'border-kubota-orange bg-orange-50 text-orange-900'
+            ? 'border-premium-gold bg-premium-gold-50 text-premium-gold-dark'
             : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
         }`}
       >
         <Filter className="h-4 w-4" />
         <span>Advanced Filters</span>
         {hasActiveFilters && (
-          <span className="ml-1 rounded-full bg-kubota-orange px-2 py-0.5 text-xs text-white">
+          <span className="ml-1 rounded-full bg-premium-gold px-2 py-0.5 text-xs text-white">
             {[
               localFilters.dateRange?.start || localFilters.dateRange?.end ? 1 : 0,
               localFilters.operators?.length || 0,
@@ -266,7 +266,7 @@ export function AdvancedFilters({
                         : ''
                     }
                     onChange={(e) => handleDateRangeChange('start', e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                   />
                 </div>
                 <div>
@@ -279,7 +279,7 @@ export function AdvancedFilters({
                         : ''
                     }
                     onChange={(e) => handleDateRangeChange('end', e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                   />
                 </div>
               </div>
@@ -305,7 +305,7 @@ export function AdvancedFilters({
                           );
                           handleMultiSelectChange(field.value, selected);
                         }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                         size={Math.min(field.options.length, 4)}
                       >
                         {field.options.map((option) => (
@@ -328,7 +328,7 @@ export function AdvancedFilters({
                   <label className="block text-sm font-medium text-gray-700">Custom Filters</label>
                   <button
                     onClick={handleAddOperator}
-                    className="text-xs text-kubota-orange hover:text-orange-600"
+                    className="text-xs text-premium-gold hover:text-premium-gold-dark"
                   >
                     + Add Filter
                   </button>
@@ -349,7 +349,7 @@ export function AdvancedFilters({
                           onChange={(e) =>
                             handleOperatorChange(index, { field: e.target.value, value: '' })
                           }
-                          className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                          className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                         >
                           {availableFields.map((field) => (
                             <option key={field.value} value={field.value}>
@@ -366,7 +366,7 @@ export function AdvancedFilters({
                               value: '',
                             })
                           }
-                          className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                          className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                         >
                           {operatorOptions.map((op) => (
                             <option key={op.value} value={op.value}>
@@ -397,7 +397,7 @@ export function AdvancedFilters({
                                   ],
                                 });
                               }}
-                              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                               placeholder="From"
                             />
                             <span className="text-gray-500">to</span>
@@ -421,7 +421,7 @@ export function AdvancedFilters({
                                   ],
                                 });
                               }}
-                              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                              className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                               placeholder="To"
                             />
                           </div>
@@ -441,7 +441,7 @@ export function AdvancedFilters({
                               );
                               handleOperatorChange(index, { value: selected });
                             }}
-                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                             size={Math.min(fieldOptions.length, 3)}
                           >
                             {fieldOptions.map((option) => (
@@ -454,7 +454,7 @@ export function AdvancedFilters({
                           <select
                             value={typeof operator.value === 'string' ? operator.value : ''}
                             onChange={(e) => handleOperatorChange(index, { value: e.target.value })}
-                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                           >
                             <option value="">Select...</option>
                             {fieldOptions.map((option) => (
@@ -486,7 +486,7 @@ export function AdvancedFilters({
                                     : e.target.value,
                               })
                             }
-                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange"
+                            className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold"
                             placeholder="Value"
                           />
                         )}

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -15,9 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user for logging
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get('dateRange') || 'month';
@@ -169,4 +168,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export analytics' }, { status: 500 });
   }
-}
+});

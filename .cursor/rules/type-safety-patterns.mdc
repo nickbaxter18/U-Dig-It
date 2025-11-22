@@ -1,0 +1,354 @@
+# Type Safety Patterns
+
+## Purpose
+
+Enforce strict type safety across the codebase to eliminate type-related bugs. This rule ensures all code uses proper TypeScript types, eliminates `any` usage, and implements type guards for runtime validation.
+
+**Critical**: Type safety prevents bugs at compile time. Using `any` defeats TypeScript's purpose and leads to runtime errors.
+
+---
+
+## Core Principles
+
+1. **NEVER use `any`** - Use `unknown` with type guards or proper types
+2. **Always use strict null checks** - `strictNullChecks: true` must be enabled
+3. **Use type guards for runtime validation** - Validate before accessing properties
+4. **Use proper types from database** - Import types from `@/../../supabase/types`
+5. **Type assertions only with validation** - Never assert without checking
+
+---
+
+## Pattern 1: Replace `any` with `unknown` + Type Guard
+
+**Why**: `unknown` forces type checking, preventing accidental property access.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Use unknown with type guard
+function processError(error: unknown): AppError {
+  const appError: AppError = {
+    code: ERROR_CODES.UNKNOWN_ERROR,
+    message: 'Unknown error',
+    statusCode: 500,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Type guard - check instanceof first
+  if (error instanceof Error) {
+    appError.message = error.message;
+  }
+
+  // Type guard - check properties exist before accessing
+  else if (
+    (error as { message?: string } | null)?.message &&
+    typeof (error as { message?: string } | null)?.message === 'string'
+  ) {
+    appError.message = (error as { message: string }).message;
+  }
+
+  return appError;
+}
+```
+
+**Reference**: @frontend/src/lib/error-handler.ts:67-158 (normalizeError with unknown pattern)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Using any defeats type safety
+const bookingData: any = data;
+const id = bookingData.id; // No type checking!
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:115 (anti-pattern example)
+
+**Fix for Anti-Pattern**:
+```typescript
+// ✅ CORRECT - Use proper types from database
+import type { Database } from '@/../../supabase/types';
+type BookingRow = Database['public']['Tables']['bookings']['Row'];
+
+const bookingData = data as BookingRow;
+const id = bookingData.id; // Type-safe!
+```
+
+---
+
+## Pattern 2: Type Guards for Runtime Validation
+
+**Why**: Runtime validation ensures type safety when data comes from external sources.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Type guard checks
+if (error instanceof Error) {
+  appError.message = error.message;
+}
+
+// ✅ CORRECT - Check property exists and has correct type
+if (
+  (error as { statusCode?: number; code?: string } | null)?.statusCode &&
+  (error as { statusCode?: number; code?: string } | null)?.code
+) {
+  const apiError = error as {
+    code: string;
+    statusCode: number;
+    details?: unknown;
+    message?: string;
+  };
+  appError.code = apiError.code;
+  appError.statusCode = apiError.statusCode;
+}
+```
+
+**Reference**: @frontend/src/lib/error-handler.ts:76-157 (comprehensive type guard pattern)
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:267-299 (error handling with type guards)
+
+---
+
+## Pattern 3: Proper Database Types
+
+**Why**: Using generated database types ensures compile-time safety and matches actual schema.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Import types from supabase/types
+import type { Database, Tables } from '@/../../supabase/types';
+
+// Use table row type
+type User = Tables<'users'>;
+const user: User = data; // Type-safe!
+
+// Use database type for client
+import { createClient } from '@/lib/supabase/client';
+const supabase = createClient<Database>();
+
+// Type-safe queries
+const { data } = await supabase
+  .from('bookings') // ✅ Autocompleted
+  .select('id, bookingNumber, status')
+  .eq('status', 'confirmed'); // ✅ Type-safe
+```
+
+**Reference**: @frontend/src/lib/supabase/auth.ts:1-4 (using Tables type)
+
+**Reference**: @frontend/src/hooks/useSupabase.ts:5 (Database type usage)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Using any loses type safety
+const bookingData: any = data;
+const bookingNumber = bookingData.bookingNumber; // No autocomplete, no type checking
+```
+
+---
+
+## Pattern 4: Return `unknown` for Unvalidated Data
+
+**Why**: Functions that parse/validate data should return `unknown` until validated.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Return unknown for unvalidated data
+export function sanitizeJSON(jsonString: string, maxDepth: number = 10): unknown | null {
+  try {
+    const parsed = JSON.parse(jsonString);
+    const sanitized = sanitizeObjectKeys(parsed as Record<string, unknown>);
+    return sanitized; // Returns unknown - caller must validate
+  } catch (error) {
+    logger.error('Invalid JSON rejected', {
+      component: 'input-sanitizer',
+      action: 'json_parse_error',
+      metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+    });
+    return null;
+  }
+}
+
+// Caller must validate:
+const parsed = sanitizeJSON(jsonString);
+if (parsed && typeof parsed === 'object' && 'id' in parsed) {
+  const id = (parsed as { id: string }).id; // Type-safe after validation
+}
+```
+
+**Reference**: @frontend/src/lib/input-sanitizer.ts:248-291 (sanitizeJSON returns unknown)
+
+---
+
+## Pattern 5: Type Assertions Only With Validation
+
+**Why**: Type assertions bypass type checking - only use after runtime validation.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Validate before assertion
+if (error instanceof Error) {
+  const message = error.message; // Type-safe after instanceof check
+}
+
+// ✅ CORRECT - Check properties exist before assertion
+if (
+  (error as { code?: string } | null)?.code === 'ECONNREFUSED' ||
+  (error as { code?: string } | null)?.code === 'ENOTFOUND'
+) {
+  appError.code = ERROR_CODES.NETWORK_ERROR;
+}
+```
+
+**Reference**: @frontend/src/lib/error-handler.ts:104-117 (validation before assertion)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Assertion without validation
+const bookingData = data as BookingData; // Assumes data is BookingData - may be wrong!
+```
+
+---
+
+## Pattern 6: Strict Null Checks
+
+**Why**: Enables TypeScript to catch null/undefined errors at compile time.
+
+**Configuration**:
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true
+  }
+}
+```
+
+**Pattern**: Always check for null/undefined before use
+```typescript
+// ✅ CORRECT - Check before use
+if (user && user.email) {
+  sendEmail(user.email);
+}
+
+// ✅ CORRECT - Use optional chaining
+const email = user?.email ?? 'default@example.com';
+```
+
+---
+
+## Common Mistakes to Avoid
+
+### Mistake 1: Using `any` Instead of `unknown`
+
+```typescript
+// ❌ WRONG
+function handleError(error: any) {
+  console.log(error.message); // May not exist!
+}
+
+// ✅ CORRECT
+function handleError(error: unknown) {
+  if (error instanceof Error) {
+    console.log(error.message); // Type-safe after check
+  }
+}
+```
+
+### Mistake 2: Type Assertion Without Validation
+
+```typescript
+// ❌ WRONG
+const bookingData = data as BookingData; // Dangerous!
+
+// ✅ CORRECT
+if (data && typeof data === 'object' && 'id' in data) {
+  const bookingData = data as BookingData; // Safe after validation
+}
+```
+
+### Mistake 3: Not Using Database Types
+
+```typescript
+// ❌ WRONG - Manual type definition (may drift from schema)
+interface Booking {
+  id: string;
+  bookingNumber: string;
+}
+
+// ✅ CORRECT - Use generated types
+import type { Tables } from '@/../../supabase/types';
+type Booking = Tables<'bookings'>; // Always matches schema
+```
+
+### Mistake 4: Ignoring TypeScript Errors with `@ts-ignore`
+
+```typescript
+// ❌ WRONG
+// @ts-ignore
+const value = data.someProperty; // Hides real type errors!
+
+// ✅ CORRECT - Fix the type error
+if (data && 'someProperty' in data) {
+  const value = (data as { someProperty: string }).someProperty;
+}
+```
+
+---
+
+## Auto-Fix Patterns
+
+When I encounter `any` types, I will:
+
+1. **Replace with `unknown` + type guard** (for error handling, parsing)
+2. **Use proper database types** (for Supabase queries)
+3. **Create interfaces** (for custom types)
+4. **Use generic types** (for reusable functions)
+
+**Examples from codebase fixes**:
+- Error handling: Replace `error: any` with `error: unknown` + type guards
+- API responses: Use `Database` types from `@/../../supabase/types`
+- Parsed JSON: Return `unknown`, validate in caller
+
+---
+
+## Testing Type Safety
+
+**Verify types work correctly**:
+- Run `pnpm type-check` - should pass with no errors
+- Check IDE autocomplete works (should suggest properties)
+- Verify no `@ts-ignore` comments hide type errors
+
+---
+
+## Success Criteria
+
+Type safety is enforced when:
+- ✅ Zero `any` types in new code
+- ✅ All error handling uses `unknown` with type guards
+- ✅ All database queries use types from `@/../../supabase/types`
+- ✅ All type assertions have validation before them
+- ✅ `strictNullChecks` enabled in tsconfig.json
+- ✅ TypeScript compilation passes with no errors
+
+---
+
+## References
+
+**Correct Patterns**:
+- Error handling: @frontend/src/lib/error-handler.ts:67-158
+- JSON parsing: @frontend/src/lib/input-sanitizer.ts:248-291
+- Database types: @frontend/src/lib/supabase/auth.ts:1-4
+- Type guards: @frontend/src/app/api/bookings/route.ts:267-299
+
+**Anti-Patterns (to fix)**:
+- Using `any`: @frontend/src/app/bookings/[id]/page.tsx:115
+- 234 instances of `any` across 107 files need fixing
+
+**Database Types**:
+- Type definitions: @supabase/types.ts
+- Usage examples: @frontend/src/hooks/useSupabase.ts:5
+
+---
+
+**Remember**: Type safety prevents bugs at compile time. Every `any` type is a potential runtime error waiting to happen.

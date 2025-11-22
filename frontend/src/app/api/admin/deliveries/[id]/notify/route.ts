@@ -1,41 +1,49 @@
 import sgMail from '@sendgrid/mail';
+import { z } from 'zod';
+import { ZodError } from 'zod';
 
-// Removed unused import: sendAdminEmail
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { createInAppNotification } from '@/lib/notification-service';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
+import { getSendGridApiKey } from '@/lib/secrets/email';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-
-// Initialize SendGrid
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
 const FROM_NAME = process.env.EMAIL_FROM_NAME || 'U-Dig It Rentals';
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const adminResult = await requireAdmin(request);
+const deliveryNotificationSchema = z.object({
+  status: z.enum(['in_transit', 'delivered', 'completed']),
+  message: z.string().max(500).optional(),
+});
 
-    if (adminResult.error) return adminResult.error;
+export const POST = withRateLimit(
+  RateLimitPresets.STRICT,
+  async (request: NextRequest, { params }: { params: { id: string } }) => {
+    try {
+      const adminResult = await requireAdmin(request);
 
-    const supabase = adminResult.supabase;
+      if (adminResult.error) return adminResult.error;
 
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    }
+      const supabase = adminResult.supabase;
 
-    const { id } = params;
-    const body = await request.json();
-    const { status, message } = body;
+      if (!supabase) {
+        return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+      }
 
-    // Fetch booking with customer details
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select(
-        `
+      const { id } = params;
+
+      // Parse and validate request body
+      const body = await request.json();
+      const validated = deliveryNotificationSchema.parse(body);
+      const { status, message } = validated;
+
+      // Fetch booking with customer details
+      const { data: booking, error: bookingError } = await supabase
+        .from('bookings')
+        .select(
+          `
         id,
         bookingNumber,
         startDate,
@@ -57,48 +65,48 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           model
         )
       `
-      )
-      .eq('id', id)
-      .single();
+        )
+        .eq('id', id)
+        .single();
 
-    if (bookingError || !booking) {
-      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
-    }
+      if (bookingError || !booking) {
+        return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+      }
 
-    const customer = (
-      booking as {
-        customer?: { email?: string; id?: string; firstName?: string; lastName?: string };
-      } | null
-    )?.customer;
-    if (!customer || !customer.email) {
-      return NextResponse.json({ error: 'Customer email not found' }, { status: 400 });
-    }
+      const customer = (
+        booking as {
+          customer?: { email?: string; id?: string; firstName?: string; lastName?: string };
+        } | null
+      )?.customer;
+      if (!customer || !customer.email) {
+        return NextResponse.json({ error: 'Customer email not found' }, { status: 400 });
+      }
 
-    // Type-safe booking data
-    const bookingData = booking as {
-      bookingNumber?: string;
-      startDate?: string;
-      endDate?: string;
-      equipment?: { make?: string; model?: string };
-      deliveryAddress?: string;
-      deliveryCity?: string;
-      deliveryProvince?: string;
-      deliveryPostalCode?: string;
-    };
+      // Type-safe booking data
+      const bookingData = booking as {
+        bookingNumber?: string;
+        startDate?: string;
+        endDate?: string;
+        equipment?: { make?: string; model?: string };
+        deliveryAddress?: string;
+        deliveryCity?: string;
+        deliveryProvince?: string;
+        deliveryPostalCode?: string;
+      };
 
-    // Get status-specific email content
-    const getEmailContent = () => {
-      const equipmentName = `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`;
-      const fullAddress =
-        `${bookingData.deliveryAddress || ''}, ${bookingData.deliveryCity || ''}, ${bookingData.deliveryProvince || 'NB'} ${bookingData.deliveryPostalCode || ''}`.trim();
-      const customerName =
-        `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.email;
+      // Get status-specific email content
+      const getEmailContent = () => {
+        const equipmentName = `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`;
+        const fullAddress =
+          `${bookingData.deliveryAddress || ''}, ${bookingData.deliveryCity || ''}, ${bookingData.deliveryProvince || 'NB'} ${bookingData.deliveryPostalCode || ''}`.trim();
+        const customerName =
+          `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.email;
 
-      switch (status) {
-        case 'in_transit':
-          return {
-            subject: `Your Equipment is on the Way - ${bookingData.bookingNumber || 'N/A'}`,
-            html: `
+        switch (status) {
+          case 'in_transit':
+            return {
+              subject: `Your Equipment is on the Way - ${bookingData.bookingNumber || 'N/A'}`,
+              html: `
               <!DOCTYPE html>
               <html>
               <head>
@@ -139,12 +147,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               </body>
               </html>
             `,
-          };
+            };
 
-        case 'delivered':
-          return {
-            subject: `Equipment Delivered - ${bookingData.bookingNumber || 'N/A'}`,
-            html: `
+          case 'delivered':
+            return {
+              subject: `Equipment Delivered - ${bookingData.bookingNumber || 'N/A'}`,
+              html: `
               <!DOCTYPE html>
               <html>
               <head>
@@ -185,12 +193,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               </body>
               </html>
             `,
-          };
+            };
 
-        case 'completed':
-          return {
-            subject: `Rental Completed - ${bookingData.bookingNumber || 'N/A'}`,
-            html: `
+          case 'completed':
+            return {
+              subject: `Rental Completed - ${bookingData.bookingNumber || 'N/A'}`,
+              html: `
               <!DOCTYPE html>
               <html>
               <head>
@@ -230,12 +238,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               </body>
               </html>
             `,
-          };
+            };
 
-        default:
-          return {
-            subject: `Delivery Update - ${bookingData.bookingNumber || 'N/A'}`,
-            html: `
+          default:
+            return {
+              subject: `Delivery Update - ${bookingData.bookingNumber || 'N/A'}`,
+              html: `
               <!DOCTYPE html>
               <html>
               <head>
@@ -257,15 +265,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               </body>
               </html>
             `,
-          };
-      }
-    };
+            };
+        }
+      };
 
-    const emailContent = getEmailContent();
+      const emailContent = getEmailContent();
 
-    // Send email via SendGrid
-    if (process.env.SENDGRID_API_KEY) {
+      // Send email via SendGrid
       try {
+        const { getSendGridApiKey } = await import('@/lib/secrets/email');
+        const sendgridApiKey = await getSendGridApiKey();
+        sgMail.setApiKey(sendgridApiKey);
+
         await sgMail.send({
           to: customer.email,
           from: {
@@ -300,44 +311,51 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         );
         // Don't fail the request if email fails
       }
+
+      await createInAppNotification({
+        supabase,
+        userId: customer.id,
+        category: 'booking',
+        priority: status === 'delivered' ? 'high' : 'medium',
+        title: emailContent.subject,
+        message: message || `Your delivery status has been updated to ${status}.`,
+        actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/bookings/${id}`,
+        ctaLabel: 'View booking',
+        templateId: 'delivery_status_update',
+        templateData: {
+          bookingNumber: bookingData.bookingNumber || 'N/A',
+          status,
+          equipmentName: `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`,
+        },
+        metadata: {
+          deliveryStatus: status,
+          bookingId: id,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Notification sent successfully',
+      });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          { error: 'Invalid request data', details: error.issues },
+          { status: 400 }
+        );
+      }
+
+      logger.error(
+        'Failed to send delivery notification',
+        {
+          component: 'delivery-notify-api',
+          action: 'notify_error',
+          metadata: { error: error instanceof Error ? error.message : String(error) },
+        },
+        error instanceof Error ? error : undefined
+      );
+
+      return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
     }
-
-    await createInAppNotification({
-      supabase,
-      userId: customer.id,
-      category: 'booking',
-      priority: status === 'delivered' ? 'high' : 'medium',
-      title: emailContent.subject,
-      message: message || `Your delivery status has been updated to ${status}.`,
-      actionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/dashboard/bookings/${id}`,
-      ctaLabel: 'View booking',
-      templateId: 'delivery_status_update',
-      templateData: {
-        bookingNumber: bookingData.bookingNumber || 'N/A',
-        status,
-        equipmentName: `${bookingData.equipment?.make || 'Kubota'} ${bookingData.equipment?.model || 'SVL-75'}`,
-      },
-      metadata: {
-        deliveryStatus: status,
-        bookingId: id,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Notification sent successfully',
-    });
-  } catch (error: unknown) {
-    logger.error(
-      'Failed to send delivery notification',
-      {
-        component: 'delivery-notify-api',
-        action: 'notify_error',
-        metadata: { error: error.message },
-      },
-      error
-    );
-
-    return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
   }
-}
+);

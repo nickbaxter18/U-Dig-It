@@ -1,0 +1,173 @@
+# Accessibility Review Checklist
+
+## Purpose
+Detailed accessibility review checklist for proactive code review. Reference this when reviewing code for WCAG compliance.
+
+---
+
+## Accessibility Review Checklist
+
+### Semantic HTML
+
+- [ ] **Semantic HTML** (not divs for buttons)
+  ```tsx
+  // ✅ CORRECT
+  <button onClick={handleClick}>Submit</button>
+
+  // ❌ WRONG
+  <div onClick={handleClick}>Submit</div>
+  ```
+
+---
+
+### ARIA Labels
+
+- [ ] **ARIA labels** (for icon buttons, complex UI)
+  ```tsx
+  // ✅ CORRECT
+  <button aria-label="Close dialog" onClick={onClose}>
+    <XIcon />
+  </button>
+
+  // ✅ CORRECT - Described by
+  <button aria-label="Book equipment" aria-describedby="booking-help">
+    Book Now
+  </button>
+  <span id="booking-help" className="sr-only">
+    Click to book the selected equipment
+  </span>
+  ```
+
+---
+
+### Form Labels
+
+- [ ] **Form labels** (all inputs labeled)
+  ```tsx
+  // ✅ CORRECT
+  <label htmlFor="equipment">Equipment</label>
+  <select id="equipment" name="equipment">...</select>
+
+  // ✅ CORRECT - Inline label
+  <label>
+    Equipment
+    <select name="equipment">...</select>
+  </label>
+  ```
+
+---
+
+### Keyboard Navigation
+
+- [ ] **Keyboard navigation** (all interactive elements focusable)
+  ```tsx
+  // ✅ CORRECT - Button is focusable by default
+  <button onClick={handleClick}>Click me</button>
+
+  // ✅ CORRECT - Custom element needs tabIndex
+  <div
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        handleClick();
+      }
+    }}
+  >
+    Custom button
+  </div>
+  ```
+
+- [ ] **Logical tab order** (elements focusable in logical sequence)
+- [ ] **Escape closes modals** (keyboard shortcut)
+  ```tsx
+  // ✅ CORRECT
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+  ```
+
+---
+
+### Focus Indicators
+
+- [ ] **Focus indicators** (visible)
+  ```css
+  /* ✅ CORRECT */
+  button:focus {
+    outline: 2px solid blue;
+    outline-offset: 2px;
+  }
+
+  /* ✅ CORRECT - Custom focus ring */
+  button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+  ```
+
+---
+
+### Color Contrast
+
+- [ ] **Color contrast** (WCAG AA: 4.5:1 for text)
+  ```tsx
+  // ✅ CORRECT - Check with contrast checker
+  <p className="text-gray-700">Text on white background</p>
+
+  // ✅ CORRECT - High contrast for important text
+  <p className="text-gray-900 font-bold">Important message</p>
+  ```
+
+  **Tools**: Use browser DevTools contrast checker or online tools
+
+---
+
+### Screen Reader Support
+
+- [ ] **Screen reader support** (sr-only class for hidden but accessible text)
+  ```tsx
+  // ✅ CORRECT - Hidden from visual display, available to screen readers
+  <span className="sr-only">
+    Loading equipment availability
+  </span>
+  ```
+
+- [ ] **Live regions** (for dynamic content updates)
+  ```tsx
+  // ✅ CORRECT - Announce dynamic changes
+  <div role="status" aria-live="polite" aria-atomic="true">
+    {loading ? 'Loading...' : `Found ${count} results`}
+  </div>
+  ```
+
+---
+
+## Accessibility Standards
+
+### WCAG AA Compliance
+- ✅ 4.5:1 color contrast for normal text
+- ✅ 3:1 color contrast for large text (18pt+)
+- ✅ All interactive elements keyboard accessible
+- ✅ All form inputs have labels
+- ✅ Semantic HTML structure
+- ✅ ARIA labels for icon-only buttons
+- ✅ Focus indicators visible
+
+### Common Accessibility Issues
+- ❌ Div buttons without keyboard support
+- ❌ Missing form labels
+- ❌ Low color contrast
+- ❌ Missing ARIA labels on icon buttons
+- ❌ Keyboard traps in modals
+- ❌ Missing focus indicators
+
+---
+
+**Remember**: Accessibility is not optional. Always make UI accessible to all users.

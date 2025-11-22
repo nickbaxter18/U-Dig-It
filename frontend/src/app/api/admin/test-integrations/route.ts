@@ -8,36 +8,24 @@ import sgMail from '@sendgrid/mail';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
+import { getSendGridApiKey } from '@/lib/secrets/email';
 import {
   createStripeClient,
   getStripePublishableKey,
   getStripeSecretKey,
   getStripeWebhookSecret,
 } from '@/lib/stripe/config';
-import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(_request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (_request: NextRequest) => {
   try {
-    // Verify admin authentication
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const adminResult = await requireAdmin(_request);
+    if (adminResult.error) return adminResult.error;
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check if user is admin
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user?.id || 'unknown')
-      .single();
-
-    if (!userData || (userData.role !== 'admin' && userData.role !== 'super_admin')) {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    const supabase = adminResult.supabase;
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
     const results = {
@@ -124,31 +112,27 @@ export async function GET(_request: NextRequest) {
 
     // Test 4: SendGrid Configuration
     try {
-      const sendgridKey = process.env.SENDGRID_API_KEY;
-      if (!sendgridKey) {
-        results.tests.push({
-          name: 'SendGrid Configuration',
-          status: 'fail',
-          message: 'SENDGRID_API_KEY not found in environment variables',
-        });
-      } else {
-        sgMail.setApiKey(sendgridKey);
+      const sendgridKey = await getSendGridApiKey();
+      sgMail.setApiKey(sendgridKey);
 
-        // Test SendGrid connection (this doesn't send an email, just validates the key)
-        results.tests.push({
-          name: 'SendGrid Configuration',
-          status: 'pass',
-          message: 'SendGrid API key configured',
-          details: {
-            keyPrefix: sendgridKey.substring(0, 10) + '...',
-          },
-        });
-      }
+      // Test SendGrid connection (this doesn't send an email, just validates the key)
+      results.tests.push({
+        name: 'SendGrid Configuration',
+        status: 'pass',
+        message: 'SendGrid API key configured via secrets loader',
+        details: {
+          keyPrefix: sendgridKey.substring(0, 10) + '...',
+          source: 'secrets loader (checks Supabase secrets, env vars, and database)',
+        },
+      });
     } catch (error) {
       results.tests.push({
         name: 'SendGrid Configuration',
         status: 'fail',
         message: `SendGrid configuration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
       });
     }
 
@@ -290,4 +274,4 @@ export async function GET(_request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 
@@ -15,7 +18,7 @@ const customerBulkUpdateSchema = z.object({
  * POST /api/admin/customers/bulk-update
  * Perform bulk operations on customers (tag assignment or status update)
  */
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,35 +26,33 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const validated = customerBulkUpdateSchema.parse(body);
 
     const supabaseAdmin = createServiceClient();
     if (!supabaseAdmin) {
-      logger.error('Service role client not initialized', { component: 'admin-customers-bulk-api' });
-      return NextResponse.json({ error: 'Internal server error: Service client unavailable' }, { status: 500 });
+      logger.error('Service role client not initialized', {
+        component: 'admin-customers-bulk-api',
+      });
+      return NextResponse.json(
+        { error: 'Internal server error: Service client unavailable' },
+        { status: 500 }
+      );
     }
 
     const { customerIds, action, tags, status } = validated;
 
     if (action === 'add_tags' && tags && tags.length > 0) {
       // Use customer_tag_members table for proper tag assignment
-      const tagAssignments = customerIds.flatMap(customerId =>
-        tags.map(tagId => ({
+      const tagAssignments = customerIds.flatMap((customerId) =>
+        tags.map((tagId) => ({
           customer_id: customerId,
           tag_id: tagId,
           assigned_by: user?.id || 'unknown',
@@ -67,11 +68,15 @@ export async function POST(request: NextRequest) {
         });
 
       if (insertError) {
-        logger.error('Failed to bulk assign customer tags', {
-          component: 'admin-customers-bulk-api',
-          action: 'bulk_add_tags_error',
-          metadata: { customerIds, tagIds: tags, adminId: user?.id || 'unknown' },
-        }, insertError);
+        logger.error(
+          'Failed to bulk assign customer tags',
+          {
+            component: 'admin-customers-bulk-api',
+            action: 'bulk_add_tags_error',
+            metadata: { customerIds, tagIds: tags, adminId: user?.id || 'unknown' },
+          },
+          insertError
+        );
         return NextResponse.json({ error: 'Failed to assign tags' }, { status: 500 });
       }
 
@@ -110,11 +115,15 @@ export async function POST(request: NextRequest) {
         .in('tag_id', tags);
 
       if (deleteError) {
-        logger.error('Failed to bulk remove customer tags', {
-          component: 'admin-customers-bulk-api',
-          action: 'bulk_remove_tags_error',
-          metadata: { customerIds, tagIds: tags, adminId: user?.id || 'unknown' },
-        }, deleteError);
+        logger.error(
+          'Failed to bulk remove customer tags',
+          {
+            component: 'admin-customers-bulk-api',
+            action: 'bulk_remove_tags_error',
+            metadata: { customerIds, tagIds: tags, adminId: user?.id || 'unknown' },
+          },
+          deleteError
+        );
         return NextResponse.json({ error: 'Failed to remove tags' }, { status: 500 });
       }
 
@@ -155,11 +164,15 @@ export async function POST(request: NextRequest) {
         .in('id', customerIds);
 
       if (updateError) {
-        logger.error('Failed to update customer status', {
-          component: 'admin-customers-bulk-api',
-          action: 'update_status_error',
-          metadata: { customerIds, status, adminId: user?.id || 'unknown' },
-        }, updateError);
+        logger.error(
+          'Failed to update customer status',
+          {
+            component: 'admin-customers-bulk-api',
+            action: 'update_status_error',
+            metadata: { customerIds, status, adminId: user?.id || 'unknown' },
+          },
+          updateError
+        );
         return NextResponse.json({ error: 'Failed to update customer status' }, { status: 500 });
       }
 
@@ -192,7 +205,10 @@ export async function POST(request: NextRequest) {
         updatedCount: customerIds.length,
       });
     } else {
-      return NextResponse.json({ error: 'Invalid action or missing required fields' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid action or missing required fields' },
+        { status: 400 }
+      );
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -202,13 +218,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.error('Unexpected error in customer bulk update', {
-      component: 'admin-customers-bulk-api',
-      action: 'unexpected_error',
-    }, error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'Unexpected error in customer bulk update',
+      {
+        component: 'admin-customers-bulk-api',
+        action: 'unexpected_error',
+      },
+      error instanceof Error ? error : new Error(String(error))
+    );
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+});

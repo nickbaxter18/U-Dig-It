@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     // Get customer details
     const { data: customer, error: customerError } = await supabase
       .from('users')
-      .select('*')
+      .select('id, firstName, lastName, phone, companyName')
       .eq('id', booking.customerId)
       .single();
 

@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
         if (messageId) {
           const { data: existing } = await supabaseAdmin
             .from('email_delivery_logs')
-            .select('*')
+            .select(
+              'id, email_id, status, sent_at, delivered_at, opened_at, clicked_at, bounced_at, spam_reported_at, unsubscribed_at, metadata, updated_at'
+            )
             .eq('email_id', messageId)
             .maybeSingle();
 

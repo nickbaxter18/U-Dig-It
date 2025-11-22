@@ -114,28 +114,70 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       const { currentStart, currentEnd, previousStart, previousEnd } = getDateRanges(dateRange);
       const selectColumns = 'amount, status, method, "amountRefunded", "createdAt", type';
 
-      let currentQuery = supabase.from('payments').select(selectColumns);
+      // Fetch both Stripe payments and manual payments for current period
+      let currentStripeQuery = supabase.from('payments').select(selectColumns);
+      let currentManualQuery = supabase
+        .from('manual_payments')
+        .select('amount, status, method, created_at')
+        .eq('status', 'completed')
+        .is('deleted_at', null);
+
       if (currentStart) {
-        currentQuery = currentQuery.gte('createdAt', currentStart.toISOString());
+        currentStripeQuery = currentStripeQuery.gte('createdAt', currentStart.toISOString());
+        currentManualQuery = currentManualQuery.gte('created_at', currentStart.toISOString());
       }
       if (currentEnd) {
-        currentQuery = currentQuery.lte('createdAt', currentEnd.toISOString());
+        currentStripeQuery = currentStripeQuery.lte('createdAt', currentEnd.toISOString());
+        currentManualQuery = currentManualQuery.lte('created_at', currentEnd.toISOString());
       }
 
-      const { data: currentPaymentsData, error: currentError } = await currentQuery;
-      if (currentError) throw currentError;
-      const currentPayments = currentPaymentsData ?? [];
+      const [currentStripeResult, currentManualResult] = await Promise.all([
+        currentStripeQuery,
+        currentManualQuery,
+      ]);
 
+      if (currentStripeResult.error) throw currentStripeResult.error;
+      if (currentManualResult.error) throw currentManualResult.error;
+
+      // Combine Stripe and manual payments, normalize manual payments to match structure
+      const currentStripePayments = currentStripeResult.data ?? [];
+      const currentManualPayments = (currentManualResult.data ?? []).map((mp: unknown) => ({
+        ...mp,
+        type: 'payment',
+        createdAt: (mp as { created_at: string }).created_at,
+        amountRefunded: 0,
+      }));
+      const currentPayments = [...currentStripePayments, ...currentManualPayments];
+
+      // Fetch previous period payments
       let previousPayments: unknown[] = [];
       if (previousStart && previousEnd) {
-        const { data: previousData, error: previousError } = await supabase
-          .from('payments')
-          .select(selectColumns)
-          .gte('createdAt', previousStart.toISOString())
-          .lte('createdAt', previousEnd.toISOString());
+        const [previousStripeResult, previousManualResult] = await Promise.all([
+          supabase
+            .from('payments')
+            .select(selectColumns)
+            .gte('createdAt', previousStart.toISOString())
+            .lte('createdAt', previousEnd.toISOString()),
+          supabase
+            .from('manual_payments')
+            .select('amount, status, method, created_at')
+            .eq('status', 'completed')
+            .is('deleted_at', null)
+            .gte('created_at', previousStart.toISOString())
+            .lte('created_at', previousEnd.toISOString()),
+        ]);
 
-        if (previousError) throw previousError;
-        previousPayments = previousData ?? [];
+        if (previousStripeResult.error) throw previousStripeResult.error;
+        if (previousManualResult.error) throw previousManualResult.error;
+
+        const previousStripePayments = previousStripeResult.data ?? [];
+        const previousManualPayments = (previousManualResult.data ?? []).map((mp: unknown) => ({
+          ...mp,
+          type: 'payment',
+          createdAt: (mp as { created_at: string }).created_at,
+          amountRefunded: 0,
+        }));
+        previousPayments = [...previousStripePayments, ...previousManualPayments];
       }
 
       const parseAmount = (value: unknown) => {
@@ -167,15 +209,19 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
       const averageTransactionValue = transactionCount > 0 ? totalRevenue / transactionCount : 0;
       const successRate = totalTransactions > 0 ? (transactionCount / totalTransactions) * 100 : 0;
 
+      // Payment method breakdown - include manual payment methods
       const paymentMethodBreakdown = {
         card: successfulPayments
-          .filter((p: unknown) => p.method === 'credit_card' || p.method === 'debit_card')
+          .filter(
+            (p: unknown) =>
+              p.method === 'credit_card' || p.method === 'debit_card' || p.method === 'pos' // POS terminal payments
+          )
           .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
         bank_transfer: successfulPayments
-          .filter((p: unknown) => p.method === 'bank_transfer')
+          .filter((p: unknown) => p.method === 'bank_transfer' || p.method === 'ach')
           .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
         other: successfulPayments
-          .filter((p: unknown) => ['cash', 'check', 'other'].includes(p.method))
+          .filter((p: unknown) => ['cash', 'check', 'other'].includes(p.method as string))
           .reduce((sum: number, p: unknown) => sum + parseAmount(p.amount), 0),
       };
 
@@ -295,7 +341,7 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="flex items-center space-x-2 rounded-md bg-orange-600 px-4 py-2 text-sm text-white hover:bg-orange-700 disabled:opacity-60"
+          className="flex items-center space-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-60"
         >
           {exporting ? (
             <>

@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import {
   logisticsTaskCreateSchema,
@@ -33,7 +35,7 @@ function parseFilters(searchParams: URLSearchParams) {
   return logisticsTaskFilterSchema.parse(filterInput);
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -41,15 +43,16 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    const filters = parseFilters(new URL(request.url).searchParams);
+    const { searchParams } = new URL(request.url);
+    const filters = parseFilters(searchParams);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     let query = supabase
       .from('logistics_tasks')
@@ -75,9 +78,11 @@ export async function GET(request: NextRequest) {
           startDate,
           endDate
         )
-      `
+      `,
+        { count: 'exact' }
       )
-      .order('scheduled_at', { ascending: true });
+      .order('scheduled_at', { ascending: true })
+      .range(rangeStart, rangeEnd);
 
     if (filters.taskType) query = query.eq('task_type', filters.taskType);
     if (filters.status) query = query.eq('status', filters.status);
@@ -86,19 +91,26 @@ export async function GET(request: NextRequest) {
     if (filters.from) query = query.gte('scheduled_at', filters.from);
     if (filters.to) query = query.lte('scheduled_at', filters.to);
 
-    const { data, error: fetchError } = await query;
+    const { data, error: fetchError, count } = await query;
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch logistics tasks',
-        { component: 'admin-logistics-tasks', action: 'fetch_failed', metadata: filters });
-      return NextResponse.json(
-        { error: 'Unable to load logistics tasks' },
-        { status: 500 }
-      );
+      logger.error('Failed to fetch logistics tasks', {
+        component: 'admin-logistics-tasks',
+        action: 'fetch_failed',
+        metadata: filters,
+      });
+      return NextResponse.json({ error: 'Unable to load logistics tasks' }, { status: 500 });
     }
 
-    return NextResponse.json({ tasks: data ?? [] });
+    return NextResponse.json({
+      tasks: data ?? [],
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
+    });
   } catch (err) {
     if (err instanceof ZodError) {
       return NextResponse.json(
@@ -118,9 +130,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -128,19 +140,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = logisticsTaskCreateSchema.parse(await request.json());
 
@@ -164,13 +169,14 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       logger.error(
         'Failed to create logistics task',
-        { component: 'admin-logistics-tasks', action: 'insert_failed', metadata: { bookingId: payload.bookingId } },
+        {
+          component: 'admin-logistics-tasks',
+          action: 'insert_failed',
+          metadata: { bookingId: payload.bookingId },
+        },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to create logistics task' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create logistics task' }, { status: 500 });
     }
 
     logger.info('Logistics task created', {
@@ -199,6 +205,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

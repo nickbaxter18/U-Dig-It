@@ -1,0 +1,140 @@
+---
+description: "Complete component development workflow with actual codebase patterns. Includes pre-implementation component search, props interface pattern, state management (useState, useMemo, useCallback), validation functions, error handling, and post-implementation checks. All patterns reference @frontend/src/components/EnhancedBookingFlowV2.tsx with specific line numbers."
+globs: ["**/components/**/*.tsx", "**/components/**/*.ts"]
+alwaysApply: false
+---
+
+## Component Development Workflow
+
+When creating or modifying components, follow this workflow:
+
+### Pre-Implementation
+
+1. **Check Existing Components**
+   - Review @docs/reference/COMPONENT_INDEX.md
+   - Find similar components
+   - Reference actual implementation: @frontend/src/components/EnhancedBookingFlowV2.tsx
+
+2. **Understand Pattern**
+   - Review component structure: @frontend/src/components/EnhancedBookingFlowV2.tsx:97-740
+   - See props interface: @frontend/src/components/EnhancedBookingFlowV2.tsx:105-109
+   - See state management: @frontend/src/components/EnhancedBookingFlowV2.tsx:110-128
+   - See validation: @frontend/src/components/EnhancedBookingFlowV2.tsx:373-426
+
+### Implementation
+
+Follow the exact structure from YOUR codebase:
+
+**Reference**: @frontend/src/components/EnhancedBookingFlowV2.tsx
+
+1. **Props Interface** (line 105-109)
+   ```typescript
+   interface ComponentProps {
+     prop1: string;
+     prop2?: number; // Optional
+   }
+   ```
+
+2. **Component Declaration** (line 101-113)
+   ```typescript
+   'use client'; // For interactive components
+
+   export default function ComponentName({
+     prop1,
+     prop2,
+   }: ComponentProps) {
+     // Component logic
+   }
+   ```
+
+3. **State Management** (line 110-128)
+   ```typescript
+   const [state, setState] = useState<StateType>(initialValue);
+   const [errors, setErrors] = useState<ValidationErrors>({});
+   ```
+
+4. **Memoized Calculations** (line 132-179)
+   ```typescript
+   const calculatedValue = useMemo(() => {
+     return expensiveCalculation(dependencies);
+   }, [dependencies]);
+
+   const callback = useCallback(() => {
+     // Stable callback
+   }, [dependencies]);
+   ```
+
+5. **Validation Function** (line 373-426)
+   ```typescript
+   const validateForm = (step: number): boolean => {
+     const newErrors: ValidationErrors = {};
+
+     if (step >= 1) {
+       if (!formData.field) {
+         newErrors.field = 'Field is required';
+       } else {
+         const value = new Date(formData.field);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
+
+         if (value < today) {
+           newErrors.field = 'Date cannot be in the past';
+         }
+       }
+     }
+
+     setErrors(newErrors);
+     return Object.keys(newErrors).length === 0;
+   };
+   ```
+
+6. **Error Handling**
+   ```typescript
+   import { errorHandler } from '@/lib/error-handler';
+
+   try {
+     await operation();
+   } catch (error) {
+     errorHandler.handleError(error, {
+       showToast: true,
+       context: 'Component operation'
+     });
+   }
+   ```
+
+### Common Patterns
+
+**Form Component**: @frontend/src/components/EnhancedBookingFlowV2.tsx
+**Dashboard Component**: @frontend/src/components/BookingManagementDashboard.tsx:18-372
+**Admin Component**: @frontend/src/components/admin/HoldManagementDashboard.tsx
+
+### Post-Implementation
+
+1. **Linter Checks**
+   - read_lints on component file
+   - Fix type errors
+   - Fix linting errors
+
+2. **Browser Verification**
+   - Navigate to page
+   - Take snapshot
+   - Test interactions
+   - Check console for errors
+
+3. **Documentation**
+   - Auto-update @docs/reference/COMPONENT_INDEX.md
+   - Document props and usage
+
+4. **Tests**
+   - Suggest unit tests
+   - Test user interactions
+   - Test validation logic
+   - Test error handling
+
+### Common Mistakes
+
+1. Don't forget 'use client' for interactive components
+2. Always use proper TypeScript types - no `any`
+3. Validate on both client and server
+4. Handle errors gracefully - use error handler
+5. Don't access process.env directly - use secrets loaders

@@ -1,15 +1,18 @@
+import { ZodError } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
 
-// import { ZodError } from 'zod'; // Unused
-
+import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { updateBillingStatus } from '@/lib/booking/billing-status';
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { manualPaymentCreateSchema } from '@/lib/validators/admin/payments';
 
 const _BUCKET_ID = 'manual-payment-attachments'; // Reserved for future file attachments
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,18 +26,37 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const bookingId = searchParams.get('bookingId');
+    const status = searchParams.get('status');
+
+    // Get pagination parameters
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     let query = supabase
       .from('manual_payments')
       .select(
         `
-        *,
+        id,
+        booking_id,
+        customer_id,
+        amount,
+        currency,
+        method,
+        received_at,
+        notes,
+        status,
+        recorded_by,
+        created_at,
+        updated_at,
+        deleted_at,
         booking:booking_id (
           id,
           bookingNumber,
           totalAmount,
           depositAmount,
-          balanceAmount:balance_amount
+          balance_amount
         ),
         customer:customer_id (
           id,
@@ -43,21 +65,22 @@ export async function GET(request: NextRequest) {
           email,
           phone
         )
-      `
+      `,
+        { count: 'exact' }
       )
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+      .is('deleted_at', null);
 
     if (bookingId) {
       query = query.eq('booking_id', bookingId);
     }
 
-    const status = searchParams.get('status');
     if (status) {
       query = query.eq('status', status);
     }
 
-    const { data, error: fetchError } = await query;
+    query = query.order('created_at', { ascending: false }).range(rangeStart, rangeEnd);
+
+    const { data, error: fetchError, count } = await query;
 
     if (fetchError) {
       if ((fetchError as any)?.code === '42P01') {
@@ -69,24 +92,69 @@ export async function GET(request: NextRequest) {
       }
       logger.error(
         'Failed to fetch manual payments',
-        { component: 'admin-manual-payments', action: 'fetch_failed', metadata: { bookingId } },
+        {
+          component: 'admin-manual-payments',
+          action: 'fetch_failed',
+          metadata: {
+            bookingId,
+            status,
+            errorCode: (fetchError as any)?.code,
+            errorMessage: fetchError.message,
+            errorDetails: (fetchError as any)?.details,
+            errorHint: (fetchError as any)?.hint,
+          },
+        },
         fetchError
       );
-      return NextResponse.json({ error: 'Unable to load manual payments' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Unable to load manual payments',
+          details:
+            process.env.NODE_ENV === 'development'
+              ? fetchError.message || 'Database query failed'
+              : undefined,
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ manualPayments: data ?? [] });
+    return NextResponse.json({
+      manualPayments: data ?? [],
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
+    });
   } catch (err) {
     logger.error(
       'Unexpected error fetching manual payments',
-      { component: 'admin-manual-payments', action: 'fetch_unexpected' },
+      {
+        component: 'admin-manual-payments',
+        action: 'fetch_unexpected',
+        metadata: {
+          bookingId,
+          status,
+          errorName: err instanceof Error ? err.name : typeof err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          errorStack: err instanceof Error ? err.stack : undefined,
+        },
+      },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        details:
+          process.env.NODE_ENV === 'development' && err instanceof Error ? err.message : undefined,
+      },
+      { status: 500 }
+    );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -99,10 +167,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const payload = manualPaymentCreateSchema.parse(body);
@@ -140,6 +205,63 @@ export async function POST(request: NextRequest) {
         insertError ?? new Error('Missing manual payment data')
       );
       return NextResponse.json({ error: 'Unable to record manual payment' }, { status: 500 });
+    }
+
+    // Recalculate balance if payment is created as 'completed'
+    // Otherwise, balance will be updated when payment status changes to 'completed' (handled in PATCH route)
+    if (payload.status === 'completed') {
+      const newBalance = await recalculateBookingBalance(payload.bookingId);
+      if (newBalance === null) {
+        logger.warn('Balance recalculation failed after manual payment creation', {
+          component: 'admin-manual-payments',
+          action: 'balance_recalculation_failed',
+          metadata: { bookingId: payload.bookingId, manualPaymentId: manualPayment.id },
+        });
+      } else {
+        // Update billing status after balance recalculation
+        const newBillingStatus = await updateBillingStatus(payload.bookingId);
+        if (newBillingStatus === null) {
+          logger.warn('Billing status update failed after manual payment creation', {
+            component: 'admin-manual-payments',
+            action: 'billing_status_update_failed',
+            metadata: { bookingId: payload.bookingId, manualPaymentId: manualPayment.id },
+          });
+        }
+
+        // Update booking status to 'paid' if balance reaches 0
+        if (newBalance === 0) {
+          const { error: statusUpdateError } = await serviceClient
+            .from('bookings')
+            .update({ status: 'paid' })
+            .eq('id', payload.bookingId);
+
+          if (statusUpdateError) {
+            logger.warn(
+              'Failed to update booking status to paid',
+              {
+                component: 'admin-manual-payments',
+                action: 'booking_status_update_failed',
+                metadata: {
+                  bookingId: payload.bookingId,
+                  manualPaymentId: manualPayment.id,
+                  error: statusUpdateError.message,
+                },
+              },
+              statusUpdateError
+            );
+          } else {
+            logger.info('Booking status updated to paid after manual payment', {
+              component: 'admin-manual-payments',
+              action: 'booking_status_updated',
+              metadata: {
+                bookingId: payload.bookingId,
+                manualPaymentId: manualPayment.id,
+                newBalance,
+              },
+            });
+          }
+        }
+      }
     }
 
     const ledgerEntry = {
@@ -192,4 +314,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

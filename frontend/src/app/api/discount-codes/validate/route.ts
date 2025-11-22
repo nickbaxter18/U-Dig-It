@@ -1,9 +1,11 @@
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
-import { rateLimit, RateLimitPresets } from '@/lib/rate-limiter';
+import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { validateRequest } from '@/lib/request-validator';
 import { createClient } from '@/lib/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 
 const validateDiscountSchema = z.object({
   code: z.string().min(1).max(50),
@@ -60,7 +62,9 @@ export async function POST(request: NextRequest) {
     // Query discount code from database
     const { data: discountCode, error: dbError } = await supabase
       .from('discount_codes')
-      .select('*')
+      .select(
+        'id, code, name, type, value, max_uses, used_count, max_uses_per_user, min_booking_amount, valid_from, valid_until, is_active'
+      )
       .eq('code', validated.code.toUpperCase())
       .eq('is_active', true)
       .single();
@@ -87,10 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (discountCode.valid_until && new Date(discountCode.valid_until) < now) {
-      return NextResponse.json(
-        { success: false, error: 'This code has expired' },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: false, error: 'This code has expired' }, { status: 200 });
     }
 
     // Check minimum booking amount
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (spinSession) {
       // This code was awarded via Spin to Win - enforce ownership
       if (spinSession.user_id && spinSession.user_id !== user.id) {
-        logger.warn('[Discount API] Attempt to use someone else\'s Spin to Win code', {
+        logger.warn("[Discount API] Attempt to use someone else's Spin to Win code", {
           component: 'discount-api',
           action: 'unauthorized_code_use',
           metadata: {
@@ -152,11 +153,15 @@ export async function POST(request: NextRequest) {
         .eq('couponCode', validated.code.toUpperCase());
 
       if (countError) {
-        logger.error('[Discount API] Error checking user usage', {
-          component: 'discount-api',
-          action: 'usage_check_error',
-          metadata: { error: countError.message },
-        }, countError);
+        logger.error(
+          '[Discount API] Error checking user usage',
+          {
+            component: 'discount-api',
+            action: 'usage_check_error',
+            metadata: { error: countError.message },
+          },
+          countError
+        );
       } else if (count && count >= discountCode.max_uses_per_user) {
         return NextResponse.json(
           { success: false, error: 'You have already used this code the maximum number of times' },
@@ -212,13 +217,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-
-
-
-
-
-
-
-

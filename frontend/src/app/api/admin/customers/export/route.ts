@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 type CustomerRecord = {
@@ -37,7 +38,7 @@ function normalizeCustomer(record: CustomerRecord): CustomerRecord {
   };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -49,10 +50,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
 
-    // Get user for logging
-    const {
-      data: { user: _user },
-    } = await supabase.auth.getUser();
+    // Get user for logging (unused, but available from requireAdmin)
+    const { user: _user } = adminResult;
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') ?? 'all';
     const searchTerm = (searchParams.get('search') ?? '').trim().toLowerCase();
@@ -66,7 +65,9 @@ export async function GET(request: NextRequest) {
       // Fallback to manual aggregation
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('*')
+        .select(
+          'id, firstName, lastName, email, phone, companyName, status, emailVerified, createdAt'
+        )
         .not('role', 'in', '("admin","super_admin")')
         .order('createdAt', { ascending: false });
 
@@ -202,4 +203,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export customers' }, { status: 500 });
   }
-}
+});

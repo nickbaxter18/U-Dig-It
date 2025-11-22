@@ -4,12 +4,14 @@ import { Camera, Eye, Image as ImageIcon, Loader2, Star, Trash2, Upload, X } fro
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+
 import {
   createEquipmentMedia,
   deleteEquipmentMedia,
   fetchEquipmentMedia,
 } from '@/lib/api/admin/equipment';
-import { supabase } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 import { useAdminToast } from './AdminToastProvider';
@@ -44,27 +46,81 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
   const toast = useAdminToast();
 
   const fetchMedia = useCallback(async () => {
+    if (!equipmentId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      logger.debug('Fetching media for equipment', {
+        component: 'EquipmentMediaGallery',
+        action: 'fetch_media',
+        metadata: { equipmentId },
+      });
       const mediaData = await fetchEquipmentMedia(equipmentId);
+      logger.debug('Received media data', {
+        component: 'EquipmentMediaGallery',
+        action: 'media_data_received',
+        metadata: { equipmentId, mediaCount: mediaData?.length || 0 },
+      });
 
-      // Generate signed URLs for each media item
-      const mediaWithUrls = await Promise.all(
-        mediaData.map(async (item: unknown) => {
-          try {
-            const { data } = await supabase.storage
-              .from('equipment-media')
-              .createSignedUrl(item.storage_path, 3600);
-            return { ...item, url: data?.signedUrl };
-          } catch {
-            return item;
-          }
-        })
+      if (!Array.isArray(mediaData)) {
+        logger.warn('Media data is not an array', {
+          component: 'EquipmentMediaGallery',
+          action: 'invalid_media_data',
+          metadata: { equipmentId, dataType: typeof mediaData },
+        });
+        setMedia([]);
+        return;
+      }
+
+      if (mediaData.length === 0) {
+        logger.debug('No media found for equipment', {
+          component: 'EquipmentMediaGallery',
+          action: 'no_media_found',
+          metadata: { equipmentId },
+        });
+        setMedia([]);
+        return;
+      }
+
+      // Log each media item to verify structure
+      mediaData.forEach((item, index) => {
+        logger.debug(`Media item ${index}`, {
+          component: 'EquipmentMediaGallery',
+          action: 'media_item_debug',
+          metadata: {
+            id: item.id,
+            media_type: item.media_type,
+            hasUrl: !!item.url,
+            url: item.url || 'missing',
+            urlType: typeof item.url,
+            urlStartsWithHttp: item.url ? item.url.startsWith('http') : false,
+            storage_path: item.storage_path,
+            fileMissing: (item as { fileMissing?: boolean }).fileMissing,
+            fullItem: item,
+          },
+        });
+      });
+
+      // API now returns signed URLs directly, so we can use the data as-is
+      setMedia(mediaData);
+    } catch (error) {
+      logger.error(
+        'Failed to fetch equipment media',
+        {
+          component: 'EquipmentMediaGallery',
+          action: 'fetch_media_error',
+          metadata: { equipmentId },
+        },
+        error instanceof Error ? error : new Error(String(error))
       );
-
-      setMedia(mediaWithUrls);
-    } catch {
-      toast.error('Failed to load media', 'Unable to fetch equipment media');
+      // Only show toast if it's not a 404 (media might not exist yet)
+      if (error instanceof Error && !error.message.includes('404')) {
+        toast.error('Failed to load media', 'Unable to fetch equipment media');
+      }
+      setMedia([]);
     } finally {
       setLoading(false);
     }
@@ -76,7 +132,23 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      logger.debug('No file selected', {
+        component: 'EquipmentMediaGallery',
+        action: 'no_file_selected',
+      });
+      return;
+    }
+
+    logger.debug('File selected', {
+      component: 'EquipmentMediaGallery',
+      action: 'file_selected',
+      metadata: {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      },
+    });
 
     // Validate file type
     const validTypes = [
@@ -104,32 +176,41 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       // Determine media type
       const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
 
-      // Create media record and get signed upload URL
-      const result = await createEquipmentMedia(equipmentId, {
-        fileName: file.name,
-        contentType: file.type,
-        size: file.size,
-        mediaType,
-        caption: '',
-        isPrimary: false,
-      });
+      // Create FormData for direct server-side upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileName', file.name);
+      formData.append('contentType', file.type || 'application/octet-stream');
+      formData.append('mediaType', mediaType);
+      formData.append('caption', '');
+      formData.append('isPrimary', 'false');
 
-      if (!result.upload?.url) {
-        throw new Error('Failed to get upload URL');
-      }
-
-      // Upload file to signed URL
-      const uploadResponse = await fetch(result.upload.url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type,
+      logger.debug('Uploading file via FormData', {
+        component: 'EquipmentMediaGallery',
+        action: 'upload_start',
+        metadata: {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          mediaType,
         },
-        body: file,
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
+      // Upload file directly via API (server handles storage upload)
+      const result = await createEquipmentMedia(equipmentId, formData);
+
+      if (!result.media) {
+        throw new Error('Failed to upload media');
       }
+
+      logger.info('Upload successful', {
+        component: 'EquipmentMediaGallery',
+        action: 'upload_success',
+        metadata: {
+          mediaId: result.media.id,
+          storagePath: result.media.storage_path,
+        },
+      });
 
       toast.success('Media uploaded', 'Equipment media uploaded successfully');
       setShowUploadModal(false);
@@ -139,6 +220,15 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
       await fetchMedia();
       onMediaChange?.();
     } catch (error) {
+      logger.error(
+        'Upload error',
+        {
+          component: 'EquipmentMediaGallery',
+          action: 'upload_error',
+          metadata: { equipmentId },
+        },
+        error instanceof Error ? error : new Error(String(error))
+      );
       toast.error(
         'Upload failed',
         error instanceof Error ? error.message : 'Failed to upload media'
@@ -202,7 +292,7 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
         <h3 className="text-lg font-semibold text-gray-900">Media Gallery</h3>
         <button
           onClick={() => setShowUploadModal(true)}
-          className="flex items-center gap-2 rounded-md bg-kubota-orange px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           <Upload className="h-4 w-4" />
           Upload Media
@@ -215,117 +305,185 @@ export function EquipmentMediaGallery({ equipmentId, onMediaChange }: EquipmentM
           <p className="mt-2 text-sm text-gray-600">No media uploaded yet</p>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+            className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
           >
             Upload your first image
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {media.map((item) => (
-            <div
-              key={item.id}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
-            >
-              {item.media_type === 'image' && item.url ? (
-                <img
-                  src={item.url}
-                  alt={item.caption || 'Equipment image'}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <ImageIcon className="h-8 w-8 text-gray-400" />
-                </div>
-              )}
+          {media.map((item) => {
+            const hasValidUrl =
+              item.media_type === 'image' && item.url && item.url.startsWith('http');
+            const showPlaceholder = !hasValidUrl || (item as { fileMissing?: boolean }).fileMissing;
 
-              {item.is_primary && (
-                <div className="absolute left-2 top-2 rounded-full bg-yellow-500 p-1">
-                  <Star className="h-3 w-3 fill-white text-white" />
-                </div>
-              )}
+            return (
+              <div
+                key={item.id}
+                className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 bg-gray-100"
+              >
+                {hasValidUrl ? (
+                  <>
+                    <img
+                      src={item.url}
+                      alt={item.caption || 'Equipment image'}
+                      className="h-full w-full object-cover transition-opacity"
+                      loading="lazy"
+                      onLoad={() => {
+                        logger.debug('Image loaded successfully', {
+                          component: 'EquipmentMediaGallery',
+                          action: 'image_loaded',
+                          metadata: { mediaId: item.id },
+                        });
+                      }}
+                      onError={(e) => {
+                        logger.error('Image failed to load', {
+                          component: 'EquipmentMediaGallery',
+                          action: 'image_load_error',
+                          metadata: {
+                            id: item.id,
+                            url: item.url,
+                            storage_path: item.storage_path,
+                          },
+                        });
+                        // Hide image and show placeholder
+                        e.currentTarget.style.display = 'none';
+                        const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (placeholder) {
+                          placeholder.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <div className="image-placeholder hidden h-full items-center justify-center bg-gray-50">
+                      <div className="text-center">
+                        <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
+                        <p className="mt-1 text-xs text-gray-500">Failed to load</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center bg-gray-50 p-2">
+                    <ImageIcon className="h-8 w-8 text-gray-400" />
+                    {showPlaceholder && (
+                      <p className="mt-1 text-center text-xs text-gray-500">
+                        {(item as { fileMissing?: boolean }).fileMissing
+                          ? 'File missing'
+                          : 'No image'}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-              {/* Overlay actions */}
-              <div className="absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
-                <div className="flex h-full items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={() => setSelectedMedia(item)}
-                    className="rounded-md bg-white/90 p-2 hover:bg-white"
-                    aria-label="View media"
-                  >
-                    <Eye className="h-4 w-4 text-gray-700" />
-                  </button>
-                  {!item.is_primary && (
+                {item.is_primary && (
+                  <div className="absolute left-2 top-2 rounded-full bg-yellow-500 p-1">
+                    <Star className="h-3 w-3 fill-white text-white" />
+                  </div>
+                )}
+
+                {/* Overlay actions */}
+                <div className="absolute inset-0 bg-black/0 transition-all group-hover:bg-black/50">
+                  <div className="flex h-full items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={() => handleSetPrimary(item.id)}
+                      onClick={() => setSelectedMedia(item)}
                       className="rounded-md bg-white/90 p-2 hover:bg-white"
-                      aria-label="Set as primary"
+                      aria-label="View media"
                     >
-                      <Star className="h-4 w-4 text-gray-700" />
+                      <Eye className="h-4 w-4 text-gray-700" />
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="rounded-md bg-white/90 p-2 hover:bg-white"
-                    aria-label="Delete media"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </button>
+                    {!item.is_primary && (
+                      <button
+                        onClick={() => handleSetPrimary(item.id)}
+                        className="rounded-md bg-white/90 p-2 hover:bg-white"
+                        aria-label="Set as primary"
+                      >
+                        <Star className="h-4 w-4 text-gray-700" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="rounded-md bg-white/90 p-2 hover:bg-white"
+                      aria-label="Delete media"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Upload Media</h3>
-              <button
-                onClick={() => {
-                  setShowUploadModal(false);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
+      <AdminModal
+        isOpen={showUploadModal}
+        onClose={() => {
+          setShowUploadModal(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }}
+        title="Upload Media"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
+            <label
+              htmlFor="file-upload-input"
+              className="flex cursor-pointer flex-col items-center"
+              onClick={(e) => {
+                // Prevent label click from bubbling if input is disabled
+                if (uploading) {
+                  e.preventDefault();
+                  return;
+                }
+                logger.debug('Label clicked, triggering file input', {
+                  component: 'EquipmentMediaGallery',
+                  action: 'label_clicked',
+                });
+              }}
+            >
+              <Upload className="h-8 w-8 text-gray-400" />
+              <span className="mt-2 text-sm text-gray-600">Click to select file</span>
+              <span className="text-xs text-gray-500">Images or videos (max 10MB)</span>
+              <input
+                id="file-upload-input"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                onChange={(e) => {
+                  logger.debug('File input onChange triggered', {
+                    component: 'EquipmentMediaGallery',
+                    action: 'file_input_change',
+                    metadata: {
+                      files: e.target.files?.length,
+                      fileName: e.target.files?.[0]?.name,
+                    },
+                  });
+                  handleFileSelect(e);
                 }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
-                <label className="flex cursor-pointer flex-col items-center">
-                  <Upload className="h-8 w-8 text-gray-400" />
-                  <span className="mt-2 text-sm text-gray-600">Click to select file</span>
-                  <span className="text-xs text-gray-500">Images or videos (max 10MB)</span>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
-
-              {uploading && (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Uploading...
-                </div>
-              )}
-            </div>
+                onClick={(e) => {
+                  logger.debug('File input clicked', {
+                    component: 'EquipmentMediaGallery',
+                    action: 'file_input_clicked',
+                  });
+                }}
+                className="hidden"
+                disabled={uploading}
+              />
+            </label>
           </div>
+
+          {uploading && (
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Uploading...</span>
+            </div>
+          )}
         </div>
-      )}
+      </AdminModal>
 
       {/* View Modal */}
       {selectedMedia && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90">
           <div className="relative max-h-[90vh] max-w-[90vw]">
             <button
               onClick={() => setSelectedMedia(null)}

@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { ZodError } from 'zod'; // Reserved for future validation error handling
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const notificationRuleCreateSchema = z.object({
@@ -32,7 +33,7 @@ const notificationRuleCreateSchema = z.object({
 
 const _notificationRuleUpdateSchema = notificationRuleCreateSchema.partial();
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -47,12 +48,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const activeOnly = searchParams.get('active') === 'true';
     const ruleType = searchParams.get('ruleType');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     let query = supabase
       .from('automated_notification_rules')
-      .select('*')
+      .select(
+        'id, name, rule_type, trigger_conditions, channels, template_id, is_active, priority, created_by, created_at, updated_at',
+        { count: 'exact' }
+      )
       .order('priority', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (activeOnly) {
       query = query.eq('is_active', true);
@@ -62,7 +71,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('rule_type', ruleType);
     }
 
-    const { data, error: fetchError } = await query;
+    const { data, error: fetchError, count } = await query;
 
     if (fetchError) {
       logger.error('Failed to fetch notification rules', {
@@ -72,7 +81,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unable to fetch notification rules' }, { status: 500 });
     }
 
-    return NextResponse.json({ rules: data ?? [] });
+    return NextResponse.json({
+      rules: data ?? [],
+      total: count ?? 0,
+      page,
+      pageSize,
+    });
   } catch (err) {
     logger.error(
       'Unexpected error fetching notification rules',
@@ -81,9 +95,9 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -96,10 +110,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const body = await request.json();
     const payload = notificationRuleCreateSchema.parse(body);
@@ -154,4 +165,4 @@ export async function POST(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

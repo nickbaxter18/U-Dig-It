@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface ToastProps {
   message: string;
@@ -11,15 +11,23 @@ export interface ToastProps {
 
 export default function Toast({ message, type, duration = 5000, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const onCloseRef = useRef(onClose);
+
+  // Update ref when onClose changes
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300); // Wait for animation to complete
+      setTimeout(() => {
+        onCloseRef.current();
+      }, 300); // Wait for animation to complete
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
+  }, [duration]);
 
   const getTypeStyles = () => {
     switch (type) {
@@ -95,7 +103,9 @@ export default function Toast({ message, type, duration = 5000, onClose }: Toast
         <button
           onClick={() => {
             setIsVisible(false);
-            setTimeout(onClose, 300);
+            setTimeout(() => {
+              onCloseRef.current();
+            }, 300);
           }}
           className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-600"
           aria-label="Close notification"

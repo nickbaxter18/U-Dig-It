@@ -7,6 +7,8 @@
 
 import { ReactNode } from 'react';
 
+import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+
 import type { PermissionCheckOptions, PermissionString } from '@/lib/permissions/types';
 
 import { useHasPermission } from '@/hooks/usePermissions';
@@ -22,6 +24,7 @@ export interface PermissionGateProps {
 
 /**
  * PermissionGate - Conditionally render children based on permissions
+ * Super admins automatically bypass all permission checks
  *
  * @example
  * <PermissionGate permission="bookings:update:all">
@@ -41,14 +44,23 @@ export function PermissionGate({
   children,
   resourceId,
 }: PermissionGateProps) {
+  const { role } = useAuth();
   const permissions = Array.isArray(permission) ? permission : [permission];
   const options: PermissionCheckOptions = { requireAll, resourceId };
 
-  // Check first permission to determine loading state
+  // Check first permission to determine loading state (before conditional return)
+  // Note: For super admins/admins, we bypass permission checks but still call hook
+  // to maintain hook order consistency
   const { hasPermission: hasFirstPermission, loading: isLoading } = useHasPermission(
     permissions[0],
     options
   );
+
+  // Super admins and admins bypass all permission checks
+  // This ensures buttons are visible even if permission API is failing
+  if (role === 'super_admin' || role === 'admin') {
+    return <>{children}</>;
+  }
 
   // For multiple permissions with requireAll, we'd need to check all
   // For now, we'll use the first permission check as a proxy

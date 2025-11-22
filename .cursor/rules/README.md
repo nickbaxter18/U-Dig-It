@@ -1,19 +1,49 @@
-# 🎯 Cursor Rules for Development Power Tools
+# 🎯 Cursor Rules System
 
-This directory contains **6 focused Cursor rules** that guide the AI to consistently use all the development tools we've set up correctly.
+This directory contains **comprehensive Cursor rules** that guide the AI with actual codebase patterns, workflows, and best practices.
+
+**Rule Architecture**:
+- **Always-Applied Rules**: Core patterns that apply to every chat session
+- **Context-Aware Rules**: Auto-activate based on file patterns (globs)
+- **Nested Rules**: Directory-specific rules that attach automatically
+- **Workflow Rules**: Complete development workflows with checklists
+- **AGENTS.md Files**: Quick reference files throughout the codebase
 
 ---
 
 ## 📋 Rules Overview
 
-| Rule File | Type | Purpose | When Applied |
-|-----------|------|---------|--------------|
-| `testing-with-msw.mdc` | File-scoped | MSW API mocking standards | `**/*.test.ts`, `**/*.spec.tsx` |
-| `storybook-development.mdc` | File-scoped | Storybook component dev | `**/*.stories.tsx` |
-| `bundle-performance.mdc` | Manual | Bundle size optimization | When mentioned or optimizing |
-| `security-scanning.mdc` | Always | Snyk security standards | Every chat session |
-| `code-cleanup.mdc` | Manual | Knip unused code removal | When cleaning up code |
-| `development-workflow.mdc` | Always | Complete dev workflow | Every chat session |
+### Always-Applied Rules (Core Patterns)
+| Rule File | Purpose | Key Patterns |
+|-----------|---------|--------------|
+| `CORE.mdc` | Core development standards | Pattern reuse, TypeScript, error handling |
+| `CODING_SAVANT_PATTERNS.mdc` | Codebase-specific patterns | API route 8-step pattern, query optimization |
+| `SUPABASE.mdc` | Database operations | MCP tools, RLS policies, indexing |
+| `BUSINESS.mdc` | Business logic | Booking workflows, pricing, operations |
+| `SECURITY.mdc` | Security standards | Input validation, authentication, RLS |
+| `TESTING.mdc` | Testing standards | Browser automation, E2E, unit tests |
+
+### Context-Aware Rules (Auto-Activate)
+| Rule File | Purpose | When Applied |
+|-----------|---------|--------------|
+| `testing-with-msw.mdc` | MSW API mocking | `**/*.test.ts`, `**/*.spec.tsx` |
+| `storybook-development.mdc` | Storybook dev | `**/*.stories.tsx` |
+| `bundle-performance.mdc` | Bundle optimization | When mentioned |
+| `code-cleanup.mdc` | Unused code removal | When mentioned |
+
+### Nested Rules (Directory-Specific)
+| Location | Purpose | When Applied |
+|----------|---------|--------------|
+| `frontend/src/app/api/.cursor/rules/api-route-patterns.mdc` | API route patterns | `**/app/api/**/*.ts` |
+| `frontend/src/components/.cursor/rules/component-patterns.mdc` | Component patterns | `**/components/**/*.tsx` |
+
+### Workflow Rules (With Checklists)
+| Rule File | Purpose | When Applied |
+|-----------|---------|--------------|
+| `workflows/feature-development.mdc` | Complete feature workflow | `**/feature/**/*`, `**/feat/**/*` |
+| `workflows/api-route-development.mdc` | API route workflow | `**/app/api/**/*.ts` |
+| `workflows/component-development.mdc` | Component workflow | `**/components/**/*.tsx` |
+| `workflows/database-migration.mdc` | Migration workflow | `**/supabase/migrations/**/*.sql` |
 
 ---
 
@@ -156,44 +186,58 @@ Clear, actionable guidance with:
 
 According to [Cursor documentation](https://cursor.com/docs/context/rules):
 
-✅ **Focused** - Each rule under 500 lines
-✅ **Scoped** - Applied to relevant files only
-✅ **Actionable** - Concrete examples, not vague guidance
-✅ **Referenced** - Links to actual project files
-✅ **Composable** - Rules work together
+✅ **Focused** - Most rules under 500 lines (SUPABASE.mdc is 513 but intentionally comprehensive)
+✅ **Scoped** - Applied via globs, intelligent activation, or always-apply
+✅ **Actionable** - Concrete examples with `@filename` references to actual codebase
+✅ **Referenced** - 100+ references to actual files with line numbers
+✅ **Composable** - Rules work together (nested rules, workflows, AGENTS.md)
+✅ **Descriptive** - Enhanced descriptions for better intelligent activation
 
 ---
 
 ## 🔄 When Rules Apply
 
-### File-Based (Automatic)
+### Always-Applied (Every Chat Session)
+- Start any chat → `CORE.mdc`, `CODING_SAVANT_PATTERNS.mdc`, `SUPABASE.mdc`, `BUSINESS.mdc`, `SECURITY.mdc`, `TESTING.mdc`
+
+### File-Based (Automatic via Globs)
+- Open API route file → `api-route-patterns.mdc` (nested rule)
+- Open component file → `component-patterns.mdc` (nested rule)
 - Open test file → `testing-with-msw.mdc`
 - Open story file → `storybook-development.mdc`
+- Open migration file → `workflows/database-migration.mdc`
 
-### Session-Based (Always)
-- Start any chat → `security-scanning.mdc`
-- Start any chat → `development-workflow.mdc`
+### Context-Aware (Intelligent Activation)
+- Agent decides based on description and context → Workflow rules activate when relevant
 
 ### On-Demand (Manual)
-- Mention `@bundle-performance`
-- Mention `@code-cleanup`
+- Mention `@bundle-performance` → `bundle-performance.mdc`
+- Mention `@code-cleanup` → `code-cleanup.mdc`
 
 ---
 
 ## 📖 Referenced Files
 
-Rules reference these key documentation files:
+Rules use `@filename` syntax to reference actual codebase files:
 
-```
-@frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md
-@frontend/docs/QUICK_COMMANDS_CHEATSHEET.md
-@GODLIKE_SETUP_COMPLETE.md
-@frontend/src/test/mocks/handlers.ts
-@frontend/src/components/Button.stories.tsx
-@frontend/.size-limit.json
-@frontend/knip.json
-@.husky/pre-commit
-```
+**Quick Reference**:
+- `@docs/reference/AI_CODING_REFERENCE.md` - Main coding patterns
+- `@docs/reference/COMPONENT_INDEX.md` - Existing components
+- `@docs/reference/API_ROUTES_INDEX.md` - API endpoints
+- `@docs/reference/QUICK_COMMANDS.md` - Command reference
+
+**Actual Code Examples** (with line numbers):
+- API route pattern: `@frontend/src/app/api/bookings/route.ts:72-297`
+- Component pattern: `@frontend/src/components/EnhancedBookingFlowV2.tsx:97-740`
+- Migration pattern: `@supabase/migrations/20250121000002_rls_policies.sql`
+- Query pattern: `@frontend/src/app/api/bookings/route.ts:147-153`
+
+**AGENTS.md Files** (Quick Reference):
+- Root: `AGENTS.md`
+- API routes: `frontend/src/app/api/AGENTS.md`
+- Components: `frontend/src/components/AGENTS.md`
+- Utilities: `frontend/src/lib/AGENTS.md`
+- Database: `supabase/AGENTS.md`
 
 ---
 
@@ -275,8 +319,10 @@ mv .cursor/rules .cursor/rules.disabled
 ## 📚 Resources
 
 - [Cursor Rules Documentation](https://cursor.com/docs/context/rules)
-- Project documentation: `frontend/docs/DEVELOPMENT_TOOLS_GUIDE.md`
-- Quick reference: `frontend/docs/QUICK_COMMANDS_CHEATSHEET.md`
+- Root AGENTS.md: `AGENTS.md`
+- API AGENTS.md: `frontend/src/app/api/AGENTS.md`
+- Component AGENTS.md: `frontend/src/components/AGENTS.md`
+- Reference docs: `docs/reference/` directory
 
 ---
 
@@ -284,14 +330,44 @@ mv .cursor/rules .cursor/rules.disabled
 
 Verify rules are working:
 
+- [ ] Open API route file → Nested rule applies with actual patterns
+- [ ] Open component file → Component patterns rule applies
 - [ ] Open test file → AI suggests MSW patterns
 - [ ] Open story file → AI suggests Storybook structure
-- [ ] Ask about optimization → AI mentions bundle size
-- [ ] Ask about security → AI enforces validation
-- [ ] Ask about workflow → AI guides complete process
+- [ ] Ask about API route → AI follows 8-step pattern from actual codebase
+- [ ] Ask about query → AI suggests specific columns with pagination
+- [ ] Ask about security → AI enforces validation and RLS
+- [ ] Ask about workflow → AI guides complete process with checklists
 
 ---
 
-**Your AI assistant now has godlike consistency! 🚀**
+## 🎯 Key Features
 
-These rules ensure every interaction follows best practices and uses all the tools correctly.
+### Real Code References
+All rules reference actual codebase files with `@filename` syntax:
+- `@frontend/src/app/api/bookings/route.ts:72-297` - Complete 8-step API pattern
+- `@frontend/src/components/EnhancedBookingFlowV2.tsx:373-426` - Validation pattern
+- `@supabase/migrations/20250121000002_rls_policies.sql` - RLS policy examples
+
+### Nested Rules
+Rules automatically attach when files in their directory are referenced:
+- `frontend/src/app/api/.cursor/rules/api-route-patterns.mdc` - For API routes
+- `frontend/src/components/.cursor/rules/component-patterns.mdc` - For components
+
+### Workflow Orchestration
+Complete workflows with checklist integration:
+- Feature development → Pre/Post implementation checklists
+- API route development → 8-step pattern with real examples
+- Component development → Props, state, validation patterns
+- Database migrations → Safety patterns, testing in branches
+
+### AGENTS.md Quick Reference
+Simple markdown files for quick reference:
+- Root `AGENTS.md` - Quick entry point
+- Directory-specific `AGENTS.md` files - Context-specific guidance
+
+---
+
+**Your AI assistant now has codebase-specific expertise! 🚀**
+
+These rules ensure every interaction follows actual patterns from YOUR codebase, not generic examples.

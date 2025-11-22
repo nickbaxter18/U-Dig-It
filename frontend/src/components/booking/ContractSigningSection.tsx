@@ -49,7 +49,14 @@ export default function ContractSigningSection({
           onSigned();
         }}
         onError={(error) => {
-          console.error('Contract signing error:', error);
+          logger.error(
+            'Contract signing error',
+            {
+              component: 'ContractSigningSection',
+              action: 'signing_error',
+            },
+            error instanceof Error ? error : new Error(String(error))
+          );
           alert(`Error: ${error}`);
         }}
       />

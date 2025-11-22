@@ -1,8 +1,10 @@
 'use client';
 
-import { logger } from '@/lib/logger';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+
+import { logger } from '@/lib/logger';
 
 /**
  * Payment Success Handler
@@ -38,20 +40,20 @@ export default function PaymentSuccessHandler() {
       const paymentType = searchParams.get('type') || 'payment';
 
       const endpoint =
-        sessionId != null
-          ? '/api/stripe/checkout/complete'
-          : '/api/payments/mark-completed';
+        sessionId != null ? '/api/stripe/checkout/complete' : '/api/payments/mark-completed';
 
       const payload =
-        sessionId != null
-          ? { sessionId, bookingId, paymentType }
-          : { bookingId, paymentType };
+        sessionId != null ? { sessionId, bookingId, paymentType } : { bookingId, paymentType };
 
-      console.log('🚀 [PaymentSuccessHandler] Finalizing payment:', {
-        bookingId,
-        paymentType,
-        sessionId,
-        endpoint,
+      logger.info('Finalizing payment', {
+        component: 'PaymentSuccessHandler',
+        action: 'finalizing_payment',
+        metadata: {
+          bookingId,
+          paymentType,
+          sessionId,
+          endpoint,
+        },
       });
 
       let encounteredError = false;
@@ -62,17 +64,29 @@ export default function PaymentSuccessHandler() {
         credentials: 'include',
         body: JSON.stringify(payload),
       })
-        .then(async res => {
-          console.log('📥 [PaymentSuccessHandler] API Response Status:', res.status);
+        .then(async (res) => {
+          logger.debug('API response status', {
+            component: 'PaymentSuccessHandler',
+            action: 'api_response',
+            metadata: { status: res.status },
+          });
           const data = await res.json().catch(() => ({}));
 
           if (!res.ok || data.error) {
             const error = data.error || `Request failed (${res.status})`;
-            console.error('❌ [PaymentSuccessHandler] API Error:', error);
+            logger.error('API error', {
+              component: 'PaymentSuccessHandler',
+              action: 'api_error',
+              metadata: { error },
+            });
             setErrorMessage(error);
             encounteredError = true;
           } else {
-            console.log('✅ [PaymentSuccessHandler] API Response Data:', data);
+            logger.info('API response data', {
+              component: 'PaymentSuccessHandler',
+              action: 'api_success',
+              metadata: data,
+            });
           }
 
           logger.info('Payment finalization result', {
@@ -86,8 +100,15 @@ export default function PaymentSuccessHandler() {
             },
           });
         })
-        .catch(err => {
-          console.error('❌ [PaymentSuccessHandler] Fetch Error:', err);
+        .catch((err) => {
+          logger.error(
+            'Fetch error',
+            {
+              component: 'PaymentSuccessHandler',
+              action: 'fetch_error',
+            },
+            err instanceof Error ? err : new Error(String(err))
+          );
           setErrorMessage('Failed to finalize payment. Please refresh to retry.');
           encounteredError = true;
 
@@ -128,11 +149,7 @@ export default function PaymentSuccessHandler() {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
         <div className="rounded-lg bg-white p-8 text-center shadow-xl">
           <div className="mb-4 flex justify-center">
-            <svg
-              className="h-16 w-16 animate-spin text-green-600"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-16 w-16 animate-spin text-green-600" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -148,15 +165,9 @@ export default function PaymentSuccessHandler() {
               />
             </svg>
           </div>
-          <h3 className="mb-2 text-xl font-semibold text-gray-900">
-            ✅ Payment Successful!
-          </h3>
+          <h3 className="mb-2 text-xl font-semibold text-gray-900">✅ Payment Successful!</h3>
           <p className="text-gray-600">Updating your booking status...</p>
-          {errorMessage ? (
-            <p className="mt-3 text-sm text-red-600">
-              {errorMessage}
-            </p>
-          ) : null}
+          {errorMessage ? <p className="mt-3 text-sm text-red-600">{errorMessage}</p> : null}
         </div>
       </div>
     );
@@ -164,4 +175,3 @@ export default function PaymentSuccessHandler() {
 
   return null;
 }
-

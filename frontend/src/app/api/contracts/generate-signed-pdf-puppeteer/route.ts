@@ -95,7 +95,9 @@ export async function POST(req: NextRequest) {
     // Get insurance documents if available
     const { data: insuranceDocs } = await supabase
       .from('insurance_documents')
-      .select('*')
+      .select(
+        'id, bookingId, insuranceCompany, policyNumber, effectiveDate, expiresAt, generalLiabilityLimit, equipmentLimit, status, metadata'
+      )
       .eq('bookingId', booking.id)
       .eq('status', 'approved')
       .limit(1)

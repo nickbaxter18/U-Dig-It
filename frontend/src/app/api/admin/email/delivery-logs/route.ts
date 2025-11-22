@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * GET /api/admin/email/delivery-logs
  * Get email delivery logs with filtering
  */
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -15,12 +16,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -28,14 +25,19 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const templateId = searchParams.get('templateId');
     const campaignId = searchParams.get('campaignId');
-    const limit = parseInt(searchParams.get('limit') || '100');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     let query = supabase
       .from('email_delivery_logs')
-      .select('*', { count: 'exact' })
+      .select(
+        'id, email_id, to_email, from_email, subject, template_id, campaign_id, status, sent_at, delivered_at, opened_at, clicked_at, bounced_at, bounce_reason, bounce_type, spam_reported_at, unsubscribed_at, metadata, created_at, updated_at',
+        { count: 'exact' }
+      )
       .order('sent_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(rangeStart, rangeEnd);
 
     if (toEmail) {
       query = query.eq('to_email', toEmail);
@@ -65,17 +67,14 @@ export async function GET(request: NextRequest) {
         },
         fetchError
       );
-      return NextResponse.json(
-        { error: 'Unable to fetch email delivery logs' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to fetch email delivery logs' }, { status: 500 });
     }
 
     return NextResponse.json({
       logs: data || [],
       total: count || 0,
-      limit,
-      offset,
+      page,
+      pageSize,
     });
   } catch (err) {
     logger.error(
@@ -85,6 +84,4 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+});

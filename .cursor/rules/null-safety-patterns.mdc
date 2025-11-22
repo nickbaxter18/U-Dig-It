@@ -1,0 +1,402 @@
+# Null Safety Patterns
+
+## Purpose
+
+Prevent null and undefined errors by enforcing proper null checks, optional chaining, and nullish coalescing throughout the codebase. This rule ensures all nullable values are handled safely before use.
+
+**Critical**: Null/undefined errors are the #1 cause of runtime crashes. Always check before accessing properties.
+
+---
+
+## Core Principles
+
+1. **NEVER access properties without null checks** - Always verify object exists
+2. **Use optional chaining** - `?.` for safe property access
+3. **Use nullish coalescing** - `??` for default values (only when null/undefined)
+4. **Check arrays before iteration** - Verify array exists and has length
+5. **Validate function parameters** - Check for null/undefined before processing
+
+---
+
+## Pattern 1: Optional Chaining for Nested Properties
+
+**Why**: Prevents "Cannot read property of undefined" errors when accessing nested properties.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Optional chaining prevents crashes
+const firstName = user?.user_metadata?.firstName || '';
+const lastName = user?.user_metadata?.lastName || '';
+const customerName = `${firstName} ${lastName}`.trim() || user?.email || 'Customer';
+
+// ✅ CORRECT - Safe array access
+const image = bookingData.equipment?.images?.[0] || '/images/default.png';
+
+// ✅ CORRECT - Safe method calls
+const email = user?.email || 'unknown@example.com';
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:109-111 (nested property access)
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:124-125 (array access with optional chaining)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Will crash if user or user_metadata is null/undefined
+const firstName = user.user_metadata.firstName; // Error if user is null!
+```
+
+---
+
+## Pattern 2: Nullish Coalescing for Default Values
+
+**Why**: `??` only provides default when value is `null` or `undefined`, unlike `||` which also triggers on falsy values like `0`, `''`, `false`.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Nullish coalescing (only for null/undefined)
+const notes = bookingData.specialInstructions ?? undefined;
+const customerEmail = user?.email ?? 'unknown@example.com';
+
+// ✅ CORRECT - For strings, use || if empty string should trigger default
+const customerName = `${firstName} ${lastName}`.trim() || 'Customer';
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:137-140 (nullish coalescing and ||)
+
+**When to Use `??` vs `||`**:
+- Use `??` when you want to preserve falsy values (`0`, `false`, `''`) but replace `null`/`undefined`
+- Use `||` when you want to replace any falsy value with default
+
+```typescript
+// Example: Keep 0, but replace null with 1
+const count = data?.count ?? 1; // If count is 0, keeps 0. If null, uses 1.
+
+// Example: Replace empty string with default
+const name = data?.name || 'Unknown'; // If name is '', replaces with 'Unknown'
+```
+
+---
+
+## Pattern 3: Array Existence and Length Checks
+
+**Why**: Prevents "Cannot read property 'length' of undefined" errors and empty array iterations.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Check array exists and has length
+if (!equipment || equipment.length === 0) {
+  return {
+    available: false,
+    message: 'No equipment configured. Please contact support.',
+  };
+}
+
+// ✅ CORRECT - Safe array access with optional chaining
+const firstItem = items?.[0];
+if (!firstItem) {
+  return defaultItem;
+}
+
+// ✅ CORRECT - Check before iteration
+if (bookings && bookings.length > 0) {
+  bookings.forEach(booking => {
+    // Process booking
+  });
+}
+```
+
+**Reference**: @frontend/src/lib/availability-service.ts:73-79 (array existence check)
+**Reference**: @frontend/src/app/api/availability/route.ts:43-57 (array check with fallback)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Will crash if equipment is null/undefined
+if (equipment.length === 0) { // Error if equipment is null!
+}
+```
+
+---
+
+## Pattern 4: Function Parameter Validation
+
+**Why**: Ensures function doesn't crash when called with null/undefined parameters.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Validate parameters
+export async function checkAvailability(
+  startDate: string,
+  endDate: string,
+  options: AvailabilityOptions = {}
+): Promise<AvailabilityResult> {
+  // Validate required parameters
+  if (!startDate || !endDate) {
+    return {
+      available: false,
+      message: 'Start date and end date are required',
+      confidence: 'low',
+    };
+  }
+
+  let equipmentId = options.equipmentId;
+  if (!equipmentId) {
+    // Handle missing equipmentId
+    const equipment = await supabaseApi.getEquipmentList({ limit: 1 });
+    if (!equipment || equipment.length === 0) {
+      return {
+        available: false,
+        message: 'No equipment configured',
+        confidence: 'low',
+      };
+    }
+    equipmentId = equipment[0]?.id;
+    if (!equipmentId) {
+      return {
+        available: false,
+        message: 'Unable to determine equipment',
+        confidence: 'low',
+      };
+    }
+  }
+
+  // Continue with validated parameters
+}
+```
+
+**Reference**: @frontend/src/lib/availability-service.ts:52-90 (parameter validation pattern)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - No validation, will crash
+export async function checkAvailability(
+  startDate: string,
+  endDate: string
+) {
+  const result = await query(startDate, endDate); // Crashes if startDate is null!
+}
+```
+
+---
+
+## Pattern 5: Supabase Query Result Checks
+
+**Why**: Supabase queries can return null data or errors - always check before using.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Check Supabase response
+const { data, error } = await supabase
+  .from('bookings')
+  .select('*')
+  .eq('id', bookingId)
+  .single();
+
+if (error) {
+  logger.error('Failed to fetch booking', { error });
+  return null;
+}
+
+if (!data) {
+  logger.warn('Booking not found', { bookingId });
+  return null;
+}
+
+// Now safe to use data
+const bookingNumber = data.bookingNumber;
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:85-108 (Supabase result validation)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Assumes data exists
+const { data } = await supabase.from('bookings').select('*').single();
+const bookingNumber = data.bookingNumber; // Crashes if data is null!
+```
+
+---
+
+## Pattern 6: Object Property Checks Before Access
+
+**Why**: Prevents crashes when accessing properties that may not exist.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Check property exists
+if (bookingData.equipment?.make && bookingData.equipment?.model) {
+  const equipmentName = `${bookingData.equipment.make} ${bookingData.equipment.model}`;
+} else {
+  const equipmentName = 'Equipment';
+}
+
+// ✅ CORRECT - Use optional chaining with fallback
+const equipmentName = bookingData.equipment?.make && bookingData.equipment?.model
+  ? `${bookingData.equipment.make} ${bookingData.equipment.model}`
+  : 'Equipment';
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:119-125 (property checks)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Assumes properties exist
+const equipmentName = `${bookingData.equipment.make} ${bookingData.equipment.model}`;
+// Crashes if equipment, make, or model is null/undefined!
+```
+
+---
+
+## Pattern 7: Session/User Existence Checks
+
+**Why**: User session may not exist, always check before accessing user properties.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Check user exists
+const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error || !user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
+
+// Now safe to use user
+const userEmail = user.email;
+const userId = user.id;
+```
+
+**Reference**: @frontend/src/app/api/bookings/route.ts:133-145 (user authentication check)
+
+**Anti-Pattern**:
+```typescript
+// ❌ WRONG - Assumes user exists
+const { data: { user } } = await supabase.auth.getUser();
+const email = user.email; // Crashes if user is null!
+```
+
+---
+
+## Pattern 8: String Null/Undefined Handling
+
+**Why**: Empty strings, null, and undefined all need different handling for display/logging.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Handle all cases
+const customerName = `${firstName} ${lastName}`.trim() || user?.email || 'Customer';
+// Handles: empty strings, null, undefined
+
+// ✅ CORRECT - Explicit null check
+const notes = bookingData.specialInstructions || undefined;
+// Converts empty string to undefined, preserves null
+```
+
+**Reference**: @frontend/src/app/bookings/[id]/page.tsx:111 (string handling with fallbacks)
+
+---
+
+## Common Mistakes to Avoid
+
+### Mistake 1: Not Checking Array Before Access
+
+```typescript
+// ❌ WRONG
+const firstItem = items[0]; // Crashes if items is null/undefined!
+
+// ✅ CORRECT
+const firstItem = items?.[0];
+if (!firstItem) return defaultItem;
+```
+
+### Mistake 2: Assuming Object Properties Exist
+
+```typescript
+// ❌ WRONG
+const name = user.metadata.firstName; // Crashes if metadata is null!
+
+// ✅ CORRECT
+const name = user?.metadata?.firstName || 'Unknown';
+```
+
+### Mistake 3: Not Validating Function Parameters
+
+```typescript
+// ❌ WRONG
+function processBooking(booking: Booking) {
+  const id = booking.id; // Crashes if booking is null!
+}
+
+// ✅ CORRECT
+function processBooking(booking: Booking | null) {
+  if (!booking) return null;
+  const id = booking.id; // Safe after check
+}
+```
+
+### Mistake 4: Using `||` When You Need `??`
+
+```typescript
+// ❌ WRONG - Replaces 0 with default
+const count = data?.count || 1; // If count is 0, uses 1 instead!
+
+// ✅ CORRECT - Only replaces null/undefined
+const count = data?.count ?? 1; // If count is 0, keeps 0
+```
+
+---
+
+## Auto-Fix Patterns
+
+When I encounter potential null/undefined errors, I will:
+
+1. **Add optional chaining** - For nested property access (`?.`)
+2. **Add null checks** - Before array/object access
+3. **Add default values** - Using `??` or `||` as appropriate
+4. **Validate parameters** - Check at function start
+5. **Check Supabase results** - Always validate `data` and `error`
+
+**Examples from codebase fixes**:
+- User metadata access: Add `user?.user_metadata?.property`
+- Array access: Add `array?.[index]` checks
+- Supabase queries: Always check `if (error || !data)`
+
+---
+
+## Testing Null Safety
+
+**Verify null safety**:
+- Test with null/undefined inputs
+- Test with empty arrays
+- Test with missing object properties
+- Test with Supabase query failures
+
+---
+
+## Success Criteria
+
+Null safety is enforced when:
+- ✅ All nested property access uses optional chaining
+- ✅ All arrays checked before access
+- ✅ All function parameters validated
+- ✅ All Supabase queries check for errors and null data
+- ✅ All user session checks before property access
+- ✅ Appropriate use of `??` vs `||` for defaults
+
+---
+
+## References
+
+**Correct Patterns**:
+- Nested property access: @frontend/src/app/bookings/[id]/page.tsx:109-111
+- Array checks: @frontend/src/lib/availability-service.ts:73-79
+- Parameter validation: @frontend/src/lib/availability-service.ts:52-90
+- Supabase result checks: @frontend/src/app/bookings/[id]/page.tsx:85-108
+- User session checks: @frontend/src/app/api/bookings/route.ts:133-145
+
+**Common Usage**:
+- Optional chaining: Throughout codebase with `?.`
+- Nullish coalescing: Used for defaults with `??`
+- Fallback values: Used with `||` for string defaults
+
+---
+
+**Remember**: Every property access is a potential crash point. Always check for null/undefined before accessing properties.

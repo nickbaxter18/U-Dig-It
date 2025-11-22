@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { z } from 'zod';
 
 const customerSegmentCreateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -12,7 +14,7 @@ const customerSegmentCreateSchema = z.object({
   tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'enterprise']).optional().nullable(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -20,30 +22,47 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    const { data, error: fetchError } = await supabase
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
+    const {
+      data,
+      error: fetchError,
+      count,
+    } = await supabase
       .from('customer_segments')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select(
+        'id, name, description, criteria, customer_count, avg_booking_value, avg_booking_frequency, tier, is_active, created_at, updated_at',
+        { count: 'exact' }
+      )
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (fetchError) {
-      logger.error(
-        'Failed to fetch customer segments',
-        { component: 'admin-customer-segments', action: 'fetch_failed' });
-      return NextResponse.json(
-        { error: 'Unable to fetch customer segments' },
-        { status: 500 }
-      );
+      logger.error('Failed to fetch customer segments', {
+        component: 'admin-customer-segments',
+        action: 'fetch_failed',
+      });
+      return NextResponse.json({ error: 'Unable to fetch customer segments' }, { status: 500 });
     }
 
-    return NextResponse.json({ segments: data ?? [] });
+    return NextResponse.json({
+      segments: data ?? [],
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
+    });
   } catch (err) {
     logger.error(
       'Unexpected error fetching customer segments',
@@ -52,9 +71,9 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -62,19 +81,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = customerSegmentCreateSchema.parse(await request.json());
 
@@ -100,10 +112,7 @@ export async function POST(request: NextRequest) {
         },
         insertError
       );
-      return NextResponse.json(
-        { error: 'Unable to create customer segment' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to create customer segment' }, { status: 500 });
     }
 
     logger.info('Customer segment created', {
@@ -126,10 +135,6 @@ export async function POST(request: NextRequest) {
       { component: 'admin-customer-segments', action: 'create_unexpected' },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
+});

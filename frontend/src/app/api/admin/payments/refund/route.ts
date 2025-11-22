@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
@@ -11,6 +12,15 @@ import { requireAdmin } from '@/lib/supabase/requireAdmin';
  * Admin-only endpoint with strict security
  */
 export async function POST(request: NextRequest) {
+  // Rate limit FIRST - very strict for payment operations
+  const rateLimitResult = await rateLimit(request, RateLimitPresets.VERY_STRICT);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests', message: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: rateLimitResult.headers }
+    );
+  }
+
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,10 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const stripe = createStripeClient(await getStripeSecretKey());
 

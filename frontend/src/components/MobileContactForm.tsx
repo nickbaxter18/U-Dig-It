@@ -353,13 +353,17 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-6 p-6">
         {/* Name Field */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Full Name *</label>
+          <label htmlFor="name" className="mb-2 block text-sm font-medium text-gray-700">
+            Full Name *
+          </label>
           <div className="relative">
             <input
+              id="name"
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               onFocus={() => speakFieldLabel('Full Name')}
+              aria-describedby={errors.name ? 'name-error' : undefined}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.name
                   ? 'border-red-300 focus:border-red-500'
@@ -373,6 +377,11 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
                 type="button"
                 onClick={() => handleVoiceInput('name')}
                 disabled={isListening && activeField === 'name'}
+                aria-label={
+                  isListening && activeField === 'name'
+                    ? 'Voice input is listening'
+                    : 'Start voice input for name'
+                }
                 className="absolute right-3 top-1/2 -translate-y-1/2 transform rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200"
                 style={{ minHeight: '36px', minWidth: '36px' }}
               >
@@ -385,8 +394,13 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             )}
           </div>
           {errors.name && (
-            <div className="mt-2 flex items-center text-red-600">
-              <AlertCircle className="mr-1 h-4 w-4" />
+            <div
+              id="name-error"
+              className="mt-2 flex items-center text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="mr-1 h-4 w-4" aria-hidden="true" />
               <span className="text-sm">{errors.name}</span>
             </div>
           )}
@@ -394,13 +408,17 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
 
         {/* Email Field */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Email Address *</label>
+          <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
+            Email Address *
+          </label>
           <div className="relative">
             <input
+              id="email"
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               onFocus={() => speakFieldLabel('Email Address')}
+              aria-describedby={errors.email ? 'email-error' : undefined}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.email
                   ? 'border-red-300 focus:border-red-500'
@@ -426,8 +444,13 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             )}
           </div>
           {errors.email && (
-            <div className="mt-2 flex items-center text-red-600">
-              <AlertCircle className="mr-1 h-4 w-4" />
+            <div
+              id="email-error"
+              className="mt-2 flex items-center text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="mr-1 h-4 w-4" aria-hidden="true" />
               <span className="text-sm">{errors.email}</span>
             </div>
           )}
@@ -455,6 +478,11 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
                 type="button"
                 onClick={() => handleVoiceInput('phone')}
                 disabled={isListening && activeField === 'phone'}
+                aria-label={
+                  isListening && activeField === 'phone'
+                    ? 'Voice input is listening'
+                    : 'Start voice input for phone number'
+                }
                 className="absolute right-3 top-1/2 -translate-y-1/2 transform rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200"
                 style={{ minHeight: '36px', minWidth: '36px' }}
               >
@@ -467,8 +495,13 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             )}
           </div>
           {errors.phone && (
-            <div className="mt-2 flex items-center text-red-600">
-              <AlertCircle className="mr-1 h-4 w-4" />
+            <div
+              id="phone-error"
+              className="mt-2 flex items-center text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="mr-1 h-4 w-4" aria-hidden="true" />
               <span className="text-sm">{errors.phone}</span>
             </div>
           )}
@@ -476,13 +509,17 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
 
         {/* Subject Field */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Subject *</label>
+          <label htmlFor="subject" className="mb-2 block text-sm font-medium text-gray-700">
+            Subject *
+          </label>
           <div className="relative">
             <input
+              id="subject"
               type="text"
               value={formData.subject}
               onChange={(e) => handleInputChange('subject', e.target.value)}
               onFocus={() => speakFieldLabel('Subject')}
+              aria-describedby={errors.subject ? 'subject-error' : undefined}
               className={`w-full rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.subject
                   ? 'border-red-300 focus:border-red-500'
@@ -508,8 +545,13 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             )}
           </div>
           {errors.subject && (
-            <div className="mt-2 flex items-center text-red-600">
-              <AlertCircle className="mr-1 h-4 w-4" />
+            <div
+              id="subject-error"
+              className="mt-2 flex items-center text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="mr-1 h-4 w-4" aria-hidden="true" />
               <span className="text-sm">{errors.subject}</span>
             </div>
           )}
@@ -517,12 +559,16 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
 
         {/* Message Field */}
         <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">Message *</label>
+          <label htmlFor="message" className="mb-2 block text-sm font-medium text-gray-700">
+            Message *
+          </label>
           <div className="relative">
             <textarea
+              id="message"
               value={formData.message}
               onChange={(e) => handleInputChange('message', e.target.value)}
               onFocus={() => speakFieldLabel('Message')}
+              aria-describedby={errors.message ? 'message-error' : undefined}
               rows={4}
               className={`w-full resize-none rounded-xl border-2 p-4 text-lg transition-colors focus:ring-0 ${
                 errors.message
@@ -536,6 +582,11 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
                 type="button"
                 onClick={() => handleVoiceInput('message')}
                 disabled={isListening && activeField === 'message'}
+                aria-label={
+                  isListening && activeField === 'message'
+                    ? 'Voice input is listening'
+                    : 'Start voice input for message'
+                }
                 className="absolute bottom-3 right-3 rounded-full bg-gray-100 p-2 transition-colors hover:bg-gray-200"
                 style={{ minHeight: '36px', minWidth: '36px' }}
               >
@@ -548,8 +599,13 @@ export default function MobileContactForm({ className = '' }: MobileContactFormP
             )}
           </div>
           {errors.message && (
-            <div className="mt-2 flex items-center text-red-600">
-              <AlertCircle className="mr-1 h-4 w-4" />
+            <div
+              id="message-error"
+              className="mt-2 flex items-center text-red-600"
+              role="alert"
+              aria-live="polite"
+            >
+              <AlertCircle className="mr-1 h-4 w-4" aria-hidden="true" />
               <span className="text-sm">{errors.message}</span>
             </div>
           )}

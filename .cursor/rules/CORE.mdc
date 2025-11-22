@@ -1,5 +1,5 @@
 ---
-description: "Core development standards, reasoning patterns, and AI coding assistance for Kubota Rental Platform"
+description: "Core development standards, reasoning patterns, and AI coding assistance. Includes pattern reuse strategy, TypeScript standards, error handling patterns, extension integration, performance optimization, security, logging, frontend startup protocol, testing, and accessibility. All patterns include @filename references to actual codebase."
 alwaysApply: true
 ---
 
@@ -29,12 +29,19 @@ Provides foundational development standards, reasoning patterns, and AI coding o
 // 3. Reuse existing components when possible
 // 4. Follow import and structure patterns
 
-// Authentication Pattern
+// Authentication Pattern (From YOUR Codebase)
+// See actual implementation: @frontend/src/app/api/bookings/route.ts:133-145
 import { createClient } from '@/lib/supabase/server';
 const supabase = await createClient();
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+const { data: { user }, error: authError } = await supabase.auth.getUser();
+if (authError || !user) {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+}
 ```
+
+**Reference actual implementations**:
+- Booking creation auth: @frontend/src/app/api/bookings/route.ts:133-145
+- Discount code auth: @frontend/src/app/api/discount-codes/validate/route.ts:32-44
 
 ---
 
@@ -73,21 +80,37 @@ export default function BookingFormAndListAndStats() { ... }
 
 ### Error Handling
 ```typescript
-// ✅ CORRECT - Comprehensive error handling
+// ✅ CORRECT - Comprehensive error handling (From YOUR Codebase)
+// See actual implementation: @frontend/src/app/api/bookings/route.ts:267-299
 try {
   const result = await operation();
   if (!result.success) {
-    logger.error('Operation failed', { metadata });
+    logger.error('Operation failed', {
+      component: 'component-name',
+      action: 'operation',
+      metadata: { ...metadata }
+    });
     return { error: 'User-friendly message' };
   }
 } catch (error) {
-  logger.error('Unexpected error', { error }, error);
+  // IMPORTANT: Logger signature is logger.error('message', context, error) - error LAST
+  // Reference: @frontend/src/lib/logger.ts:202-210
+  logger.error('Unexpected error', {
+    component: 'component-name',
+    action: 'error',
+    metadata: { error: error instanceof Error ? error.message : String(error) }
+  }, error instanceof Error ? error : undefined);
   return { error: 'Something went wrong' };
 }
 
 // ❌ WRONG - Silent failures
 try { await operation(); } catch {}
 ```
+
+**Reference error handling patterns**:
+- API route error handling: @frontend/src/app/api/bookings/route.ts:267-299
+- Error handler utility: @frontend/src/lib/error-handler.ts
+- Logger signatures: @frontend/src/lib/logger.ts:202-210
 
 ---
 

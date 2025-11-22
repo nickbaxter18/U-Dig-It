@@ -194,6 +194,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Initialize balance_amount: totalAmount (deposit hasn't been paid yet)
+      // The deposit only reduces the balance once it's been paid (depositPaid = true)
+      const totalAmount = bookingFormData.totalAmount || 817.5;
+      const depositAmount = 500; // securityDeposit
+      const initialBalance = totalAmount;
+
       // Create the booking in database with accurate pricing from localStorage
       const { data: createdBooking, error: createError } = await supabase
         .from('bookings')
@@ -216,8 +222,10 @@ export async function POST(request: NextRequest) {
           taxes: bookingFormData.taxes || 67.5,
           floatFee: bookingFormData.floatFee || 300, // Flat fee (base delivery)
           deliveryFee: bookingFormData.deliveryFee || 300, // Total delivery cost
-          totalAmount: bookingFormData.totalAmount || 817.5,
-          securityDeposit: 500,
+          totalAmount,
+          securityDeposit: depositAmount,
+          depositAmount: depositAmount,
+          balance_amount: initialBalance,
           distanceKm: bookingFormData.distanceKm || bookingFormData.locationData?.distanceKm || 0,
           status: 'verify_hold_ok',
           stripe_payment_method_id: paymentMethodId,

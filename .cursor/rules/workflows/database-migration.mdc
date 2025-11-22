@@ -1,0 +1,185 @@
+---
+description: "Complete database migration workflow with actual migration patterns. Includes pre-implementation schema verification (mcp_supabase_list_tables), implementation patterns (naming conventions, RLS policies, indexes, triggers from actual migrations), testing in branches (MANDATORY), and post-implementation advisors. All patterns reference actual migration files in @supabase/migrations/ with specific examples."
+globs: ["**/supabase/migrations/**/*.sql", "**/migrations/**/*.sql"]
+alwaysApply: false
+---
+
+## Database Migration Workflow
+
+When creating or modifying database migrations, follow this workflow:
+
+### Pre-Implementation
+
+1. **Check Existing Migrations**
+   - Review @supabase/migrations/ for patterns
+   - Reference actual migrations:
+     - Initial schema: @supabase/migrations/20250121000001_initial_schema.sql
+     - RLS policies: @supabase/migrations/20250121000002_rls_policies.sql
+     - Indexes: @supabase/migrations/20250122000004_add_critical_fk_indexes.sql
+
+2. **Verify Current Schema**
+   - Use `mcp_supabase_list_tables({ schemas: ['public'] })`
+   - Check existing indexes
+   - Review RLS policies
+
+3. **Plan Migration**
+   - Test in branch first (MANDATORY)
+   - Identify affected tables
+   - Plan rollback strategy
+
+### Implementation
+
+Follow patterns from YOUR codebase:
+
+**Reference**: @supabase/migrations/
+
+#### Migration Naming
+- Format: `YYYYMMDD_description.sql`
+- Example: `20250121000002_rls_policies.sql`
+
+#### Database Design Standards
+
+1. **Naming Convention** (STRICT)
+   - Use `snake_case` for everything
+   - Table names: plural (e.g., `bookings`, `equipment`)
+   - Column names: snake_case (e.g., `customer_id`, `created_at`)
+
+2. **Primary Keys**
+   ```sql
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+   ```
+
+3. **Timestamps**
+   ```sql
+   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+   ```
+
+4. **Foreign Keys**
+   ```sql
+   customer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE
+   ```
+
+5. **Indexes** (MANDATORY)
+
+   **Always index these**:
+   1. Foreign keys
+   2. WHERE clause columns
+   3. RLS policy columns
+   4. Sort columns
+   5. Composite indexes for common patterns
+   6. Partial indexes for filtered queries
+   7. GIN indexes for JSONB/array columns
+   8. BRIN indexes for time series data
+
+   ```sql
+   -- 1. Foreign key
+   CREATE INDEX CONCURRENTLY idx_bookings_customer_id ON bookings(customer_id);
+
+   -- 2. WHERE clause
+   CREATE INDEX CONCURRENTLY idx_bookings_status ON bookings(status);
+
+   -- 3. RLS policy columns
+   CREATE INDEX CONCURRENTLY idx_bookings_customer_status
+   ON bookings(customer_id, status);
+
+   -- 4. Partial index for availability queries (from actual migration)
+   CREATE INDEX CONCURRENTLY idx_bookings_availability
+   ON bookings(equipment_id, start_date, end_date)
+   WHERE status NOT IN ('cancelled', 'rejected', 'completed');
+
+   -- 5. GIN index for JSONB
+   CREATE INDEX CONCURRENTLY idx_equipment_specifications
+   ON equipment USING gin(specifications);
+
+   -- 6. BRIN index for time series
+   CREATE INDEX CONCURRENTLY idx_bookings_created_at_brin
+   ON bookings USING brin(created_at);
+   ```
+
+   **References**:
+   - Missing indexes: @supabase/migrations/20251118_add_missing_indexes.sql:11-16
+   - Partial indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:145-149
+   - GIN indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:157-163
+   - BRIN indexes: @supabase/migrations/20250121000006_performance_optimizations.sql:165-167
+
+#### RLS Policies
+
+**Reference actual migrations**:
+- Initial RLS setup: @supabase/migrations/20250121000002_rls_policies.sql
+- Enhanced policies: @supabase/migrations/20250121000004_enhanced_rls_policies.sql
+- Performance optimization: @supabase/migrations/20251118_fix_rls_auth_uid_wrapper.sql
+- Policy optimization phase 2: @supabase/migrations/20250122000005_optimize_rls_policies_phase2.sql
+
+1. **Enable RLS**
+   ```sql
+   ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+   ```
+
+2. **Use `(SELECT auth.uid())` wrapper** (30% faster plan caching)
+   ```sql
+   CREATE POLICY "policy_name" ON table_name
+   FOR SELECT TO authenticated
+   USING (
+     "customerId" = (SELECT auth.uid())  -- ✅ Wrapped for better plan caching
+     OR
+     EXISTS (
+       SELECT 1 FROM users
+       WHERE id = (SELECT auth.uid())
+       AND role IN ('admin', 'super_admin')
+     )
+   );
+   ```
+
+   **Reference actual migration**: @supabase/migrations/20251118_fix_rls_auth_uid_wrapper.sql
+   This migration shows the performance fix pattern applied across all policies.
+
+3. **Index policy columns** (MANDATORY)
+
+#### Updated_at Trigger
+
+Reference: @supabase/migrations/20251113_fix_updated_at_function.sql
+
+```sql
+CREATE TRIGGER set_updated_at
+BEFORE UPDATE ON table_name
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+```
+
+### Testing Migrations
+
+**ALWAYS test in branch first:**
+
+1. Create branch: `mcp_supabase_create_branch({ name: 'test-migration' })`
+2. Apply migration: `mcp_supabase_apply_migration({ name: 'migration_name', query: '...' })`
+3. Test thoroughly
+4. Check advisors:
+   - `mcp_supabase_get_advisors({ type: 'security' })`
+   - `mcp_supabase_get_advisors({ type: 'performance' })`
+5. Merge if successful: `mcp_supabase_merge_branch({ branch_id: 'xxx' })`
+
+### Post-Implementation
+
+1. **Check Advisors**
+   - Security: `mcp_supabase_get_advisors({ type: 'security' })`
+   - Performance: `mcp_supabase_get_advisors({ type: 'performance' })`
+   - Fix identified issues
+
+2. **Verify Changes**
+   - List tables: `mcp_supabase_list_tables({ schemas: ['public'] })`
+   - Test queries: `mcp_supabase_execute_sql({ query: 'SELECT ...' })`
+   - Check logs: `mcp_supabase_get_logs({ service: 'api' })`
+
+3. **Documentation**
+   - Update @docs/reference/DATABASE_SCHEMA.md (if schema changed)
+   - Document migration purpose
+   - Document rollback steps
+
+### Common Mistakes
+
+1. **Don't use camelCase** - PostgreSQL lowercases unquoted identifiers
+2. **Always quote camelCase columns** - Use `"customerId"` not `customerId`
+3. **Handle NULL values** - Use `COALESCE()` in triggers
+4. **Index policy columns** - RLS policies need indexed columns
+5. **Test in branch first** - Never apply directly to production

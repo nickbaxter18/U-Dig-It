@@ -4,6 +4,8 @@ import { Edit2, Filter, Loader2, Plus, Trash2, Users, X } from 'lucide-react';
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 import { useAdminToast } from './AdminToastProvider';
@@ -178,7 +180,7 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
             });
             setShowCreateModal(true);
           }}
-          className="inline-flex items-center rounded-md bg-kubota-orange px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
         >
           <Plus className="mr-2 h-4 w-4" /> Create Segment
         </button>
@@ -199,7 +201,7 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
               });
               setShowCreateModal(true);
             }}
-            className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+            className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
           >
             Create your first segment
           </button>
@@ -251,150 +253,132 @@ export function CustomerSegmentsManager({ onSegmentChange }: CustomerSegmentsMan
       )}
 
       {/* Create Segment Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900">Create Segment</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setEditingSegment(null);
-                  setFormData({
-                    name: '',
-                    description: '',
-                    criteria: { minTotalSpent: '', minBookings: '', tags: [], status: [] },
-                    tier: '',
-                  });
-                }}
-                className="rounded-full p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSegment} className="p-6 space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Segment Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="e.g., High Value Customers, Frequent Renters"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, description: e.target.value }))
-                  }
-                  rows={2}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Describe this segment..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Min Total Spent (CAD)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.criteria.minTotalSpent}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        criteria: { ...prev.criteria, minTotalSpent: e.target.value },
-                      }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Min Bookings
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.criteria.minBookings}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        criteria: { ...prev.criteria, minBookings: e.target.value },
-                      }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Tier (Optional)
-                </label>
-                <select
-                  value={formData.tier}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, tier: e.target.value as any }))
-                  }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="">None</option>
-                  <option value="bronze">Bronze</option>
-                  <option value="silver">Silver</option>
-                  <option value="gold">Gold</option>
-                  <option value="platinum">Platinum</option>
-                  <option value="enterprise">Enterprise</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setEditingSegment(null);
-                    setFormData({
-                      name: '',
-                      description: '',
-                      criteria: { minTotalSpent: '', minBookings: '', tags: [], status: [] },
-                      tier: '',
-                    });
-                  }}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="inline-flex items-center rounded-md bg-kubota-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
-                    </>
-                  ) : (
-                    'Create Segment'
-                  )}
-                </button>
-              </div>
-            </form>
+      <AdminModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setEditingSegment(null);
+          setFormData({
+            name: '',
+            description: '',
+            criteria: { minTotalSpent: '', minBookings: '', tags: [], status: [] },
+            tier: '',
+          });
+        }}
+        title="Create Segment"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleCreateSegment} className="p-6 space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Segment Name</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="e.g., High Value Customers, Frequent Renters"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              rows={2}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Describe this segment..."
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Min Total Spent (CAD)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.criteria.minTotalSpent}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    criteria: { ...prev.criteria, minTotalSpent: e.target.value },
+                  }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Min Bookings</label>
+              <input
+                type="number"
+                min="0"
+                value={formData.criteria.minBookings}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    criteria: { ...prev.criteria, minBookings: e.target.value },
+                  }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Tier (Optional)</label>
+            <select
+              value={formData.tier}
+              onChange={(e) => setFormData((prev) => ({ ...prev, tier: e.target.value as any }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">None</option>
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreateModal(false);
+                setEditingSegment(null);
+                setFormData({
+                  name: '',
+                  description: '',
+                  criteria: { minTotalSpent: '', minBookings: '', tags: [], status: [] },
+                  tier: '',
+                });
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 inline-flex items-center px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:shadow-none"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+                </>
+              ) : (
+                'Create Segment'
+              )}
+            </button>
+          </div>
+        </form>
+      </AdminModal>
     </div>
   );
 }

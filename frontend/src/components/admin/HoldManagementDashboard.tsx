@@ -283,6 +283,9 @@ export default function HoldManagementDashboard({
           <button
             onClick={placeSecurityHoldNow}
             disabled={isProcessing || hasSecurityHold}
+            aria-label={
+              hasSecurityHold ? 'Security hold already placed' : 'Place $500 security hold now'
+            }
             className={`rounded-lg py-2 px-4 font-semibold text-white transition-colors ${
               hasSecurityHold || isProcessing
                 ? 'cursor-not-allowed bg-gray-400'
@@ -295,6 +298,11 @@ export default function HoldManagementDashboard({
           <button
             onClick={releaseSecurityHold}
             disabled={isProcessing || !securityHoldActive}
+            aria-label={
+              !securityHoldActive
+                ? 'No active security hold to release'
+                : 'Release active security hold'
+            }
             className={`rounded-lg py-2 px-4 font-semibold text-white transition-colors ${
               !securityHoldActive || isProcessing
                 ? 'cursor-not-allowed bg-gray-400'
@@ -307,6 +315,11 @@ export default function HoldManagementDashboard({
           <button
             onClick={() => setShowCaptureModal(true)}
             disabled={isProcessing || !securityHoldActive}
+            aria-label={
+              !securityHoldActive
+                ? 'No active security hold to capture'
+                : 'Capture security hold funds'
+            }
             className={`rounded-lg py-2 px-4 font-semibold text-white transition-colors ${
               !securityHoldActive || isProcessing
                 ? 'cursor-not-allowed bg-gray-400'

@@ -1,8 +1,8 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { AlertCircle, Info, Maximize2, RefreshCcw } from 'lucide-react';
 
-import { AlertCircle, Info, RefreshCcw } from 'lucide-react';
+import { ReactNode } from 'react';
 
 import { cn, formatDateTime } from '@/lib/utils';
 
@@ -29,6 +29,7 @@ interface DashboardChartProps {
   updatedAt?: Date | string | null;
   interactive?: boolean;
   onRetry?: () => void;
+  onExpand?: () => void;
 }
 
 export function DashboardChart({
@@ -46,29 +47,39 @@ export function DashboardChart({
   updatedAt,
   interactive = true,
   onRetry,
+  onExpand,
 }: DashboardChartProps) {
   const renderHeader = () => (
     <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {description ? (
-            <Info
-              className="h-4 w-4 text-gray-400"
-              aria-label={description}
-            />
-          ) : null}
+          {description ? <Info className="h-4 w-4 text-gray-400" aria-label={description} /> : null}
         </div>
         {updatedAt ? (
           <p className="text-xs text-gray-500">
-            Last updated {typeof updatedAt === 'string' ? formatDateTime(updatedAt) : formatDateTime(updatedAt)}
+            Last updated{' '}
+            {typeof updatedAt === 'string' ? formatDateTime(updatedAt) : formatDateTime(updatedAt)}
           </p>
         ) : null}
       </div>
-      {(rangeControl || rightAction) && (
+      {(rangeControl || rightAction || (onExpand && status === 'ready')) && (
         <div className="flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center">
           {rangeControl}
-          {rightAction}
+          <div className="flex items-center gap-2">
+            {onExpand && status === 'ready' && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                aria-label={`Expand ${title} chart`}
+              >
+                <Maximize2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Expand</span>
+              </button>
+            )}
+            {rightAction}
+          </div>
         </div>
       )}
     </div>
@@ -80,7 +91,7 @@ export function DashboardChart({
       role="status"
       aria-live="polite"
     >
-      <div className="flex h-10 w-10 animate-spin items-center justify-center rounded-full border-4 border-gray-200 border-t-kubota-orange" />
+      <div className="flex h-10 w-10 animate-spin items-center justify-center rounded-full border-4 border-gray-200 border-t-premium-gold" />
       <p className="text-sm text-gray-600">Loading chart data…</p>
     </div>
   );
@@ -115,9 +126,7 @@ export function DashboardChart({
       aria-live="polite"
     >
       <p className="text-sm font-medium text-gray-700">{emptyMessage}</p>
-      {description ? (
-        <p className="text-xs text-gray-500">{description}</p>
-      ) : null}
+      {description ? <p className="text-xs text-gray-500">{description}</p> : null}
     </div>
   );
 
@@ -134,7 +143,9 @@ export function DashboardChart({
     return (
       <div className={cn('mt-4 rounded-lg border px-4 py-3 text-sm', variantClasses)}>
         <p className="font-medium">{insight.title}</p>
-        {insight.description ? <p className="mt-1 text-xs opacity-80">{insight.description}</p> : null}
+        {insight.description ? (
+          <p className="mt-1 text-xs opacity-80">{insight.description}</p>
+        ) : null}
       </div>
     );
   };
@@ -151,13 +162,13 @@ export function DashboardChart({
     >
       {renderHeader()}
 
-      <div className="min-h-[16rem]">
+      <div className="min-h-[16rem] overflow-hidden">
         {status === 'loading' && renderLoading()}
         {status === 'error' && renderError()}
         {status === 'empty' && renderEmpty()}
         {status === 'ready' && (
           <>
-            <div className="relative">{children}</div>
+            <div className="relative overflow-hidden">{children}</div>
             {legend ? <div className="mt-4">{legend}</div> : null}
           </>
         )}
@@ -167,4 +178,3 @@ export function DashboardChart({
     </section>
   );
 }
-

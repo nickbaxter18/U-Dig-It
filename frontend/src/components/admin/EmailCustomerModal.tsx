@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  CheckCircle,
-  Clock,
-  CreditCard,
-  Edit3,
-  FileText,
-  Heart,
-  Mail,
-  Send,
-  X,
-} from 'lucide-react';
+import { CheckCircle, Clock, CreditCard, Edit3, FileText, Heart, Mail, Send } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
+
+import { AdminModal } from '@/components/admin/AdminModal';
 
 import { logger } from '@/lib/logger';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
@@ -158,36 +150,31 @@ export function EmailCustomerModal({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl rounded-lg bg-white shadow-2xl my-8 flex flex-col max-h-[calc(100vh-4rem)] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 flex-shrink-0">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Send Email to Customer</h3>
-            <p className="text-sm text-gray-500">
-              Recipient: {customerName} ({customerEmail})
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
-            <X className="h-6 w-6" />
-          </button>
+    <AdminModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Send Email to Customer"
+      maxWidth="4xl"
+      showCloseButton={true}
+    >
+      <div className="flex flex-col h-full">
+        {/* Recipient Info */}
+        <div className="px-6 py-2 border-b border-gray-200">
+          <p className="text-sm text-gray-500">
+            Recipient: {customerName} ({customerEmail})
+          </p>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 min-h-0">
+        <div className="p-6 flex-1 min-h-0">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Left Column - Template Selection */}
             <div>
-              <h4 className="mb-3 flex items-center text-sm font-semibold text-gray-900">
-                <FileText className="mr-2 h-4 w-4 text-kubota-orange" />
+              <h3 className="mb-3 flex items-center text-base font-semibold text-gray-900">
+                <FileText className="mr-2 h-4 w-4 text-premium-gold" />
                 Select Email Template
-              </h4>
+              </h3>
               <div className="space-y-2">
                 {templates.map((template: unknown) => {
                   const TemplateIcon = getTemplateIcon(template.template_type);
@@ -199,7 +186,7 @@ export function EmailCustomerModal({
                       onClick={() => handleTemplateSelect(template)}
                       className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
                         isSelected
-                          ? 'border-kubota-orange bg-orange-50 shadow-md ring-2 ring-kubota-orange ring-opacity-50'
+                          ? 'border-premium-gold bg-premium-gold-50 shadow-md ring-2 ring-premium-gold ring-opacity-50'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -208,7 +195,7 @@ export function EmailCustomerModal({
                           <div
                             className={`rounded-lg p-2 ${
                               isSelected
-                                ? 'bg-kubota-orange text-white'
+                                ? 'bg-premium-gold text-black'
                                 : 'bg-gray-100 text-gray-600'
                             }`}
                           >
@@ -217,7 +204,7 @@ export function EmailCustomerModal({
                           <div>
                             <p
                               className={`font-medium ${
-                                isSelected ? 'text-kubota-orange' : 'text-gray-900'
+                                isSelected ? 'text-premium-gold' : 'text-gray-900'
                               }`}
                             >
                               {template.name}
@@ -226,7 +213,7 @@ export function EmailCustomerModal({
                           </div>
                         </div>
                         {isSelected && (
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-kubota-orange">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-premium-gold">
                             <CheckCircle className="h-4 w-4 text-white" />
                           </div>
                         )}
@@ -244,7 +231,7 @@ export function EmailCustomerModal({
                   }}
                   className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
                     selectedTemplate === null && (subject || message)
-                      ? 'border-kubota-orange bg-orange-50 shadow-md ring-2 ring-kubota-orange ring-opacity-50'
+                      ? 'border-premium-gold bg-premium-gold-50 shadow-md ring-2 ring-premium-gold ring-opacity-50'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
@@ -253,7 +240,7 @@ export function EmailCustomerModal({
                       <div
                         className={`rounded-lg p-2 ${
                           selectedTemplate === null && (subject || message)
-                            ? 'bg-kubota-orange text-white'
+                            ? 'bg-premium-gold text-black'
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
@@ -263,7 +250,7 @@ export function EmailCustomerModal({
                         <p
                           className={`font-medium ${
                             selectedTemplate === null && (subject || message)
-                              ? 'text-kubota-orange'
+                              ? 'text-premium-gold'
                               : 'text-gray-900'
                           }`}
                         >
@@ -273,7 +260,7 @@ export function EmailCustomerModal({
                       </div>
                     </div>
                     {selectedTemplate === null && (subject || message) && (
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-kubota-orange">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-premium-gold">
                         <CheckCircle className="h-4 w-4 text-white" />
                       </div>
                     )}
@@ -284,10 +271,10 @@ export function EmailCustomerModal({
 
             {/* Right Column - Email Composition */}
             <div>
-              <h4 className="mb-3 flex items-center text-sm font-semibold text-gray-900">
-                <Mail className="mr-2 h-4 w-4 text-kubota-orange" />
+              <h3 className="mb-3 flex items-center text-base font-semibold text-gray-900">
+                <Mail className="mr-2 h-4 w-4 text-premium-gold" />
                 Email Content
-              </h4>
+              </h3>
 
               {/* Toggle Preview/Edit */}
               <div className="mb-4 flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -295,7 +282,7 @@ export function EmailCustomerModal({
                   onClick={() => setPreviewMode(false)}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
                     !previewMode
-                      ? 'bg-white text-kubota-orange shadow-sm border border-gray-200'
+                      ? 'bg-white text-premium-gold shadow-sm border border-gray-200'
                       : 'text-gray-600 hover:text-gray-800'
                   }`}
                 >
@@ -306,7 +293,7 @@ export function EmailCustomerModal({
                   onClick={() => setPreviewMode(true)}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-md px-4 py-2.5 text-sm font-semibold transition-all ${
                     previewMode
-                      ? 'bg-white text-kubota-orange shadow-sm border border-gray-200'
+                      ? 'bg-white text-premium-gold shadow-sm border border-gray-200'
                       : 'text-gray-600 hover:text-gray-800'
                   }`}
                 >
@@ -325,7 +312,7 @@ export function EmailCustomerModal({
                       value={subject}
                       onChange={(e: unknown) => setSubject(e.target.value)}
                       placeholder="Email subject line"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-opacity-50"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold focus:ring-opacity-50"
                     />
                   </div>
 
@@ -337,7 +324,7 @@ export function EmailCustomerModal({
                       onChange={(e: unknown) => setMessage(e.target.value)}
                       placeholder="Email message (you can edit the template or write your own)"
                       rows={12}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-kubota-orange focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-opacity-50"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-premium-gold focus:outline-none focus:ring-2 focus:ring-premium-gold focus:ring-opacity-50"
                     />
                   </div>
 
@@ -372,7 +359,7 @@ export function EmailCustomerModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 flex-shrink-0 bg-white rounded-b-lg">
+        <div className="border-t border-gray-200 px-6 py-4 flex-shrink-0 bg-white">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             {/* Sender Info */}
             <div className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
@@ -384,17 +371,14 @@ export function EmailCustomerModal({
             <div className="flex gap-3 flex-shrink-0 justify-end sm:justify-start">
               <button
                 onClick={onClose}
-                className="rounded-lg border-2 border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSendEmail}
                 disabled={sending || !subject || !message}
-                className="flex items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all whitespace-nowrap min-w-[140px]"
-                style={{
-                  backgroundColor: sending || !subject || !message ? '#9CA3AF' : '#A90F0F',
-                }}
+                className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none whitespace-nowrap min-w-[140px]"
               >
                 {sending ? (
                   <>
@@ -412,6 +396,6 @@ export function EmailCustomerModal({
           </div>
         </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }

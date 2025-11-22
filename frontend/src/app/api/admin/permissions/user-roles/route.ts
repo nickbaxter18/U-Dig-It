@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { logPermissionChange } from '@/lib/permissions/audit';
 import { checkPermission } from '@/lib/permissions/middleware';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const assignRoleSchema = z.object({
@@ -20,7 +21,7 @@ const assignRoleSchema = z.object({
   expiresAt: z.string().datetime().optional().nullable(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -150,11 +151,25 @@ export async function GET(request: NextRequest) {
     // Note: user_roles.user_id references auth.users(id), but we need to join with users table
     // Since Supabase relationship syntax might not work, we'll fetch separately and join
 
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
     // First, get all user roles
-    const { data: allUserRoles, error: fetchUserRolesError } = await supabase
+    const {
+      data: allUserRoles,
+      error: fetchUserRolesError,
+      count,
+    } = await supabase
       .from('user_roles')
-      .select('*')
-      .order('assigned_at', { ascending: false });
+      .select('id, user_id, role_id, assigned_at, assigned_by, expires_at, metadata', {
+        count: 'exact',
+      })
+      .order('assigned_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (fetchUserRolesError) {
       logger.error('Failed to fetch user roles', {
@@ -244,6 +259,12 @@ export async function GET(request: NextRequest) {
             : undefined,
         };
       }),
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
     });
   } catch (error) {
     logger.error('Unexpected error fetching user roles', {
@@ -253,9 +274,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -372,4 +393,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

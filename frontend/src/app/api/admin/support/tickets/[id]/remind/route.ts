@@ -1,76 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { supportReminderSchema } from '@/lib/validators/admin/support';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const adminResult = await requireAdmin(request);
+export const POST = withRateLimit(
+  RateLimitPresets.STRICT,
+  async (request: NextRequest, { params }: { params: { id: string } }) => {
+    try {
+      const adminResult = await requireAdmin(request);
 
-    if (adminResult.error) return adminResult.error;
+      if (adminResult.error) return adminResult.error;
 
-    const supabase = adminResult.supabase;
+      const supabase = adminResult.supabase;
 
-    
+      if (!supabase) {
+        return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+      }
 
-    if (!supabase) {
+      // Get user for logging
+      const { user } = adminResult;
 
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
+      const payload = supportReminderSchema.parse(await request.json());
 
-    }
+      const { data: ticket, error: ticketError } = await supabase
+        .from('support_tickets')
+        .select('id, assigned_to_id')
+        .eq('id', params.id)
+        .maybeSingle();
 
-    
+      if (ticketError || !ticket) {
+        return NextResponse.json({ error: 'Support ticket not found' }, { status: 404 });
+      }
 
-    // Get user for logging
+      await supabase.from('support_messages').insert({
+        ticket_id: params.id,
+        sender_type: 'system',
+        message_text: `SLA reminder triggered (${payload.type ?? 'response'})`,
+        internal: true,
+      });
 
-    const { data: { user } } = await supabase.auth.getUser();
+      logger.info('Support reminder triggered', {
+        component: 'admin-support-remind',
+        action: 'sla_reminder_triggered',
+        metadata: {
+          ticketId: params.id,
+          adminId: user?.id || 'unknown',
+          type: payload.type ?? 'response',
+        },
+      });
 
-    const payload = supportReminderSchema.parse(await request.json());
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return NextResponse.json(
+          { error: 'Invalid request body', details: err.issues },
+          { status: 400 }
+        );
+      }
 
-    const { data: ticket, error: ticketError } = await supabase
-      .from('support_tickets')
-      .select('id, assigned_to_id')
-      .eq('id', params.id)
-      .maybeSingle();
-
-    if (ticketError || !ticket) {
-      return NextResponse.json({ error: 'Support ticket not found' }, { status: 404 });
-    }
-
-    await supabase.from('support_messages').insert({
-      ticket_id: params.id,
-      sender_type: 'system',
-      message_text: `SLA reminder triggered (${payload.type ?? 'response'})`,
-      internal: true,
-    });
-
-    logger.info('Support reminder triggered', {
-      component: 'admin-support-remind',
-      action: 'sla_reminder_triggered',
-      metadata: { ticketId: params.id, adminId: user?.id || 'unknown', type: payload.type ?? 'response' },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    if (err instanceof ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request body', details: err.issues },
-        { status: 400 }
+      logger.error(
+        'Unexpected error triggering support reminder',
+        {
+          component: 'admin-support-remind',
+          action: 'reminder_unexpected',
+          metadata: { ticketId: params.id },
+        },
+        err instanceof Error ? err : new Error(String(err))
       );
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-
-    logger.error(
-      'Unexpected error triggering support reminder',
-      { component: 'admin-support-remind', action: 'reminder_unexpected', metadata: { ticketId: params.id } },
-      err instanceof Error ? err : new Error(String(err))
-    );
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+);

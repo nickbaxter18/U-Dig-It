@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { bookingConflictRequestSchema } from '@/lib/validators/admin/bookings';
 
@@ -19,25 +21,20 @@ const ACTIVE_BOOKING_STATUSES = [
   'captured',
 ];
 
-function hasOverlap(
-  startA: string,
-  endA: string,
-  startB: string,
-  endB: string
-): boolean {
+function hasOverlap(startA: string, endA: string, startB: string, endB: string): boolean {
   const startTimeA = new Date(startA).getTime();
   const endTimeA = new Date(endA).getTime();
   const startTimeB = new Date(startB).getTime();
   const endTimeB = new Date(endB).getTime();
 
-  if ([startTimeA, endTimeA, startTimeB, endTimeB].some(time => Number.isNaN(time))) {
+  if ([startTimeA, endTimeA, startTimeB, endTimeB].some((time) => Number.isNaN(time))) {
     return false;
   }
 
   return startTimeA <= endTimeB && startTimeB <= endTimeA;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -45,12 +42,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const body = await request.json();
@@ -77,29 +70,25 @@ export async function POST(request: NextRequest) {
     if (bookingsError) {
       logger.error(
         'Failed to fetch bookings for conflict detection',
-        { component: 'admin-bookings-conflicts', action: 'fetch_failed', metadata: { equipmentId: data.equipmentId } },
+        {
+          component: 'admin-bookings-conflicts',
+          action: 'fetch_failed',
+          metadata: { equipmentId: data.equipmentId },
+        },
         bookingsError
       );
-      return NextResponse.json(
-        { error: 'Unable to evaluate booking conflicts' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to evaluate booking conflicts' }, { status: 500 });
     }
 
     const conflicts =
       bookings
-        ?.filter(booking => {
+        ?.filter((booking) => {
           if (data.excludeBookingId && booking.id === data.excludeBookingId) {
             return false;
           }
-          return hasOverlap(
-            data.startDate,
-            data.endDate,
-            booking.startDate,
-            booking.endDate
-          );
+          return hasOverlap(data.startDate, data.endDate, booking.startDate, booking.endDate);
         })
-        .map(booking => ({
+        .map((booking) => ({
           bookingId: booking.id,
           bookingNumber: booking.bookingNumber,
           status: booking.status,
@@ -132,6 +121,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

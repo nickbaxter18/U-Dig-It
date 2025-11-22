@@ -1,0 +1,199 @@
+# Security Review Checklist
+
+## Purpose
+Detailed security review checklist for proactive code review. Reference this when reviewing code for security vulnerabilities.
+
+---
+
+## Security Review Checklist
+
+### Secrets Management
+
+- [ ] **No hardcoded secrets**
+  ```typescript
+  // ❌ WRONG
+  const apiKey = 'sk_test_abc123';
+
+  // ✅ CORRECT - Use secrets loader functions
+  import { getStripeSecretKey } from '@/lib/stripe/config';
+  const apiKey = await getStripeSecretKey();
+  ```
+
+  **Reference**: @frontend/src/lib/stripe/config.ts (secrets loader pattern)
+
+- [ ] **No environment variables accessed directly** (use secrets loaders)
+  ```typescript
+  // ❌ WRONG
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+
+  // ✅ CORRECT
+  import { getStripeSecretKey } from '@/lib/stripe/config';
+  const apiKey = await getStripeSecretKey();
+  ```
+
+---
+
+### Input Validation
+
+- [ ] **Server-side validation present**
+  ```typescript
+  // ✅ CORRECT
+  const schema = z.object({ equipmentId: z.string().uuid() });
+  const validated = schema.parse(body);
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:100-101 (Zod validation)
+
+- [ ] **Input sanitization applied**
+  ```typescript
+  // ✅ CORRECT
+  import { sanitizeBookingFormData } from '@/lib/input-sanitizer';
+  const sanitized = sanitizeBookingFormData(body);
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:101-102 (sanitization)
+
+- [ ] **Request size/content-type validated**
+  ```typescript
+  // ✅ CORRECT
+  import { validateRequest } from '@/lib/request-validator';
+  const validation = await validateRequest(request);
+  if (!validation.valid) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:90-97 (request validation)
+
+---
+
+### Authentication
+
+- [ ] **Authentication verified**
+  ```typescript
+  // ✅ CORRECT
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:133-145 (auth check)
+
+---
+
+### Authorization
+
+- [ ] **Authorization checked** (role-based)
+  ```typescript
+  // ✅ CORRECT
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (userData?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  ```
+
+---
+
+### Row-Level Security (RLS)
+
+- [ ] **RLS enabled** (if database table)
+  ```sql
+  -- ✅ CORRECT
+  ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "bookings_select" ON bookings FOR SELECT ...;
+  ```
+
+  **Reference**: @supabase/migrations/20250121000002_rls_policies.sql (RLS patterns)
+
+---
+
+### XSS Prevention
+
+- [ ] **XSS prevention applied**
+  ```typescript
+  // ✅ CORRECT - React auto-escapes
+  <div>{userInput}</div>
+
+  // ✅ CORRECT - If HTML needed, sanitize
+  import DOMPurify from 'dompurify';
+  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
+  ```
+
+---
+
+### SQL Injection Prevention
+
+- [ ] **SQL injection prevented** (parameterized queries)
+  ```typescript
+  // ✅ CORRECT - Supabase uses parameterized queries
+  await supabase.from('bookings').select('*').eq('id', bookingId);
+  ```
+
+  **Never use**: String concatenation for SQL queries
+
+---
+
+### Rate Limiting
+
+- [ ] **Rate limiting applied** (API routes)
+  ```typescript
+  // ✅ CORRECT
+  const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+  if (!rateLimitResult.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+  ```
+
+  **Reference**: @frontend/src/app/api/bookings/route.ts:73-87 (rate limiting)
+
+---
+
+## Webhook Security
+
+- [ ] **Webhook signature verified** (if applicable)
+  ```typescript
+  // ✅ CORRECT - Verify Stripe webhook signature
+  const signature = request.headers.get('stripe-signature');
+  const event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  ```
+
+  **Reference**: @frontend/src/app/api/webhooks/stripe/route.ts (signature verification)
+
+- [ ] **Service role client used** (webhooks bypass RLS)
+  ```typescript
+  // ✅ CORRECT - Webhooks use service client
+  import { createServiceClient } from '@/lib/supabase/service';
+  const supabase = createServiceClient();
+  ```
+
+  **Reference**: @frontend/src/app/api/webhooks/idkit/route.ts:79 (service client)
+
+---
+
+## Security Best Practices
+
+### Always Check
+- ✅ Secrets never hardcoded
+- ✅ All inputs validated and sanitized
+- ✅ Authentication verified on all protected routes
+- ✅ Authorization checked for admin operations
+- ✅ RLS enabled on all user-facing tables
+- ✅ Rate limiting on all API routes
+- ✅ Webhook signatures verified
+
+### Common Vulnerabilities to Avoid
+- ❌ SQL injection (use parameterized queries)
+- ❌ XSS attacks (sanitize HTML, use React auto-escaping)
+- ❌ CSRF attacks (use CSRF tokens for state-changing operations)
+- ❌ Authentication bypass (verify auth on every protected route)
+- ❌ Authorization bypass (check roles, don't trust client)
+
+---
+
+**Remember**: Security is NOT optional. Always validate, authenticate, and authorize.

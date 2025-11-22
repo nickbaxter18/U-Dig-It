@@ -77,6 +77,7 @@ export interface DashboardChartsPayload {
   };
   bookings: {
     series: BookingChartPoint[];
+    comparison: BookingChartPoint[];
     totals: BookingChartTotals;
     conversion: BookingChartConversion;
   };
@@ -106,4 +107,3 @@ export interface DashboardOverviewResponse {
     candidates: unknown[];
   };
 }
-

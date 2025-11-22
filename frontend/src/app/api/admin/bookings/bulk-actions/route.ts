@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { bookingBulkActionSchema } from '@/lib/validators/admin/bookings';
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.VERY_STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,19 +15,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = bookingBulkActionSchema.parse(await request.json());
 
@@ -52,16 +47,17 @@ export async function POST(request: NextRequest) {
         insertError
       );
 
-      return NextResponse.json(
-        { error: 'Unable to queue booking bulk action' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to queue booking bulk action' }, { status: 500 });
     }
 
     logger.info('Queued booking bulk operation', {
       component: 'admin-bookings-bulk-actions',
       action: 'bulk_operation_queued',
-      metadata: { bulkOperationId: data.id, adminId: user?.id || 'unknown', action: payload.action },
+      metadata: {
+        bulkOperationId: data.id,
+        adminId: user?.id || 'unknown',
+        action: payload.action,
+      },
     });
 
     return NextResponse.json({ bulkOperation: data });
@@ -84,6 +80,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

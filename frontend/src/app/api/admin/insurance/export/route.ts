@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 function formatCsvValue(value: unknown) {
@@ -8,7 +9,7 @@ function formatCsvValue(value: unknown) {
   return `"${asString.replace(/"/g, '""')}"`;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -136,4 +137,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to export insurance documents' }, { status: 500 });
   }
-}
+});

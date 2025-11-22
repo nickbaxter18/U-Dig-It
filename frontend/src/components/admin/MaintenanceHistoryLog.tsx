@@ -6,7 +6,9 @@ import {
   CheckCircle,
   Clock,
   DollarSign,
+  Edit,
   Plus,
+  Trash2,
   User,
   Wrench,
   X,
@@ -14,7 +16,14 @@ import {
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { createMaintenanceLog, fetchMaintenanceLogs } from '@/lib/api/admin/equipment';
+import { AdminModal } from '@/components/admin/AdminModal';
+
+import {
+  createMaintenanceLog,
+  deleteMaintenanceLog,
+  fetchMaintenanceLogs,
+  updateMaintenanceLog,
+} from '@/lib/api/admin/equipment';
 
 import { useAdminToast } from './AdminToastProvider';
 
@@ -53,7 +62,10 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingLog, setEditingLog] = useState<MaintenanceLog | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const toast = useAdminToast();
 
   const [formData, setFormData] = useState({
@@ -69,15 +81,32 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
   });
 
   const fetchLogs = useCallback(async () => {
+    if (!equipmentId) {
+      setLoading(false);
+      setLogs([]);
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await fetchMaintenanceLogs(equipmentId);
+
+      if (!Array.isArray(data)) {
+        console.warn('Maintenance logs API returned non-array data:', data);
+        setLogs([]);
+        return;
+      }
+
       setLogs(data || []);
     } catch (error) {
-      toast.error(
-        'Failed to load maintenance logs',
-        error instanceof Error ? error.message : 'Unable to fetch maintenance history'
-      );
+      console.error('Failed to fetch maintenance logs:', error);
+      // Only show toast for real errors, not 404s (no logs yet)
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unable to fetch maintenance history';
+      if (!errorMessage.includes('404') && !errorMessage.includes('Not Found')) {
+        toast.error('Failed to load maintenance logs', errorMessage);
+      }
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -121,6 +150,20 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
     return partsCost + laborCost;
   };
 
+  const resetForm = () => {
+    setFormData({
+      maintenanceType: 'routine',
+      performedAt: new Date().toISOString().slice(0, 16),
+      technician: '',
+      notes: '',
+      cost: '',
+      durationHours: '',
+      status: 'completed',
+      nextDueAt: '',
+      parts: [],
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -128,40 +171,91 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
     try {
       const totalCost = calculateTotalCost();
 
-      await createMaintenanceLog(equipmentId, {
-        maintenanceType: formData.maintenanceType as 'repair' | 'inspection' | 'routine',
-        performedAt: formData.performedAt,
-        technician: formData.technician || undefined,
-        notes: formData.notes || undefined,
-        cost: totalCost > 0 ? totalCost : undefined,
-        durationHours: formData.durationHours ? parseFloat(formData.durationHours) : undefined,
-        status: formData.status as 'completed' | 'pending' | 'cancelled',
-        nextDueAt: formData.nextDueAt || undefined,
-        parts: formData.parts.length > 0 ? formData.parts : undefined,
-      });
+      if (editingLog) {
+        // Update existing log
+        await updateMaintenanceLog(equipmentId, editingLog.id, {
+          maintenanceType: formData.maintenanceType as 'repair' | 'inspection' | 'routine',
+          performedAt: formData.performedAt,
+          technician: formData.technician || undefined,
+          notes: formData.notes || undefined,
+          cost: totalCost > 0 ? totalCost : undefined,
+          durationHours: formData.durationHours ? parseFloat(formData.durationHours) : undefined,
+          status: formData.status as 'completed' | 'pending' | 'cancelled',
+          nextDueAt: formData.nextDueAt || undefined,
+        });
 
-      toast.success('Maintenance log created', 'Maintenance record added successfully');
-      setShowAddModal(false);
-      setFormData({
-        maintenanceType: 'routine',
-        performedAt: new Date().toISOString().slice(0, 16),
-        technician: '',
-        notes: '',
-        cost: '',
-        durationHours: '',
-        status: 'completed',
-        nextDueAt: '',
-        parts: [],
-      });
+        toast.success('Maintenance log updated', 'Maintenance record updated successfully');
+        setShowEditModal(false);
+        setEditingLog(null);
+      } else {
+        // Create new log
+        await createMaintenanceLog(equipmentId, {
+          maintenanceType: formData.maintenanceType as 'repair' | 'inspection' | 'routine',
+          performedAt: formData.performedAt,
+          technician: formData.technician || undefined,
+          notes: formData.notes || undefined,
+          cost: totalCost > 0 ? totalCost : undefined,
+          durationHours: formData.durationHours ? parseFloat(formData.durationHours) : undefined,
+          status: formData.status as 'completed' | 'pending' | 'cancelled',
+          nextDueAt: formData.nextDueAt || undefined,
+          parts: formData.parts.length > 0 ? formData.parts : undefined,
+        });
+
+        toast.success('Maintenance log created', 'Maintenance record added successfully');
+        setShowAddModal(false);
+      }
+
+      resetForm();
       await fetchLogs();
       onLogChange?.();
     } catch (error) {
       toast.error(
-        'Failed to create log',
+        editingLog ? 'Failed to update log' : 'Failed to create log',
         error instanceof Error ? error.message : 'Unable to save maintenance record'
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (log: MaintenanceLog) => {
+    setEditingLog(log);
+    setFormData({
+      maintenanceType: log.maintenance_type as 'routine' | 'repair' | 'inspection',
+      performedAt: new Date(log.performed_at).toISOString().slice(0, 16),
+      technician: log.technician || '',
+      notes: log.notes || '',
+      cost: log.cost?.toString() || '',
+      durationHours: log.duration_hours?.toString() || '',
+      status: log.status as 'completed' | 'pending' | 'cancelled',
+      nextDueAt: log.next_due_at ? new Date(log.next_due_at).toISOString().slice(0, 16) : '',
+      parts: (log.parts || []) as MaintenancePart[],
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDelete = async (logId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to delete this maintenance log? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(logId);
+    try {
+      await deleteMaintenanceLog(equipmentId, logId);
+      toast.success('Maintenance log deleted', 'Maintenance record removed successfully');
+      await fetchLogs();
+      onLogChange?.();
+    } catch (error) {
+      toast.error(
+        'Failed to delete log',
+        error instanceof Error ? error.message : 'Unable to delete maintenance record'
+      );
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -194,7 +288,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
   if (loading) {
     return (
       <div className="flex h-32 items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-kubota-orange border-t-transparent"></div>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-premium-gold border-t-transparent"></div>
       </div>
     );
   }
@@ -205,7 +299,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
         <h3 className="text-lg font-semibold text-gray-900">Maintenance History</h3>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-md bg-kubota-orange px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
           Add Log Entry
@@ -218,7 +312,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
           <p className="mt-2 text-sm text-gray-600">No maintenance records yet</p>
           <button
             onClick={() => setShowAddModal(true)}
-            className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+            className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
           >
             Add your first maintenance log
           </button>
@@ -239,7 +333,7 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                 className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 flex-1">
                     <div className="mt-1">{getTypeIcon(log.maintenance_type)}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -326,6 +420,27 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
                       )}
                     </div>
                   </div>
+                  <div className="ml-4 flex gap-2">
+                    <button
+                      onClick={() => handleEdit(log)}
+                      className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-blue-600"
+                      title="Edit maintenance log"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(log.id)}
+                      disabled={deleting === log.id}
+                      className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-600 disabled:opacity-50"
+                      title="Delete maintenance log"
+                    >
+                      {deleting === log.id ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent"></div>
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -333,228 +448,227 @@ export function MaintenanceHistoryLog({ equipmentId, onLogChange }: MaintenanceH
         </div>
       )}
 
-      {/* Add Log Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-xl">
-            <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white p-6">
-              <h3 className="text-lg font-semibold text-gray-900">Add Maintenance Log</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+      {/* Add/Edit Log Modal */}
+      <AdminModal
+        isOpen={showAddModal || showEditModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setShowEditModal(false);
+          setEditingLog(null);
+          resetForm();
+        }}
+        title={editingLog ? 'Edit Maintenance Log' : 'Add Maintenance Log'}
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Maintenance Type
+              </label>
+              <select
+                value={formData.maintenanceType}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, maintenanceType: e.target.value }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                required
               >
-                <X className="h-5 w-5" />
-              </button>
+                <option value="routine">Routine</option>
+                <option value="repair">Repair</option>
+                <option value="inspection">Inspection</option>
+              </select>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Maintenance Type
-                  </label>
-                  <select
-                    value={formData.maintenanceType}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, maintenanceType: e.target.value }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    required
-                  >
-                    <option value="routine">Routine</option>
-                    <option value="repair">Repair</option>
-                    <option value="inspection">Inspection</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    required
-                  >
-                    <option value="completed">Completed</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="scheduled">Scheduled</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Performed At
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={formData.performedAt}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, performedAt: e.target.value }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Technician</label>
-                  <input
-                    type="text"
-                    value={formData.technician}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, technician: e.target.value }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Labor Cost (CAD)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.cost}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Duration (hours)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={formData.durationHours}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, durationHours: e.target.value }))
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Next Due Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.nextDueAt}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, nextDueAt: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-gray-700">Parts</label>
-                  <button
-                    type="button"
-                    onClick={handleAddPart}
-                    className="text-sm text-kubota-orange hover:text-orange-600"
-                  >
-                    + Add Part
-                  </button>
-                </div>
-                {formData.parts.length > 0 && (
-                  <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
-                    {formData.parts.map((part, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Part name"
-                          value={part.partName}
-                          onChange={(e) => handlePartChange(index, 'partName', e.target.value)}
-                          className="col-span-4 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                          required
-                        />
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          value={part.quantity}
-                          onChange={(e) =>
-                            handlePartChange(index, 'quantity', parseInt(e.target.value) || 0)
-                          }
-                          className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                          min="1"
-                          required
-                        />
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="Cost"
-                          value={part.costPerUnit}
-                          onChange={(e) =>
-                            handlePartChange(index, 'costPerUnit', parseFloat(e.target.value) || 0)
-                          }
-                          className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                          required
-                        />
-                        <input
-                          type="text"
-                          placeholder="Supplier"
-                          value={part.supplier || ''}
-                          onChange={(e) => handlePartChange(index, 'supplier', e.target.value)}
-                          className="col-span-3 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePart(index)}
-                          className="col-span-1 text-red-600 hover:text-red-800"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <div className="mt-2 border-t border-gray-200 pt-2 text-right text-sm font-semibold">
-                      Total Cost: ${calculateTotalCost().toFixed(2)}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  rows={3}
-                  placeholder="Additional notes about this maintenance..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-md bg-kubota-orange px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {submitting ? 'Saving...' : 'Save Log Entry'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                required
+              >
+                <option value="completed">Completed</option>
+                <option value="in_progress">In Progress</option>
+                <option value="scheduled">Scheduled</option>
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Performed At</label>
+              <input
+                type="datetime-local"
+                value={formData.performedAt}
+                onChange={(e) => setFormData((prev) => ({ ...prev, performedAt: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Technician</label>
+              <input
+                type="text"
+                value={formData.technician}
+                onChange={(e) => setFormData((prev) => ({ ...prev, technician: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Labor Cost (CAD)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.cost}
+                onChange={(e) => setFormData((prev) => ({ ...prev, cost: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Duration (hours)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                value={formData.durationHours}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, durationHours: e.target.value }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Next Due Date</label>
+            <input
+              type="date"
+              value={formData.nextDueAt}
+              onChange={(e) => setFormData((prev) => ({ ...prev, nextDueAt: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-700">Parts</label>
+              <button
+                type="button"
+                onClick={handleAddPart}
+                className="text-sm text-premium-gold hover:text-premium-gold-dark"
+              >
+                + Add Part
+              </button>
+            </div>
+            {formData.parts.length > 0 && (
+              <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+                {formData.parts.map((part, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Part name"
+                      value={part.partName}
+                      onChange={(e) => handlePartChange(index, 'partName', e.target.value)}
+                      className="col-span-4 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      required
+                    />
+                    <input
+                      type="number"
+                      placeholder="Qty"
+                      value={part.quantity}
+                      onChange={(e) =>
+                        handlePartChange(index, 'quantity', parseInt(e.target.value) || 0)
+                      }
+                      className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      min="1"
+                      required
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Cost"
+                      value={part.costPerUnit}
+                      onChange={(e) =>
+                        handlePartChange(index, 'costPerUnit', parseFloat(e.target.value) || 0)
+                      }
+                      className="col-span-2 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                      required
+                    />
+                    <input
+                      type="text"
+                      placeholder="Supplier"
+                      value={part.supplier || ''}
+                      onChange={(e) => handlePartChange(index, 'supplier', e.target.value)}
+                      className="col-span-3 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePart(index)}
+                      className="col-span-1 text-red-600 hover:text-red-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <div className="mt-2 border-t border-gray-200 pt-2 text-right text-sm font-semibold">
+                  Total Cost: ${calculateTotalCost().toFixed(2)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              rows={3}
+              placeholder="Additional notes about this maintenance..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddModal(false);
+                setShowEditModal(false);
+                setEditingLog(null);
+                resetForm();
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:shadow-none"
+            >
+              {submitting
+                ? editingLog
+                  ? 'Updating...'
+                  : 'Saving...'
+                : editingLog
+                  ? 'Update Log Entry'
+                  : 'Save Log Entry'}
+            </button>
+          </div>
+        </form>
+      </AdminModal>
     </div>
   );
 }

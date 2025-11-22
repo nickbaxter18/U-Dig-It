@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
  * GET /api/admin/email/delivery-stats
  * Get email delivery statistics
  */
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -15,12 +16,8 @@ export async function GET(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
     const { searchParams } = new URL(request.url);
@@ -54,19 +51,22 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      stats: stats && stats.length > 0 ? stats[0] : {
-        total_sent: 0,
-        total_delivered: 0,
-        total_opened: 0,
-        total_clicked: 0,
-        total_bounced: 0,
-        total_spam_reported: 0,
-        total_unsubscribed: 0,
-        delivery_rate: null,
-        open_rate: null,
-        click_rate: null,
-        bounce_rate: null,
-      },
+      stats:
+        stats && stats.length > 0
+          ? stats[0]
+          : {
+              total_sent: 0,
+              total_delivered: 0,
+              total_opened: 0,
+              total_clicked: 0,
+              total_bounced: 0,
+              total_spam_reported: 0,
+              total_unsubscribed: 0,
+              delivery_rate: null,
+              open_rate: null,
+              click_rate: null,
+              bounce_rate: null,
+            },
     });
   } catch (err) {
     logger.error(
@@ -76,6 +76,4 @@ export async function GET(request: NextRequest) {
     );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-
+});

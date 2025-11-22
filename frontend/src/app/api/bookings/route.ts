@@ -361,6 +361,10 @@ function buildBookingInsert(params: {
   // Generate booking number
   const bookingNumber = `UDR-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
 
+  // Initialize balance_amount: totalAmount (deposit hasn't been paid yet)
+  // The deposit only reduces the balance once it's been paid (depositPaid = true)
+  const initialBalance = pricing.total;
+
   return {
     bookingNumber,
     dailyRate: 0,
@@ -382,6 +386,7 @@ function buildBookingInsert(params: {
     deliveryFee: pricing.deliveryFee,
     totalAmount: pricing.total,
     depositAmount: pricing.deposit,
+    balance_amount: initialBalance,
     status: 'pending',
     type: 'delivery',
     specialInstructions: sanitized.notes ?? null,

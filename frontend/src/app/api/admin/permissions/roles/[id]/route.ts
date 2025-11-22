@@ -50,7 +50,9 @@ export async function PATCH(
     // Get current role
     const { data: currentRole, error: fetchError } = await supabase
       .from('roles')
-      .select('*')
+      .select(
+        'id, name, display_name, description, is_active, is_system, permissions, created_at, updated_at'
+      )
       .eq('id', roleId)
       .single();
 
@@ -77,7 +79,9 @@ export async function PATCH(
       .from('roles')
       .update(updates)
       .eq('id', roleId)
-      .select('*')
+      .select(
+        'id, name, display_name, description, is_active, is_system, permissions, created_at, updated_at'
+      )
       .single();
 
     if (updateError) {

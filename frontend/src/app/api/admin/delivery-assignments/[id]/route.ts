@@ -1,12 +1,11 @@
-// Removed unused import: createServerClient
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { ZodError } from 'zod';
 
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL } from '@/lib/supabase/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { createServiceClient } from '@/lib/supabase/service';
 
 // Schema for delivery assignment update
 const deliveryAssignmentUpdateSchema = z.object({
@@ -33,17 +32,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     // Get user for logging
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     // Parse and validate request body
     const body = await request.json();
     const validatedData = deliveryAssignmentUpdateSchema.parse(body);
 
     // Create service role client for privileged operations
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY!);
+    const supabaseAdmin = createServiceClient();
 
     // Update delivery assignment with service role
     const { data, error: updateError } = await supabaseAdmin
@@ -80,10 +76,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     });
 
     return NextResponse.json({ data });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+  } catch (err) {
+    if (err instanceof ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
+        { error: 'Invalid request data', details: err.issues },
         { status: 400 }
       );
     }
@@ -94,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         component: 'admin-delivery-assignments-api',
         action: 'unexpected_error',
       },
-      error instanceof Error ? error : new Error(String(error))
+      err instanceof Error ? err : new Error(String(err))
     );
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

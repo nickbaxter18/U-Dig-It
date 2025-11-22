@@ -1,0 +1,79 @@
+---
+description: "Complete feature development workflow with checklist integration. Includes pre-implementation search (codebase_search, check indexes), implementation patterns (API routes, components, utils with @filename references), post-implementation quality checks (lints, advisors, browser verification), and documentation auto-update. References AI_WORKFLOW_CHECKLISTS.md."
+globs: ["**/feature/**/*", "**/feat/**/*"]
+alwaysApply: false
+---
+
+## Feature Development Workflow
+
+When creating a new feature, follow this workflow:
+
+### Pre-Implementation
+
+Reference checklist: @docs/reference/AI_WORKFLOW_CHECKLISTS.md:8-36
+
+1. **Search Codebase**
+   - Use codebase_search for similar functionality
+   - Check @docs/reference/COMPONENT_INDEX.md
+   - Check @docs/reference/API_ROUTES_INDEX.md
+   - Review @docs/reference/AI_CODING_REFERENCE.md
+
+2. **Review Patterns**
+   - Find similar implementations
+   - Use @filename references to see actual code
+   - Identify reusable components
+
+3. **Create Plan**
+   - Break down into tasks
+   - Reference similar feature patterns
+   - Create TODO list if 3+ steps
+
+### Implementation
+
+Follow patterns from YOUR codebase:
+- **API routes**: @frontend/src/app/api/bookings/route.ts:72-297
+- **Components**: @frontend/src/components/EnhancedBookingFlowV2.tsx
+- **Utils**: Reference @frontend/src/lib/ for utility patterns
+
+**API Route Pattern** (if needed):
+1. Rate limit FIRST: @frontend/src/app/api/bookings/route.ts:74
+2. Validate request: @frontend/src/app/api/bookings/route.ts:90-97
+3. Authenticate: @frontend/src/app/api/bookings/route.ts:133-145
+4. Sanitize input: @frontend/src/app/api/bookings/route.ts:101-102
+5. Validate with Zod: @frontend/src/app/api/bookings/route.ts:100-101
+6. Process business logic: @frontend/src/app/api/bookings/route.ts:147-214
+7. Log with structured logger: @frontend/src/app/api/bookings/route.ts:226-235
+8. Return JSON response: @frontend/src/app/api/bookings/route.ts:237-266
+
+**Component Pattern** (if needed):
+- Props interface: @frontend/src/components/EnhancedBookingFlowV2.tsx:105-109
+- State management: @frontend/src/components/EnhancedBookingFlowV2.tsx:110-128
+- Validation: @frontend/src/components/EnhancedBookingFlowV2.tsx:373-426
+
+### Post-Implementation
+
+Checklist from: @docs/reference/AI_WORKFLOW_CHECKLISTS.md:73-99
+
+1. **Quality Checks**
+   - read_lints on changed files
+   - TypeScript compilation
+   - If DB: mcp_supabase_get_advisors({ type: 'security' }) and { type: 'performance' })
+   - If UI: browser verification
+
+2. **Documentation**
+   - Auto-update via documentation-auto-update.mdc rule
+   - Update @docs/reference/COMPONENT_INDEX.md (if component)
+   - Update @docs/reference/API_ROUTES_INDEX.md (if API route)
+
+3. **Tests**
+   - Suggest tests based on patterns
+   - Reference testing patterns from @.cursor/rules/TESTING.mdc
+
+### Quality Gate
+
+Checklist from: @docs/reference/AI_WORKFLOW_CHECKLISTS.md:105-108
+
+- [ ] All checks passed
+- [ ] Issues fixed
+- [ ] Documentation updated
+- [ ] Ready for review

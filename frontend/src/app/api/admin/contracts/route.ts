@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 /**
@@ -9,7 +10,7 @@ import { requireAdmin } from '@/lib/supabase/requireAdmin';
  *
  * Admin-only endpoint
  */
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const bookingIdParam = searchParams.get('booking');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     // 3. Fetch contracts with related booking data
     let query = supabase
@@ -59,15 +64,17 @@ export async function GET(request: NextRequest) {
             model
           )
         )
-      `
+      `,
+        { count: 'exact' }
       )
-      .order('createdAt', { ascending: false });
+      .order('createdAt', { ascending: false })
+      .range(rangeStart, rangeEnd);
 
     if (bookingIdParam) {
       query = query.eq('bookingId', bookingIdParam);
     }
 
-    const { data: contractsData, error: contractsError } = await query;
+    const { data: contractsData, error: contractsError, count } = await query;
 
     if (contractsError) throw contractsError;
 
@@ -114,12 +121,18 @@ export async function GET(request: NextRequest) {
       action: 'fetch_success',
       metadata: {
         count: contracts.length,
+        total: count ?? 0,
       },
     });
 
     return NextResponse.json({
       contracts,
-      total: contracts.length,
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
     });
   } catch (error: unknown) {
     logger.error(
@@ -128,8 +141,11 @@ export async function GET(request: NextRequest) {
         component: 'admin-contracts-api',
         action: 'error',
       },
-      error
+      error instanceof Error ? error : new Error(String(error))
     );
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    );
   }
-}
+});

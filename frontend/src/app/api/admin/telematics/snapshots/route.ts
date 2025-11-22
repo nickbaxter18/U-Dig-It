@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 
+import { NextRequest, NextResponse } from 'next/server';
+
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { telematicsSnapshotCreateSchema } from '@/lib/validators/admin/equipment';
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -13,19 +15,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
 
-    
-
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = adminResult;
 
     const payload = telematicsSnapshotCreateSchema.parse(await request.json());
 
@@ -54,16 +49,17 @@ export async function POST(request: NextRequest) {
         },
         insertError ?? new Error('Missing telematics snapshot data')
       );
-      return NextResponse.json(
-        { error: 'Unable to ingest telematics snapshot' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unable to ingest telematics snapshot' }, { status: 500 });
     }
 
     logger.info('Telematics snapshot ingested', {
       component: 'admin-telematics-snapshots',
       action: 'snapshot_ingested',
-      metadata: { snapshotId: data.id, equipmentId: payload.equipmentId, adminId: user?.id || 'unknown' },
+      metadata: {
+        snapshotId: data.id,
+        equipmentId: payload.equipmentId,
+        adminId: user?.id || 'unknown',
+      },
     });
 
     return NextResponse.json({ snapshot: data });
@@ -88,6 +84,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-
+});

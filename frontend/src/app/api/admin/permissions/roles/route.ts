@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { logPermissionChange } from '@/lib/permissions/audit';
 import { checkPermission } from '@/lib/permissions/middleware';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const createRoleSchema = z.object({
@@ -23,7 +24,7 @@ const createRoleSchema = z.object({
   permissions: z.array(z.string().uuid()),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -148,12 +149,31 @@ export async function GET(request: NextRequest) {
       return permissionResult.error || NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Get pagination parameters
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('pageSize') || '50', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
+
     // Now fetch all roles with permissions (we already checked table exists)
-    const { data: allRoles, error: fetchError } = await supabase
+    const {
+      data: allRoles,
+      error: fetchError,
+      count,
+    } = await supabase
       .from('roles')
       .select(
         `
-        *,
+        id,
+        name,
+        display_name,
+        description,
+        is_system,
+        is_active,
+        metadata,
+        created_at,
+        updated_at,
         role_permissions (
           permission_id,
           permission:permissions (
@@ -167,9 +187,11 @@ export async function GET(request: NextRequest) {
             is_system
           )
         )
-      `
+      `,
+        { count: 'exact' }
       )
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(rangeStart, rangeEnd);
 
     if (fetchError) {
       logger.error('Failed to fetch roles', {
@@ -204,6 +226,12 @@ export async function GET(request: NextRequest) {
             isSystem: rp.permission.is_system,
           })),
       })),
+      pagination: {
+        page,
+        pageSize,
+        total: count ?? 0,
+        totalPages: Math.ceil((count ?? 0) / pageSize),
+      },
     });
   } catch (error) {
     logger.error('Unexpected error fetching roles', {
@@ -213,9 +241,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -324,4 +352,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

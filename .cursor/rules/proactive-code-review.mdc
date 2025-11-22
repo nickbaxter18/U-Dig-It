@@ -1,8 +1,3 @@
----
-description: "Proactive code review checklist - AI self-reviews all code before presenting to user"
-alwaysApply: true
----
-
 # Proactive Code Review
 
 ## 🎯 Purpose
@@ -24,328 +19,64 @@ Automatically review all code before presenting it to the user, catching issues 
 
 ---
 
-## 1. Security Self-Review
+## Quick Review Checklist
 
-### Checklist
+### Security (Critical)
+- [ ] No hardcoded secrets
+- [ ] Input validation present (server-side)
+- [ ] Authentication verified
+- [ ] Authorization checked (role-based)
+- [ ] RLS enabled (if database table)
+- [ ] XSS prevention applied
+- [ ] SQL injection prevented (parameterized queries)
+- [ ] Rate limiting applied (API routes)
 
-- [ ] **No hardcoded secrets**
-  ```typescript
-  // ❌ WRONG
-  const apiKey = 'sk_test_abc123';
+**Detailed checklist**: See `@.cursor/rules/review-checklists-security.mdc`
 
-  // ✅ CORRECT
-  const apiKey = process.env.STRIPE_SECRET_KEY;
-  ```
+### Performance (High)
+- [ ] No N+1 queries
+- [ ] Pagination implemented (for lists)
+- [ ] Indexes exist for filters
+- [ ] Specific columns selected (not SELECT *)
+- [ ] Memoization used (React - expensive calculations)
+- [ ] Dynamic imports (large components)
+- [ ] Bundle size checked (if new dependencies)
 
-- [ ] **Input validation present** (server-side)
-  ```typescript
-  // ✅ CORRECT
-  const schema = z.object({ equipmentId: z.string().uuid() });
-  const validated = schema.parse(body);
-  ```
+**Detailed checklist**: See `@.cursor/rules/review-checklists-performance.mdc`
 
-- [ ] **Authentication verified**
-  ```typescript
-  // ✅ CORRECT
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  ```
+### Business Logic (Critical)
+- [ ] Booking dates validated
+- [ ] Pricing calculated correctly
+- [ ] HST 15% applied (Canadian tax)
+- [ ] Equipment availability checked
+- [ ] Seasonal rates applied (if applicable)
+- [ ] Security deposit calculated (30% of total)
 
-- [ ] **Authorization checked** (role-based)
-  ```typescript
-  // ✅ CORRECT
-  if (userData.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  ```
+**Detailed checklist**: See `@.cursor/rules/review-checklists-business.mdc`
 
-- [ ] **RLS enabled** (if database table)
-  ```sql
-  -- ✅ CORRECT
-  ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY "bookings_select" ON bookings FOR SELECT ...;
-  ```
+### Code Quality (High)
+- [ ] TypeScript types correct (no `any`)
+- [ ] Error handling comprehensive
+- [ ] Logging structured (not console.log)
+- [ ] No TODOs/FIXMEs (or documented)
+- [ ] Code formatted (Prettier)
+- [ ] Imports optimized (no unused)
 
-- [ ] **XSS prevention** (React auto-escapes, but check HTML)
-  ```typescript
-  // ✅ CORRECT - React auto-escapes
-  <div>{userInput}</div>
+**Detailed checklist**: See `@.cursor/rules/review-checklists-quality.mdc`
 
-  // ✅ CORRECT - If HTML needed, sanitize
-  import DOMPurify from 'dompurify';
-  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
-  ```
+### Accessibility (High)
+- [ ] Semantic HTML (not divs for buttons)
+- [ ] ARIA labels (for icon buttons, complex UI)
+- [ ] Form labels (all inputs labeled)
+- [ ] Keyboard navigation (all interactive elements focusable)
+- [ ] Focus indicators (visible)
+- [ ] Color contrast (WCAG AA: 4.5:1 for text)
 
-- [ ] **SQL injection prevented** (parameterized queries)
-  ```typescript
-  // ✅ CORRECT - Supabase uses parameterized queries
-  await supabase.from('bookings').select('*').eq('id', bookingId);
-  ```
-
-- [ ] **Rate limiting applied** (API routes)
-  ```typescript
-  // ✅ CORRECT
-  const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
-  if (!rateLimitResult.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
-  }
-  ```
+**Detailed checklist**: See `@.cursor/rules/review-checklists-accessibility.mdc`
 
 ---
 
-## 2. Performance Self-Review
-
-### Checklist
-
-- [ ] **No N+1 queries**
-  ```typescript
-  // ❌ WRONG - N+1 queries
-  for (const booking of bookings) {
-    const equipment = await getEquipment(booking.equipmentId);
-  }
-
-  // ✅ CORRECT - Single query with join
-  const { data } = await supabase
-    .from('bookings')
-    .select('*, equipment:equipmentId(*)')
-    .eq('customerId', userId);
-  ```
-
-- [ ] **Pagination implemented** (for lists)
-  ```typescript
-  // ✅ CORRECT
-  .range(0, 19)
-  .limit(20)
-  ```
-
-- [ ] **Indexes exist for filters**
-  ```typescript
-  // ✅ CORRECT - Uses indexed column
-  .eq('customerId', userId) // Has idx_bookings_customer_id
-  .eq('status', 'confirmed') // Has idx_bookings_status
-  ```
-
-- [ ] **Specific columns selected** (not SELECT *)
-  ```typescript
-  // ✅ CORRECT
-  .select('id, bookingNumber, status, totalAmount')
-  ```
-
-- [ ] **Memoization used** (React - expensive calculations)
-  ```typescript
-  // ✅ CORRECT
-  const totalCost = useMemo(() => {
-    return calculateBookingTotal(pricingFactors);
-  }, [pricingFactors]);
-  ```
-
-- [ ] **Dynamic imports** (large components)
-  ```typescript
-  // ✅ CORRECT
-  const HeavyChart = dynamic(() => import('@/components/HeavyChart'), {
-    loading: () => <Spinner />,
-    ssr: false
-  });
-  ```
-
-- [ ] **Bundle size checked** (if new dependencies)
-  ```bash
-  # ✅ CORRECT - Check impact
-  pnpm size
-  ```
-
----
-
-## 3. Business Logic Self-Review
-
-### Checklist
-
-- [ ] **Booking dates validated**
-  ```typescript
-  // ✅ CORRECT
-  if (startDate >= endDate) {
-    return { error: 'End date must be after start date' };
-  }
-  if (startDate < new Date()) {
-    return { error: 'Start date cannot be in the past' };
-  }
-  ```
-
-- [ ] **Pricing calculated correctly**
-  ```typescript
-  // ✅ CORRECT - Order: base → discounts → add-ons → tax
-  const baseCost = dailyRate * days;
-  const discountedCost = applyLongTermDiscount(baseCost, days);
-  const withAddOns = discountedCost + insuranceFee + deliveryFee;
-  const subtotal = applyCoupon(withAddOns, coupon);
-  const total = subtotal * 1.15; // HST 15%
-  ```
-
-- [ ] **HST 15% applied** (Canadian tax)
-  ```typescript
-  // ✅ CORRECT
-  const hst = subtotal * 0.15;
-  const total = subtotal + hst;
-  ```
-
-- [ ] **Equipment availability checked**
-  ```typescript
-  // ✅ CORRECT
-  const isAvailable = await checkEquipmentAvailability(
-    equipmentId,
-    startDate,
-    endDate
-  );
-  if (!isAvailable) {
-    return { error: 'Equipment not available for selected dates' };
-  }
-  ```
-
-- [ ] **Seasonal rates applied** (if applicable)
-  ```typescript
-  // ✅ CORRECT
-  const isPeakSeason = isDateInPeakSeason(startDate, endDate);
-  const multiplier = isPeakSeason ? 1.15 : 0.85;
-  const adjustedRate = dailyRate * multiplier;
-  ```
-
-- [ ] **Security deposit calculated** (30% of total)
-  ```typescript
-  // ✅ CORRECT
-  const securityDeposit = total * 0.30;
-  ```
-
----
-
-## 4. Code Quality Self-Review
-
-### Checklist
-
-- [ ] **TypeScript types correct** (no `any`)
-  ```typescript
-  // ✅ CORRECT
-  interface BookingData {
-    equipmentId: string;
-    startDate: string;
-    endDate: string;
-  }
-
-  // ❌ WRONG
-  const data: any = ...;
-  ```
-
-- [ ] **Error handling comprehensive**
-  ```typescript
-  // ✅ CORRECT
-  try {
-    const result = await operation();
-    if (!result.success) {
-      logger.error('Operation failed', { metadata });
-      return { error: 'User-friendly message' };
-    }
-  } catch (error) {
-    logger.error('Unexpected error', { error }, error);
-    return { error: 'Something went wrong' };
-  }
-  ```
-
-- [ ] **Logging structured** (not console.log)
-  ```typescript
-  // ✅ CORRECT
-  logger.info('Booking created', {
-    component: 'booking-api',
-    action: 'create',
-    metadata: { bookingId, customerId }
-  });
-
-  // ❌ WRONG
-  console.log('Booking created');
-  ```
-
-- [ ] **No TODOs/FIXMEs** (or documented)
-  ```typescript
-  // ✅ CORRECT - Documented TODO
-  // TODO: Add caching for equipment list (performance optimization)
-  // Issue: https://github.com/.../issues/123
-
-  // ❌ WRONG - Undocumented TODO
-  // TODO: Fix this later
-  ```
-
-- [ ] **Code formatted** (Prettier)
-  ```bash
-  # ✅ CORRECT - Auto-formats on save
-  # Prettier configured in .prettierrc
-  ```
-
-- [ ] **Imports optimized** (no unused)
-  ```typescript
-  // ✅ CORRECT - Only what's needed
-  import { useState, useEffect } from 'react';
-
-  // ❌ WRONG - Unused imports
-  import { useState, useEffect, useMemo, useCallback } from 'react';
-  ```
-
----
-
-## 5. Accessibility Self-Review
-
-### Checklist
-
-- [ ] **Semantic HTML** (not divs for buttons)
-  ```tsx
-  // ✅ CORRECT
-  <button onClick={handleClick}>Submit</button>
-
-  // ❌ WRONG
-  <div onClick={handleClick}>Submit</div>
-  ```
-
-- [ ] **ARIA labels** (for icon buttons, complex UI)
-  ```tsx
-  // ✅ CORRECT
-  <button aria-label="Close dialog" onClick={onClose}>
-    <XIcon />
-  </button>
-  ```
-
-- [ ] **Form labels** (all inputs labeled)
-  ```tsx
-  // ✅ CORRECT
-  <label htmlFor="equipment">Equipment</label>
-  <select id="equipment" name="equipment">...</select>
-  ```
-
-- [ ] **Keyboard navigation** (all interactive elements focusable)
-  ```tsx
-  // ✅ CORRECT - Button is focusable by default
-  <button onClick={handleClick}>Click me</button>
-
-  // ✅ CORRECT - Custom element needs tabIndex
-  <div role="button" tabIndex={0} onKeyDown={handleKeyDown}>
-    Custom button
-  </div>
-  ```
-
-- [ ] **Focus indicators** (visible)
-  ```css
-  /* ✅ CORRECT */
-  button:focus {
-    outline: 2px solid blue;
-    outline-offset: 2px;
-  }
-  ```
-
-- [ ] **Color contrast** (WCAG AA: 4.5:1 for text)
-  ```tsx
-  // ✅ CORRECT - Check with contrast checker
-  <p className="text-gray-700">Text on white background</p>
-  ```
-
----
-
-## 📋 Review Output Format
+## Review Output Format
 
 ### When Presenting Code
 
@@ -384,7 +115,7 @@ I will include a review summary:
 
 ---
 
-## 🎯 Review Priorities
+## Review Priorities
 
 ### Critical (Must Fix Before Presenting)
 - Security vulnerabilities (hardcoded secrets, missing auth)
@@ -405,18 +136,6 @@ I will include a review summary:
 
 ---
 
-## 📊 Review Metrics
-
-Track review effectiveness:
-- **Issues Caught**: Number of issues found in self-review
-- **Issues Fixed**: Number automatically fixed
-- **Review Time**: Time spent on review
-- **User Feedback**: Issues found by user after review
-
-**Target**: Catch 90%+ of issues before user sees code
-
----
-
 ## ✅ Success Criteria
 
 Code is ready to present when:
@@ -429,4 +148,4 @@ Code is ready to present when:
 
 **Status**: ✅ Active Proactive Review System
 **Review Dimensions**: 5 (Security, Performance, Business, Quality, Accessibility)
-**Auto-Fix**: Enabled for common issues
+**Reference**: Detailed checklists in `review-checklists-*.mdc` files

@@ -1,0 +1,327 @@
+# State Consistency Patterns
+
+## Purpose
+Prevent state consistency bugs in React components and async operations by enforcing proper cleanup, race condition prevention, and abort handling.
+
+---
+
+## Core Principles
+
+1. **Always cleanup effects** - Return cleanup functions from useEffect
+2. **Prevent race conditions** - Use AbortController or mounted flags
+3. **Cancel pending operations** - Abort fetch requests on unmount
+4. **Handle async state updates** - Check if component is mounted before setting state
+5. **Cleanup timers and subscriptions** - Clear all resources on unmount
+
+---
+
+## Pattern 1: useEffect Cleanup Functions
+
+**Why**: Memory leaks occur when effects don't clean up resources like timers, subscriptions, or async operations.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Cleanup function in useEffect
+useEffect(() => {
+  let mounted = true;
+
+  const fetchData = async () => {
+    try {
+      const data = await fetchBookingData(bookingId);
+      if (mounted) {
+        setBooking(data);
+      }
+    } catch (error) {
+      if (mounted) {
+        setError(error);
+      }
+    }
+  };
+
+  fetchData();
+
+  return () => {
+    mounted = false; // Prevent state updates after unmount
+  };
+}, [bookingId]);
+```
+
+**Cleanup for Timers**:
+```typescript
+// ✅ CORRECT - Cleanup timers
+useEffect(() => {
+  let mounted = true;
+  const timer = setTimeout(() => {
+    if (mounted) {
+      router.push('/dashboard');
+    }
+  }, 3000);
+
+  return () => {
+    mounted = false;
+    clearTimeout(timer); // Clear timer on unmount
+  };
+}, [router]);
+```
+
+**Reference**: @.cursor/rules/CODING_SAVANT_PATTERNS.mdc:146-166 (setTimeout cleanup pattern)
+
+---
+
+## Pattern 2: AbortController for Fetch Requests
+
+**Why**: Fetch requests continue even after component unmounts, causing state updates on unmounted components and race conditions.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Abort fetch on unmount
+useEffect(() => {
+  const abortController = new AbortController();
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch('/api/bookings', {
+        signal: abortController.signal, // Abort signal
+      });
+      const data = await response.json();
+      setBookings(data);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        // Request was aborted - ignore
+        return;
+      }
+      setError(error);
+    }
+  };
+
+  fetchData();
+
+  return () => {
+    abortController.abort(); // Abort request on unmount
+  };
+}, []);
+```
+
+**Supabase Query with AbortController**:
+```typescript
+// ✅ CORRECT - Cancel Supabase queries on unmount
+useEffect(() => {
+  const abortController = new AbortController();
+
+  const fetchBookings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('customerId', userId)
+        .abortSignal(abortController.signal); // Abort signal
+
+      if (error) throw error;
+      if (data) setBookings(data);
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      setError(error);
+    }
+  };
+
+  fetchBookings();
+
+  return () => {
+    abortController.abort();
+  };
+}, [userId]);
+```
+
+---
+
+## Pattern 3: Race Condition Prevention
+
+**Why**: Multiple async operations can complete out of order, causing state to reflect the wrong result.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Prevent race conditions with request ID
+useEffect(() => {
+  let mounted = true;
+  let requestId = 0;
+
+  const fetchData = async (id: number) => {
+    try {
+      const data = await fetchBookingData(bookingId);
+      // Only update if this is still the latest request
+      if (mounted && id === requestId) {
+        setBooking(data);
+      }
+    } catch (error) {
+      if (mounted && id === requestId) {
+        setError(error);
+      }
+    }
+  };
+
+  requestId++; // Increment for each new request
+  fetchData(requestId);
+
+  return () => {
+    mounted = false;
+    requestId++; // Invalidate on unmount
+  };
+}, [bookingId]);
+```
+
+---
+
+## Pattern 4: Subscription Cleanup
+
+**Why**: Subscriptions (WebSockets, realtime) continue after unmount, causing memory leaks.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Cleanup subscriptions
+useEffect(() => {
+  const subscription = supabase
+    .channel('bookings')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'bookings',
+    }, (payload) => {
+      setBooking(payload.new);
+    })
+    .subscribe();
+
+  return () => {
+    subscription.unsubscribe(); // Cleanup subscription
+  };
+}, []);
+```
+
+---
+
+## Pattern 5: Multiple Cleanup Resources
+
+**Why**: Components may have multiple resources (timers, subscriptions, requests) that all need cleanup.
+
+**Correct Pattern**:
+```typescript
+// ✅ CORRECT - Cleanup multiple resources
+useEffect(() => {
+  let mounted = true;
+  const abortController = new AbortController();
+  const timers: NodeJS.Timeout[] = [];
+  const subscriptions: { unsubscribe: () => void }[] = [];
+
+  // Setup timers
+  const timer1 = setTimeout(() => {
+    if (mounted) {
+      // Do something
+    }
+  }, 1000);
+  timers.push(timer1);
+
+  // Setup subscriptions
+  const sub = supabase.channel('bookings').subscribe();
+  subscriptions.push(sub);
+
+  // Setup fetch
+  fetchData(abortController.signal);
+
+  return () => {
+    mounted = false;
+    abortController.abort(); // Abort requests
+
+    // Clear all timers
+    timers.forEach(timer => clearTimeout(timer));
+
+    // Unsubscribe all
+    subscriptions.forEach(sub => sub.unsubscribe());
+  };
+}, []);
+```
+
+---
+
+## Common State Consistency Mistakes
+
+### Mistake 1: No Cleanup Function
+
+```typescript
+// ❌ WRONG - No cleanup, causes memory leak
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setState('updated');
+  }, 1000);
+}, []);
+
+// ✅ CORRECT - Cleanup timer
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setState('updated');
+  }, 1000);
+  return () => clearTimeout(timer);
+}, []);
+```
+
+### Mistake 2: Setting State After Unmount
+
+```typescript
+// ❌ WRONG - State update after unmount
+useEffect(() => {
+  fetchData().then(data => {
+    setState(data); // May update after unmount!
+  });
+}, []);
+
+// ✅ CORRECT - Check if mounted
+useEffect(() => {
+  let mounted = true;
+  fetchData().then(data => {
+    if (mounted) {
+      setState(data);
+    }
+  });
+  return () => { mounted = false; };
+}, []);
+```
+
+### Mistake 3: No AbortSignal on Fetch
+
+```typescript
+// ❌ WRONG - Fetch continues after unmount
+useEffect(() => {
+  fetch('/api/data').then(res => res.json()).then(setData);
+}, []);
+
+// ✅ CORRECT - Abort on unmount
+useEffect(() => {
+  const abortController = new AbortController();
+  fetch('/api/data', { signal: abortController.signal })
+    .then(res => res.json())
+    .then(setData);
+  return () => abortController.abort();
+}, []);
+```
+
+---
+
+## State Consistency Checklist
+
+- [ ] All useEffect hooks have cleanup functions
+- [ ] Timers cleared on unmount
+- [ ] Fetch requests aborted on unmount
+- [ ] Subscriptions unsubscribed on unmount
+- [ ] State updates checked for mounted component
+- [ ] Race conditions prevented with request IDs
+- [ ] Multiple resources cleaned up properly
+
+---
+
+## References
+
+**Cleanup Patterns**:
+- setTimeout cleanup: @.cursor/rules/CODING_SAVANT_PATTERNS.mdc:146-166
+- AbortController: Standard browser API
+
+---
+
+**Remember**: Always cleanup resources. Every useEffect should have a cleanup function. Use AbortController for async operations.

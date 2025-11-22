@@ -1,7 +1,10 @@
-import { logger } from '@/lib/logger';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+
+import { NextRequest, NextResponse } from 'next/server';
+
+import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
+import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
 const BOOKING_STATUSES = [
   'pending',
@@ -28,7 +31,7 @@ const bulkUpdateSchema = z.object({
   status: z.enum(BOOKING_STATUSES).optional(),
 });
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.VERY_STRICT, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
 
@@ -36,30 +39,22 @@ export async function POST(request: NextRequest) {
 
     const supabase = adminResult.supabase;
 
-    
-
     if (!supabase) {
-
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
     }
-
-    
 
     // Get user for logging
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-    }
+    const { user } = adminResult;
 
     const payload = bulkUpdateSchema.parse(await request.json());
     const { bookingIds } = payload;
 
     if (payload.operation === 'update_status') {
       if (!payload.status) {
-        return NextResponse.json({ error: 'Status is required for update_status operation' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Status is required for update_status operation' },
+          { status: 400 }
+        );
       }
 
       const { error: updateError } = await supabase
@@ -105,7 +100,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body', details: err.issues }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid request body', details: err.issues },
+        { status: 400 }
+      );
     }
 
     logger.error(
@@ -116,6 +114,4 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to perform bulk action' }, { status: 500 });
   }
-}
-
-
+});

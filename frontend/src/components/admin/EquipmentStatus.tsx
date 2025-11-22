@@ -154,7 +154,7 @@ export function EquipmentStatus() {
   if (loading) {
     return (
       <div className="flex h-32 items-center justify-center">
-        <div className="border-kubota-orange h-6 w-6 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-6 w-6 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }

@@ -471,15 +471,19 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
     };
 
     // ✅ CRITICAL DEBUG: Log exact coupon values before insert
-    console.log('🔍 COUPON DEBUG:', {
-      couponCode: bookingData.couponCode,
-      couponType: bookingData.couponType,
-      couponValue: bookingData.couponValue,
-      couponCodeType: typeof bookingData.couponCode,
-      couponTypeType: typeof bookingData.couponType,
-      couponTypeIsNull: bookingData.couponType === null,
-      couponTypeIsEmptyString: bookingData.couponType === '',
-      couponTypeIsUndefined: bookingData.couponType === undefined,
+    logger.debug('Coupon debug info before insert', {
+      component: 'createBookingEnhanced',
+      action: 'coupon_debug',
+      metadata: {
+        couponCode: bookingData.couponCode,
+        couponType: bookingData.couponType,
+        couponValue: bookingData.couponValue,
+        couponCodeType: typeof bookingData.couponCode,
+        couponTypeType: typeof bookingData.couponType,
+        couponTypeIsNull: bookingData.couponType === null,
+        couponTypeIsEmptyString: bookingData.couponType === '',
+        couponTypeIsUndefined: bookingData.couponType === undefined,
+      },
     });
 
     if (process.env.NODE_ENV === 'development') {

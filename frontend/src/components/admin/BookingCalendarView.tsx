@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
 import { useState } from 'react';
 
 interface Booking {
@@ -37,9 +38,17 @@ export function BookingCalendarView({
 }: BookingCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+  const monthEnd = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
 
-  const monthlyBookings = bookings.filter(booking => {
+  const monthlyBookings = bookings.filter((booking) => {
     const bookingStart = new Date(booking.startDate);
     const bookingEnd = new Date(booking.endDate);
     return bookingEnd >= monthStart && bookingStart <= monthEnd;
@@ -94,7 +103,7 @@ export function BookingCalendarView({
 
   const getBookingsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return bookings.filter(booking => {
+    return bookings.filter((booking) => {
       const startDate = new Date(booking.startDate).toISOString().split('T')[0];
       const endDate = new Date(booking.endDate).toISOString().split('T')[0];
       return dateStr >= startDate && dateStr <= endDate;
@@ -102,7 +111,7 @@ export function BookingCalendarView({
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => {
+    setCurrentDate((prev) => {
       const newDate = new Date(prev);
       if (direction === 'prev') {
         newDate.setMonth(prev.getMonth() - 1);
@@ -142,7 +151,7 @@ export function BookingCalendarView({
             {day}
           </div>
           <div className="space-y-1">
-            {dayBookings.slice(0, 3).map(booking => (
+            {dayBookings.slice(0, 3).map((booking) => (
               <div
                 key={booking.id}
                 onClick={() => onBookingSelect(booking)}
@@ -166,7 +175,7 @@ export function BookingCalendarView({
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -194,7 +203,7 @@ export function BookingCalendarView({
         </div>
         <button
           onClick={() => setCurrentDate(new Date())}
-          className="bg-kubota-orange rounded-md px-3 py-2 text-sm text-white hover:bg-orange-600"
+          className="bg-blue-600 rounded-md px-3 py-2 text-sm text-white hover:bg-blue-700"
         >
           Today
         </button>
@@ -203,7 +212,7 @@ export function BookingCalendarView({
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-0 overflow-hidden rounded-lg border border-gray-200">
         {/* Day headers */}
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
           <div
             key={day}
             className="border-b border-gray-200 bg-gray-100 p-3 text-center text-sm font-medium text-gray-700"
@@ -245,21 +254,15 @@ export function BookingCalendarView({
           </div>
           <div>
             <span className="text-gray-600">Active:</span>
-            <span className="ml-2 font-medium">
-              {monthlySummary.active}
-            </span>
+            <span className="ml-2 font-medium">{monthlySummary.active}</span>
           </div>
           <div>
             <span className="text-gray-600">Completed:</span>
-            <span className="ml-2 font-medium">
-              {monthlySummary.completed}
-            </span>
+            <span className="ml-2 font-medium">{monthlySummary.completed}</span>
           </div>
           <div>
             <span className="text-gray-600">Revenue:</span>
-            <span className="ml-2 font-medium">
-              ${monthlySummary.revenue.toLocaleString()}
-            </span>
+            <span className="ml-2 font-medium">${monthlySummary.revenue.toLocaleString()}</span>
           </div>
         </div>
       </div>

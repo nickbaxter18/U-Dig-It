@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   try {
     const adminResult = await requireAdmin(request);
     if (adminResult.error) return adminResult.error;
@@ -12,23 +13,26 @@ export async function GET(request: NextRequest) {
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
     }
-
-    // Get user for logging
-    const {
-      data: { user: _user },
-    } = await supabase.auth.getUser();
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(searchParams.get('limit') || '100', 10), 1), 100);
+    const rangeStart = (page - 1) * pageSize;
+    const rangeEnd = rangeStart + pageSize - 1;
 
     // ✅ Fetch audit logs from Supabase
-    const { data: logs, error: logsError } = await supabase
+    const {
+      data: logs,
+      error: logsError,
+      count,
+    } = await supabase
       .from('audit_logs')
       .select(
-        'id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at'
+        'id, table_name, record_id, action, old_values, new_values, ip_address, user_agent, user_id, created_at',
+        { count: 'exact' }
       )
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(rangeStart, rangeEnd);
 
     if (logsError) {
       throw new Error(`Database error: ${logsError.message}`);
@@ -85,6 +89,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       logs: transformedLogs,
+      total: count ?? 0,
+      page,
+      pageSize,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -100,4 +107,4 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: 'Failed to fetch audit logs' }, { status: 500 });
   }
-}
+});

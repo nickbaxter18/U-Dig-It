@@ -85,10 +85,12 @@ export async function getSecret(
   if (typeof window === 'undefined') {
     try {
       const { createClient } = await import('@supabase/supabase-js');
-      const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = await import('@/lib/supabase/config');
+      const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import('@/lib/supabase/config');
 
-      if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      // Use anon key for system_config queries (RLS allows public read for system_config)
+      // If we need service role, we'll get it from the secret itself (chicken-egg problem)
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const { data, error } = await supabase
           .from('system_config')

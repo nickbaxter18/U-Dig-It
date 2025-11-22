@@ -275,7 +275,7 @@ export default function PromotionsPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -305,7 +305,7 @@ export default function PromotionsPage() {
               setEditingDiscount(null);
               setShowAddModal(true);
             }}
-            className="bg-kubota-orange flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-orange-600"
+            className="bg-blue-600 flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             <span>Create Discount</span>
@@ -679,7 +679,7 @@ export default function PromotionsPage() {
                   </button>
                   <button
                     type="submit"
-                    className="bg-kubota-orange rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+                    className="bg-blue-600 rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                   >
                     {editingDiscount ? 'Update Discount' : 'Create Discount'}
                   </button>

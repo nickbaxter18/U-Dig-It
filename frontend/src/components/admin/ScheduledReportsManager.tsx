@@ -305,7 +305,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
             });
             setShowCreateModal(true);
           }}
-          className="inline-flex items-center rounded-md bg-kubota-orange px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
+          className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600"
         >
           <Plus className="mr-2 h-4 w-4" /> Schedule Report
         </button>
@@ -329,7 +329,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
               });
               setShowCreateModal(true);
             }}
-            className="mt-4 text-sm text-kubota-orange hover:text-orange-600"
+            className="mt-4 text-sm text-premium-gold hover:text-premium-gold-dark"
           >
             Schedule your first report
           </button>
@@ -629,7 +629,7 @@ export function ScheduledReportsManager({ onReportChange }: ScheduledReportsMana
                 <button
                   type="submit"
                   disabled={formData.recipients.length === 0}
-                  className="inline-flex items-center rounded-md bg-kubota-orange px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+                  className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   Schedule Report
                 </button>

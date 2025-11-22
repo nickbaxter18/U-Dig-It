@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
+import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -12,25 +13,22 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
   const adminResult = await requireAdmin(request);
 
   if (adminResult.error) return adminResult.error;
 
   const supabase = adminResult.supabase;
 
-
-
   if (!supabase) {
-
     return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
   }
 
   const searchParams = Object.fromEntries(new URL(request.url).searchParams);
   const parsed = reconciliationQuerySchema.safeParse({
     status: searchParams.status ?? undefined,
     limit: searchParams.limit ? Number(searchParams.limit) : undefined,
+    page: searchParams.page ? Number(searchParams.page) : undefined,
   });
 
   if (!parsed.success) {
@@ -41,54 +39,60 @@ export async function GET(request: NextRequest) {
   }
 
   const { status, limit } = parsed.data;
+  const page = parsed.data.page || 1;
+  const pageSize = Math.min(Math.max(limit || 20, 1), 100);
+  const rangeStart = (page - 1) * pageSize;
+  const rangeEnd = rangeStart + pageSize - 1;
 
   let query = supabase
     .from('payout_reconciliations')
-    .select('*')
+    .select(
+      'id, stripe_payout_id, arrival_date, amount, currency, status, details, reconciled_by, reconciled_at, created_at, updated_at',
+      { count: 'exact' }
+    )
     .order('arrival_date', { ascending: false })
-    .limit(limit);
+    .range(rangeStart, rangeEnd);
 
   if (status) {
     query = query.eq('status', status);
   }
 
-  const { data, error: fetchError } = await query;
+  const { data, error: fetchError, count } = await query;
 
   if (fetchError) {
     logger.error(
       'Failed to fetch payout reconciliations',
-      { component: 'admin-reconciliation', action: 'fetch_failed', metadata: { status, limit } },
+      {
+        component: 'admin-reconciliation',
+        action: 'fetch_failed',
+        metadata: { status, page, pageSize },
+      },
       fetchError
     );
-    return NextResponse.json(
-      { error: 'Unable to load payout reconciliations' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Unable to load payout reconciliations' }, { status: 500 });
   }
 
-  return NextResponse.json({ payouts: data ?? [] });
-}
+  return NextResponse.json({
+    payouts: data ?? [],
+    total: count || 0,
+    page,
+    pageSize,
+  });
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
   const adminResult = await requireAdmin(request);
 
   if (adminResult.error) return adminResult.error;
 
   const supabase = adminResult.supabase;
 
-
-
   if (!supabase) {
-
     return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-
   }
 
-
-
   // Get user for logging
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user } = adminResult;
 
   let body: unknown = {};
   try {
@@ -106,13 +110,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const sinceISO = parsed.data.since ?? new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const sinceISO =
+      parsed.data.since ?? new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const sinceDate = new Date(sinceISO);
     if (Number.isNaN(sinceDate.valueOf())) {
-      return NextResponse.json(
-        { error: 'Invalid date supplied for "since"' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid date supplied for "since"' }, { status: 400 });
     }
 
     const arrivalGte = Math.floor(sinceDate.getTime() / 1000);
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
       expand: ['data.summary'],
     });
 
-    const payoutIds = payouts.data.map(payout => payout.id);
+    const payoutIds = payouts.data.map((payout) => payout.id);
 
     const serviceClient = createServiceClient();
     const dbClient = serviceClient ?? supabase;
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
 
       if (!existingError && existingRows) {
         existingStatusMap = new Map(
-          existingRows.map(row => [row.stripe_payout_id as string, row.status as string])
+          existingRows.map((row) => [row.stripe_payout_id as string, row.status as string])
         );
       }
     }
@@ -156,7 +158,9 @@ export async function POST(request: NextRequest) {
         stripe_payout_id: payout.id,
         amount: Number(payout.amount ?? 0) / 100,
         currency: payout.currency?.toUpperCase() ?? 'CAD',
-        arrival_date: payout.arrival_date ? new Date(payout.arrival_date * 1000).toISOString() : null,
+        arrival_date: payout.arrival_date
+          ? new Date(payout.arrival_date * 1000).toISOString()
+          : null,
         status,
         details: {
           stripeStatus: payout.status,
@@ -211,12 +215,6 @@ export async function POST(request: NextRequest) {
       { component: 'admin-reconciliation', action: 'sync_error' },
       err instanceof Error ? err : new Error(String(err))
     );
-    return NextResponse.json(
-      { error: 'Failed to sync payouts from Stripe' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to sync payouts from Stripe' }, { status: 500 });
   }
-}
-
-
-
+});

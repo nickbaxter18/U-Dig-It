@@ -2,8 +2,10 @@
 
 import {
   Calendar,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   DollarSign,
   Edit,
   Eye,
@@ -15,8 +17,10 @@ import {
   X,
 } from 'lucide-react';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 
+import { ConfirmationModal } from '@/components/admin/ConfirmationModal';
+import { InputModal } from '@/components/admin/InputModal';
 import { PermissionGate } from '@/components/admin/PermissionGate';
 
 interface Booking {
@@ -76,6 +80,9 @@ export function BookingsTable({
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [actionMenus, setActionMenus] = useState<Set<string>>(new Set());
   const selectAllRef = useRef<HTMLInputElement>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState<string | null>(null);
+  const [showStatusUpdate, setShowStatusUpdate] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<string>('');
 
   const allVisibleSelected =
     bookings.length > 0 && bookings.every((booking) => selectedBookingIds.includes(booking.id));
@@ -87,15 +94,44 @@ export function BookingsTable({
     }
   }, [someSelected, allVisibleSelected]);
 
-  const _toggleRowExpansion = (bookingId: string) => {
-    const newExpanded = new Set(expandedRows);
-    if (newExpanded.has(bookingId)) {
-      newExpanded.delete(bookingId);
-    } else {
-      newExpanded.add(bookingId);
+  // Click-outside handler for action menus
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (actionMenus.size > 0 && !target.closest('[data-action-menu]')) {
+        setActionMenus(new Set());
+      }
+    };
+
+    // Escape key handler for action menus
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && actionMenus.size > 0) {
+        setActionMenus(new Set());
+      }
+    };
+
+    if (actionMenus.size > 0) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscapeKey);
     }
-    setExpandedRows(newExpanded);
-  };
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [actionMenus.size]);
+
+  const toggleRowExpansion = useCallback((bookingId: string) => {
+    setExpandedRows((prev) => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(bookingId)) {
+        newExpanded.delete(bookingId);
+      } else {
+        newExpanded.add(bookingId);
+      }
+      return newExpanded;
+    });
+  }, []);
 
   const toggleActionMenu = (bookingId: string) => {
     const newMenus = new Set(actionMenus);
@@ -147,6 +183,13 @@ export function BookingsTable({
     }).format(amount);
   };
 
+  const formatStatus = (status: string) => {
+    return status
+      .toLowerCase()
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
   if (loading) {
     return (
       <div
@@ -155,7 +198,7 @@ export function BookingsTable({
         aria-live="polite"
         aria-busy="true"
       >
-        <div className="border-kubota-orange h-8 w-8 animate-spin rounded-full border-b-2"></div>
+        <div className="border-premium-gold h-8 w-8 animate-spin rounded-full border-b-2"></div>
       </div>
     );
   }
@@ -171,14 +214,17 @@ export function BookingsTable({
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full divide-y divide-gray-200">
+        <table className="w-full divide-y divide-gray-200" role="table" aria-label="Bookings table">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-4">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-4"
+              >
                 <input
                   ref={selectAllRef}
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                  className="h-4 w-4 rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
                   aria-label="Select all bookings"
                   checked={allVisibleSelected}
                   onChange={(event) => {
@@ -187,25 +233,46 @@ export function BookingsTable({
                   }}
                 />
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6"
+              >
                 Booking
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6"
+              >
                 Customer
               </th>
-              <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell lg:px-6">
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell lg:px-6"
+              >
                 Equipment
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6"
+              >
                 Dates
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6"
+              >
                 Status
               </th>
-              <th className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell lg:px-6">
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell lg:px-6"
+              >
                 Total
               </th>
-              <th className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6">
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:px-6"
+              >
                 Actions
               </th>
             </tr>
@@ -216,8 +283,14 @@ export function BookingsTable({
               return (
                 <Fragment key={booking.id}>
                   <tr
-                    className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-orange-50/30' : ''}`}
+                    className={`cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-premium-gold-50/30' : ''}`}
                     onClick={() => onBookingSelect(booking)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      toggleRowExpansion(booking.id);
+                    }}
+                    role="row"
+                    aria-label={`Booking ${booking.bookingNumber}`}
                   >
                     <td
                       className="px-3 py-4 lg:px-4"
@@ -227,7 +300,7 @@ export function BookingsTable({
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-kubota-orange focus:ring-kubota-orange"
+                        className="h-4 w-4 rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
                         checked={isSelected}
                         onChange={(event) => {
                           event.stopPropagation();
@@ -237,9 +310,27 @@ export function BookingsTable({
                       />
                     </td>
                     <td className="px-3 py-4 lg:px-6">
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRowExpansion(booking.id);
+                          }}
+                          aria-label={expandedRows.has(booking.id) ? 'Collapse row' : 'Expand row'}
+                          aria-expanded={expandedRows.has(booking.id)}
+                          className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                        >
+                          {expandedRows.has(booking.id) ? (
+                            <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                          )}
+                        </button>
                         <div className="hidden h-10 w-10 flex-shrink-0 sm:block">
-                          <div className="bg-kubota-orange flex h-10 w-10 items-center justify-center rounded-full">
+                          <div
+                            className="bg-premium-gold flex h-10 w-10 items-center justify-center rounded-full"
+                            aria-hidden="true"
+                          >
                             <Calendar className="h-5 w-5 text-white" />
                           </div>
                         </div>
@@ -256,7 +347,10 @@ export function BookingsTable({
                     <td className="px-3 py-4 lg:px-6">
                       <div className="flex items-center">
                         <div className="hidden h-8 w-8 flex-shrink-0 sm:block">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
+                          <div
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300"
+                            aria-hidden="true"
+                          >
                             <User className="h-4 w-4 text-gray-600" />
                           </div>
                         </div>
@@ -273,7 +367,10 @@ export function BookingsTable({
                     <td className="hidden px-3 py-4 md:table-cell lg:px-6">
                       <div className="flex items-center">
                         <div className="h-8 w-8 flex-shrink-0">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300">
+                          <div
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-300"
+                            aria-hidden="true"
+                          >
                             <Package className="h-4 w-4 text-gray-600" />
                           </div>
                         </div>
@@ -298,13 +395,15 @@ export function BookingsTable({
                     <td className="px-3 py-4 lg:px-6">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(booking.status)}`}
+                        role="status"
+                        aria-label={`Booking status: ${formatStatus(booking.status)}`}
                       >
-                        {booking.status.replace('_', ' ')}
+                        {formatStatus(booking.status)}
                       </span>
                     </td>
                     <td className="hidden px-3 py-4 sm:table-cell lg:px-6">
                       <div className="flex items-center">
-                        <DollarSign className="mr-1 h-4 w-4 text-gray-400" />
+                        <DollarSign className="mr-1 h-4 w-4 text-gray-400" aria-hidden="true" />
                         <span className="text-sm font-medium text-gray-900">
                           {formatCurrency(booking.total)}
                         </span>
@@ -318,7 +417,7 @@ export function BookingsTable({
                             onBookingSelect(booking);
                           }}
                           aria-label="View booking details"
-                          className="text-kubota-orange hover:text-orange-600"
+                          className="text-premium-gold hover:text-premium-gold-dark"
                         >
                           <Eye className="h-4 w-4" aria-hidden="true" />
                           <span className="sr-only">View details</span>
@@ -343,7 +442,7 @@ export function BookingsTable({
                             <Mail className="h-4 w-4" aria-hidden="true" />
                           </a>
                         )}
-                        <div className="relative">
+                        <div className="relative" data-action-menu>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -355,7 +454,12 @@ export function BookingsTable({
                             <MoreVertical className="h-4 w-4" aria-hidden="true" />
                           </button>
                           {actionMenus.has(booking.id) && (
-                            <div className="absolute right-0 z-10 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg">
+                            <div
+                              className="absolute right-0 z-50 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg"
+                              data-action-menu
+                              role="menu"
+                              aria-label={`Actions for booking ${booking.bookingNumber}`}
+                            >
                               <div className="py-1">
                                 <button
                                   onClick={(e) => {
@@ -363,21 +467,23 @@ export function BookingsTable({
                                     onBookingSelect(booking);
                                     setActionMenus(new Set());
                                   }}
-                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  role="menuitem"
+                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
                                 >
-                                  <Eye className="mr-2 h-4 w-4" />
+                                  <Eye className="mr-2 h-4 w-4" aria-hidden="true" />
                                   View Details
                                 </button>
                                 <PermissionGate permission="bookings:update:all">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Handle edit
+                                      onBookingSelect(booking);
                                       setActionMenus(new Set());
                                     }}
-                                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    role="menuitem"
+                                    className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
                                   >
-                                    <Edit className="mr-2 h-4 w-4" />
+                                    <Edit className="mr-2 h-4 w-4" aria-hidden="true" />
                                     Edit Booking
                                   </button>
                                 </PermissionGate>
@@ -386,17 +492,13 @@ export function BookingsTable({
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        const confirmed = window.confirm(
-                                          'Are you sure you want to cancel this booking?'
-                                        );
-                                        if (confirmed) {
-                                          onCancelBooking(booking.id);
-                                        }
+                                        setShowCancelConfirm(booking.id);
                                         setActionMenus(new Set());
                                       }}
-                                      className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                      role="menuitem"
+                                      className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:bg-red-50"
                                     >
-                                      <X className="mr-2 h-4 w-4" />
+                                      <X className="mr-2 h-4 w-4" aria-hidden="true" />
                                       Cancel Booking
                                     </button>
                                   </PermissionGate>
@@ -410,7 +512,7 @@ export function BookingsTable({
                   </tr>
                   {expandedRows.has(booking.id) && (
                     <tr>
-                      <td colSpan={7} className="bg-gray-50 px-3 py-4 lg:px-6">
+                      <td colSpan={8} className="bg-gray-50 px-3 py-4 lg:px-6">
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <h4 className="mb-2 text-sm font-medium text-gray-900">
@@ -437,19 +539,19 @@ export function BookingsTable({
                             <div className="flex space-x-2">
                               <button
                                 onClick={() => onBookingSelect(booking)}
-                                className="bg-kubota-orange rounded px-3 py-1 text-xs text-white hover:bg-orange-600"
+                                aria-label={`View full details for booking ${booking.bookingNumber}`}
+                                className="bg-premium-gold rounded px-3 py-1 text-xs text-black focus:outline-none focus:ring-2 focus:ring-premium-gold focus:ring-offset-2"
                               >
                                 View Full Details
                               </button>
                               <PermissionGate permission="bookings:update:all">
                                 <button
                                   onClick={() => {
-                                    const newStatus = prompt('New status:', booking.status);
-                                    if (newStatus && newStatus !== booking.status) {
-                                      onStatusUpdate(booking.id, newStatus);
-                                    }
+                                    setCurrentStatus(booking.status);
+                                    setShowStatusUpdate(booking.id);
                                   }}
-                                  className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+                                  aria-label={`Update status for booking ${booking.bookingNumber}`}
+                                  className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                 >
                                   Update Status
                                 </button>
@@ -477,14 +579,16 @@ export function BookingsTable({
             <button
               onClick={() => onPageChange(pagination.page - 1)}
               disabled={pagination.page <= 1}
-              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Go to previous page"
+              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Previous
             </button>
             <button
               onClick={() => onPageChange(pagination.page + 1)}
               disabled={pagination.page >= pagination.totalPages}
-              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Go to next page"
+              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Next
             </button>
@@ -509,9 +613,10 @@ export function BookingsTable({
                 <button
                   onClick={() => onPageChange(pagination.page - 1)}
                   disabled={pagination.page <= 1}
-                  className="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Go to previous page"
+                  className="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
 
                 {/* Page numbers */}
@@ -523,9 +628,11 @@ export function BookingsTable({
                     <button
                       key={pageNum}
                       onClick={() => onPageChange(pageNum)}
-                      className={`relative inline-flex items-center border px-4 py-2 text-sm font-medium ${
+                      aria-label={`Go to page ${pageNum}`}
+                      aria-current={pageNum === pagination.page ? 'page' : undefined}
+                      className={`relative inline-flex items-center border px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
                         pageNum === pagination.page
-                          ? 'bg-kubota-orange border-kubota-orange z-10 text-white'
+                          ? 'bg-premium-gold border-premium-gold z-10 text-white'
                           : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                       }`}
                     >
@@ -537,15 +644,56 @@ export function BookingsTable({
                 <button
                   onClick={() => onPageChange(pagination.page + 1)}
                   disabled={pagination.page >= pagination.totalPages}
-                  className="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Go to next page"
+                  className="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </button>
               </nav>
             </div>
           </div>
         </div>
       )}
+
+      {/* Cancel Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showCancelConfirm !== null}
+        onClose={() => setShowCancelConfirm(null)}
+        onConfirm={() => {
+          if (showCancelConfirm) {
+            onCancelBooking(showCancelConfirm);
+            setShowCancelConfirm(null);
+          }
+        }}
+        title="Cancel Booking"
+        message="Are you sure you want to cancel this booking? This action cannot be undone."
+        confirmText="Cancel Booking"
+        cancelText="Keep Booking"
+        variant="danger"
+      />
+
+      {/* Status Update Modal */}
+      <InputModal
+        isOpen={showStatusUpdate !== null}
+        onClose={() => {
+          setShowStatusUpdate(null);
+          setCurrentStatus('');
+        }}
+        onSubmit={(newStatus) => {
+          if (showStatusUpdate && newStatus.trim() && newStatus.trim() !== currentStatus) {
+            onStatusUpdate(showStatusUpdate, newStatus.trim());
+            setShowStatusUpdate(null);
+            setCurrentStatus('');
+          }
+        }}
+        title="Update Booking Status"
+        label="New Status"
+        placeholder="Enter new status (e.g., confirmed, cancelled, completed)"
+        defaultValue={currentStatus}
+        submitText="Update Status"
+        cancelText="Cancel"
+        required
+      />
     </div>
   );
 }

@@ -55,7 +55,7 @@ export default function OperationsManagement() {
   const [assigningDelivery, setAssigningDelivery] = useState<Delivery | null>(null);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
-  const _router = useRouter(); // Reserved for future navigation
+  const router = useRouter();
 
   useEffect(() => {
     fetchOperationsData();
@@ -541,7 +541,7 @@ export default function OperationsManagement() {
           />
           <button
             onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-            className="bg-kubota-orange rounded-md px-3 py-2 text-sm text-white hover:bg-orange-600"
+            className="rounded-md px-3 py-2 text-sm font-medium text-white shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
           >
             Today
           </button>

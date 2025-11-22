@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { logger } from '@/lib/logger';
 import { isBookingStatusConsideredPaid } from '@/lib/payments';
@@ -32,11 +32,60 @@ export default function PaymentSection({
 }: PaymentSectionProps) {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
 
   // Extract values from booking
   const bookingId = booking.id;
   const totalAmount = Number(booking.totalAmount);
   const depositAmount = Number(booking.securityDeposit);
+
+  // Validate UUID format
+  const isValidUUID = (id: string | undefined | null): boolean => {
+    if (!id || typeof id !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
+  };
+
+  // Diagnostic logging for payment object structure
+  useEffect(() => {
+    if (payment) {
+      logger.info('PaymentSection: Payment object received', {
+        component: 'PaymentSection',
+        action: 'payment_object_received',
+        metadata: {
+          hasId: !!payment.id,
+          idType: typeof payment.id,
+          idValue: payment.id,
+          isValidUUID: isValidUUID(payment.id),
+          paymentStatus: payment.status,
+          paymentType: payment.type,
+          paymentAmount: payment.amount,
+          hasProcessedAt: !!payment.processedAt,
+        },
+      });
+
+      // Log warning if payment.id is missing or invalid
+      if (!payment.id) {
+        logger.warn('PaymentSection: Payment object missing id field', {
+          component: 'PaymentSection',
+          action: 'payment_missing_id',
+          metadata: { payment },
+        });
+      } else if (!isValidUUID(payment.id)) {
+        logger.warn('PaymentSection: Payment id is not a valid UUID', {
+          component: 'PaymentSection',
+          action: 'payment_invalid_uuid',
+          metadata: { paymentId: payment.id },
+        });
+      }
+    } else {
+      logger.debug('PaymentSection: No payment object provided', {
+        component: 'PaymentSection',
+        action: 'no_payment_object',
+        metadata: { paymentType, bookingId },
+      });
+    }
+  }, [payment, paymentType, bookingId]);
 
   // Determine which type this is
   const isDeposit = paymentType === 'deposit';
@@ -104,6 +153,79 @@ export default function PaymentSection({
 
   // Check if card is verified (for deposit section)
   const cardVerified = !!booking.stripe_payment_method_id;
+
+  // Handle receipt link click with error handling
+  const handleReceiptClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    setReceiptError(null);
+
+    if (!payment?.id) {
+      setReceiptError('Payment ID is missing. Cannot generate receipt.');
+      logger.error('Receipt link clicked but payment.id is missing', {
+        component: 'PaymentSection',
+        action: 'receipt_click_missing_id',
+        metadata: { payment },
+      });
+      return;
+    }
+
+    if (!isValidUUID(payment.id)) {
+      setReceiptError('Invalid payment ID format. Cannot generate receipt.');
+      logger.error('Receipt link clicked with invalid UUID', {
+        component: 'PaymentSection',
+        action: 'receipt_click_invalid_uuid',
+        metadata: { paymentId: payment.id },
+      });
+      return;
+    }
+
+    const receiptUrl = `/api/payments/receipt/${payment.id}`;
+
+    logger.info('Opening receipt', {
+      component: 'PaymentSection',
+      action: 'receipt_link_clicked',
+      metadata: { paymentId: payment.id, receiptUrl },
+    });
+
+    try {
+      // Try to open in new tab
+      const newWindow = window.open(receiptUrl, '_blank', 'noopener,noreferrer');
+
+      if (!newWindow) {
+        // Popup blocked - try direct navigation
+        logger.warn('Popup blocked, attempting direct navigation', {
+          component: 'PaymentSection',
+          action: 'receipt_popup_blocked',
+          metadata: { paymentId: payment.id },
+        });
+        window.location.href = receiptUrl;
+      } else {
+        // Check if window was successfully opened
+        setTimeout(() => {
+          if (newWindow.closed) {
+            setReceiptError('Failed to open receipt. Please check your popup blocker settings.');
+            logger.warn('Receipt window closed immediately', {
+              component: 'PaymentSection',
+              action: 'receipt_window_closed',
+              metadata: { paymentId: payment.id },
+            });
+          }
+        }, 1000);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to open receipt';
+      setReceiptError(errorMessage);
+      logger.error(
+        'Error opening receipt',
+        {
+          component: 'PaymentSection',
+          action: 'receipt_open_error',
+          metadata: { paymentId: payment.id, error: errorMessage },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+    }
+  };
 
   return (
     <div className="rounded-lg bg-white p-6 shadow-md">
@@ -353,15 +475,30 @@ export default function PaymentSection({
                       )}
                     </div>
 
-                    {payment?.id && (
-                      <a
-                        href={`/api/payments/receipt/${payment.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center rounded-lg border border-[#A90F0F] px-4 py-2 text-sm font-semibold text-[#A90F0F] transition-colors hover:bg-[#A90F0F] hover:text-white"
-                      >
-                        View Receipt
-                      </a>
+                    {payment?.id && isValidUUID(payment.id) && (
+                      <div className="space-y-2">
+                        <a
+                          href={`/api/payments/receipt/${payment.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={handleReceiptClick}
+                          className="flex items-center justify-center rounded-lg border border-[#A90F0F] px-4 py-2 text-sm font-semibold text-[#A90F0F] transition-colors hover:bg-[#A90F0F] hover:text-white"
+                        >
+                          View Receipt
+                        </a>
+                        {receiptError && (
+                          <div className="rounded-lg border border-red-200 bg-red-50 p-2">
+                            <p className="text-xs text-red-800">{receiptError}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {payment?.id && !isValidUUID(payment.id) && (
+                      <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2">
+                        <p className="text-xs text-yellow-800">
+                          Receipt unavailable: Invalid payment ID format
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (

@@ -1,5 +1,4 @@
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
-
 import {
   ExportCreateInput,
   ExportQueryInput,
@@ -93,10 +92,12 @@ export interface FinancialExportRecord {
   completed_at: string | null;
 }
 
-export async function listManualPayments(query: {
-  bookingId?: string;
-  status?: ManualPaymentRecord['status'];
-} = {}) {
+export async function listManualPayments(
+  query: {
+    bookingId?: string;
+    status?: ManualPaymentRecord['status'];
+  } = {}
+) {
   const params = new URLSearchParams();
   if (query.bookingId) params.append('bookingId', query.bookingId);
   if (query.status) params.append('status', query.status);
@@ -104,7 +105,20 @@ export async function listManualPayments(query: {
   const response = await fetchWithAuth(
     `/api/admin/payments/manual${params.toString() ? `?${params}` : ''}`
   );
-  if (!response.ok) throw new Error('Failed to load manual payments');
+  if (!response.ok) {
+    let errorMessage = 'Failed to load manual payments';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorMessage;
+      if (errorBody.details && process.env.NODE_ENV === 'development') {
+        errorMessage += `: ${errorBody.details}`;
+      }
+    } catch {
+      // If response is not JSON, use default message
+      errorMessage = `Failed to load manual payments (HTTP ${response.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   const data = await response.json();
   return data.manualPayments as ManualPaymentRecord[];
 }
@@ -129,8 +143,17 @@ export async function updateManualPayment(id: string, payload: ManualPaymentUpda
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.error ?? 'Failed to update manual payment');
+    let errorMessage = 'Failed to update manual payment';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorMessage;
+      if (errorBody.details && process.env.NODE_ENV === 'development') {
+        errorMessage += `: ${errorBody.details}`;
+      }
+    } catch {
+      errorMessage = `Failed to update manual payment (HTTP ${response.status})`;
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 }
@@ -148,7 +171,20 @@ export async function deleteManualPayment(id: string) {
 
 export async function fetchInstallmentSchedule(bookingId: string) {
   const response = await fetchWithAuth(`/api/admin/bookings/${bookingId}/installments`);
-  if (!response.ok) throw new Error('Failed to load installment schedule');
+  if (!response.ok) {
+    let errorMessage = 'Failed to load installment schedule';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorMessage;
+      if (errorBody.details && process.env.NODE_ENV === 'development') {
+        errorMessage += `: ${errorBody.details}`;
+      }
+    } catch {
+      // If response is not JSON, use default message
+      errorMessage = `Failed to load installment schedule (HTTP ${response.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   const data = await response.json();
   return data.installments as InstallmentRecord[];
 }
@@ -196,14 +232,25 @@ export async function fetchLedgerEntries(query: LedgerQueryInput = { limit: 100 
   const response = await fetchWithAuth(
     `/api/admin/payments/ledger${params.toString() ? `?${params}` : ''}`
   );
-  if (!response.ok) throw new Error('Failed to load financial ledger');
+  if (!response.ok) {
+    let errorMessage = 'Failed to load financial ledger';
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorMessage;
+      if (errorBody.details && process.env.NODE_ENV === 'development') {
+        errorMessage += `: ${errorBody.details}`;
+      }
+    } catch {
+      // If response is not JSON, use default message
+      errorMessage = `Failed to load financial ledger (HTTP ${response.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   const data = await response.json();
   return data.entries as LedgerEntryRecord[];
 }
 
-export async function fetchPayoutReconciliations(
-  query: ReconciliationQueryInput = { limit: 100 }
-) {
+export async function fetchPayoutReconciliations(query: ReconciliationQueryInput = { limit: 100 }) {
   const params = new URLSearchParams();
   if (query.status) params.append('status', query.status);
   if (query.limit) params.append('limit', query.limit.toString());
@@ -216,9 +263,7 @@ export async function fetchPayoutReconciliations(
   return data.payouts as PayoutReconciliationRecord[];
 }
 
-export async function triggerPayoutReconciliation(
-  payload: ReconciliationTriggerInput = {}
-) {
+export async function triggerPayoutReconciliation(payload: ReconciliationTriggerInput = {}) {
   const response = await fetchWithAuth('/api/admin/payments/reconcile', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -280,4 +325,3 @@ export async function listFinancialExports(query: ExportQueryInput = { limit: 10
   const data = await response.json();
   return data.exports as FinancialExportRecord[];
 }
-
