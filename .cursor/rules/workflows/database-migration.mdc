@@ -8,6 +8,8 @@ alwaysApply: false
 
 When creating or modifying database migrations, follow this workflow:
 
+**Systematic Problem-Solving**: If encountering issues or making architectural decisions, use the systematic problem-solving framework: `systematic-problem-solving.mdc` - Framework 4: Architecture Decisions
+
 ### Pre-Implementation
 
 1. **Check Existing Migrations**
@@ -153,25 +155,41 @@ EXECUTE FUNCTION update_updated_at_column();
 
 1. Create branch: `mcp_supabase_create_branch({ name: 'test-migration' })`
 2. Apply migration: `mcp_supabase_apply_migration({ name: 'migration_name', query: '...' })`
-3. Test thoroughly
-4. Check advisors:
+3. **Regenerate TypeScript types** (AUTOMATIC):
+   - Call `mcp_supabase_generate_typescript_types()` after migration
+   - Types are automatically written to `supabase/types.ts`
+   - Verify types compile: `cd frontend && pnpm type-check`
+   - If type errors: Fix migration or update frontend code before proceeding
+4. Test thoroughly
+5. Check advisors:
    - `mcp_supabase_get_advisors({ type: 'security' })`
    - `mcp_supabase_get_advisors({ type: 'performance' })`
-5. Merge if successful: `mcp_supabase_merge_branch({ branch_id: 'xxx' })`
+6. Merge if successful: `mcp_supabase_merge_branch({ branch_id: 'xxx' })`
 
 ### Post-Implementation
 
-1. **Check Advisors**
+1. **Regenerate TypeScript Types** (MANDATORY)
+   - After applying migration, automatically regenerate types:
+     - `mcp_supabase_generate_typescript_types()`
+   - Verify types compile without errors:
+     - `cd frontend && pnpm type-check`
+   - If type errors occur:
+     - Review migration for breaking changes
+     - Update frontend code to match new schema
+     - Re-run type generation and verification
+   - **Types must be committed with migration** - migration is incomplete without updated types
+
+2. **Check Advisors**
    - Security: `mcp_supabase_get_advisors({ type: 'security' })`
    - Performance: `mcp_supabase_get_advisors({ type: 'performance' })`
    - Fix identified issues
 
-2. **Verify Changes**
+3. **Verify Changes**
    - List tables: `mcp_supabase_list_tables({ schemas: ['public'] })`
    - Test queries: `mcp_supabase_execute_sql({ query: 'SELECT ...' })`
    - Check logs: `mcp_supabase_get_logs({ service: 'api' })`
 
-3. **Documentation**
+4. **Documentation**
    - Update @docs/reference/DATABASE_SCHEMA.md (if schema changed)
    - Document migration purpose
    - Document rollback steps

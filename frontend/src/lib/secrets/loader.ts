@@ -2,12 +2,12 @@
  * Unified Secrets Loader
  *
  * Loads secrets from multiple sources with priority:
- * 1. Supabase Edge Function secrets (process.env - when running in Supabase environment)
- * 2. Environment variables (.env.local - for local development)
- * 3. system_config table (for database-stored secrets)
+ * 1. Supabase Vault (vault.decrypted_secrets) - HIGHEST PRIORITY
+ * 2. system_config table (for database-stored secrets)
+ * 3. Environment variables (.env.local - fallback for local development)
  * 4. Hardcoded fallbacks (development only)
  *
- * This eliminates the need for .env.local files and centralizes secret management.
+ * Vault takes precedence to ensure centralized secret management in Supabase.
  */
 import { logger } from '@/lib/logger';
 
@@ -37,61 +37,83 @@ export async function getSecret(
   const { fallback, required, logSource = true } = options;
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Priority 1: Supabase Edge Function secrets
-  // These are injected as environment variables when running in Supabase environment
-  const supabaseSecret = process.env[secretName]?.trim();
-  if (supabaseSecret) {
-    const result = {
-      value: supabaseSecret,
-      source: { source: 'supabase_secrets' as const, key: secretName },
-    };
-    if (logSource) {
-      logger.info(`[Secrets] Loaded ${secretName} from Supabase Edge Function secrets`, {
-        component: 'secrets-loader',
-        action: 'load_from_supabase',
-        metadata: { secretName },
-      });
-    }
-    return result;
-  }
-
-  // Priority 2: Environment variables (.env.local)
-  // Check both the exact name and common variations
-  const envVariations = [
-    secretName,
-    `NEXT_PUBLIC_${secretName}`,
-    secretName.replace('_TEST_KEY', '_KEY'),
-  ];
-
-  for (const envVar of envVariations) {
-    const envValue = process.env[envVar]?.trim();
-    if (envValue) {
-      const result = {
-        value: envValue,
-        source: { source: 'env_file' as const, key: envVar },
-      };
-      if (logSource) {
-        logger.info(`[Secrets] Loaded ${secretName} from environment variable`, {
-          component: 'secrets-loader',
-          action: 'load_from_env',
-          metadata: { secretName, envVar },
-        });
-      }
-      return result;
-    }
-  }
-
-  // Priority 3: system_config table (server-side only)
+  // Priority 1: Supabase Vault (server-side only) - HIGHEST PRIORITY
+  // This ensures vault secrets take precedence over potentially stale env vars
+  // Use a direct client to avoid circular dependency (service client needs secrets loader)
   if (typeof window === 'undefined') {
     try {
       const { createClient } = await import('@supabase/supabase-js');
-      const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import('@/lib/supabase/config');
 
-      // Use anon key for system_config queries (RLS allows public read for system_config)
-      // If we need service role, we'll get it from the secret itself (chicken-egg problem)
-      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // Get service role key directly from env to avoid circular dependency
+      // (createServiceClient calls getSupabaseServiceRoleKey which calls getSecret)
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 
+      // Hardcoded fallback for development (same as in service.ts)
+      const fallbackServiceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJuaW1henhucWxpZ3VzY2thaGFiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc2NjQ5OSwiZXhwIjoyMDc1MzQyNDk5fQ.ZkwAdRCdTL0DKGPgJtkbcBllkvachJqTdomV7IcGH3I';
+      const fallbackUrl = 'https://bnimazxnqligusckahab.supabase.co';
+
+      const finalServiceKey = serviceRoleKey || (process.env.NODE_ENV !== 'production' ? fallbackServiceRoleKey : null);
+      const finalUrl = supabaseUrl || fallbackUrl;
+
+      if (!finalServiceKey || !finalUrl) {
+        logger.debug(`[Secrets] Cannot create vault client - missing credentials`, {
+          component: 'secrets-loader',
+          action: 'vault_client_missing_creds',
+          metadata: { secretName, hasUrl: !!finalUrl, hasKey: !!finalServiceKey },
+        });
+        // Fall through to env var check
+      }
+
+      const supabase = finalServiceKey && finalUrl ? createClient(finalUrl, finalServiceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      }) : null;
+
+      if (!supabase) {
+        logger.debug(`[Secrets] Service client not available for ${secretName}`, {
+          component: 'secrets-loader',
+          action: 'service_client_unavailable',
+          metadata: { secretName },
+        });
+        // Fall through to next priority
+      } else {
+        // Try Supabase Vault first via the get_vault_secret function
+        // This function is in public schema and reads from vault.decrypted_secrets
+        const { data: vaultSecret, error: vaultError } = await supabase
+          .rpc('get_vault_secret', { secret_name: secretName });
+
+        if (vaultError) {
+          logger.debug(`[Secrets] Vault query for ${secretName} failed`, {
+            component: 'secrets-loader',
+            action: 'vault_query_error',
+            metadata: {
+              secretName,
+              error: vaultError.message,
+              code: vaultError.code,
+              hint: vaultError.hint,
+            },
+          });
+        }
+
+        if (!vaultError && vaultSecret) {
+          const value = String(vaultSecret).trim();
+          if (value.length > 0) {
+            const result = {
+              value: value,
+              source: { source: 'supabase_secrets' as const, key: secretName },
+            };
+            if (logSource) {
+              logger.info(`[Secrets] Loaded ${secretName} from Supabase Vault`, {
+                component: 'secrets-loader',
+                action: 'load_from_vault',
+                metadata: { secretName },
+              });
+            }
+            return result;
+          }
+        }
+
+        // Priority 2: system_config table (fallback for non-vault secrets)
         const { data, error } = await supabase
           .from('system_config')
           .select('value')
@@ -114,14 +136,19 @@ export async function getSecret(
             }
           }
 
-          // Strip quotes if JSON-encoded string
-          if (value && value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);
+          // Strip quotes if JSON-encoded string (handles both regular and escaped quotes)
+          if (value) {
+            // Remove surrounding quotes (handles both "value" and \"value\")
+            value = value.replace(/^["']|["']$/g, '');
+            // Remove escaped quotes
+            value = value.replace(/\\"/g, '"').replace(/\\'/g, "'");
+            // Trim whitespace
+            value = value.trim();
           }
 
-          if (value && value.trim()) {
+          if (value && value.length > 0) {
             const result = {
-              value: value.trim(),
+              value: value,
               source: { source: 'database' as const, key: secretName },
             };
             if (logSource) {
@@ -136,11 +163,37 @@ export async function getSecret(
         }
       }
     } catch (err) {
-      logger.debug(`[Secrets] Failed to load ${secretName} from database`, {
+      logger.debug(`[Secrets] Failed to load ${secretName} from database/vault`, {
         component: 'secrets-loader',
         action: 'database_load_failed',
         metadata: { secretName, error: err instanceof Error ? err.message : 'Unknown error' },
       });
+    }
+  }
+
+  // Priority 3: Environment variables (.env.local) - FALLBACK if not in vault
+  // Check both the exact name and common variations
+  const envVariations = [
+    secretName,
+    `NEXT_PUBLIC_${secretName}`,
+    secretName.replace('_TEST_KEY', '_KEY'),
+  ];
+
+  for (const envVar of envVariations) {
+    const envValue = process.env[envVar]?.trim();
+    if (envValue) {
+      const result = {
+        value: envValue,
+        source: { source: 'env_file' as const, key: envVar },
+      };
+      if (logSource) {
+        logger.info(`[Secrets] Loaded ${secretName} from environment variable (fallback)`, {
+          component: 'secrets-loader',
+          action: 'load_from_env',
+          metadata: { secretName, envVar },
+        });
+      }
+      return result;
     }
   }
 

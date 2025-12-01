@@ -27,7 +27,7 @@ export interface AuditLogEntry {
  */
 export async function logPermissionChange(entry: AuditLogEntry): Promise<void> {
   try {
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       logger.error('Service client not available for audit logging', {
         component: 'permissions-audit',
@@ -85,14 +85,14 @@ export async function getAuditLog(options: {
   offset?: number;
 }): Promise<PermissionAuditLog[]> {
   try {
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       return [];
     }
 
     let query = supabase
       .from('permission_audit_log')
-      .select('*')
+      .select('id, user_id, action, resource_type, resource_id, details, ip_address, user_agent, created_at, performed_by, old_value, new_value, metadata, target_type, target_id, permission_id, role_id')
       .order('created_at', { ascending: false });
 
     if (options.userId) {

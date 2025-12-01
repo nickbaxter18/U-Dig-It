@@ -144,9 +144,25 @@ export const PATCH = withRateLimit(
           (currentPayment.status === 'completed' || payload.status === 'completed'));
 
       if (shouldRecalculate) {
+        logger.info('Triggering balance recalculation after manual payment update', {
+          component: 'admin-manual-payments',
+          action: 'balance_recalculation_triggered',
+          metadata: {
+            bookingId: currentPayment.booking_id,
+            manualPaymentId,
+            statusChangedToCompleted,
+            statusChangedFromCompleted,
+            amountChanged,
+            currentStatus: currentPayment.status,
+            newStatus: payload.status,
+            currentAmount: currentPayment.amount,
+            newAmount: payload.amount,
+          },
+        });
+
         const newBalance = await recalculateBookingBalance(currentPayment.booking_id);
         if (newBalance === null) {
-          logger.warn('Balance recalculation failed after manual payment update', {
+          logger.error('Balance recalculation failed after manual payment update', {
             component: 'admin-manual-payments',
             action: 'balance_recalculation_failed',
             metadata: {
@@ -156,8 +172,18 @@ export const PATCH = withRateLimit(
               amountChanged,
             },
           });
-          // Don't fail the request, but log the warning
+          // Don't fail the request, but log the error (not just warning)
         } else {
+          logger.info('Balance recalculated successfully after manual payment update', {
+            component: 'admin-manual-payments',
+            action: 'balance_recalculated',
+            metadata: {
+              bookingId: currentPayment.booking_id,
+              manualPaymentId,
+              newBalance,
+              previousBalance: currentPayment.amount, // This is payment amount, not booking balance, but useful context
+            },
+          });
           // Update billing status after balance recalculation
           const newBillingStatus = await updateBillingStatus(currentPayment.booking_id);
           if (newBillingStatus === null) {
@@ -172,7 +198,7 @@ export const PATCH = withRateLimit(
           }
 
           // Update booking status based on balance
-          const serviceClient = createServiceClient();
+          const serviceClient = await createServiceClient();
           if (serviceClient) {
             // Fetch current booking status to check if we need to update
             const { data: currentBooking } = await serviceClient
@@ -404,7 +430,7 @@ export const DELETE = withRateLimit(
           }
 
           // If balance increased above 0, revert booking status from 'paid' if needed
-          const serviceClient = createServiceClient();
+          const serviceClient = await createServiceClient();
           if (serviceClient && newBalance > 0) {
             const { data: currentBooking } = await serviceClient
               .from('bookings')

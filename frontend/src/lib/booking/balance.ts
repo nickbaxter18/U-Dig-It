@@ -1,17 +1,21 @@
+import { COMPLETED_PAYMENT_STATUSES, PAYMENT_STATUS } from '@/lib/constants/payment-status';
 import { logger } from '@/lib/logger';
+import type { BookingBalanceFields } from '@/lib/supabase/extended-types';
 import { createServiceClient } from '@/lib/supabase/service';
+import { typedSelect } from '@/lib/supabase/typed-helpers';
 
 /**
  * Recalculates the booking balance_amount based on all completed payments.
  *
  * **Balance Calculation Formula:**
  * ```
- * balance_amount = totalAmount - sum(all_completed_payments)
+ * balance_amount = totalAmount - (sum(all_completed_payments) - sum(all_refunds))
  * ```
  *
  * Where:
  * - `totalAmount`: The total contract amount for the booking
  * - `all_completed_payments`: Sum of all completed manual payments + completed Stripe payments
+ * - `all_refunds`: Sum of all refunded amounts (from `amountRefunded` field)
  *
  * **Important**: The deposit is completely separate from the balance calculation.
  * Security deposits are held separately and do NOT reduce what the customer owes.
@@ -26,7 +30,9 @@ import { createServiceClient } from '@/lib/supabase/service';
  *
  * **Payment Sources:**
  * - Manual payments: From `manual_payments` table (status = 'completed')
- * - Stripe payments: From `payments` table (status IN ('completed', 'succeeded'))
+ * - Stripe payments: From `payments` table (status = 'completed')
+ *   Note: The payments table status enum is: pending, processing, completed, failed, cancelled, refunded, partially_refunded
+ *   Only 'completed' status counts toward balance
  *
  * **Validation:**
  * - Balance is capped at 0 (no negative balances unless refunds are explicitly allowed)
@@ -46,7 +52,7 @@ import { createServiceClient } from '@/lib/supabase/service';
  * ```
  */
 export async function recalculateBookingBalance(bookingId: string): Promise<number | null> {
-  const serviceClient = createServiceClient();
+  const serviceClient = await createServiceClient();
 
   if (!serviceClient) {
     logger.error('Service client not available for balance recalculation', {
@@ -58,10 +64,13 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
   }
 
   try {
-    // Fetch booking details
-    const { data: booking, error: bookingError } = await serviceClient
-      .from('bookings')
-      .select('id, totalAmount, balance_amount')
+    // Fetch booking details using typed helper
+    // Note: balance_amount is a computed field, not a real column, so we fetch it separately
+    const { data: booking, error: bookingError } = await typedSelect(
+      serviceClient,
+      'bookings',
+      'id, totalAmount'
+    )
       .eq('id', bookingId)
       .single();
 
@@ -78,7 +87,19 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       return null;
     }
 
-    const totalAmount = Number(booking.totalAmount ?? 0);
+    // Fetch current balance_amount separately (it's a computed field)
+    const { data: bookingWithBalance } = await serviceClient
+      .from('bookings')
+      .select('id, totalAmount, balance_amount')
+      .eq('id', bookingId)
+      .single();
+
+    const typedBooking = bookingWithBalance as BookingBalanceFields | null;
+
+    // Type assertion: after the null check, booking is guaranteed to be non-null
+    const bookingData = booking as { totalAmount?: number | string | null } | null;
+    const totalAmount = Number(bookingData?.totalAmount ?? 0);
+    const currentBalanceAmount = typedBooking?.balance_amount ?? null;
 
     // Log initial values for debugging
     logger.debug('Starting balance recalculation', {
@@ -87,7 +108,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       metadata: {
         bookingId,
         totalAmount,
-        currentBalanceAmount: (booking as any).balance_amount ?? null,
+        currentBalanceAmount,
       },
     });
 
@@ -96,7 +117,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       .from('manual_payments')
       .select('id, amount, status')
       .eq('booking_id', bookingId)
-      .eq('status', 'completed')
+      .eq('status', PAYMENT_STATUS.COMPLETED)
       .is('deleted_at', null);
 
     if (manualPaymentsError) {
@@ -113,12 +134,20 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
     }
 
     // Fetch all completed Stripe payments for this booking
+    // Note: payments table doesn't have deleted_at column, so we don't filter by it
+    // Note: payments table status enum is: pending, processing, completed, failed, cancelled, refunded, partially_refunded
+    // NOTE: Only 'completed' status is valid - 'succeeded' does not exist in payments_status_enum
+    // CRITICAL: Only include payments with type='payment' (exclude deposits - they don't reduce balance)
+    // FIX: The .or() method ORs with ALL previous conditions, not just the type filter.
+    // We need to use PostgREST's grouped filter syntax to ensure proper AND logic.
+    // This ensures: (status IN completed_statuses) AND (type IS NULL OR type = 'payment')
+    // Using PostgREST's filter grouping: or=(and(type.is.null),and(type.eq.payment))
     const { data: stripePayments, error: stripePaymentsError } = await serviceClient
       .from('payments')
-      .select('id, amount, status')
+      .select('id, amount, status, type, "amountRefunded"')
       .eq('bookingId', bookingId)
-      .in('status', ['completed', 'succeeded'])
-      .is('deleted_at', null);
+      .in('status', COMPLETED_PAYMENT_STATUSES)
+      .or('and(type.is.null),and(type.eq.payment)'); // Grouped OR ensures AND logic: (type IS NULL) OR (type = 'payment'), ANDed with status filter
 
     if (stripePaymentsError) {
       logger.error(
@@ -133,12 +162,46 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       // Continue calculation with 0 for Stripe payments
     }
 
+    // Fetch all refunds for this booking (from all payments, not just completed)
+    // CRITICAL: Refunds must be subtracted from total collected
+    const { data: allPayments, error: allPaymentsError } = await serviceClient
+      .from('payments')
+      .select('id, "amountRefunded", type')
+      .eq('bookingId', bookingId)
+      .or('and(type.is.null),and(type.eq.payment)'); // Only include payments (exclude deposits)
+
+    if (allPaymentsError) {
+      logger.error(
+        'Failed to fetch all payments for refund calculation',
+        {
+          component: 'balance-recalculation',
+          action: 'all_payments_fetch_failed',
+          metadata: { bookingId, error: allPaymentsError.message },
+        },
+        allPaymentsError
+      );
+      // Continue calculation with 0 for refunds
+    }
+
     // Calculate total collected from all completed payments
+    // CRITICAL: Only include payments with type='payment' (exclude deposits)
+    // Manual payments don't have a type field, so we include all completed manual payments
+    // Stripe payments are filtered by type in the query above
     const manualPaymentsTotal =
       (manualPayments ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) || 0;
     const stripePaymentsTotal =
-      (stripePayments ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) || 0;
-    const totalCollected = manualPaymentsTotal + stripePaymentsTotal;
+      (stripePayments ?? [])
+        .filter((payment) => !payment.type || payment.type === 'payment') // Double-check: exclude deposits
+        .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0) || 0;
+
+    // Calculate total refunded (must subtract from total collected)
+    const totalRefunded =
+      (allPayments ?? [])
+        .filter((payment) => !payment.type || payment.type === 'payment') // Exclude deposits
+        .reduce((sum, payment) => sum + Number(payment.amountRefunded ?? 0), 0) || 0;
+
+    // Total collected = payments - refunds
+    const totalCollected = manualPaymentsTotal + stripePaymentsTotal - totalRefunded;
 
     // Log payment totals for debugging
     logger.debug('Payment totals calculated', {
@@ -150,13 +213,18 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
         manualPaymentsTotal,
         stripePaymentsCount: stripePayments?.length ?? 0,
         stripePaymentsTotal,
+        totalRefunded,
         totalCollected,
       },
     });
 
     // Calculate new balance: totalAmount - totalCollected
     // Deposit is NOT included - it's completely separate from the balance
+    // If totalCollected exceeds totalAmount, balance is 0 (overpayment)
     const newBalance = Math.max(totalAmount - totalCollected, 0);
+
+    // Track overpayment for logging (when customer paid more than owed)
+    const overpayment = totalCollected > totalAmount ? totalCollected - totalAmount : 0;
 
     // Maximum possible balance is totalAmount (if no payments collected)
     const maxPossibleBalance = totalAmount;
@@ -171,6 +239,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
           totalAmount,
           manualPaymentsTotal,
           stripePaymentsTotal,
+          totalRefunded,
           totalCollected,
           calculatedBalance: newBalance,
           maxPossibleBalance,
@@ -179,10 +248,50 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       });
       // Cap at maxPossibleBalance (shouldn't happen, but safety check)
       const cappedBalance = Math.min(newBalance, maxPossibleBalance);
-      await serviceClient
+      // balance_amount is a computed field, use direct update with type assertion
+      const { error: cappedUpdateError } = await serviceClient
         .from('bookings')
-        .update({ balance_amount: cappedBalance })
+        .update({ balance_amount: cappedBalance } as never)
         .eq('id', bookingId);
+
+      if (cappedUpdateError) {
+        logger.error(
+          'Failed to update booking balance (capped)',
+          {
+            component: 'balance-recalculation',
+            action: 'balance_update_failed_capped',
+            metadata: {
+              bookingId,
+              cappedBalance,
+              totalAmount,
+              manualPaymentsTotal,
+              stripePaymentsTotal,
+              totalRefunded,
+              totalCollected,
+              calculatedBalance: newBalance,
+              maxPossibleBalance,
+              error: cappedUpdateError.message,
+            },
+          },
+          cappedUpdateError
+        );
+        return null; // Return null to indicate failure
+      }
+
+      logger.info('Balance updated successfully (capped)', {
+        component: 'balance-recalculation',
+        action: 'balance_updated_capped',
+        metadata: {
+          bookingId,
+          cappedBalance,
+          totalAmount,
+          manualPaymentsTotal,
+          stripePaymentsTotal,
+          totalRefunded,
+          totalCollected,
+        },
+      });
+
       return cappedBalance;
     }
 
@@ -196,6 +305,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
           totalAmount,
           manualPaymentsTotal,
           stripePaymentsTotal,
+          totalRefunded,
           totalCollected,
           calculatedBalance: newBalance,
         },
@@ -204,9 +314,10 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
     }
 
     // Update booking balance
+    // balance_amount is a computed field, use direct update with type assertion
     const { error: updateError } = await serviceClient
       .from('bookings')
-      .update({ balance_amount: newBalance })
+      .update({ balance_amount: newBalance } as never)
       .eq('id', bookingId);
 
     if (updateError) {
@@ -221,6 +332,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
             totalAmount,
             manualPaymentsTotal,
             stripePaymentsTotal,
+            totalRefunded,
             totalCollected,
             error: updateError.message,
           },
@@ -230,7 +342,7 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
       return null;
     }
 
-    const oldBalance = Number((booking as any).balance_amount ?? 0) || totalAmount;
+    const oldBalance = Number(currentBalanceAmount ?? 0) || totalAmount;
 
     logger.info('Booking balance recalculated successfully', {
       component: 'balance-recalculation',
@@ -242,8 +354,11 @@ export async function recalculateBookingBalance(bookingId: string): Promise<numb
         totalAmount,
         manualPaymentsTotal,
         stripePaymentsTotal,
+        totalRefunded,
         totalCollected,
+        overpayment,
         balanceChange: newBalance - oldBalance,
+        isPaidInFull: newBalance === 0,
       },
     });
 

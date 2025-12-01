@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Calendar, DollarSign, Package, Truck, User } from 'lucide-react';
 
-import { useCallback, useEffect, useState } from 'react';
+import { use, useCallback, useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -46,8 +46,9 @@ interface Booking {
   financeNotes?: string | null;
 }
 
-export default function BookingDetailPage({ params }: { params: { id: string } }) {
+export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id: bookingId } = use(params);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +79,9 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
           totalAmount,
           createdAt,
           depositAmount,
-          balanceAmount:balance_amount,
-          balanceDueAt:balance_due_at,
-          billingStatus:billing_status,
+          balance_amount,
+          balance_due_at,
+          billing_status,
           financeNotes,
           customer:customerId (
             id,
@@ -99,7 +100,18 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
         .eq('id', bookingId)
         .single();
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        logger.error(
+          'Supabase query error',
+          {
+            component: 'BookingDetailPage',
+            action: 'fetch_booking_error',
+            metadata: { bookingId, error: fetchError.message, code: fetchError.code, details: fetchError.details },
+          },
+          fetchError
+        );
+        throw fetchError;
+      }
       if (!data) throw new Error('Booking not found');
 
       // Type assertion needed due to complex query with joins
@@ -123,11 +135,11 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
         createdAt: bookingData.createdAt,
         customer: bookingData.customer,
         equipment: bookingData.equipment,
-        depositAmount: bookingData.depositAmount ?? bookingData.deposit_amount ?? null,
-        balanceAmount: bookingData.balanceAmount ?? bookingData.balance_amount ?? null,
-        balanceDueAt: bookingData.balanceDueAt ?? bookingData.balance_due_at ?? null,
-        billingStatus: bookingData.billingStatus ?? bookingData.billing_status ?? null,
-        financeNotes: bookingData.financeNotes ?? bookingData.finance_notes ?? null,
+        depositAmount: bookingData.depositAmount ?? null,
+        balanceAmount: bookingData.balance_amount ?? null,
+        balanceDueAt: bookingData.balance_due_at ?? null,
+        billingStatus: bookingData.billing_status ?? null,
+        financeNotes: bookingData.financeNotes ?? null,
       };
 
       setBooking(normalized);
@@ -144,9 +156,9 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
   }, []);
 
   useEffect(() => {
-    if (!params.id) return;
-    fetchBookingDetails(params.id);
-  }, [params.id, fetchBookingDetails]);
+    if (!bookingId) return;
+    fetchBookingDetails(bookingId);
+  }, [bookingId, fetchBookingDetails]);
 
   if (loading) {
     return (
@@ -375,7 +387,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
                 <div className="flex justify-between">
                   <span className="text-lg font-semibold">Total Amount</span>
                   <span className="text-lg font-bold text-kubota-orange">
-                    {formatCurrency(booking.totalAmount)}
+                    {formatCurrency(booking.balanceAmount ?? booking.totalAmount)}
                   </span>
                 </div>
               </div>
@@ -392,11 +404,13 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
               ? `${booking.customer.firstName ?? ''} ${booking.customer.lastName ?? ''}`.trim()
               : undefined
           }
+          customerEmail={booking.customer?.email}
           totalAmount={booking.totalAmount}
           depositAmount={booking.depositAmount}
           balanceAmount={booking.balanceAmount}
           billingStatus={booking.billingStatus}
           balanceDueAt={booking.balanceDueAt}
+          onBalanceUpdated={fetchBookingDetails.bind(null, booking.id)}
         />
       )}
     </div>

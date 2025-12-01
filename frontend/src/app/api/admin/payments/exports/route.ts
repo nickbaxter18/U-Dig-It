@@ -402,7 +402,7 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
         );
       }
 
-      const serviceClient = createServiceClient();
+      const serviceClient = await createServiceClient();
       if (!serviceClient) {
         return NextResponse.json(
           { error: 'Service client unavailable for exports' },

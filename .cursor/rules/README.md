@@ -30,6 +30,7 @@ This directory contains **comprehensive Cursor rules** that guide the AI with ac
 | `storybook-development.mdc` | Storybook dev | `**/*.stories.tsx` |
 | `bundle-performance.mdc` | Bundle optimization | When mentioned |
 | `code-cleanup.mdc` | Unused code removal | When mentioned |
+| `systematic-problem-solving.mdc` | Problem-solving frameworks | When debugging, implementing features, or making decisions |
 
 ### Nested Rules (Directory-Specific)
 | Location | Purpose | When Applied |
@@ -117,7 +118,34 @@ export const Loading: Story = {
 
 **Trigger:** Say "clean up code" or "@code-cleanup"
 
-### 6. development-workflow.mdc
+### 6. systematic-problem-solving.mdc
+**Applied to:** When debugging, implementing features, or making architectural decisions
+
+**What it does:**
+- Provides decision frameworks for common scenarios (bugs, features, performance, architecture)
+- Guides systematic problem decomposition
+- Integrates with existing workflows and patterns
+- Provides codebase-specific examples with real file references
+- Validates solutions before and after implementation
+
+**Key Features:**
+- **Bug Investigation Framework**: Reproduce → Isolate → Pattern Match → Check Logs → Verify Fix
+- **Feature Implementation Framework**: Check Docs → Find Patterns → Follow Workflow → Validate → Document
+- **Performance Framework**: Identify Bottleneck → Check Patterns → Optimize → Verify
+- **Architecture Framework**: Check Patterns → Review Rules → Consider Constraints → Test → Document
+
+**Example usage:**
+```
+"Query is slow, help me fix it"
+→ AI uses Performance Framework
+→ Checks for SELECT * usage
+→ Suggests specific columns
+→ References actual codebase patterns
+```
+
+**Impact:** AI will systematically approach problems, reference existing patterns, and validate solutions
+
+### 7. development-workflow.mdc
 **Applied to:** Always active (every session)
 
 **What it does:**

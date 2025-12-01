@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { fetchSupportMessages } from '@/lib/api/admin/support';
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/supabase/client';
 
 interface SupportMessage {
   id: string;
@@ -53,16 +54,108 @@ export default function MessageThread({ ticketId, onMessageSent }: MessageThread
     }
   }, [ticketId]);
 
+  // Initial fetch and real-time subscription setup
   useEffect(() => {
-    fetchMessages();
-    if (onMessageSent) {
-      // Refetch messages when a new message is sent
-      const interval = setInterval(() => {
-        fetchMessages();
-      }, 2000); // Poll every 2 seconds
-      return () => clearInterval(interval);
-    }
-  }, [fetchMessages, onMessageSent]);
+    if (!ticketId) return;
+
+    let isMounted = true;
+
+    // Initial fetch
+    const loadMessages = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchSupportMessages(ticketId);
+        if (isMounted) {
+          setMessages((data as SupportMessage[]) || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          logger.error(
+            'Failed to fetch support messages',
+            { component: 'MessageThread', action: 'fetch_failed', metadata: { ticketId } },
+            err instanceof Error ? err : new Error(String(err))
+          );
+          setError(err instanceof Error ? err.message : 'Failed to load messages');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadMessages();
+
+    // Set up Supabase Realtime subscription for new messages
+    const channel = supabase
+      .channel(`support-messages-${ticketId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `ticket_id=eq.${ticketId}`,
+        },
+        (payload) => {
+          // Add new message to the list without refetching everything
+          const newMessage = payload.new as unknown as SupportMessage;
+          if (newMessage) {
+            logger.debug('New support message received via Realtime', {
+              component: 'MessageThread',
+              action: 'realtime_message',
+              metadata: { ticketId, messageId: newMessage.id },
+            });
+
+            // Add the new message only if it doesn't already exist (prevent duplicates)
+            setMessages((prev) => {
+              // Check if message already exists
+              if (prev.some((msg) => msg.id === newMessage.id)) {
+                return prev;
+              }
+
+              // Add new message and sort by created_at to maintain order
+              const updated = [...prev, newMessage].sort((a, b) => {
+                const dateA = new Date(a.created_at).getTime();
+                const dateB = new Date(b.created_at).getTime();
+                return dateA - dateB;
+              });
+
+              return updated;
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          logger.debug('Subscribed to support messages Realtime channel', {
+            component: 'MessageThread',
+            action: 'realtime_subscribed',
+            metadata: { ticketId },
+          });
+        } else if (status === 'CHANNEL_ERROR') {
+          logger.warn('Error subscribing to support messages Realtime channel', {
+            component: 'MessageThread',
+            action: 'realtime_subscribe_error',
+            metadata: { ticketId, status },
+          });
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      // Cleanup: remove Realtime subscription
+      supabase.removeChannel(channel);
+      logger.debug('Removed support messages Realtime subscription', {
+        component: 'MessageThread',
+        action: 'realtime_cleanup',
+        metadata: { ticketId },
+      });
+    };
+    // Only depend on ticketId to avoid recreating subscription
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticketId]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -136,13 +229,9 @@ export default function MessageThread({ ticketId, onMessageSent }: MessageThread
     <div className="space-y-4">
       <div className="flex items-center justify-between border-b border-gray-200 pb-2">
         <h4 className="text-sm font-medium text-gray-900">Conversation</h4>
-        <button
-          onClick={fetchMessages}
-          className="text-xs text-gray-500 hover:text-gray-700"
-          aria-label="Refresh messages"
-        >
-          Refresh
-        </button>
+        <span className="text-xs text-gray-400">
+          Updates automatically
+        </span>
       </div>
 
       <div

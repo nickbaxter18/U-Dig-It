@@ -8,6 +8,16 @@
       {
         "selector": "CallExpression[callee.property.name='select'] > Literal[value='*']",
         "message": "Use specific columns instead of SELECT *. This improves performance and reduces payload size by ~60%. Example: .select('id, name, status') instead of .select('*')"
+      },
+      {
+        "selector": "TSAsExpression[expression.type='CallExpression'][expression.callee.property.name='from'] > TSTypeReference[typeName.name='any']",
+        "message": "Avoid 'as any' on Supabase query results. Use proper types from supabase/types.ts or typed helpers from @/lib/supabase/typed-helpers. Example: Use Tables<'table_name'> or typedSelect() helper"
+      }
+    ],
+    "@typescript-eslint/no-explicit-any": [
+      "warn",
+      {
+        "ignoreRestArgs": false
       }
     ]
   }

@@ -292,7 +292,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 export async function runLocalIdVerification(
   params: LocalVerificationParams
 ): Promise<LocalVerificationResult> {
-  const serviceClientRaw = createServiceClient();
+  const serviceClientRaw = await createServiceClient();
   if (!serviceClientRaw) {
     logger.error('Service client unavailable for local ID verification', {
       component: 'local-id-verification',

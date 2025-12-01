@@ -18,6 +18,7 @@ interface BookingInvoiceCardProps {
     subtotal?: number | string | null;
     taxes?: number | string | null;
     totalAmount?: number | string | null;
+    balanceAmount?: number | string | null;
     deliveryFee?: number | string | null;
     securityDeposit?: number | string | null;
     floatFee?: number | string | null;
@@ -75,7 +76,7 @@ export default function BookingInvoiceCard({
   const invoiceRef = useRef<HTMLDivElement>(null);
   const subtotal = safeNumber(booking.subtotal);
   const taxes = safeNumber(booking.taxes);
-  const totalAmount = paymentAmountOverride ?? safeNumber(booking.totalAmount);
+  const totalAmount = paymentAmountOverride ?? (booking.balanceAmount !== undefined && booking.balanceAmount !== null ? safeNumber(booking.balanceAmount) : safeNumber(booking.totalAmount));
   const deliveryFee = safeNumber(booking.deliveryFee);
   const securityDeposit = safeNumber(booking.securityDeposit);
   const floatFee = safeNumber(booking.floatFee);

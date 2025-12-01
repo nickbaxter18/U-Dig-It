@@ -1,35 +1,38 @@
 import { format } from 'date-fns';
 import {
-  AlertTriangle,
-  Calendar,
-  CheckCircle,
-  CreditCard,
-  DollarSign,
-  Loader2,
-  PenSquare,
-  PlusCircle,
-  RefreshCcw,
-  Wallet,
+    AlertTriangle,
+    CheckCircle,
+    CreditCard,
+    DollarSign,
+    FileText,
+    Loader2,
+    PenSquare,
+    PlusCircle,
+    RefreshCcw,
+    Wallet
 } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import {
-  createInstallmentSchedule,
-  createManualPayment,
-  fetchInstallmentSchedule,
-  fetchLedgerEntries,
-  listManualPayments,
-  updateInstallmentStatus,
-  updateManualPayment,
-} from '@/lib/api/admin/payments';
 import type {
-  InstallmentRecord,
-  LedgerEntryRecord,
-  ManualPaymentRecord,
+    InstallmentRecord,
+    LedgerEntryRecord,
+    ManualPaymentRecord,
 } from '@/lib/api/admin/payments';
+import {
+    createInstallmentSchedule,
+    createManualPayment,
+    fetchInstallmentSchedule,
+    fetchLedgerEntries,
+    listManualPayments,
+    updateInstallmentStatus,
+    updateManualPayment,
+} from '@/lib/api/admin/payments';
+import { PAYMENT_STATUS } from '@/lib/constants/payment-status';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+
+import { GenerateInvoiceModal } from '../GenerateInvoiceModal';
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -49,11 +52,13 @@ interface BookingFinancePanelProps {
   bookingNumber: string;
   customerId: string;
   customerName?: string;
+  customerEmail?: string;
   totalAmount: number;
   depositAmount?: number | null;
   balanceAmount?: number | null;
   billingStatus?: string | null;
   balanceDueAt?: string | null;
+  onBalanceUpdated?: () => void;
 }
 
 interface ManualPaymentFormState {
@@ -117,11 +122,13 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     bookingNumber,
     customerId,
     customerName,
+    customerEmail,
     totalAmount,
-    depositAmount,
-    balanceAmount,
+    depositAmount: _depositAmount,
+    balanceAmount: _balanceAmount,
     billingStatus,
     balanceDueAt,
+    onBalanceUpdated,
   } = props;
 
   const [loading, setLoading] = useState(true);
@@ -133,6 +140,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   const [creatingManualPayment, setCreatingManualPayment] = useState(false);
   const [updatingInstallment, setUpdatingInstallment] = useState<string | null>(null);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [showGenerateInvoiceModal, setShowGenerateInvoiceModal] = useState(false);
   const [manualPaymentForm, setManualPaymentForm] = useState<ManualPaymentFormState>({
     amount: '',
     method: 'cash',
@@ -151,26 +159,48 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     setError(null);
 
     try {
-      // Trigger balance recalculation in database to ensure it's in sync
+      // CRITICAL: Trigger balance recalculation in database to ensure it's in sync
       // This ensures the database balance_amount is accurate before we fetch data
+      // This is MANDATORY because manual payments may have been updated elsewhere
       try {
         const recalcResponse = await fetch(`/api/admin/bookings/${bookingId}/recalculate-balance`, {
           method: 'POST',
         });
         if (!recalcResponse.ok) {
-          logger.warn('Balance recalculation request failed', {
+          const errorText = await recalcResponse.text().catch(() => 'Unknown error');
+          logger.error('Balance recalculation request failed', {
             component: 'BookingFinancePanel',
             action: 'balance_recalc_request_failed',
-            metadata: { bookingId, status: recalcResponse.status },
+            metadata: {
+              bookingId,
+              status: recalcResponse.status,
+              statusText: recalcResponse.statusText,
+              error: errorText,
+            },
+          });
+          // Don't fail the entire refresh, but log the error
+        } else {
+          const recalcData = await recalcResponse.json().catch(() => null);
+          logger.debug('Balance recalculation triggered successfully', {
+            component: 'BookingFinancePanel',
+            action: 'balance_recalc_success',
+            metadata: {
+              bookingId,
+              newBalance: recalcData?.balance,
+            },
           });
         }
       } catch (recalcError) {
-        // Non-critical - continue with refresh even if recalculation fails
-        logger.debug('Balance recalculation request error (non-critical)', {
-          component: 'BookingFinancePanel',
-          action: 'balance_recalc_request_error',
-          metadata: { bookingId },
-        });
+        // Log error but continue - we'll calculate balance in UI anyway
+        logger.error(
+          'Balance recalculation request error',
+          {
+            component: 'BookingFinancePanel',
+            action: 'balance_recalc_request_error',
+            metadata: { bookingId },
+          },
+          recalcError instanceof Error ? recalcError : new Error(String(recalcError))
+        );
       }
 
       const [manual, schedule, ledger] = await Promise.all([
@@ -203,7 +233,11 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
         // Fallback to empty array - calculation will use 0 for Stripe payments
         setStripePayments([]);
       } else {
-        const payments = ((stripeData ?? []) as unknown[]).map((payment: unknown) => ({
+        type StripePaymentData = {
+          amount?: string | number | null;
+          status?: string | null;
+        };
+        const payments = ((stripeData ?? []) as StripePaymentData[]).map((payment: StripePaymentData) => ({
           amount: Number(payment.amount ?? 0),
           status: payment.status ?? 'pending',
         }));
@@ -249,7 +283,7 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
   const stripePaymentsCompleted = useMemo(
     () =>
       stripePayments
-        .filter((payment) => payment.status === 'completed' || payment.status === 'succeeded')
+        .filter((payment) => payment.status === PAYMENT_STATUS.COMPLETED)
         .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
     [stripePayments]
   );
@@ -322,6 +356,10 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
         notes: '',
       });
       await refreshFinance();
+      // Notify parent component to refresh booking data
+      if (onBalanceUpdated) {
+        onBalanceUpdated();
+      }
     } catch (err) {
       logger.error(
         'Failed to record manual payment',
@@ -342,6 +380,10 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
     try {
       await updateManualPayment(manualPaymentId, { status: 'completed' });
       await refreshFinance();
+      // Notify parent component to refresh booking data
+      if (onBalanceUpdated) {
+        onBalanceUpdated();
+      }
     } catch (err) {
       logger.error(
         'Failed to update manual payment status',
@@ -506,14 +548,24 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               Booking {bookingNumber} • {customerName ?? 'Customer'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={refreshFinance}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowGenerateInvoiceModal(true)}
+              className="inline-flex items-center gap-1 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+            >
+              <FileText className="h-4 w-4" />
+              Generate Invoice
+            </button>
+            <button
+              type="button"
+              onClick={refreshFinance}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -550,12 +602,25 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
               <span className="text-sm text-gray-600">Outstanding</span>
               <AlertTriangle className="h-4 w-4 text-red-500" />
             </div>
-            <div className="mt-2 text-2xl font-semibold text-red-600">
-              {currencyFormatter.format(outstandingBalance)}
-            </div>
-            <p className="text-xs text-gray-500">
-              Balance due {balanceDueAt ? formatDate(balanceDueAt) : 'N/A'}
-            </p>
+            {outstandingBalance > 0 ? (
+              <>
+                <div className="mt-2 text-2xl font-semibold text-red-600">
+                  {currencyFormatter.format(outstandingBalance)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Balance due {balanceDueAt ? formatDate(balanceDueAt) : 'N/A'}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mt-2 text-2xl font-semibold text-green-600">
+                  PAID IN FULL
+                </div>
+                <p className="text-xs text-gray-500">
+                  All payments received
+                </p>
+              </>
+            )}
             {outstandingBalance > 0 && (
               <button
                 type="button"
@@ -1025,6 +1090,18 @@ export function BookingFinancePanel(props: BookingFinancePanelProps) {
           </table>
         </div>
       </div>
+
+      {/* Generate Invoice Modal */}
+      {customerEmail && (
+        <GenerateInvoiceModal
+          isOpen={showGenerateInvoiceModal}
+          onClose={() => setShowGenerateInvoiceModal(false)}
+          bookingId={bookingId}
+          bookingNumber={bookingNumber}
+          customerEmail={customerEmail}
+          customerName={customerName || 'Customer'}
+        />
+      )}
     </div>
   );
 }

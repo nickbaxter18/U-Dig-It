@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service client unavailable for scheduled reports', {
         component: 'cron-scheduled-reports',
@@ -142,14 +142,18 @@ async function processScheduledReport(report: unknown, supabaseAdmin: unknown) {
       <p><small>This is an automated report. If you no longer wish to receive these reports, please update your scheduled reports settings.</small></p>
     `;
 
-    // Send email to all recipients
-    const fromEmail = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
+    // Send email to all recipients - load config from Supabase Vault
+    const { getEmailFromAddress, getEmailFromName } = await import('@/lib/secrets/email');
+    const [fromEmail, fromName] = await Promise.all([
+      getEmailFromAddress(),
+      getEmailFromName(),
+    ]);
     const emailPromises = report.recipients.map((email: string) =>
       sendAdminEmail({
         to: email,
         from: {
           email: fromEmail,
-          name: 'U-Dig It Rentals',
+          name: fromName,
         },
         subject: emailSubject,
         html: emailBody,

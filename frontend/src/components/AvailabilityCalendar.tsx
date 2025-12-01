@@ -60,7 +60,7 @@ export default function AvailabilityCalendar({
 
       const { data, error } = await supabase
         .from('availability_blocks')
-        .select('*')
+        .select('id, equipment_id, start_at_utc, end_at_utc, reason, notes, created_at, updated_at, created_by')
         .eq('equipment_id', equipmentId)
         .gte('end_at_utc', monthStart.toISOString())
         .lte('start_at_utc', monthEnd.toISOString());

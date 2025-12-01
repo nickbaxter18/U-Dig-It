@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!signedUrl) {
-      const serviceClient = createServiceClient();
+      const serviceClient = await createServiceClient();
       if (serviceClient) {
         const { data: serviceSignedData, error: serviceSignedError } = await serviceClient.storage
           .from('signed-contracts')

@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const events = Array.isArray(body) ? body : [body];
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service client unavailable for SendGrid webhook', {
         component: 'sendgrid-webhook',

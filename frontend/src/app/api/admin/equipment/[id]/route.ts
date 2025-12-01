@@ -1,14 +1,15 @@
-import { z } from 'zod';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 
 import { NextRequest, NextResponse } from 'next/server';
 
+import { generateEquipmentEmbedding } from '@/lib/embeddings/generate-equipment-embedding';
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 
 // Schema for equipment update
+// Note: location column is JSON type in database, so we accept string and convert it
 const equipmentUpdateSchema = z.object({
   unitId: z.string().optional(),
   serialNumber: z.string().optional(),
@@ -19,11 +20,17 @@ const equipmentUpdateSchema = z.object({
   weeklyRate: z.number().optional(),
   monthlyRate: z.number().optional(),
   status: z.string().optional(),
-  location: z.string().optional(),
+  location: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   lastMaintenanceDate: z.string().nullable().optional(),
   nextMaintenanceDue: z.string().nullable().optional(),
   totalEngineHours: z.number().optional(),
   updatedAt: z.string().optional(),
+  // Missing fields from EquipmentModal
+  type: z.string().optional(),
+  description: z.string().optional(),
+  replacementValue: z.number().optional(),
+  overageHourlyRate: z.number().optional(),
+  specifications: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -32,8 +39,11 @@ const equipmentUpdateSchema = z.object({
  */
 export const PATCH = withRateLimit(
   RateLimitPresets.STRICT,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     try {
+      // Await params in Next.js 16 (params is a Promise)
+      const { id } = await params;
+
       const adminResult = await requireAdmin(request);
 
       if (adminResult.error) return adminResult.error;
@@ -51,14 +61,28 @@ export const PATCH = withRateLimit(
       const body = await request.json();
       const validatedData = equipmentUpdateSchema.parse(body);
 
+      // Transform location field: database expects JSON, frontend sends string
+      // Convert string location to JSON object { name: "location" }
+      const updatePayload: Record<string, unknown> = { ...validatedData };
+      if (typeof validatedData.location === 'string') {
+        updatePayload.location = { name: validatedData.location };
+      }
+
+      // Remove updatedAt from payload if present (database handles this via trigger)
+      delete updatePayload.updatedAt;
+
       // Create service role client for privileged operations
-      const supabaseAdmin = createServiceClient();
+      const supabaseAdmin = await createServiceClient();
+
+      if (!supabaseAdmin) {
+        return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+      }
 
       // Update equipment with service role
       const { data, error: equipmentUpdateError } = await supabaseAdmin
         .from('equipment')
-        .update(validatedData)
-        .eq('id', params.id)
+        .update(updatePayload)
+        .eq('id', id)
         .select()
         .single();
 
@@ -68,7 +92,7 @@ export const PATCH = withRateLimit(
           {
             component: 'admin-equipment-api',
             action: 'update_error',
-            metadata: { equipmentId: params.id, adminId: user?.id || 'unknown' },
+            metadata: { equipmentId: id, adminId: user?.id || 'unknown' },
           },
           equipmentUpdateError
         );
@@ -82,11 +106,31 @@ export const PATCH = withRateLimit(
         component: 'admin-equipment-api',
         action: 'equipment_updated',
         metadata: {
-          equipmentId: params.id,
+          equipmentId: id,
           adminId: user?.id || 'unknown',
           updates: Object.keys(validatedData),
         },
       });
+
+      // Automatically regenerate embedding if description or other search-relevant fields changed
+      const embeddingFields = ['description', 'make', 'model', 'type', 'notes', 'specifications'];
+      const shouldRegenerateEmbedding = Object.keys(validatedData).some((key) =>
+        embeddingFields.includes(key)
+      );
+
+      if (shouldRegenerateEmbedding) {
+        // Generate embedding asynchronously (don't block the response)
+        generateEquipmentEmbedding(id).catch((error) => {
+          logger.warn('Failed to regenerate embedding after equipment update', {
+            component: 'admin-equipment-api',
+            action: 'embedding_regeneration_failed',
+            metadata: {
+              equipmentId: id,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+        });
+      }
 
       return NextResponse.json({ data });
     } catch (err) {

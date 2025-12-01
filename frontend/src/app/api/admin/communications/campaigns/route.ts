@@ -375,8 +375,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const emailFrom = process.env.EMAIL_FROM || 'notifications@udigit.ca';
-      const emailFromName = process.env.EMAIL_FROM_NAME || 'Kubota Rentals';
+      // Load email config from Supabase Vault
+      const { getEmailFromAddress, getEmailFromName } = await import('@/lib/secrets/email');
+      let emailFrom: string;
+      let emailFromName: string;
+      try {
+        [emailFrom, emailFromName] = await Promise.all([
+          getEmailFromAddress(),
+          getEmailFromName(),
+        ]);
+      } catch (emailConfigError) {
+        return NextResponse.json({
+          error: 'Email sender not configured. Set EMAIL_FROM in Supabase Vault or environment variables.',
+        }, { status: 500 });
+      }
 
       let sentCount = 0;
       const failures: string[] = [];

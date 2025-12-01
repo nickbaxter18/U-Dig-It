@@ -52,6 +52,7 @@ export function RecentBookings() {
             startDate,
             endDate,
             totalAmount,
+            balance_amount,
             status,
             createdAt,
             equipment:equipmentId (
@@ -85,6 +86,7 @@ export function RecentBookings() {
             startDate: booking.startDate,
             endDate: booking.endDate,
             total: parseFloat(booking.totalAmount),
+            balanceAmount: booking.balance_amount !== undefined && booking.balance_amount !== null ? Number(booking.balance_amount) : null,
             status: booking.status.toUpperCase() as Booking['status'],
             createdAt: booking.createdAt,
           };
@@ -190,7 +192,7 @@ export function RecentBookings() {
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">
                   <div className="text-sm font-medium text-gray-900">
-                    ${booking.total.toLocaleString()}
+                    ${(booking.balanceAmount ?? booking.total).toLocaleString()}
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4">

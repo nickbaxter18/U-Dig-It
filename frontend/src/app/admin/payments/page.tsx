@@ -2,42 +2,45 @@
 
 import { format } from 'date-fns';
 import {
-  AlertTriangle,
-  CheckCircle,
-  CreditCard,
-  DollarSign,
-  Download,
-  Filter,
-  Loader2,
-  RefreshCcw,
-  Search,
-  XCircle,
+    AlertTriangle,
+    CheckCircle,
+    ChevronLeft,
+    ChevronRight,
+    CreditCard,
+    DollarSign,
+    Download,
+    Filter,
+    Loader2,
+    RefreshCcw,
+    Search,
+    XCircle,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { AdvancedFilters, type DateRange } from '@/components/admin/AdvancedFilters';
+import { AdvancedFilters, type DateRange, type FilterOperator } from '@/components/admin/AdvancedFilters';
 import { DisputesSection } from '@/components/admin/DisputesSection';
 import { FinancialReportsSection } from '@/components/admin/FinancialReportsSection';
 import { PermissionGate } from '@/components/admin/PermissionGate';
 import { RefundModal } from '@/components/admin/RefundModal';
 
-import {
-  fetchLedgerEntries,
-  fetchPayoutReconciliations,
-  listFinancialExports,
-  listManualPayments,
-  requestFinancialExport,
-  triggerPayoutReconciliation,
-  updateManualPayment,
-  updatePayoutReconciliation,
-} from '@/lib/api/admin/payments';
 import type {
-  FinancialExportRecord,
-  LedgerEntryRecord,
-  ManualPaymentRecord,
-  PayoutReconciliationRecord,
+    FinancialExportRecord,
+    LedgerEntryRecord,
+    ManualPaymentRecord,
+    PayoutReconciliationRecord,
 } from '@/lib/api/admin/payments';
+import {
+    fetchLedgerEntries,
+    fetchPayoutReconciliations,
+    listFinancialExports,
+    listManualPayments,
+    requestFinancialExport,
+    triggerPayoutReconciliation,
+    updateManualPayment,
+    updatePayoutReconciliation,
+} from '@/lib/api/admin/payments';
+import { getErrorMessage } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
@@ -59,6 +62,37 @@ interface Payment {
   refundReason?: string | null;
   amountRefundedToDate?: number;
   failureReason?: string;
+}
+
+/**
+ * Type for payment query result with relations
+ */
+interface PaymentQueryResult {
+  id: string;
+  amount: string | number;
+  amountRefunded?: string | number | null;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
+  processedAt?: string | null;
+  failedAt?: string | null;
+  failureReason?: string | null;
+  createdAt: string;
+  refundedAt?: string | null;
+  refundReason?: string | null;
+  type: string;
+  status: 'completed' | 'pending' | 'processing' | 'failed' | 'cancelled' | 'refunded' | 'partially_refunded';
+  method: 'credit_card' | 'debit_card' | 'bank_transfer' | 'cash' | 'check';
+  bookingId: string;
+  booking?: {
+    id: string;
+    bookingNumber: string;
+    customer?: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      email: string | null;
+    } | null;
+  } | null;
 }
 
 interface UpcomingInstallment {
@@ -114,6 +148,9 @@ export default function PaymentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundPayment, setRefundPayment] = useState<Payment | null>(null);
   const [stripeLinkLoadingId, setStripeLinkLoadingId] = useState<string | null>(null);
@@ -133,7 +170,7 @@ export default function PaymentManagement() {
   const [installmentsLoading, setInstallmentsLoading] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<{
     dateRange?: DateRange;
-    operators?: unknown[];
+    operators?: FilterOperator[];
     multiSelects?: Record<string, string[]>;
   }>({});
 
@@ -212,17 +249,29 @@ export default function PaymentManagement() {
         query = query.gte('createdAt', startDate.toISOString());
       }
 
-      const { data, error: queryError } = await query.order('createdAt', { ascending: false });
+      // Calculate pagination range
+      const rangeStart = (currentPage - 1) * pageSize;
+      const rangeEnd = rangeStart + pageSize - 1;
+
+      const { data, error: queryError, count } = await query
+        .order('createdAt', { ascending: false })
+        .range(rangeStart, rangeEnd)
+        .limit(pageSize);
 
       if (queryError) throw queryError;
 
+      // Update total count
+      setTotalCount(count ?? 0);
+
       // Transform Supabase data to Payment interface
-      const paymentsData: Payment[] = (data || []).map((payment: unknown) => {
-        const firstName = payment.booking?.customer?.firstName || '';
-        const lastName = payment.booking?.customer?.lastName || '';
+      const paymentsData: Payment[] = (data || []).map((payment: PaymentQueryResult) => {
+        const booking = payment.booking || null;
+        const customer = booking?.customer || null;
+        const firstName = customer?.firstName || '';
+        const lastName = customer?.lastName || '';
         const customerName =
           `${firstName} ${lastName}`.trim() ||
-          payment.booking?.customer?.email ||
+          customer?.email ||
           'Unknown Customer';
 
         // Map database status to frontend status
@@ -265,16 +314,21 @@ export default function PaymentManagement() {
             break;
         }
 
+        const amountStr = typeof payment.amount === 'string' ? payment.amount : String(payment.amount || '0');
+        const amountRefundedStr = typeof payment.amountRefunded === 'string'
+          ? payment.amountRefunded
+          : String(payment.amountRefunded || '0');
+
         return {
           id: payment.id,
-          bookingId: payment.booking?.id || '',
-          bookingNumber: payment.booking?.bookingNumber || 'N/A',
+          bookingId: booking?.id || '',
+          bookingNumber: booking?.bookingNumber || 'N/A',
           customerName,
-          amount: parseFloat(payment.amount || '0'),
+          amount: parseFloat(amountStr),
           status: frontendStatus,
           paymentMethod,
-          stripePaymentIntentId: payment.stripePaymentIntentId,
-          stripeCheckoutSessionId: payment.stripeCheckoutSessionId,
+          stripePaymentIntentId: payment.stripePaymentIntentId || undefined,
+          stripeCheckoutSessionId: payment.stripeCheckoutSessionId || undefined,
           createdAt: new Date(payment.createdAt),
           processedAt: payment.processedAt ? new Date(payment.processedAt) : undefined,
           refundedAt: payment.refundedAt
@@ -283,10 +337,10 @@ export default function PaymentManagement() {
                 (payment.status === 'refunded' || payment.status === 'partially_refunded')
               ? new Date(payment.failedAt)
               : undefined,
-          refundAmount: parseFloat(payment.amountRefunded || '0'),
-          refundReason: payment.refundReason,
-          amountRefundedToDate: parseFloat(payment.amountRefunded || '0'),
-          failureReason: payment.failureReason,
+          refundAmount: parseFloat(amountRefundedStr),
+          refundReason: payment.refundReason || null,
+          amountRefundedToDate: parseFloat(amountRefundedStr),
+          failureReason: payment.failureReason || undefined,
         };
       });
 
@@ -300,6 +354,9 @@ export default function PaymentManagement() {
           )
         : paymentsData;
 
+      // Note: Client-side filtering by booking number is done after pagination
+      // This means search results are limited to current page
+      // For better UX, consider moving booking number search to server-side
       setPayments(filtered);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -319,6 +376,11 @@ export default function PaymentManagement() {
     loadPayouts();
     loadExports();
     loadUpcomingInstallments();
+  }, [statusFilter, searchTerm, dateFilter, currentPage, pageSize]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [statusFilter, searchTerm, dateFilter]);
 
   useEffect(() => {
@@ -392,8 +454,10 @@ export default function PaymentManagement() {
   const loadUpcomingInstallments = async () => {
     try {
       setInstallmentsLoading(true);
+      // Note: installment_schedules table exists but may not be in generated types
+      // Using type assertion for the query result
       const { data, error: upcomingError } = await supabase
-        .from('installment_schedules')
+        .from('installment_schedules' as never)
         .select(
           `
           id,
@@ -417,7 +481,22 @@ export default function PaymentManagement() {
 
       if (upcomingError) throw upcomingError;
 
-      const rows: UpcomingInstallment[] = (data ?? []).map((row: unknown) => ({
+      type UpcomingInstallmentRow = {
+        id: string;
+        booking_id: string;
+        due_date: string;
+        amount: number | string | null;
+        status: string;
+        booking?: {
+          bookingNumber: string | null;
+          customer?: {
+            firstName: string | null;
+            lastName: string | null;
+          } | null;
+        } | null;
+      };
+
+      const rows: UpcomingInstallment[] = (data ?? []).map((row: UpcomingInstallmentRow) => ({
         id: row.id,
         bookingId: row.booking_id,
         bookingNumber: row.booking?.bookingNumber ?? row.booking_id,
@@ -600,7 +679,8 @@ export default function PaymentManagement() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      alert(err.message || 'Failed to download receipt');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage || 'Failed to download receipt');
     }
   };
 
@@ -636,7 +716,53 @@ export default function PaymentManagement() {
         throw new Error('Stripe dashboard link was not provided');
       }
     } catch (err: unknown) {
-      alert(err.message || 'Failed to open Stripe dashboard');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage || 'Failed to open Stripe dashboard');
+    } finally {
+      setStripeLinkLoadingId(null);
+    }
+  };
+
+  const handleRetryPayment = async (payment: Payment) => {
+    if (!payment.id) {
+      alert('Unable to retry payment: missing payment ID.');
+      return;
+    }
+
+    if (payment.status !== 'failed' && payment.status !== 'pending') {
+      alert(`Cannot retry payment with status: ${payment.status}. Only failed or pending payments can be retried.`);
+      return;
+    }
+
+    try {
+      setStripeLinkLoadingId(payment.id);
+      const response = await fetchWithAuth(`/api/admin/payments/retry/${payment.id}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Unable to retry payment');
+      }
+
+      const { sessionUrl } = await response.json();
+      if (sessionUrl) {
+        // Redirect to Stripe checkout
+        window.location.href = sessionUrl;
+      } else {
+        throw new Error('Checkout session URL was not provided');
+      }
+    } catch (err: unknown) {
+      logger.error(
+        'Payment retry failed',
+        {
+          component: 'payments-page',
+          action: 'retry_payment_failed',
+          metadata: { paymentId: payment.id },
+        },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert(err instanceof Error ? err.message : 'Failed to retry payment');
     } finally {
       setStripeLinkLoadingId(null);
     }
@@ -647,7 +773,8 @@ export default function PaymentManagement() {
       await updateManualPayment(manualPaymentId, { status: 'completed' });
       await loadManualPayments();
     } catch (err: unknown) {
-      alert(err.message ?? 'Failed to update manual payment');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage ?? 'Failed to update manual payment');
     }
   };
 
@@ -657,7 +784,8 @@ export default function PaymentManagement() {
       await triggerPayoutReconciliation();
       await loadPayouts();
     } catch (err: unknown) {
-      alert(err.message ?? 'Failed to trigger Stripe reconciliation');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage ?? 'Failed to trigger Stripe reconciliation');
     } finally {
       setPayoutsLoading(false);
     }
@@ -675,7 +803,8 @@ export default function PaymentManagement() {
       await updatePayoutReconciliation(payout.stripe_payout_id, { status, notes });
       await loadPayouts();
     } catch (err: unknown) {
-      alert(err.message ?? 'Failed to update payout reconciliation');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage ?? 'Failed to update payout reconciliation');
     }
   };
 
@@ -694,7 +823,8 @@ export default function PaymentManagement() {
       }
       await loadExports();
     } catch (err: unknown) {
-      alert(err.message ?? 'Failed to generate export');
+      const errorMessage = getErrorMessage(err);
+      alert(errorMessage ?? 'Failed to generate export');
     } finally {
       setExportSubmitting(false);
     }
@@ -702,15 +832,15 @@ export default function PaymentManagement() {
 
   const totalRevenue = payments
     .filter((p) => p.status === 'succeeded')
-    .reduce((sum: unknown, p: unknown) => sum + p.amount, 0);
+    .reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0);
 
   const pendingAmount = payments
     .filter((p) => p.status === 'pending')
-    .reduce((sum: unknown, p: unknown) => sum + p.amount, 0);
+    .reduce((sum: number, p: Payment) => sum + (p.amount || 0), 0);
 
   const refundedAmount = payments
     .filter((p) => p.status === 'refunded' || p.status === 'partially_refunded')
-    .reduce((sum: unknown, p: unknown) => sum + (p.refundAmount || 0), 0);
+    .reduce((sum: number, p: Payment) => sum + (p.refundAmount || p.amountRefundedToDate || 0), 0);
 
   if (loading) {
     return (
@@ -872,19 +1002,29 @@ export default function PaymentManagement() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 rounded-lg bg-white p-4 shadow-sm">
         <div className="relative">
+          <label htmlFor="payment-search" className="sr-only">
+            Search payments
+          </label>
           <input
+            id="payment-search"
             type="text"
             placeholder="Search payments..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search payments by ID, booking number, or customer name"
             className="focus:ring-kubota-orange rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:border-transparent focus:outline-none focus:ring-2"
           />
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
         </div>
 
+        <label htmlFor="status-filter" className="sr-only">
+          Filter by payment status
+        </label>
         <select
+          id="status-filter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          aria-label="Filter payments by status"
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Status</option>
@@ -895,9 +1035,14 @@ export default function PaymentManagement() {
           <option value="partially_refunded">Partially Refunded</option>
         </select>
 
+        <label htmlFor="date-filter" className="sr-only">
+          Filter by date range
+        </label>
         <select
+          id="date-filter"
           value={dateFilter}
           onChange={(e) => setDateFilter(e.target.value)}
+          aria-label="Filter payments by date range"
           className="focus:ring-kubota-orange rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
         >
           <option value="all">All Time</option>
@@ -910,13 +1055,15 @@ export default function PaymentManagement() {
           <button
             onClick={handleExportPayments}
             disabled={filteredPayments.length === 0}
+            aria-label="Export filtered payments to CSV"
+            aria-disabled={filteredPayments.length === 0}
             className={`focus:ring-kubota-orange flex items-center space-x-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
               filteredPayments.length === 0
                 ? 'cursor-not-allowed bg-gray-100 text-gray-400'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             <span>Export</span>
           </button>
         </PermissionGate>
@@ -938,9 +1085,10 @@ export default function PaymentManagement() {
           </div>
           <button
             onClick={loadManualPayments}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            aria-label="Refresh manual payments list"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className="h-4 w-4" aria-hidden="true" />
             Refresh
           </button>
         </div>
@@ -999,9 +1147,10 @@ export default function PaymentManagement() {
                       <PermissionGate permission="payments:approve:all">
                         <button
                           onClick={() => handleCompleteManualPayment(payment.id)}
-                          className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                          aria-label={`Mark manual payment ${payment.booking?.bookingNumber ?? payment.booking_id} as completed`}
+                          className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         >
-                          <CheckCircle className="h-3.5 w-3.5" />
+                          <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
                           Mark Completed
                         </button>
                       </PermissionGate>
@@ -1041,9 +1190,10 @@ export default function PaymentManagement() {
           </div>
           <button
             onClick={loadUpcomingInstallments}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            aria-label="Refresh upcoming installments list"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className="h-4 w-4" aria-hidden="true" />
             Refresh
           </button>
         </div>
@@ -1119,24 +1269,27 @@ export default function PaymentManagement() {
           <div className="flex gap-2">
             <button
               onClick={handleTriggerReconciliation}
-              className="inline-flex items-center gap-1 rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+              aria-label="Sync payout data from Stripe"
+              aria-busy={payoutsLoading}
               disabled={payoutsLoading}
+              className="inline-flex items-center gap-1 rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
               {payoutsLoading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                   Syncing...
                 </>
               ) : (
                 <>
-                  <RefreshCcw className="h-4 w-4" />
+                  <RefreshCcw className="h-4 w-4" aria-hidden="true" />
                   Refresh from Stripe
                 </>
               )}
             </button>
             <button
               onClick={loadPayouts}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              aria-label="Reload payout reconciliation list"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
               Reload
             </button>
@@ -1187,22 +1340,26 @@ export default function PaymentManagement() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600">
-                    {(payout.details as any)?.notes ?? '—'}
+                    {(payout.details && typeof payout.details === 'object' && 'notes' in payout.details
+                      ? String(payout.details.notes)
+                      : null) ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right text-sm">
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => handleUpdatePayoutStatus(payout, 'reconciled')}
-                        className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
+                        aria-label={`Mark payout ${payout.stripe_payout_id} as reconciled`}
+                        className="inline-flex items-center gap-1 rounded-md border border-green-200 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                       >
-                        <CheckCircle className="h-3.5 w-3.5" />
+                        <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
                         Mark Reconciled
                       </button>
                       <button
                         onClick={() => handleUpdatePayoutStatus(payout, 'discrepancy')}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                        aria-label={`Flag payout ${payout.stripe_payout_id} as having a discrepancy`}
+                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                       >
-                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                         Flag Discrepancy
                       </button>
                     </div>
@@ -1237,9 +1394,10 @@ export default function PaymentManagement() {
           </div>
           <button
             onClick={loadLedgerEntries}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+            aria-label="Refresh financial ledger entries"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className="h-4 w-4" aria-hidden="true" />
             Refresh
           </button>
         </div>
@@ -1315,9 +1473,14 @@ export default function PaymentManagement() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="export-type" className="sr-only">
+              Select export type
+            </label>
             <select
+              id="export-type"
               value={exportType}
               onChange={(event) => setExportType(event.target.value as typeof exportType)}
+              aria-label="Select financial export type"
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
             >
               <option value="payments_summary">Payments Summary</option>
@@ -1329,11 +1492,13 @@ export default function PaymentManagement() {
               <button
                 onClick={handleGenerateExport}
                 disabled={exportSubmitting}
-                className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+                aria-label={`Generate ${exportType} export`}
+                aria-busy={exportSubmitting}
+                className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
                 {exportSubmitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Generating...
                   </>
                 ) : (
@@ -1491,7 +1656,8 @@ export default function PaymentManagement() {
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => setSelectedPayment(payment)}
-                        className="text-kubota-orange hover:text-orange-600"
+                        aria-label={`View details for payment ${payment.bookingNumber}`}
+                        className="text-kubota-orange hover:text-orange-600 focus:outline-none focus:ring-2 focus:ring-kubota-orange focus:ring-offset-2 rounded px-2 py-1"
                       >
                         View
                       </button>
@@ -1499,7 +1665,8 @@ export default function PaymentManagement() {
                         payment.amount - (payment.amountRefundedToDate ?? 0) > 0 && (
                           <button
                             onClick={() => setRefundPayment(payment)}
-                            className="text-red-600 hover:text-red-800"
+                            aria-label={`Process refund for payment ${payment.bookingNumber}`}
+                            className="text-red-600 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 rounded px-2 py-1"
                           >
                             Refund
                           </button>
@@ -1508,6 +1675,8 @@ export default function PaymentManagement() {
                         <button
                           className="cursor-not-allowed text-blue-300"
                           title="Retry is not yet available for failed payments"
+                          aria-label="Retry payment (not available)"
+                          aria-disabled="true"
                           disabled
                         >
                           Retry
@@ -1520,6 +1689,96 @@ export default function PaymentManagement() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {(() => {
+          const totalPages = Math.ceil(totalCount / pageSize);
+          if (totalPages <= 1) return null;
+
+          return (
+            <div className="flex flex-col gap-3 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-sm font-medium text-gray-700" aria-live="polite">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex flex-1 justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1}
+                  aria-label="Go to previous page"
+                  className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Go to next page"
+                  className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+              <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing{' '}
+                    <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+                    <span className="font-medium">
+                      {Math.min(currentPage * pageSize, totalCount)}
+                    </span>{' '}
+                    of <span className="font-medium">{totalCount}</span> results
+                  </p>
+                </div>
+                <div>
+                  <nav
+                    className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
+                    aria-label="Pagination"
+                  >
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage <= 1}
+                      aria-label="Go to previous page"
+                      className="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = Math.max(1, currentPage - 2) + i;
+                      if (pageNum > totalPages) return null;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          aria-label={`Go to page ${pageNum}`}
+                          aria-current={pageNum === currentPage ? 'page' : undefined}
+                          className={`relative inline-flex items-center border px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
+                            pageNum === currentPage
+                              ? 'bg-premium-gold border-premium-gold z-10 text-white'
+                              : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage >= totalPages}
+                      aria-label="Go to next page"
+                      className="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Payment Details Modal */}
@@ -1641,8 +1900,12 @@ export default function PaymentManagement() {
                       </button>
                     )}
                     {selectedPayment.status === 'failed' && (
-                      <button className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
-                        Retry Payment
+                      <button
+                        onClick={() => handleRetryPayment(selectedPayment)}
+                        disabled={stripeLinkLoadingId === selectedPayment.id}
+                        className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {stripeLinkLoadingId === selectedPayment.id ? 'Retrying…' : 'Retry Payment'}
                       </button>
                     )}
                     <button

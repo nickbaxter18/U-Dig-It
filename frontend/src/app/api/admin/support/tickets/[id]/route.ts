@@ -5,11 +5,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { createServiceClient } from '@/lib/supabase/service';
 import { supportTicketUpdateSchema } from '@/lib/validators/admin/support';
 
 export const GET = withRateLimit(
   RateLimitPresets.MODERATE,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       // Step 1: Rate limiting is handled by withRateLimit wrapper
 
@@ -24,13 +28,22 @@ export const GET = withRateLimit(
         return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
       }
 
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id: ticketId } = resolvedParams;
+
+      // Validate ticketId
+      if (!ticketId || ticketId === 'undefined' || ticketId.trim() === '') {
+        return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
+      }
+
       // Step 3: Fetch ticket
       const { data: ticket, error: fetchError } = await supabase
         .from('support_tickets')
         .select(
           'id, ticket_number, customer_id, booking_id, equipment_id, subject, description, priority, status, category, assigned_to, created_at, resolved_at, first_response_at, internal_notes, resolution_notes, satisfaction_score'
         )
-        .eq('id', params.id)
+        .eq('id', ticketId)
         .maybeSingle();
 
       if (fetchError) {
@@ -39,7 +52,7 @@ export const GET = withRateLimit(
           {
             component: 'admin-support-ticket-get',
             action: 'fetch_failed',
-            metadata: { ticketId: params.id },
+            metadata: { ticketId },
           },
           fetchError
         );
@@ -53,12 +66,21 @@ export const GET = withRateLimit(
       // Step 4: Return JSON response
       return NextResponse.json({ ticket });
     } catch (err) {
+      // Handle params for error logging
+      let ticketId = 'unknown';
+      try {
+        const resolvedParams = params instanceof Promise ? await params : params;
+        ticketId = resolvedParams?.id || 'unknown';
+      } catch {
+        // Ignore errors in error handler
+      }
+
       logger.error(
         'Unexpected error fetching support ticket',
         {
           component: 'admin-support-ticket-get',
           action: 'fetch_unexpected',
-          metadata: { ticketId: params.id },
+          metadata: { ticketId },
         },
         err instanceof Error ? err : new Error(String(err))
       );
@@ -70,7 +92,10 @@ export const GET = withRateLimit(
 
 export const PATCH = withRateLimit(
   RateLimitPresets.STRICT,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       // Step 1: Rate limiting is handled by withRateLimit wrapper
 
@@ -79,9 +104,24 @@ export const PATCH = withRateLimit(
 
       if (adminResult.error) return adminResult.error;
 
-      const supabase = adminResult.supabase;
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id: ticketId } = resolvedParams;
+
+      // Validate ticketId
+      if (!ticketId || ticketId === 'undefined' || ticketId.trim() === '') {
+        return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
+      }
+
+      // Use service client to bypass RLS for admin operations
+      const supabase = await createServiceClient();
 
       if (!supabase) {
+        logger.error('Service client not available', {
+          component: 'admin-support-ticket-update',
+          action: 'service_client_failed',
+          metadata: { ticketId },
+        });
         return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
       }
 
@@ -107,7 +147,7 @@ export const PATCH = withRateLimit(
       const { data: existingTicket, error: fetchError } = await supabase
         .from('support_tickets')
         .select('id, status, priority, category')
-        .eq('id', params.id)
+        .eq('id', ticketId)
         .maybeSingle();
 
       if (fetchError) {
@@ -116,7 +156,7 @@ export const PATCH = withRateLimit(
           {
             component: 'admin-support-ticket-update',
             action: 'fetch_failed',
-            metadata: { ticketId: params.id },
+            metadata: { ticketId },
           },
           fetchError
         );
@@ -155,8 +195,8 @@ export const PATCH = withRateLimit(
       const { data: updatedTicket, error: updateError } = await supabase
         .from('support_tickets')
         .update(updateData)
-        .eq('id', params.id)
-        .select()
+        .eq('id', ticketId)
+        .select('id, ticket_number, customer_id, booking_id, equipment_id, subject, description, priority, status, category, assigned_to, assigned_at, created_at, resolved_at, first_response_at, internal_notes, resolution_notes, satisfaction_score')
         .single();
 
       if (updateError || !updatedTicket) {
@@ -165,11 +205,23 @@ export const PATCH = withRateLimit(
           {
             component: 'admin-support-ticket-update',
             action: 'update_failed',
-            metadata: { ticketId: params.id, updates: Object.keys(updateData) },
+            metadata: {
+              ticketId,
+              updates: Object.keys(updateData),
+              updateData,
+              error: updateError?.message,
+              errorCode: updateError?.code,
+              errorDetails: updateError?.details,
+              errorHint: updateError?.hint,
+            },
           },
           updateError ?? new Error('Missing ticket data')
         );
-        return NextResponse.json({ error: 'Failed to update ticket' }, { status: 500 });
+        const errorMessage = updateError?.message || 'Failed to update ticket';
+        return NextResponse.json(
+          { error: errorMessage, details: updateError?.details },
+          { status: 500 }
+        );
       }
 
       // Step 7: Log success
@@ -177,7 +229,7 @@ export const PATCH = withRateLimit(
         component: 'admin-support-ticket-update',
         action: 'ticket_updated',
         metadata: {
-          ticketId: params.id,
+          ticketId,
           updates: Object.keys(updateData),
           adminId: user?.id || 'unknown',
         },
@@ -186,12 +238,21 @@ export const PATCH = withRateLimit(
       // Step 8: Return JSON response
       return NextResponse.json({ ticket: updatedTicket });
     } catch (err) {
+      // Handle params for error logging
+      let ticketId = 'unknown';
+      try {
+        const resolvedParams = params instanceof Promise ? await params : params;
+        ticketId = resolvedParams?.id || 'unknown';
+      } catch {
+        // Ignore errors in error handler
+      }
+
       logger.error(
         'Unexpected error updating support ticket',
         {
           component: 'admin-support-ticket-update',
           action: 'update_unexpected',
-          metadata: { ticketId: params.id },
+          metadata: { ticketId },
         },
         err instanceof Error ? err : new Error(String(err))
       );

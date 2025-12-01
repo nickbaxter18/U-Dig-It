@@ -36,7 +36,7 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
     const body = await request.json();
     const validated = customerBulkUpdateSchema.parse(body);
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service role client not initialized', {
         component: 'admin-customers-bulk-api',

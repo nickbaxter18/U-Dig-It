@@ -81,11 +81,26 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
       // Continue anyway - email logging failure shouldn't prevent email send
     }
 
-    // ✅ Initialize SendGrid with API key
-    const { getSendGridApiKey } = await import('@/lib/secrets/email');
+    // ✅ Initialize SendGrid with API key and load email config from Supabase Vault
+    const { getSendGridApiKey, getEmailFromAddress, getEmailFromName } = await import('@/lib/secrets/email');
     const sendgridApiKey = await getSendGridApiKey();
-    const emailFrom = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
-    const emailFromName = process.env.EMAIL_FROM_NAME || 'U-Dig It Rentals';
+
+    let emailFrom: string;
+    let emailFromName: string;
+    try {
+      emailFrom = await getEmailFromAddress();
+      emailFromName = await getEmailFromName();
+    } catch (emailConfigError) {
+      logger.error('EMAIL_FROM not configured', {
+        component: 'send-email-api',
+        action: 'email_from_missing',
+        metadata: { bookingId, error: emailConfigError instanceof Error ? emailConfigError.message : String(emailConfigError) },
+      });
+      return NextResponse.json({
+        error: 'Email sender not configured. Set EMAIL_FROM in Supabase Vault or environment variables.',
+        details: 'Visit https://app.sendgrid.com/settings/sender_auth to verify a sender.',
+      }, { status: 500 });
+    }
 
     // ✅ Get template HTML if templateId provided
     let emailHtml = message;

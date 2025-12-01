@@ -1,22 +1,22 @@
 'use client';
 
 import type {
-  BookingChartPoint,
-  DashboardChartsPayload,
-  DashboardOverviewResponse,
-  DashboardSummary,
-  DateRangeKey,
-  RevenueChartPoint,
-  RevenueComparisonPoint,
+    BookingChartPoint,
+    DashboardChartsPayload,
+    DashboardOverviewResponse,
+    DashboardSummary,
+    DateRangeKey,
+    RevenueChartPoint,
+    RevenueComparisonPoint,
 } from '@/types/dashboard';
 import {
-  Calendar,
-  Calendar as CalendarIcon,
-  DollarSign,
-  Download,
-  RefreshCw,
-  Settings,
-  Users,
+    Calendar,
+    Calendar as CalendarIcon,
+    DollarSign,
+    Download,
+    RefreshCw,
+    Settings,
+    Users,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -295,12 +295,77 @@ type LegacyCharts = {
 
 function normalizeChartsPayload(payload: DashboardOverviewResponse): DashboardChartsPayload | null {
   if (payload.chartsV2) {
-    return payload.chartsV2;
+    // Ensure chartsV2 has proper structure even if data is missing
+    return {
+      revenue: {
+        series: payload.chartsV2.revenue?.series ?? [],
+        comparison: payload.chartsV2.revenue?.comparison ?? [],
+        totals: payload.chartsV2.revenue?.totals ?? {
+          grossRevenue: 0,
+          refundedAmount: 0,
+          netRevenue: 0,
+        },
+      },
+      bookings: {
+        series: payload.chartsV2.bookings?.series ?? [],
+        comparison: payload.chartsV2.bookings?.comparison ?? [],
+        totals: payload.chartsV2.bookings?.totals ?? {
+          total: 0,
+          completed: 0,
+          cancelled: 0,
+        },
+        conversion: payload.chartsV2.bookings?.conversion ?? {
+          completionRate: 0,
+          cancellationRate: 0,
+        },
+      },
+      utilization: {
+        summary: payload.chartsV2.utilization?.summary ?? {
+          averageUtilization: 0,
+          activeOrMaintenanceCount: 0,
+          lifetimeRevenue: 0,
+        },
+        equipment: payload.chartsV2.utilization?.equipment ?? [],
+      },
+    };
   }
 
   const legacy = payload.charts as LegacyCharts | undefined;
   if (!legacy) {
-    return null;
+    // Return empty structure instead of null to ensure charts always has a valid shape
+    // This allows the frontend to fill dates with zeros even when API returns no chart data
+    return {
+      revenue: {
+        series: [],
+        comparison: [],
+        totals: {
+          grossRevenue: 0,
+          refundedAmount: 0,
+          netRevenue: 0,
+        },
+      },
+      bookings: {
+        series: [],
+        comparison: [],
+        totals: {
+          total: 0,
+          completed: 0,
+          cancelled: 0,
+        },
+        conversion: {
+          completionRate: 0,
+          cancellationRate: 0,
+        },
+      },
+      utilization: {
+        summary: {
+          averageUtilization: 0,
+          activeOrMaintenanceCount: 0,
+          lifetimeRevenue: 0,
+        },
+        equipment: [],
+      },
+    };
   }
 
   const revenueSeries = (legacy.revenue ?? []).map((point) => {
@@ -352,15 +417,19 @@ function normalizeChartsPayload(payload: DashboardOverviewResponse): DashboardCh
   };
 
   const utilizationRecords = (legacy.utilization ?? []).map((record) => {
-    const utilizationPct = Number(record.utilization_pct ?? 0);
+    // Cap utilization at 100% (equipment can't be used more than 100% of available time)
+    const rawUtilizationPct = Number(record.utilization_pct ?? 0);
+    const utilizationPct = Math.min(100, Math.max(0, rawUtilizationPct));
     const revenue = Number(record.revenue_generated ?? 0);
+    // Convert hours_used to days (hours / 24)
+    const rentedDays = Math.round((Number(record.hours_used ?? 0) / 24) * 10) / 10;
 
     return {
       equipmentId: record.equipment_id,
       label: `Equipment ${record.equipment_id.slice(0, 8)}`,
       status: 'AVAILABLE',
       utilizationPct,
-      rentedDays: Number(record.hours_used ?? 0),
+      rentedDays,
       revenue,
     };
   });
@@ -484,6 +553,23 @@ export default function AdminDashboard() {
         const payload = (await response.json()) as DashboardOverviewResponse;
         const summary = payload.summary;
 
+        // Log payload structure for debugging revenue issues
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug('Dashboard API response received', {
+            component: 'AdminDashboard',
+            action: 'api_response_received',
+            metadata: {
+              hasSummary: !!summary,
+              totalRevenue: summary?.totalRevenue ?? 0,
+              hasChartsV2: !!payload.chartsV2,
+              hasCharts: !!payload.charts,
+              chartsV2RevenueSeriesLength: payload.chartsV2?.revenue?.series?.length ?? 0,
+              chartsV2RevenueSeries: payload.chartsV2?.revenue?.series?.slice(0, 3) ?? null,
+              chartsV2RevenueTotals: payload.chartsV2?.revenue?.totals ?? null,
+            },
+          });
+        }
+
         const nextStats: DashboardSummary = {
           totalBookings: Math.round(Number(summary.totalBookings ?? 0)),
           totalRevenue: Number(summary.totalRevenue ?? 0),
@@ -509,6 +595,39 @@ export default function AdminDashboard() {
         setStats(nextStats);
 
         const normalizedCharts = normalizeChartsPayload(payload);
+
+        // Log chart data for debugging revenue issues
+        if (process.env.NODE_ENV === 'development') {
+          logger.debug('Dashboard charts normalized', {
+            component: 'AdminDashboard',
+            action: 'charts_normalized',
+            metadata: {
+              hasChartsV2: !!payload.chartsV2,
+              hasCharts: !!payload.charts,
+              normalizedCharts: normalizedCharts ? 'exists' : 'null',
+              revenueSeriesLength: normalizedCharts?.revenue?.series?.length ?? 0,
+              bookingSeriesLength: normalizedCharts?.bookings?.series?.length ?? 0,
+              revenueSeriesSample: normalizedCharts?.revenue?.series?.slice(0, 3) ?? null,
+              revenueTotals: normalizedCharts?.revenue?.totals ?? null,
+            },
+          });
+        }
+
+        // Ensure we always have a valid charts structure, even if data is empty
+        // This allows the chart to render with zero-filled dates
+        if (!normalizedCharts) {
+          logger.warn('No charts data in API response, initializing empty structure', {
+            component: 'AdminDashboard',
+            action: 'charts_missing',
+            metadata: {
+              hasSummary: !!summary,
+              totalRevenue: summary?.totalRevenue ?? 0,
+              hasChartsV2: !!payload.chartsV2,
+              hasCharts: !!payload.charts,
+            },
+          });
+        }
+
         setCharts(normalizedCharts);
 
         // Use current time for lastUpdated since we're fetching live data
@@ -679,8 +798,15 @@ export default function AdminDashboard() {
   // Fill missing dates in revenue series and align comparison data
   const revenueSeries = useMemo(() => {
     try {
-      const raw = charts?.revenue.series ?? [];
-      if (!Array.isArray(raw) || raw.length === 0) return [];
+      const raw = charts?.revenue?.series ?? [];
+      if (!Array.isArray(raw)) {
+        logger.warn('Revenue series is not an array', {
+          component: 'AdminDashboard',
+          action: 'invalid_revenue_series',
+          metadata: { charts: charts ? 'exists' : 'null', revenue: charts?.revenue ? 'exists' : 'null' },
+        });
+        return [];
+      }
 
       // Determine date range
       let startDate: Date;
@@ -696,7 +822,7 @@ export default function AdminDashboard() {
             component: 'AdminDashboard',
             action: 'invalid_date_range',
           });
-          return raw; // Return raw data if dates are invalid
+          return raw.length > 0 ? raw : []; // Return raw data if dates are invalid
         }
       } else {
         const ranges = resolveRangeBounds(dateRange);
@@ -705,6 +831,7 @@ export default function AdminDashboard() {
       }
 
       // Fill missing dates with zero values
+      // Even if raw is empty, we still want to fill the date range with zeros
       const filled = fillMissingDates(raw, startDate, endDate);
 
       // Debug: Log date range and filled data (always log for month/quarter/year to diagnose issues)
@@ -902,7 +1029,19 @@ export default function AdminDashboard() {
     return revenueSeries.some((point) => point.netRevenue > 0);
   }, [revenueSeries]);
 
-  const revenueStatus = resolveStatus(hasRevenueData);
+  // Status should be 'ready' if we have data (even if all zeros) and not loading/error
+  // Only show 'empty' if there's genuinely no chart data structure
+  const revenueStatus = useMemo(() => {
+    if (loading) return 'loading';
+    if (error) return 'error';
+    // If we have revenue series data (even if all zeros), show as ready
+    // This allows the chart to render with zero-filled dates
+    if (revenueSeries.length > 0) return 'ready';
+    // Only show empty if charts structure is completely missing
+    if (!charts?.revenue) return 'empty';
+    // If charts.revenue exists but series is empty/undefined, also show ready (will fill with zeros)
+    return 'ready';
+  }, [loading, error, revenueSeries.length, charts?.revenue]);
   // Check if booking series has actual booking data (non-zero total)
   // fillMissingBookingDates creates zero-filled dates, so we need to check for actual bookings
   const hasBookingData = useMemo(() => {

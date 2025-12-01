@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,13 +8,41 @@ import { requireAdmin } from '@/lib/supabase/requireAdmin';
 import { createServiceClient } from '@/lib/supabase/service';
 
 // Schema for booking update
+// Note: Some fields require business logic validation (e.g., can't change dates if booking is active)
 const bookingUpdateSchema = z.object({
+  // Status and cancellation
   status: z.string().optional(),
-  actualStartDate: z.string().nullable().optional(),
-  actualEndDate: z.string().nullable().optional(),
-  internalNotes: z.string().optional(),
   cancelledAt: z.string().nullable().optional(),
   cancellationReason: z.string().nullable().optional(),
+
+  // Actual dates (for active/completed bookings)
+  actualStartDate: z.string().nullable().optional(),
+  actualEndDate: z.string().nullable().optional(),
+
+  // Scheduled dates (with validation - can't change if booking is active)
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+
+  // Delivery information
+  deliveryAddress: z.string().nullable().optional(),
+  deliveryCity: z.string().nullable().optional(),
+  deliveryProvince: z.string().nullable().optional(),
+  deliveryPostalCode: z.string().nullable().optional(),
+  deliveryFee: z.number().optional(),
+
+  // Instructions and notes
+  specialInstructions: z.string().nullable().optional(),
+  internalNotes: z.string().optional(),
+
+  // Discounts
+  couponCode: z.string().nullable().optional(),
+
+  // Financial fields (admin adjustments)
+  depositAmount: z.number().nullable().optional(),
+  balanceAmount: z.number().nullable().optional(),
+  balanceDueAt: z.string().nullable().optional(),
+  billingStatus: z.string().nullable().optional(),
+  financeNotes: z.string().nullable().optional(),
 });
 
 /**
@@ -44,7 +71,29 @@ export const PATCH = withRateLimit(
       const validatedData = bookingUpdateSchema.parse(body);
 
       // Create service role client for privileged operations
-      const supabaseAdmin = createServiceClient();
+      const supabaseAdmin = await createServiceClient();
+
+      // Business logic validation: Can't change scheduled dates if booking is active/completed
+      if (validatedData.startDate || validatedData.endDate) {
+        const { data: currentBooking } = await supabaseAdmin
+          .from('bookings')
+          .select('status, actualStartDate')
+          .eq('id', params.id)
+          .single();
+
+        if (currentBooking) {
+          const activeStatuses = ['active', 'in_progress', 'delivered', 'completed'];
+          if (activeStatuses.includes(currentBooking.status) || currentBooking.actualStartDate) {
+            return NextResponse.json(
+              {
+                error: 'Cannot change scheduled dates for active or completed bookings',
+                details: 'Use actualStartDate/actualEndDate to track actual rental dates',
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
 
       // Update booking with service role
       const { data, error: updateError } = await supabaseAdmin

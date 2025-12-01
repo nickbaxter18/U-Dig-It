@@ -56,18 +56,23 @@ export default function EquipmentUtilizationChart({
       <ul className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
         {displayRecords.map((record) => (
           <li key={record.equipmentId}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{record.label}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900 truncate">{record.label}</p>
                 <p className="text-xs text-gray-500">
                   {statusLabels[record.status.toLowerCase()] ?? record.status.replace('_', ' ')}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex-shrink-0 whitespace-nowrap ml-2">
                 <p className="text-sm font-semibold text-gray-900">
-                  {record.utilizationPct.toFixed(1)}%
+                  {Math.min(100, record.utilizationPct).toFixed(1)}%
                 </p>
-                <p className="text-xs text-gray-500">{record.rentedDays} rented days</p>
+                <p className="text-xs text-gray-500 whitespace-nowrap">
+                  {Number.isInteger(record.rentedDays)
+                    ? record.rentedDays
+                    : record.rentedDays.toFixed(1)}{' '}
+                  {record.rentedDays === 1 ? 'day' : 'days'}
+                </p>
               </div>
             </div>
             <div

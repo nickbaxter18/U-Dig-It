@@ -1,9 +1,10 @@
 'use client';
 
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { AlertCircle, Search, SlidersHorizontal, X } from 'lucide-react';
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { useToast } from '@/hooks/useToast';
 import { logger } from '@/lib/logger';
 
 import { AdvancedFilters } from './AdvancedFilters';
@@ -46,6 +47,8 @@ interface SearchFilters {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
+  searchMode?: 'keyword' | 'semantic' | 'hybrid'; // New: semantic search mode
+  matchThreshold?: number; // New: similarity threshold
 }
 
 interface SearchResult {
@@ -54,6 +57,9 @@ interface SearchResult {
   page: number;
   limit: number;
   totalPages: number;
+  searchMode?: 'keyword' | 'semantic' | 'hybrid';
+  responseTimeMs?: number;
+  fallbackReason?: string;
 }
 
 interface FilterOptions {
@@ -66,21 +72,27 @@ interface FilterOptions {
 }
 
 export function EquipmentSearch() {
+  const { warning } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<SearchFilters>({
     page: 1,
     limit: 20,
     sortBy: 'unitId',
     sortOrder: 'ASC',
+    searchMode: 'hybrid', // Always use hybrid/semantic search
+    matchThreshold: 0.5, // Fixed threshold for semantic search
   });
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<{ suggestion: string; similarity: number; sourceType: string }>>([]);
+  const [didYouMean, setDidYouMean] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [embeddingAvailable, setEmbeddingAvailable] = useState<boolean | null>(null);
+  const [activeSearchMode, setActiveSearchMode] = useState<'keyword' | 'semantic' | 'hybrid'>('hybrid');
 
-  // Load filter options on component mount
+  // Load filter options and check embedding availability on component mount
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
@@ -103,8 +115,38 @@ export function EquipmentSearch() {
       }
     };
 
+    const checkEmbeddingAvailability = async () => {
+      try {
+        // Check if embeddings exist by querying equipment
+        const response = await fetch('/api/equipment?limit=1&hasEmbedding=true');
+        if (response.ok) {
+          // If we can query, embeddings might exist - we'll know for sure when search runs
+          setEmbeddingAvailable(null); // Unknown until first search
+        }
+      } catch {
+        setEmbeddingAvailable(false);
+      }
+    };
+
     loadFilterOptions();
-  }, []);
+    checkEmbeddingAvailability();
+
+    // Perform initial search to show all equipment
+    const initialFilters: SearchFilters = {
+      page: 1,
+      limit: 20,
+      sortBy: 'unitId',
+      sortOrder: 'ASC',
+      searchMode: 'hybrid',
+      matchThreshold: 0.5,
+    };
+
+    // Trigger initial search after a short delay to ensure component is ready
+    setTimeout(() => {
+      performSearch(initialFilters);
+    }, 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Debounced search suggestions
   useEffect(() => {
@@ -117,18 +159,18 @@ export function EquipmentSearch() {
     const timeoutId = setTimeout(async () => {
       try {
         const response = await fetch(
-          `/api/equipment/search/suggestions?query=${encodeURIComponent(searchTerm)}&limit=5`
+          `/api/equipment/search/suggestions?query=${encodeURIComponent(searchTerm)}`
         );
         if (response.ok) {
           const data = await response.json();
-          const allSuggestions = [
-            ...data.units,
-            ...data.models,
-            ...data.makes,
-            ...data.locations,
-          ].slice(0, 5);
-          setSuggestions(allSuggestions);
-          setShowSuggestions(true);
+          const allSuggestions = data.suggestions || [];
+
+          // Show "Did you mean?" if there's a high-similarity suggestion (>= 0.5)
+          const bestSuggestion = allSuggestions.find((s: { similarity: number }) => s.similarity >= 0.5);
+          setDidYouMean(bestSuggestion ? bestSuggestion.suggestion : null);
+
+          setSuggestions(allSuggestions.slice(0, 5));
+          setShowSuggestions(allSuggestions.length > 0);
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
@@ -148,41 +190,105 @@ export function EquipmentSearch() {
   }, [searchTerm]);
 
   // Perform search
-  const performSearch = useCallback(async (searchFilters: SearchFilters) => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/equipment/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(searchFilters),
-      });
+  const performSearch = useCallback(
+    async (searchFilters: SearchFilters) => {
+      setLoading(true);
+      try {
+        // Always use hybrid/semantic search - no option to disable
+        const searchFiltersWithMode = {
+          ...searchFilters,
+          searchMode: 'hybrid' as const, // Always use hybrid search
+          matchThreshold: 0.5, // Fixed threshold
+        };
 
-      if (response.ok) {
-        const data = await response.json();
-        setResults(data);
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-          logger.error('Search failed:', {
+        const response = await fetch('/api/equipment/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(searchFiltersWithMode),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          logger.debug('Search response received', {
             component: 'EquipmentSearch',
-            action: 'error',
-            metadata: { statusText: response.statusText },
+            action: 'search_response',
+            metadata: {
+              hasData: !!data,
+              equipmentCount: data?.equipment?.length || 0,
+              total: data?.total || 0,
+              searchMode: data?.searchMode,
+            },
+          });
+          setResults(data);
+
+          // Update active search mode and embedding availability
+          if (data.searchMode) {
+            setActiveSearchMode(data.searchMode);
+            // If semantic/hybrid search worked, embeddings are available
+            if (data.searchMode === 'semantic' || data.searchMode === 'hybrid') {
+              setEmbeddingAvailable(true);
+            }
+          }
+
+          // Update embedding availability if no embeddings found
+          if (data.fallbackReason && data.fallbackReason.includes('No embeddings found')) {
+            setEmbeddingAvailable(false);
+          }
+        } else {
+          // Get error message from response
+          let errorMessage = 'Search failed';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.details || errorMessage;
+          } catch {
+            errorMessage = response.statusText || errorMessage;
+          }
+
+            logger.error('Search failed:', {
+              component: 'EquipmentSearch',
+              action: 'error',
+            metadata: { statusText: response.statusText, errorMessage },
+            });
+
+          // Show error to user
+          warning('Search Error', errorMessage);
+
+          // Set empty results so UI shows "No results" instead of hanging
+          setResults({
+            equipment: [],
+            total: 0,
+            page: 1,
+            limit: filters.limit || 20,
+            totalPages: 0,
           });
         }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+          logger.error(
+            'Search error:',
+          { component: 'EquipmentSearch', action: 'error', metadata: { errorMessage } },
+            error instanceof Error ? error : new Error(String(error))
+          );
+
+        // Show error to user
+        warning('Search Error', errorMessage);
+
+        // Set empty results
+        setResults({
+          equipment: [],
+          total: 0,
+          page: 1,
+          limit: filters.limit || 20,
+          totalPages: 0,
+        });
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.error(
-          'Search error:',
-          { component: 'EquipmentSearch', action: 'error' },
-          error instanceof Error ? error : new Error(String(error))
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [warning]
+  );
 
   // Handle search term change
   const handleSearchChange = (value: string) => {
@@ -205,11 +311,13 @@ export function EquipmentSearch() {
   };
 
   // Handle suggestion selection
-  const handleSuggestionSelect = (suggestion: string) => {
-    setSearchTerm(suggestion);
-    setFilters((prev) => ({ ...prev, query: suggestion, page: 1 }));
+  const handleSuggestionSelect = (suggestion: string | { suggestion: string }) => {
+    const suggestionText = typeof suggestion === 'string' ? suggestion : suggestion.suggestion;
+    setSearchTerm(suggestionText);
+    setFilters((prev) => ({ ...prev, query: suggestionText, page: 1 }));
     setShowSuggestions(false);
-    performSearch({ ...filters, query: suggestion, page: 1 });
+    setDidYouMean(null);
+    performSearch({ ...filters, query: suggestionText, page: 1 });
   };
 
   // Handle pagination
@@ -226,6 +334,8 @@ export function EquipmentSearch() {
       limit: 20,
       sortBy: 'unitId',
       sortOrder: 'ASC',
+      searchMode: 'hybrid', // Always use hybrid/semantic search
+      matchThreshold: 0.5, // Fixed threshold
     };
     setFilters(clearedFilters);
     setSearchTerm('');
@@ -271,38 +381,70 @@ export function EquipmentSearch() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-5 w-5 text-gray-400" />
+        <div className="space-y-2">
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by unit ID, model, make, or location..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onFocus={() => setShowSuggestions(true)}
+              className="focus:ring-kubota-orange block w-full rounded-md border border-gray-300 bg-white py-3 pl-10 pr-3 leading-5 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-2"
+            />
+            <button
+              onClick={handleSearch}
+              className="absolute inset-y-0 right-0 flex items-center pr-3"
+            >
+              <span className="bg-kubota-orange focus:ring-kubota-orange inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2">
+                Search
+              </span>
+            </button>
           </div>
-          <input
-            type="text"
-            placeholder="Search by unit ID, model, make, or location..."
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            onFocus={() => setShowSuggestions(true)}
-            className="focus:ring-kubota-orange block w-full rounded-md border border-gray-300 bg-white py-3 pl-10 pr-3 leading-5 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-2"
-          />
-          <button
-            onClick={handleSearch}
-            className="absolute inset-y-0 right-0 flex items-center pr-3"
-          >
-            <span className="bg-kubota-orange focus:ring-kubota-orange inline-flex items-center rounded-md border border-transparent px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2">
-              Search
-            </span>
-          </button>
+
+          {/* Embedding Availability Badge (Optional - only show if unavailable) */}
+          {embeddingAvailable === false && (
+          <div className="flex items-center space-x-2">
+              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-xs font-medium text-yellow-800">
+                <AlertCircle className="mr-1 h-3 w-3" />
+                AI Search Unavailable
+              </span>
+            </div>
+            )}
+
+          {/* "Did you mean?" Suggestion */}
+          {didYouMean && didYouMean.toLowerCase() !== searchTerm.toLowerCase() && (
+            <div className="mt-2 flex items-center gap-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <span>Did you mean:</span>
+              <button
+                onClick={() => {
+                  setSearchTerm(didYouMean);
+                  setDidYouMean(null);
+                  handleSearch();
+                }}
+                className="font-semibold text-blue-600 underline hover:text-blue-800"
+              >
+                {didYouMean}
+              </button>
+          </div>
+          )}
 
           {/* Search Suggestions */}
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              {suggestions.map((suggestion: unknown, index: unknown) => (
+              {suggestions.map((suggestion, index: number) => (
                 <button
                   key={index}
-                  onClick={() => handleSuggestionSelect(suggestion)}
+                  onClick={() => handleSuggestionSelect(suggestion.suggestion)}
                   className="w-full px-4 py-2 text-left text-sm text-gray-900 hover:bg-gray-100"
                 >
-                  {suggestion}
+                  <span className="font-medium">{suggestion.suggestion}</span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    ({suggestion.sourceType}) - {Math.round(suggestion.similarity * 100)}% match
+                  </span>
                 </button>
               ))}
             </div>
@@ -321,7 +463,12 @@ export function EquipmentSearch() {
 
       {/* Search Results */}
       {results && (
-        <SearchResults results={results} loading={loading} onPageChange={handlePageChange} />
+        <SearchResults
+          results={results}
+          loading={loading}
+          onPageChange={handlePageChange}
+          searchMode={results.searchMode || activeSearchMode}
+        />
       )}
 
       {/* No Results Message */}

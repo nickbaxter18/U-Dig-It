@@ -14,6 +14,7 @@ import { useSpinWheel } from '@/hooks/useSpinWheel';
 
 import NotificationCenter from './NotificationCenter';
 import SpinWheel from './SpinWheel';
+import { UserAvatar } from './UserAvatar';
 
 export default function Navigation() {
   const { user, role, loading: isLoading, signOut } = useAuth();
@@ -24,8 +25,27 @@ export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showSpinWheelBanner, setShowSpinWheelBanner] = useState(false);
+  const [bannerLoading, setBannerLoading] = useState(true);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Fetch banner visibility setting
+  useEffect(() => {
+    const fetchBannerConfig = async () => {
+      try {
+        const response = await fetch('/api/config/banner');
+        const data = await response.json();
+        setShowSpinWheelBanner(data.spinWheelBanner === true);
+      } catch {
+        // Default to showing banner if fetch fails
+        setShowSpinWheelBanner(true);
+      } finally {
+        setBannerLoading(false);
+      }
+    };
+    fetchBannerConfig();
+  }, []);
 
   // Debug profile dropdown state
   useEffect(() => {
@@ -127,39 +147,41 @@ export default function Navigation() {
   return (
     <>
       {/* Promotional Banner - Premium Polished Effect (Fixed at Top Only) */}
-      <div className="relative z-30 overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black px-4 py-2.5 text-center text-white shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(0,0,0,0.6)] transition-all duration-700 ease-out">
-        {/* Glossy Shine Effect - Top */}
-        <div className="pointer-events-none absolute left-0 right-0 top-0 h-[50%] bg-gradient-to-b from-white/15 via-white/5 to-transparent transition-all duration-700 ease-out"></div>
+      {!bannerLoading && showSpinWheelBanner && (
+        <div className="relative z-30 overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black px-4 py-2.5 text-center text-white shadow-[0_4px_20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(0,0,0,0.6)] transition-all duration-700 ease-out">
+          {/* Glossy Shine Effect - Top */}
+          <div className="pointer-events-none absolute left-0 right-0 top-0 h-[50%] bg-gradient-to-b from-white/15 via-white/5 to-transparent transition-all duration-700 ease-out"></div>
 
-        {/* Depth Shadow - Bottom Inner */}
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/50 via-black/15 to-transparent transition-all duration-700 ease-out"></div>
+          {/* Depth Shadow - Bottom Inner */}
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[40%] bg-gradient-to-t from-black/50 via-black/15 to-transparent transition-all duration-700 ease-out"></div>
 
-        {/* Premium Edge Highlights */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#E1BC56]/30 to-transparent transition-all duration-700 ease-out"></div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent transition-all duration-700 ease-out"></div>
+          {/* Premium Edge Highlights */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#E1BC56]/30 to-transparent transition-all duration-700 ease-out"></div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent transition-all duration-700 ease-out"></div>
 
-        <div className="relative z-10 mx-auto flex max-w-7xl items-center justify-center gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <svg
-              className="h-4 w-4 text-[#E1BC56] drop-shadow-[0_2px_8px_rgba(225,188,86,0.4)]"
-              fill="currentColor"
-              viewBox="0 0 20 20"
+          <div className="relative z-10 mx-auto flex max-w-7xl items-center justify-center gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-4 w-4 text-[#E1BC56] drop-shadow-[0_2px_8px_rgba(225,188,86,0.4)]"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+              <span className="font-medium drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                <span className="text-[#E1BC56]">Special Offer:</span> Win Up To $100 Off Your First
+                Rental
+              </span>
+            </div>
+            <button
+              onClick={openSpinWheel}
+              className="btn-banner-clean rounded-md px-3 py-1.5 text-xs font-medium"
             >
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-            <span className="font-medium drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
-              <span className="text-[#E1BC56]">Special Offer:</span> Win Up To $100 Off Your First
-              Rental
-            </span>
+              Claim Offer
+            </button>
           </div>
-          <button
-            onClick={openSpinWheel}
-            className="btn-banner-clean rounded-md px-3 py-1.5 text-xs font-medium"
-          >
-            Claim Offer
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Main Navigation - Premium Effect with Solid Background */}
       <nav
@@ -342,23 +364,13 @@ export default function Navigation() {
                       className="flex items-center space-x-2 rounded-lg border border-gray-200 px-3 py-1.5 transition-colors hover:bg-gray-50"
                       aria-label="User menu"
                     >
-                      <div className="relative h-8 w-8 overflow-hidden rounded-full bg-gradient-to-br from-[#E1BC56] to-[#d4af4a]">
-                        {user.user_metadata?.avatar_url ? (
-                          <img
-                            src={user.user_metadata.avatar_url}
-                            alt="Profile"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <span className="text-sm font-semibold text-gray-900">
-                              {user.user_metadata?.firstName?.charAt(0) ||
-                                user.email?.charAt(0).toUpperCase() ||
-                                'U'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={user.user_metadata?.avatar_url}
+                        firstName={user.user_metadata?.firstName}
+                        lastName={user.user_metadata?.lastName}
+                        email={user.email}
+                        size="sm"
+                      />
                       <span className="text-sm font-medium text-gray-700">
                         {user.user_metadata?.firstName || 'User'}
                       </span>
@@ -736,23 +748,14 @@ export default function Navigation() {
                 {user ? (
                   <div className="mt-4 space-y-1 border-t border-gray-100 pt-4">
                     <div className="mb-2 flex items-center rounded-lg bg-gray-50 px-4 py-3">
-                      <div className="relative mr-3 h-10 w-10 overflow-hidden rounded-full bg-gradient-to-br from-[#E1BC56] to-[#d4af4a]">
-                        {user.user_metadata?.avatar_url ? (
-                          <img
-                            src={user.user_metadata.avatar_url}
-                            alt="Profile"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <span className="font-semibold text-gray-900">
-                              {user.user_metadata?.firstName?.charAt(0) ||
-                                user.email?.charAt(0).toUpperCase() ||
-                                'U'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={user.user_metadata?.avatar_url}
+                        firstName={user.user_metadata?.firstName}
+                        lastName={user.user_metadata?.lastName}
+                        email={user.email}
+                        size="md"
+                        className="mr-3"
+                      />
                       <div>
                         <p className="truncate text-sm font-semibold text-gray-900">
                           {user.user_metadata?.firstName || 'User'}

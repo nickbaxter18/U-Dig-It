@@ -90,21 +90,19 @@ export const GET = withRateLimit(
         return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
       }
 
-      const serviceClient = createServiceClient();
+      const serviceClient = await createServiceClient();
 
       let downloadUrl: string | null = null;
-      let storageBucket: string | null = null;
       let storagePath: string | null = null;
 
+      // Determine the storage path to use
       if (contract.signedDocumentPath) {
-        storageBucket = 'signed-contracts';
         storagePath = contract.signedDocumentPath;
       }
 
       if (!storagePath && contract.signedDocumentUrl) {
         const parsed = parseStorageUrl(contract.signedDocumentUrl);
         if (parsed) {
-          storageBucket = parsed.bucket;
           storagePath = parsed.path;
         }
       }
@@ -112,70 +110,82 @@ export const GET = withRateLimit(
       if (!storagePath && contract.documentUrl) {
         const parsed = parseStorageUrl(contract.documentUrl);
         if (parsed) {
-          storageBucket = parsed.bucket;
           storagePath = parsed.path;
-        } else {
+        } else if (contract.documentUrl.startsWith('http')) {
+          // It's an external URL, use directly
           downloadUrl = contract.documentUrl;
         }
       }
 
-      if (!storageBucket && contract.signedDocumentPath) {
-        storageBucket = 'signed-contracts';
-      }
+      // Try to generate signed URL from storage
+      if (!downloadUrl && storagePath) {
+        // Try multiple bucket names (codebase uses both 'signed-contracts' and 'contracts')
+        const bucketsToTry = ['signed-contracts', 'contracts'];
 
-      if (!downloadUrl) {
-        if (!storageBucket || !storagePath) {
-          return NextResponse.json({ error: 'Contract PDF not yet generated' }, { status: 404 });
-        }
+        for (const bucketName of bucketsToTry) {
+          if (downloadUrl) break;
 
-        const bucketClient = supabase.storage.from(storageBucket);
-        const { data: signedData, error: signedError } = await bucketClient.createSignedUrl(
-          storagePath,
-          SIGNED_URL_TTL_SECONDS
-        );
+          // Try with service client first (bypasses RLS)
+          if (serviceClient) {
+            const { data: serviceSignedData, error: serviceSignedError } = await serviceClient.storage
+              .from(bucketName)
+              .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
 
-        if (signedError) {
-          logger.warn('Primary client failed to create signed URL', {
-            component: 'contracts-download-api',
-            action: 'signed_url_warning',
-            metadata: {
-              bucket: storageBucket,
-              path: storagePath,
-              error: signedError.message,
-            },
-          });
-        } else {
-          downloadUrl = signedData?.signedUrl ?? null;
-        }
+            if (!serviceSignedError && serviceSignedData?.signedUrl) {
+              downloadUrl = serviceSignedData.signedUrl;
+              logger.info('Service client created signed URL', {
+                component: 'contracts-download-api',
+                action: 'signed_url_success',
+                metadata: { bucket: bucketName, path: storagePath },
+              });
+              break;
+            }
 
-        if (!downloadUrl && serviceClient) {
-          const { data: serviceSignedData, error: serviceSignedError } = await serviceClient.storage
-            .from(storageBucket)
+            logger.warn('Service client failed for bucket', {
+              component: 'contracts-download-api',
+              action: 'signed_url_attempt',
+              metadata: {
+                bucket: bucketName,
+                path: storagePath,
+                error: serviceSignedError?.message,
+              },
+            });
+          }
+
+          // Fallback to regular client
+          const { data: signedData, error: signedError } = await supabase.storage
+            .from(bucketName)
             .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
 
-          if (serviceSignedError) {
-            logger.error(
-              'Service role failed to create signed URL for contract',
-              {
-                component: 'contracts-download-api',
-                action: 'signed_url_error',
-                metadata: {
-                  bucket: storageBucket,
-                  path: storagePath,
-                  error: serviceSignedError.message,
-                },
-              },
-              serviceSignedError
-            );
-          } else {
-            downloadUrl = serviceSignedData?.signedUrl ?? null;
+          if (!signedError && signedData?.signedUrl) {
+            downloadUrl = signedData.signedUrl;
+            logger.info('Regular client created signed URL', {
+              component: 'contracts-download-api',
+              action: 'signed_url_success',
+              metadata: { bucket: bucketName, path: storagePath },
+            });
+            break;
           }
         }
       }
 
+      // Final fallback to stored URLs
       if (!downloadUrl) {
-        if (!contract.signedDocumentUrl && !contract.documentUrl) {
+        if (!contract.signedDocumentUrl && !contract.documentUrl && !storagePath) {
           return NextResponse.json({ error: 'Contract PDF not yet generated' }, { status: 404 });
+        }
+
+        // If we have a storage path but couldn't generate URL, return more specific error
+        if (storagePath) {
+          logger.error('Failed to generate signed URL for contract from any bucket', {
+            component: 'contracts-download-api',
+            action: 'signed_url_failed',
+            metadata: { storagePath, contractId },
+          });
+          return NextResponse.json({
+            error: 'Failed to generate signed URL',
+            details: 'Contract file may not exist in storage'
+          }, { status: 500 });
         }
 
         downloadUrl = contract.signedDocumentUrl ?? contract.documentUrl ?? null;

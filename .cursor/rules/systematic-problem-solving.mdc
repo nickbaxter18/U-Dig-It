@@ -1,0 +1,430 @@
+---
+description: "Systematic problem-solving frameworks and decision trees for common development scenarios. Provides practical decision frameworks integrated with existing codebase patterns, systematic problem decomposition, and solution validation. Use when encountering bugs, implementing features, optimizing performance, or making architectural decisions."
+alwaysApply: false
+---
+
+# Systematic Problem-Solving Framework
+
+## 🎯 Purpose
+Provides practical decision frameworks and systematic approaches for solving problems in this codebase. Integrates with existing workflows and patterns to ensure consistent, high-quality solutions.
+
+---
+
+## Core Problem-Solving Principles
+
+1. **Pattern Match First** - Check if problem matches known patterns before creating new solutions
+2. **Reference Existing Code** - Use actual codebase implementations as examples
+3. **Follow Workflows** - Apply established workflows for consistency
+4. **Validate Solutions** - Verify solutions work and don't introduce new issues
+5. **Document Decisions** - Update relevant documentation automatically
+
+---
+
+## Decision Frameworks
+
+### Framework 1: Bug Investigation
+
+When encountering a bug, follow this systematic approach:
+
+1. **Reproduce**
+   - Can I reproduce it? What are the exact steps?
+   - What environment does it occur in? (dev, staging, production)
+   - Is it consistent or intermittent?
+
+2. **Isolate**
+   - What component/API/system is involved?
+   - What changed recently? (check git history)
+   - Is it a frontend, backend, or database issue?
+
+3. **Pattern Match**
+   - Does this match a known pattern from `CODING_SAVANT_PATTERNS.mdc`?
+   - Check self-healing patterns: RLS blocks, port conflicts, NULL handling, etc.
+   - Reference: `.cursor/rules/CODING_SAVANT_PATTERNS.mdc`
+
+4. **Check Logs**
+   - Use structured logger patterns from `@frontend/src/lib/logger.ts`
+   - Check error signature: `logger.error('message', context, error)` - error LAST
+   - Review Supabase logs: `mcp_supabase_get_logs({ service: 'api' })`
+
+5. **Verify Fix**
+   - Test with existing test patterns
+   - Verify no regressions introduced
+   - Check related components still work
+
+**Example**: Silent failure in webhook
+- Pattern match: RLS Policy Blocks Update (Pattern 1 in CODING_SAVANT_PATTERNS.mdc)
+- Check: Using service client? `createServiceClient()` vs `createClient()`
+- Reference: `@frontend/src/app/api/webhooks/idkit/route.ts:79`
+
+---
+
+### Framework 2: Feature Implementation
+
+When implementing a feature, follow this workflow:
+
+1. **Check Reference Docs**
+   - Review `@docs/reference/COMPONENT_INDEX.md` for similar components
+   - Review `@docs/reference/API_ROUTES_INDEX.md` for similar endpoints
+   - Check `@docs/reference/AI_CODING_REFERENCE.md` for patterns
+
+2. **Find Similar Patterns**
+   - Search codebase for similar implementations
+   - Use `codebase_search` to find related code
+   - Review actual implementations, not generic examples
+
+3. **Follow Workflow**
+   - Component: Use `workflows/component-development.mdc`
+   - API Route: Use `workflows/api-route-development.mdc`
+   - Database: Use `workflows/database-migration.mdc`
+   - Feature: Use `workflows/feature-development.mdc`
+
+4. **Validate**
+   - Run through post-implementation checklist
+   - Check lints: `read_lints`
+   - Run type check: `pnpm type-check`
+   - Test in browser if applicable
+
+5. **Document**
+   - Auto-update reference docs (COMPONENT_INDEX.md, API_ROUTES_INDEX.md)
+   - Update relevant AGENTS.md files
+   - Document any new patterns discovered
+
+**Example**: New booking component needed
+- Check: `@docs/reference/COMPONENT_INDEX.md` - Does similar component exist?
+- Pattern: `@frontend/src/components/EnhancedBookingFlowV2.tsx:97-740`
+- Workflow: `workflows/component-development.mdc`
+- Update: Auto-update COMPONENT_INDEX.md
+
+---
+
+### Framework 3: Performance Issues
+
+When performance is slow, systematically identify and fix:
+
+1. **Identify Bottleneck**
+   - Database query? Component render? Network?
+   - Use browser DevTools for frontend
+   - Check Supabase query performance: `mcp_supabase_get_advisors({ type: 'performance' })`
+   - Review logs for slow operations
+
+2. **Check Patterns**
+   - Review `CODING_SAVANT_PATTERNS.mdc` for optimization patterns
+   - Query optimization: Specific columns, pagination, indexes
+   - Component optimization: Memoization, lazy loading
+
+3. **Use Specific Columns**
+   - Never `SELECT *` (60% payload reduction)
+   - Always specify columns: `.select('id, name, status')`
+   - Reference: `@frontend/src/app/api/bookings/route.ts:147-153`
+
+4. **Add Indexes**
+   - Check RLS policy columns are indexed
+   - Index foreign keys, WHERE clause columns, sort columns
+   - Reference: `@supabase/migrations/20250122000004_add_critical_fk_indexes.sql`
+
+5. **Verify Improvement**
+   - Measure before/after
+   - Target: <20ms for queries, <1s for page loads
+   - Check advisors again: `mcp_supabase_get_advisors({ type: 'performance' })`
+
+**Example**: Query is slow (200ms+)
+- Check: Using `SELECT *`? → Replace with specific columns
+- Check: Filters indexed? → Add indexes for RLS policy columns
+- Check: Pagination missing? → Add `.range()` and `.limit()`
+- Verify: Should be <20ms after fixes
+- Reference: `@frontend/src/app/api/bookings/route.ts:147-153`
+
+---
+
+### Framework 4: Architecture Decisions
+
+When making architectural choices, consider all constraints:
+
+1. **Check Existing Patterns**
+   - Does codebase already have a pattern?
+   - Review similar implementations
+   - Check if pattern exists in rules
+
+2. **Review Rules**
+   - What do `SUPABASE.mdc`, `CORE.mdc` say?
+   - Check `CODING_SAVANT_PATTERNS.mdc` for codebase-specific patterns
+   - Review `SECURITY.mdc` for security considerations
+
+3. **Consider Constraints**
+   - Business logic: Booking workflows, pricing, operations
+   - Security: RLS policies, input validation, authentication
+   - Performance: Query optimization, caching, indexes
+   - Maintainability: Code reuse, documentation, testing
+
+4. **Test in Branch**
+   - Use Supabase branch for database changes
+   - Test thoroughly before merging
+   - Reference: `workflows/database-migration.mdc`
+
+5. **Document Decision**
+   - Update relevant AGENTS.md files
+   - Document rationale in code comments
+   - Update reference docs if new pattern
+
+**Example**: Need to add new database table
+- Check: Similar tables exist? Review schema patterns
+- Rules: Follow `SUPABASE.mdc` - snake_case, indexes, RLS
+- Test: Create branch, test migration
+- Document: Update DATABASE_SCHEMA.md
+
+---
+
+## Systematic Problem Decomposition
+
+### Step-by-Step Process
+
+1. **Understand**
+   - What is the actual problem? (Not symptoms)
+   - What is the expected behavior?
+   - What is the current behavior?
+
+2. **Decompose**
+   - Break into smaller, solvable pieces
+   - Identify dependencies between pieces
+   - Prioritize which pieces to solve first
+
+3. **Prioritize**
+   - Which piece should be solved first?
+   - What blocks other pieces?
+   - What has the most impact?
+
+4. **Pattern Match**
+   - Does this match existing patterns?
+   - Check `CODING_SAVANT_PATTERNS.mdc`
+   - Review similar code in codebase
+
+5. **Implement**
+   - Follow established workflows
+   - Use actual codebase patterns
+   - Reference real implementations
+
+6. **Validate**
+   - Test solution works
+   - Verify no regressions
+   - Check related components
+
+7. **Document**
+   - Update relevant documentation
+   - Document new patterns if discovered
+   - Update reference indexes
+
+---
+
+## Solution Validation Framework
+
+### Before Implementing
+
+Checklist:
+- [ ] Problem clearly understood?
+- [ ] Similar patterns checked?
+- [ ] Right workflow selected?
+- [ ] Constraints identified?
+- [ ] Reference docs reviewed?
+
+### After Implementing
+
+Checklist:
+- [ ] Solution works as expected?
+- [ ] Follows codebase patterns?
+- [ ] Tests pass?
+- [ ] Documentation updated?
+- [ ] No new issues introduced?
+- [ ] Lints pass: `read_lints`
+- [ ] Type check passes: `pnpm type-check`
+- [ ] Performance acceptable?
+
+---
+
+## Codebase-Specific Examples
+
+### Example 1: Query Performance Issue
+
+**Problem**: Query is slow (200ms+)
+
+**Decision Tree**:
+1. Check if using `SELECT *` → Replace with specific columns
+   - Pattern: `@frontend/src/app/api/bookings/route.ts:147-153`
+   - Impact: 60% payload reduction
+2. Check if filters are indexed → Add indexes for RLS policy columns
+   - Pattern: `@supabase/migrations/20250122000004_add_critical_fk_indexes.sql`
+   - Impact: 200ms → 15ms query time
+3. Check if pagination is missing → Add `.range()` and `.limit()`
+   - Pattern: Always paginate list queries
+4. Verify improvement → Should be <20ms
+
+**Reference**: `@frontend/src/app/api/bookings/route.ts:147-153`
+
+---
+
+### Example 2: Silent Failure
+
+**Problem**: Operation succeeds but data doesn't update
+
+**Decision Tree**:
+1. Check if using service client for webhooks → Use `createServiceClient()`
+   - Pattern: `CODING_SAVANT_PATTERNS.mdc` - Pattern 1: RLS Policy Blocks Update
+   - Reference: `@frontend/src/app/api/webhooks/idkit/route.ts:79`
+2. Check RLS policies → May be blocking update
+   - Pattern: Webhooks need service role client (bypasses RLS)
+3. Check error handling → May be swallowing errors
+   - Pattern: Use structured logger with error LAST
+   - Reference: `@frontend/src/lib/logger.ts:202-210`
+4. Check NULL handling → May cause trigger failures
+   - Pattern: Use `COALESCE()` in database triggers
+   - Reference: `CODING_SAVANT_PATTERNS.mdc` - Pattern 4: NULL Handling
+
+**Reference**: `CODING_SAVANT_PATTERNS.mdc` - Pattern 1: RLS Policy Blocks Update
+
+---
+
+### Example 3: New Component Needed
+
+**Problem**: Need to create a new component
+
+**Decision Tree**:
+1. Check `COMPONENT_INDEX.md` → Does similar component exist?
+   - Reference: `@docs/reference/COMPONENT_INDEX.md`
+2. Review component patterns → `@frontend/src/components/EnhancedBookingFlowV2.tsx`
+   - Props interface: line 105-109
+   - State management: line 110-128
+   - Validation: line 373-426
+3. Follow component workflow → Use `workflows/component-development.mdc`
+   - Pre-implementation: Check existing components
+   - Implementation: Follow structure from reference
+   - Post-implementation: Update docs, test
+4. Update documentation → Auto-update `COMPONENT_INDEX.md`
+
+**Reference**: `@frontend/src/components/EnhancedBookingFlowV2.tsx:97-740`
+
+---
+
+### Example 4: New API Route Needed
+
+**Problem**: Need to create a new API endpoint
+
+**Decision Tree**:
+1. Check `API_ROUTES_INDEX.md` → Does similar endpoint exist?
+   - Reference: `@docs/reference/API_ROUTES_INDEX.md`
+2. Review API route pattern → `@frontend/src/app/api/bookings/route.ts:72-297`
+   - 8-step pattern: Rate limit, validate, authenticate, sanitize, validate, process, log, respond
+3. Follow API workflow → Use `workflows/api-route-development.mdc`
+   - Pre-implementation: Check existing routes
+   - Implementation: Follow 8-step pattern
+   - Post-implementation: Update docs, test
+4. Update documentation → Auto-update `API_ROUTES_INDEX.md`
+
+**Reference**: `@frontend/src/app/api/bookings/route.ts:72-297`
+
+---
+
+### Example 5: Database Schema Change
+
+**Problem**: Need to modify database schema
+
+**Decision Tree**:
+1. Check existing schema → Review similar tables
+   - Reference: `@supabase/migrations/` for patterns
+2. Review migration patterns → Follow `SUPABASE.mdc`
+   - snake_case naming
+   - Indexes for foreign keys
+   - RLS policies
+   - Updated_at triggers
+3. Test in branch → Use `mcp_supabase_create_branch()`
+   - Apply migration: `mcp_supabase_apply_migration()`
+   - Test thoroughly
+   - Merge: `mcp_supabase_merge_branch()`
+4. Check advisors → `mcp_supabase_get_advisors({ type: 'security' })`
+   - Fix any security issues
+   - Fix any performance issues
+
+**Reference**: `workflows/database-migration.mdc`
+
+---
+
+## Integration with Existing Workflows
+
+### Component Development
+When creating components, use systematic problem-solving:
+1. Check existing components first (Framework 2)
+2. Follow component workflow
+3. Validate solution (Solution Validation Framework)
+
+### API Route Development
+When creating API routes, use systematic problem-solving:
+1. Check existing routes first (Framework 2)
+2. Follow 8-step pattern
+3. Validate solution (Solution Validation Framework)
+
+### Database Migration
+When modifying schema, use systematic problem-solving:
+1. Check existing patterns (Framework 4)
+2. Test in branch
+3. Validate with advisors
+
+### Feature Development
+When implementing features, use systematic problem-solving:
+1. Decompose feature (Systematic Problem Decomposition)
+2. Follow feature workflow
+3. Validate each piece
+
+---
+
+## Integration with Existing Rules
+
+### CODING_SAVANT_PATTERNS.mdc
+- Reference for known patterns
+- Use for pattern matching
+- Check before creating new solutions
+
+### SUPABASE.mdc
+- Database decisions
+- Query optimization
+- RLS policies
+
+### CORE.mdc
+- Code quality standards
+- TypeScript patterns
+- Error handling
+
+### SECURITY.mdc
+- Security considerations
+- Input validation
+- Authentication
+
+---
+
+## When to Use This Framework
+
+Use systematic problem-solving when:
+- Encountering bugs or errors
+- Implementing new features
+- Optimizing performance
+- Making architectural decisions
+- Refactoring code
+- Debugging issues
+
+Don't use for:
+- Simple, straightforward tasks (use workflows directly)
+- Tasks with clear, single-step solutions
+- Routine maintenance (follow established patterns)
+
+---
+
+## Success Criteria
+
+After using this framework:
+- ✅ Problems solved systematically
+- ✅ Existing patterns referenced
+- ✅ Workflows followed consistently
+- ✅ Solutions validated thoroughly
+- ✅ Documentation updated
+- ✅ No new issues introduced
+
+---
+
+**Remember**: Always pattern match first, reference existing code, follow workflows, and validate solutions!

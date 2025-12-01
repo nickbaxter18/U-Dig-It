@@ -4,6 +4,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 
+import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { PAYMENT_STATUS } from '@/lib/constants/payment-status';
+import { getErrorMessage } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
@@ -140,6 +143,71 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Recalculate balance before determining amount to ensure accuracy
+    // This ensures the balance reflects all completed payments (manual + Stripe)
+    const balanceBeforeRecalc = Number(booking.balance_amount ?? booking.totalAmount);
+    let recalculatedBalance: number | null = null;
+
+    if (paymentType === 'invoice') {
+      logger.info('Recalculating booking balance before checkout creation', {
+        component: 'create-checkout-session',
+        action: 'balance_recalculation_start',
+        metadata: {
+          bookingId,
+          balanceBeforeRecalc,
+          totalAmount: Number(booking.totalAmount),
+        },
+      });
+
+      recalculatedBalance = await recalculateBookingBalance(bookingId);
+
+      if (recalculatedBalance === null) {
+        logger.warn('Balance recalculation failed, using existing balance_amount', {
+          component: 'create-checkout-session',
+          action: 'balance_recalculation_failed',
+          metadata: {
+            bookingId,
+            balanceBeforeRecalc,
+            totalAmount: Number(booking.totalAmount),
+          },
+        });
+        // Graceful degradation: continue with existing balance_amount
+        recalculatedBalance = balanceBeforeRecalc;
+      } else {
+        logger.info('Balance recalculated successfully', {
+          component: 'create-checkout-session',
+          action: 'balance_recalculated',
+          metadata: {
+            bookingId,
+            balanceBeforeRecalc,
+            recalculatedBalance,
+            totalAmount: Number(booking.totalAmount),
+            balanceChange: recalculatedBalance - balanceBeforeRecalc,
+          },
+        });
+      }
+
+      // Fetch updated booking to get fresh balance_amount after recalculation
+      const { data: updatedBooking } = await supabase
+        .from('bookings')
+        .select('balance_amount, totalAmount')
+        .eq('id', bookingId)
+        .single();
+
+      if (updatedBooking) {
+        booking.balance_amount = updatedBooking.balance_amount;
+        logger.debug('Fetched updated booking balance', {
+          component: 'create-checkout-session',
+          action: 'updated_booking_fetched',
+          metadata: {
+            bookingId,
+            updatedBalanceAmount: updatedBooking.balance_amount,
+            recalculatedBalance,
+          },
+        });
+      }
+    }
+
     // Determine amount based on payment type
     // For invoice payments, use remaining balance_amount if available (supports partial payments)
     // For deposit payments, use securityDeposit
@@ -149,9 +217,13 @@ export async function POST(req: NextRequest) {
     if (paymentType === 'deposit') {
       amount = Number(booking.securityDeposit);
     } else {
-      // For invoice payments, use balance_amount if it exists and is less than totalAmount
+      // For invoice payments, use recalculated balance or balance_amount if it exists and is less than totalAmount
       const totalAmount = Number(booking.totalAmount);
-      const balanceAmount = Number(booking.balance_amount ?? totalAmount);
+      // Use recalculated balance if available, otherwise fall back to balance_amount or totalAmount
+      const balanceAmount =
+        recalculatedBalance !== null
+          ? recalculatedBalance
+          : Number(booking.balance_amount ?? totalAmount);
 
       // Use balance_amount if it's less than totalAmount (partial payment scenario)
       if (balanceAmount < totalAmount && balanceAmount > 0) {
@@ -191,6 +263,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Payment amount must be greater than 0' }, { status: 400 });
     }
 
+    // Fetch all payments for debugging
+    const { data: allManualPayments } = await supabase
+      .from('manual_payments')
+      .select('id, amount, status')
+      .eq('booking_id', bookingId)
+      .is('deleted_at', null);
+
+    const { data: allStripePayments } = await supabase
+      .from('payments')
+      .select('id, amount, status, type')
+      .eq('bookingId', bookingId);
+
+    const manualPaymentsCompleted = (allManualPayments ?? [])
+      .filter((p) => p.status === PAYMENT_STATUS.COMPLETED)
+      .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+    const stripePaymentsCompleted = (allStripePayments ?? [])
+      .filter((p) => p.status === PAYMENT_STATUS.COMPLETED)
+      .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+    const totalCollected = manualPaymentsCompleted + stripePaymentsCompleted;
+
     logger.info('Creating Stripe checkout session', {
       component: 'create-checkout-session',
       action: 'stripe_create',
@@ -201,6 +293,17 @@ export async function POST(req: NextRequest) {
         isPartialPayment,
         totalAmount: Number(booking.totalAmount),
         balanceAmount: Number(booking.balance_amount ?? booking.totalAmount),
+        recalculatedBalance: recalculatedBalance !== null ? recalculatedBalance : undefined,
+        balanceBeforeRecalc: paymentType === 'invoice' ? balanceBeforeRecalc : undefined,
+        // Payment breakdown for debugging
+        manualPaymentsCount: allManualPayments?.length ?? 0,
+        manualPaymentsCompleted,
+        manualPaymentsPending: (allManualPayments ?? []).filter((p) => p.status === 'pending').length,
+        stripePaymentsCount: allStripePayments?.length ?? 0,
+        stripePaymentsCompleted,
+        stripePaymentsPending: (allStripePayments ?? []).filter((p) => p.status === 'pending').length,
+        totalCollected,
+        calculatedOutstanding: Number(booking.totalAmount) - totalCollected,
         customerEmail: booking.customer.email,
       },
     });
@@ -326,22 +429,24 @@ export async function POST(req: NextRequest) {
       sessionId: session.id,
     });
   } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error);
+    const errorObj = error instanceof Error ? error : undefined;
     logger.error(
       'Checkout session creation error',
       {
         component: 'create-checkout-session',
         action: 'error',
         metadata: {
-          message: error.message,
-          stack: error.stack,
+          message: errorMessage,
+          stack: errorObj?.stack,
         },
       },
-      error
+      errorObj
     );
 
     return NextResponse.json(
       {
-        error: error.message || 'Failed to create checkout session',
+        error: errorMessage || 'Failed to create checkout session',
       },
       { status: 500 }
     );

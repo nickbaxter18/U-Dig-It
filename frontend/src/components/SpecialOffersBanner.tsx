@@ -1,11 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function SpecialOffersBanner() {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false); // Start hidden until we know the admin setting
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!isVisible) return null;
+  useEffect(() => {
+    // Check if user previously dismissed the banner this session
+    const dismissed = sessionStorage.getItem('bannerDismissed') === 'true';
+    if (dismissed) {
+      setIsDismissed(true);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fetch the admin setting for banner visibility
+    const fetchBannerConfig = async () => {
+      try {
+        const response = await fetch('/api/config/banner');
+        const data = await response.json();
+        setIsVisible(data.enabled === true);
+      } catch {
+        // If fetch fails, default to hidden to be safe
+        setIsVisible(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBannerConfig();
+  }, []);
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    sessionStorage.setItem('bannerDismissed', 'true');
+  };
+
+  // Don't show if loading, dismissed, or disabled by admin
+  if (isLoading || isDismissed || !isVisible) return null;
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-[#A90F0F] via-red-600 to-[#8B0A0A] px-4 py-1 text-white shadow-[0_4px_20px_rgba(169,15,15,0.45),inset_0_1px_0_rgba(255,255,255,0.2),inset_0_-1px_0_rgba(0,0,0,0.3)] transition-all duration-700 ease-out md:py-3">
@@ -43,7 +77,7 @@ export default function SpecialOffersBanner() {
               </svg>
             </a>
             <button
-              onClick={() => setIsVisible(false)}
+              onClick={handleDismiss}
               className="flex-shrink-0 rounded-full p-0.5 transition-colors hover:bg-white/20"
               aria-label="Close banner"
             >
@@ -102,7 +136,7 @@ export default function SpecialOffersBanner() {
 
           {/* Close Button - Desktop only (mobile has it integrated above) */}
           <button
-            onClick={() => setIsVisible(false)}
+            onClick={handleDismiss}
             className="hidden flex-shrink-0 rounded-full p-1 transition-colors hover:bg-white/20 md:block"
             aria-label="Close banner"
           >

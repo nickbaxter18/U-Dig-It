@@ -37,6 +37,7 @@ export default function PaymentSection({
   // Extract values from booking
   const bookingId = booking.id;
   const totalAmount = Number(booking.totalAmount);
+  const balanceAmount = booking.balanceAmount !== undefined && booking.balanceAmount !== null ? Number(booking.balanceAmount) : null;
   const depositAmount = Number(booking.securityDeposit);
 
   // Validate UUID format
@@ -89,7 +90,7 @@ export default function PaymentSection({
 
   // Determine which type this is
   const isDeposit = paymentType === 'deposit';
-  const amount = isDeposit ? depositAmount : totalAmount;
+  const amount = isDeposit ? depositAmount : (balanceAmount ?? totalAmount);
   // For deposits, check if card is verified; for payments, check if paid
   const isPaid = isDeposit
     ? false

@@ -1,11 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 
+import { getErrorMessage } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { createClient } from '@/lib/supabase/client';
+import { typedUpdate } from '@/lib/supabase/typed-helpers';
 
 interface ProfilePictureUploadProps {
   currentAvatarUrl?: string | null;
@@ -30,7 +32,7 @@ interface ProfilePictureUploadProps {
  */
 export default function ProfilePictureUpload({
   currentAvatarUrl,
-  onUploadSuccess,
+  onUploadSuccess: _onUploadSuccess,
   size = 'medium',
 }: ProfilePictureUploadProps) {
   const { user } = useAuth();
@@ -41,6 +43,12 @@ export default function ProfilePictureUpload({
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Reset image error when the avatar URL changes (e.g., from another session/upload)
+  useEffect(() => {
+    setImageError(false);
+  }, [currentAvatarUrl]);
 
   // Size configurations
   const sizeClasses = {
@@ -80,9 +88,9 @@ export default function ProfilePictureUpload({
    * Compress and optimize image before upload
    */
   const optimizeImage = async (file: File): Promise<Blob> => {
-    return new Promise((resolve: unknown, reject: unknown) => {
+    return new Promise<Blob>((resolve: (value: Blob) => void, reject: (reason?: Error) => void) => {
       const reader = new FileReader();
-      reader.onload = (e: unknown) => {
+      reader.onload = (e: ProgressEvent<FileReader>) => {
         const img = document.createElement('img');
         img.onload = () => {
           // Create canvas for compression
@@ -111,7 +119,7 @@ export default function ProfilePictureUpload({
           ctx?.drawImage(img, 0, 0, width, height);
 
           canvas.toBlob(
-            (blob: unknown) => {
+            (blob: Blob | null) => {
               if (blob) {
                 resolve(blob);
               } else {
@@ -122,10 +130,10 @@ export default function ProfilePictureUpload({
             0.85 // 85% quality
           );
         };
-        img.onerror = () => reject(new Error('Failed to load image'));
+        img.onerror = (_e: Event | string) => reject(new Error('Failed to load image'));
         img.src = e.target?.result as string;
       };
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = (_e: ProgressEvent<FileReader>) => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
     });
   };
@@ -137,6 +145,7 @@ export default function ProfilePictureUpload({
     if (!file) return;
 
     setError(null);
+    setImageError(false); // Reset image error when new file is selected
 
     // Validate file
     const validation = validateFile(file);
@@ -205,16 +214,17 @@ export default function ProfilePictureUpload({
           }
         } catch (cleanupError: unknown) {
           // Non-critical error - continue with upload
+          const cleanupErrorMessage = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
           logger.warn('Error during old avatar cleanup (continuing)', {
             component: 'ProfilePictureUpload',
             action: 'cleanup_error',
-            metadata: { error: cleanupError.message },
+            metadata: { error: cleanupErrorMessage },
           });
         }
       }
 
       // ✅ Upload new avatar with UNIQUE filename
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, optimizedBlob, {
           contentType: 'image/webp',
@@ -240,11 +250,9 @@ export default function ProfilePictureUpload({
       if (updateError) throw updateError;
 
       // Also update users table for RLS access
-      const supabaseAny: any = supabase;
-      const { error: dbError } = await supabaseAny
-        .from('users')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
+      const { error: dbError } = await typedUpdate(supabase, 'users', {
+        avatar_url: publicUrl,
+      }).eq('id', user.id);
 
       if (dbError) {
         logger.warn('Failed to update users table (non-critical)', {
@@ -272,7 +280,8 @@ export default function ProfilePictureUpload({
         },
         err instanceof Error ? err : new Error(String(err))
       );
-      setError(err.message || 'Failed to upload profile picture. Please try again.');
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage || 'Failed to upload profile picture. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -346,8 +355,17 @@ export default function ProfilePictureUpload({
       if (updateError) throw updateError;
 
       // Update users table
-      const supabaseAny: any = supabase;
-      await supabaseAny.from('users').update({ avatar_url: null }).eq('id', user.id);
+      const { error: dbError } = await typedUpdate(supabase, 'users', {
+        avatar_url: null,
+      }).eq('id', user.id);
+
+      if (dbError) {
+        logger.warn('Failed to update users table (non-critical)', {
+          component: 'ProfilePictureUpload',
+          action: 'db_update_warning',
+          metadata: { error: dbError.message },
+        });
+      }
 
       logger.info('Avatar removed successfully', {
         component: 'ProfilePictureUpload',
@@ -366,14 +384,16 @@ export default function ProfilePictureUpload({
         },
         err instanceof Error ? err : new Error(String(err))
       );
-      setError(err.message || 'Failed to remove profile picture. Please try again.');
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage || 'Failed to remove profile picture. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
   // Get display URL (preview if uploading, otherwise current avatar)
-  const displayUrl = preview || currentAvatarUrl;
+  // Don't show if image failed to load (unless it's a new preview)
+  const displayUrl = preview || (imageError ? null : currentAvatarUrl);
 
   return (
     <div className="flex flex-col items-center">
@@ -386,7 +406,18 @@ export default function ProfilePictureUpload({
           onDrop={handleDrop}
         >
           {displayUrl ? (
-            <img src={displayUrl} alt="Profile picture" className="h-full w-full object-cover" />
+            <img
+              src={displayUrl}
+              alt="Profile picture"
+              className="h-full w-full object-cover"
+              onError={() => {
+                // Only set error for non-preview URLs (previews are local blobs)
+                if (!preview) {
+                  setImageError(true);
+                }
+              }}
+              referrerPolicy="no-referrer"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-white">
               <span
@@ -466,7 +497,7 @@ export default function ProfilePictureUpload({
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-        onChange={(e: unknown) => handleFileChange(e.target.files?.[0] || null)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFileChange(e.target.files?.[0] || null)}
         className="hidden"
         aria-label="Upload profile picture file"
       />

@@ -130,16 +130,82 @@ try {
 }
 ```
 
+## Dynamic Routes with Route Parameters
+
+### Next.js 16 Pattern (REQUIRED)
+
+In Next.js 16, route parameters are **Promises** and must be awaited before use.
+
+#### With `withRateLimit` (Recommended Pattern)
+
+```typescript
+export const PATCH = withRateLimit(
+  RateLimitPresets.STRICT,
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Await params in Next.js 16 (params is a Promise)
+    const { id } = await params;
+
+    // Now use id safely
+    const { data } = await supabase
+      .from('equipment')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    return NextResponse.json({ data });
+  }
+);
+```
+
+**Reference**: @frontend/src/app/api/admin/equipment/[id]/route.ts:39-136
+
+#### Without `withRateLimit` (Alternative Pattern)
+
+```typescript
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  // Handle params as either Promise or direct object (Next.js 16 compatibility)
+  const resolvedParams = params instanceof Promise ? await params : params;
+  const { id } = resolvedParams;
+
+  // Use id safely
+  return NextResponse.json({ id });
+}
+```
+
+**Reference**: @frontend/src/app/api/payments/receipt/[id]/route.ts:14-37
+
+#### ❌ WRONG - Old Pattern (DO NOT USE)
+
+```typescript
+// ❌ This will fail in Next.js 16
+export const PATCH = withRateLimit(
+  RateLimitPresets.STRICT,
+  async (request: NextRequest, context?: { params: { id: string } }) => {
+    const { params } = context;
+    // params.id is undefined because params is a Promise!
+    const { data } = await supabase.from('equipment').eq('id', params.id);
+  }
+);
+```
+
 ## Common Mistakes
 
 1. **Don't use regular client for webhooks** - use service client: `createServiceClient()` from `@/lib/supabase/service`
    - ✅ Correct: IDKit webhook: @frontend/src/app/api/webhooks/idkit/route.ts:79
    - ✅ Correct: SendGrid webhook: @frontend/src/app/api/webhooks/sendgrid/route.ts:19
    - ⚠️ Should update: Stripe webhook: @frontend/src/app/api/webhooks/stripe/route.ts:168
-2. **Always validate input server-side** - use Zod schemas
-3. **Always use structured logging** - logger.error('message', context, error) - error LAST
-4. **Always handle errors gracefully** - use try/catch with proper logging
-5. **Use specific columns in Supabase queries** - NEVER use `.select('*')` or `.select("*")`
+2. **Always await route params in Next.js 16** - params is a Promise, must be awaited
+   - ❌ **WRONG**: `{ params }: { params: { id: string } }` then `params.id`
+   - ✅ **CORRECT**: `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params`
+   - **Reference**: @frontend/src/app/api/admin/equipment/[id]/route.ts:39-136
+3. **Always validate input server-side** - use Zod schemas
+4. **Always use structured logging** - logger.error('message', context, error) - error LAST
+5. **Always handle errors gracefully** - use try/catch with proper logging
+6. **Use specific columns in Supabase queries** - NEVER use `.select('*')` or `.select("*")`
    - ❌ **FORBIDDEN**: `.select('*')` - Causes 60% larger payloads and slower queries
    - ✅ **REQUIRED**: `.select('id, name, status, createdAt')` - Use specific columns
    - **Performance Impact**: 60% payload reduction, 200ms → 15ms query time improvement

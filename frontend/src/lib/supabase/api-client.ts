@@ -1,14 +1,21 @@
-import type { TablesInsert } from '@/../../supabase/types';
+import type { TablesInsert, TablesUpdate } from '@/../../supabase/types';
 
 import { logger } from '@/lib/logger';
 
 import { supabase } from './client';
+import { typedInsert, typedUpdate } from './typed-helpers';
 
 // Type-safe API client
 export class SupabaseApiClient {
   // Equipment operations
   async getEquipment(id: string) {
-    const { data, error } = await supabase.from('equipment').select('*').eq('id', id).single();
+    const { data, error } = await supabase
+      .from('equipment')
+      .select(
+        'id, unitId, serialNumber, make, model, year, status, location, dailyRate, weeklyRate, monthlyRate, nextMaintenanceDue, lastMaintenanceDate, totalEngineHours, specifications, createdAt, updatedAt, type, description, replacementValue, overageHourlyRate, images, notes, hourly_rate, half_day_rate, minimum_rental_hours, dailyHourAllowance, weeklyHourAllowance'
+      )
+      .eq('id', id)
+      .single();
 
     if (error) throw error;
     return data;
@@ -20,7 +27,11 @@ export class SupabaseApiClient {
     page?: number;
     limit?: number;
   }) {
-    let query = supabase.from('equipment').select('*');
+    let query = supabase
+      .from('equipment')
+      .select(
+        'id, unitId, serialNumber, make, model, year, status, location, dailyRate, weeklyRate, monthlyRate, nextMaintenanceDue, lastMaintenanceDate, totalEngineHours, specifications, createdAt, updatedAt, type, description, replacementValue, overageHourlyRate, images, notes, hourly_rate, half_day_rate, minimum_rental_hours, dailyHourAllowance, weeklyHourAllowance'
+      );
 
     if (params?.category) {
       query = query.eq('type', params.category);
@@ -85,10 +96,7 @@ export class SupabaseApiClient {
 
   // Booking operations
   async createBooking(bookingData: TablesInsert<'bookings'>) {
-    const supabaseAny: any = supabase;
-    const { data, error } = await supabaseAny
-      .from('bookings')
-      .insert(bookingData)
+    const { data, error } = await typedInsert(supabase, 'bookings', bookingData)
       .select()
       .single();
 
@@ -99,6 +107,7 @@ export class SupabaseApiClient {
   async getBookings(filters?: { status?: string; userId?: string; page?: number; limit?: number }) {
     let query = supabase.from('bookings').select(`
         *,
+        balance_amount,
         equipment:equipmentId (
           id,
           model,
@@ -116,7 +125,8 @@ export class SupabaseApiClient {
       `);
 
     if (filters?.status) {
-      query = query.eq('status', filters.status as any);
+      // Type-safe status filter - status is a string that matches booking status enum
+      query = query.eq('status', filters.status);
     }
 
     if (filters?.userId) {
@@ -137,10 +147,7 @@ export class SupabaseApiClient {
 
   // Payment operations
   async createPayment(paymentData: TablesInsert<'payments'>) {
-    const supabaseAny: any = supabase;
-    const { data, error } = await supabaseAny
-      .from('payments')
-      .insert(paymentData)
+    const { data, error } = await typedInsert(supabase, 'payments', paymentData)
       .select()
       .single();
 
@@ -149,7 +156,11 @@ export class SupabaseApiClient {
   }
 
   async getPayments(bookingId?: string) {
-    let query = supabase.from('payments').select('*');
+    let query = supabase
+      .from('payments')
+      .select(
+        'id, amount, amountRefunded, stripePaymentIntentId, stripeCheckoutSessionId, processedAt, failedAt, failureReason, createdAt, updatedAt, refundedAt, refundReason, type, status, method, bookingId, paymentNumber, description, notes, stripeChargeId, stripeRefundId, stripeMetadata, webhookEvents, billingAddress'
+      );
 
     if (bookingId) {
       query = query.eq('bookingId', bookingId);
@@ -191,11 +202,11 @@ export class SupabaseApiClient {
     if (updateError) throw updateError;
 
     // Also update public.users table for consistency
-    const supabaseAny: any = supabase;
-
-    const { error: publicUpdateError } = await supabaseAny
-      .from('users')
-      .update(userData)
+    const { error: publicUpdateError } = await typedUpdate(
+      supabase,
+      'users',
+      userData as TablesUpdate<'users'>
+    )
       .eq('id', user.id);
 
     // Don't throw error if public.users update fails (metadata is source of truth)
@@ -217,7 +228,11 @@ export class SupabaseApiClient {
 
   // Contract operations
   async getContracts(bookingId?: string) {
-    let query = supabase.from('contracts').select('*');
+    let query = supabase
+      .from('contracts')
+      .select(
+        'id, bookingId, type, status, signedAt, signedDocumentUrl, createdAt, updatedAt, contractNumber, documentUrl, sentAt, sentForSignatureAt, completedAt, declinedAt, expiresAt, voidedAt, voidedBy, voidReason, notes, documentContent, signedDocumentContent, signedDocumentPath, documentId, documentMetadata, signatures, initialsCapture, auditTrail, legalVersions, docusignEnvelopeId, docusignData, opensign_envelope_id, opensign_document_id, opensign_status, opensign_data, equipment_rider_url, equipment_rider_signed_url, equipment_rider_data'
+      );
 
     if (bookingId) {
       query = query.eq('bookingId', bookingId);
@@ -230,7 +245,11 @@ export class SupabaseApiClient {
 
   // Insurance operations
   async getInsuranceDocuments(bookingId?: string) {
-    let query = supabase.from('insurance_documents').select('*');
+    let query = supabase
+      .from('insurance_documents')
+      .select(
+        'id, bookingId, type, status, fileUrl, createdAt, updatedAt, documentNumber, fileName, originalFileName, fileSize, mimeType, policyNumber, insuranceCompany, effectiveDate, expiresAt, reviewedAt, reviewedBy, reviewNotes, description, deductible, equipmentLimit, generalLiabilityLimit, additionalInsuredIncluded, lossPayeeIncluded, waiverOfSubrogationIncluded, extractedData, validationResults, metadata'
+      );
 
     if (bookingId) {
       query = query.eq('bookingId', bookingId);

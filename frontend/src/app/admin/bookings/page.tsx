@@ -84,55 +84,6 @@ interface LogisticsItem {
 const TABLE_PAGE_SIZE = 20;
 const CALENDAR_FETCH_LIMIT = 500;
 
-const OPERATIONAL_DRILLDOWNS: Array<{
-  id: string;
-  label: string;
-  description: string;
-  status?: string;
-}> = [
-  {
-    id: 'all',
-    label: 'All Bookings',
-    description: 'Show every booking in the system',
-  },
-  {
-    id: 'pending',
-    label: 'Pending Review',
-    description: 'Draft & pending approvals that need action',
-    status: 'pending',
-  },
-  {
-    id: 'confirmed',
-    label: 'Confirmed',
-    description: 'Approved bookings awaiting payment or scheduling',
-    status: 'confirmed',
-  },
-  {
-    id: 'paid',
-    label: 'Ready for Delivery',
-    description: 'Paid bookings ready to be dispatched',
-    status: 'paid' as const,
-  },
-  {
-    id: 'in_progress',
-    label: 'In Progress',
-    description: 'Equipment is on site or currently rented',
-    status: 'in_progress',
-  },
-  {
-    id: 'completed',
-    label: 'Completed',
-    description: 'Finished bookings ready for archival',
-    status: 'completed',
-  },
-  {
-    id: 'cancelled',
-    label: 'Cancelled',
-    description: 'Bookings that were cancelled or failed',
-    status: 'cancelled',
-  },
-];
-
 const normalizeStatusValue = (status?: string) => (status ? status.toLowerCase() : undefined);
 
 const formatStatusLabel = (status?: string | null) => {
@@ -676,13 +627,35 @@ export default function AdminBookingsPage() {
       setFilters((prev) => ({ ...prev, customerId: undefined, page: 1 }));
       fetchBookings({ customerId: undefined, page: 1 });
     }
-  }, [searchParams, filters.customerId, fetchBookings]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, filters.customerId]); // Removed fetchBookings to prevent infinite loop
 
+  // Initial data fetch - only run once on mount
   useEffect(() => {
     fetchBookings();
     fetchFlaggedBookings();
     fetchUpcomingDeliveries();
     fetchUpcomingReturns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run on mount
+
+  // Use refs to store latest functions for realtime subscription
+  const fetchBookingsRef = useRef(fetchBookings);
+  const fetchFlaggedBookingsRef = useRef(fetchFlaggedBookings);
+  const fetchUpcomingDeliveriesRef = useRef(fetchUpcomingDeliveries);
+  const fetchUpcomingReturnsRef = useRef(fetchUpcomingReturns);
+
+  // Update refs when functions change
+  useEffect(() => {
+    fetchBookingsRef.current = fetchBookings;
+    fetchFlaggedBookingsRef.current = fetchFlaggedBookings;
+    fetchUpcomingDeliveriesRef.current = fetchUpcomingDeliveries;
+    fetchUpcomingReturnsRef.current = fetchUpcomingReturns;
+  }, [fetchBookings, fetchFlaggedBookings, fetchUpcomingDeliveries, fetchUpcomingReturns]);
+
+  // Subscribe to real-time booking updates - only set up once
+  useEffect(() => {
+    let debounceTimer: NodeJS.Timeout | null = null;
 
     // Subscribe to real-time booking updates using Supabase Realtime
     const channel = supabase
@@ -703,12 +676,16 @@ export default function AdminBookingsPage() {
             });
           }
           // Debounce real-time updates to prevent excessive refreshes
-          setTimeout(() => {
-            fetchBookings();
-            fetchFlaggedBookings();
-            fetchUpcomingDeliveries();
-            fetchUpcomingReturns();
-          }, 500);
+          if (debounceTimer) {
+            clearTimeout(debounceTimer);
+          }
+          debounceTimer = setTimeout(() => {
+            // Use refs to access latest functions
+            fetchBookingsRef.current();
+            fetchFlaggedBookingsRef.current();
+            fetchUpcomingDeliveriesRef.current();
+            fetchUpcomingReturnsRef.current();
+          }, 1000); // Increased debounce to 1 second
         }
       )
       .subscribe((status) => {
@@ -717,13 +694,16 @@ export default function AdminBookingsPage() {
 
     // Cleanup subscription on unmount
     return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
       supabase.removeChannel(channel);
       // Cancel any pending requests on unmount
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchBookings, fetchFlaggedBookings, fetchUpcomingDeliveries, fetchUpcomingReturns]);
+  }, []); // Empty deps - only set up subscription once
 
   const handleFilterChange = (newFilters: Partial<BookingFilters>) => {
     const normalizedFilters: Partial<BookingFilters> = { ...newFilters };
@@ -950,13 +930,6 @@ export default function AdminBookingsPage() {
     }
   };
 
-  const handleDrilldownSelect = (status?: string) => {
-    if (!status) {
-      handleFilterChange({ status: undefined });
-      return;
-    }
-    handleFilterChange({ status: normalizeStatusValue(status) });
-  };
 
   const formatDateTime = (value?: string | null) => {
     if (!value) return 'TBD';
@@ -1794,32 +1767,6 @@ export default function AdminBookingsPage() {
         <h2 id="filters-title" className="sr-only">
           Booking Filters
         </h2>
-        <div className="flex flex-wrap gap-3" role="group" aria-label="Booking status filters">
-          {OPERATIONAL_DRILLDOWNS.map((drilldown) => {
-            const drilldownStatus = drilldown.status;
-            const currentStatus = filters.status;
-            const isActive =
-              (!drilldownStatus && !currentStatus) ||
-              (drilldownStatus && currentStatus && drilldownStatus === currentStatus);
-            return (
-              <button
-                key={drilldown.id}
-                onClick={() => handleDrilldownSelect(drilldown.status)}
-                aria-pressed={isActive}
-                aria-label={`Filter by ${drilldown.label.toLowerCase()}`}
-                className={`flex min-w-[12rem] flex-col rounded-lg border px-3 py-2 text-left transition focus:outline-none focus:ring-2 focus:ring-premium-gold focus:ring-offset-2 ${
-                  isActive
-                    ? 'border-premium-gold bg-premium-gold-50 text-premium-gold-dark shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <span className="text-sm font-semibold">{drilldown.label}</span>
-                <span className="text-xs text-gray-500">{drilldown.description}</span>
-              </button>
-            );
-          })}
-        </div>
-
         <BookingFilters filters={filters} onFilterChange={handleFilterChange} />
 
         {/* Advanced Filters */}
@@ -1910,9 +1857,24 @@ export default function AdminBookingsPage() {
           booking={selectedBooking}
           isOpen={showDetailsModal}
           onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedBooking(null);
-            router.replace('/admin/bookings', { scroll: false });
+            try {
+              setShowDetailsModal(false);
+              setSelectedBooking(null);
+              // Use push instead of replace to avoid router errors
+              // Remove bookingId from URL if present
+              const currentUrl = new URL(window.location.href);
+              currentUrl.searchParams.delete('bookingId');
+              router.push(currentUrl.pathname + currentUrl.search);
+            } catch (error) {
+              logger.error('Error closing booking modal', {
+                component: 'admin-bookings-page',
+                action: 'modal_close_error',
+                metadata: { error: error instanceof Error ? error.message : String(error) },
+              }, error instanceof Error ? error : undefined);
+              // Fallback: just close modal without navigation
+              setShowDetailsModal(false);
+              setSelectedBooking(null);
+            }
           }}
           onUpdate={handleBookingUpdate}
           onStatusUpdate={handleStatusUpdate}

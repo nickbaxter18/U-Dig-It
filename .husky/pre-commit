@@ -33,6 +33,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Type sync validation (check if types are up-to-date)
+echo "🔄 Checking type synchronization..."
+cd /home/vscode/U-Dig-It-1
+if [ -f "scripts/check-types-sync.sh" ]; then
+  bash scripts/check-types-sync.sh > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "⚠️  Type sync issues detected (non-blocking)"
+    echo "   Run 'bash scripts/check-types-sync.sh' for details"
+  fi
+fi
+
 # Snyk Code Scan (MANDATORY for new code)
 echo "🛡️  Running Snyk code scan..."
 SNYK_OUTPUT=$(snyk code test /home/vscode/U-Dig-It-1/frontend --severity-threshold=high 2>&1)

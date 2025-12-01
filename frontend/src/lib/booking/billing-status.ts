@@ -1,3 +1,4 @@
+import { COMPLETED_PAYMENT_STATUSES, PAYMENT_STATUS } from '@/lib/constants/payment-status';
 import { logger } from '@/lib/logger';
 import { createServiceClient } from '@/lib/supabase/service';
 
@@ -36,7 +37,7 @@ import { createServiceClient } from '@/lib/supabase/service';
  * ```
  */
 export async function updateBillingStatus(bookingId: string): Promise<string | null> {
-  const serviceClient = createServiceClient();
+  const serviceClient = await createServiceClient();
 
   if (!serviceClient) {
     logger.error('Service client not available for billing status update', {
@@ -75,28 +76,33 @@ export async function updateBillingStatus(bookingId: string): Promise<string | n
     const currentBillingStatus = booking.billing_status;
 
     // Fetch all completed payments to determine payment state
-    const [manualPaymentsResult, stripePaymentsResult] = await Promise.all([
+    // Note: payments table doesn't have deleted_at column, so we don't filter by it
+    const [manualPaymentsResult, stripePaymentsResult, depositPaymentsResult] = await Promise.all([
       serviceClient
         .from('manual_payments')
         .select('id, amount, status')
         .eq('booking_id', bookingId)
-        .eq('status', 'completed')
+        .eq('status', PAYMENT_STATUS.COMPLETED)
         .is('deleted_at', null),
       serviceClient
         .from('payments')
         .select('id, amount, status, type')
         .eq('bookingId', bookingId)
-        .in('status', ['completed', 'succeeded'])
-        .is('deleted_at', null),
+        .in('status', COMPLETED_PAYMENT_STATUSES)
+        .or('and(type.is.null),and(type.eq.payment)'), // Grouped OR: (type IS NULL) OR (type = 'payment'), ANDed with status filter
+      serviceClient
+        .from('payments')
+        .select('id, type')
+        .eq('bookingId', bookingId)
+        .eq('type', 'deposit')
+        .in('status', COMPLETED_PAYMENT_STATUSES), // Check if deposit is paid
     ]);
 
     const manualPayments = manualPaymentsResult.data ?? [];
     const stripePayments = stripePaymentsResult.data ?? [];
 
-    // Check if deposit has been paid (look for deposit payments)
-    const depositPaid = stripePayments.some(
-      (payment: { type?: string }) => payment.type === 'deposit'
-    );
+    // Check if deposit has been paid (look for deposit payments separately)
+    const depositPaid = (depositPaymentsResult.data ?? []).length > 0;
 
     // Calculate new billing status
     let newBillingStatus: string;

@@ -27,6 +27,7 @@ interface Booking {
   endDate: string;
   status: 'pending' | 'confirmed' | 'paid' | 'in_progress' | 'completed' | 'cancelled';
   totalAmount: number;
+  balanceAmount?: number | null;
   deliveryAddress: string;
 }
 
@@ -56,24 +57,42 @@ export default function UserDashboard() {
       }
 
       // Fetch user's bookings using Supabase
-      const userBookings: any = await supabaseApi.getBookings({
+      const userBookings = await supabaseApi.getBookings({
         userId: user.id,
         limit: 10,
       });
 
       // Transform the bookings data to match the component interface
-      const transformedBookings: Booking[] = (userBookings || []).map((booking: unknown) => ({
+      // Type the booking result from Supabase query
+      type BookingQueryResult = {
+        id: string;
+        bookingNumber: string;
+        startDate: string | Date | null;
+        endDate: string | Date | null;
+        status: string;
+        totalAmount: number | string | null;
+        balance_amount?: number | string | null;
+        deliveryAddress?: string | null;
+        equipment?: {
+          make?: string | null;
+          model?: string | null;
+          images?: string[] | unknown;
+        } | null;
+        [key: string]: unknown;
+      };
+      const transformedBookings: Booking[] = (userBookings || []).map((booking: BookingQueryResult) => ({
         id: booking.id,
         bookingNumber: booking.bookingNumber,
         equipment: {
-          make: (booking.equipment as { make?: string } | null)?.make || 'Equipment',
-          model: (booking.equipment as { model?: string } | null)?.model || 'Model',
-          images: (booking.equipment as { images?: unknown } | null)?.images,
+          make: booking.equipment?.make || 'Equipment',
+          model: booking.equipment?.model || 'Model',
+          images: booking.equipment?.images as string[] | undefined,
         },
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        status: booking.status as string,
+        startDate: typeof booking.startDate === 'string' ? booking.startDate : booking.startDate instanceof Date ? booking.startDate.toISOString() : '',
+        endDate: typeof booking.endDate === 'string' ? booking.endDate : booking.endDate instanceof Date ? booking.endDate.toISOString() : '',
+        status: booking.status as 'pending' | 'confirmed' | 'paid' | 'in_progress' | 'completed' | 'cancelled',
         totalAmount: Number(booking.totalAmount) || 0,
+        balanceAmount: booking.balance_amount !== undefined && booking.balance_amount !== null ? Number(booking.balance_amount) : null,
         deliveryAddress: booking.deliveryAddress || '',
       }));
 
@@ -81,7 +100,7 @@ export default function UserDashboard() {
       const stats: UserStats = {
         totalBookings: transformedBookings.length,
         totalSpent: transformedBookings.reduce(
-          (sum: unknown, booking: unknown) => sum + (booking.totalAmount || 0),
+          (sum: number, booking: Booking) => sum + (booking.totalAmount || 0),
           0
         ),
         upcomingBookings: transformedBookings.filter((b) =>
@@ -639,7 +658,7 @@ export default function UserDashboard() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <img
-                            src={booking.equipment.images?.[0] || '/images/kubota.png'}
+                            src={(Array.isArray(booking.equipment.images) && booking.equipment.images[0]) || '/images/kubota.png'}
                             alt={`${booking.equipment.make} ${booking.equipment.model}`}
                             className="h-16 w-16 rounded-lg object-cover"
                           />
@@ -663,7 +682,7 @@ export default function UserDashboard() {
                             {getStatusText(booking.status)}
                           </span>
                           <p className="mt-2 text-lg font-semibold text-gray-900">
-                            {formatCurrency(booking.totalAmount)}
+                            {formatCurrency(booking.balanceAmount ?? booking.totalAmount)}
                           </p>
                           <div className="mt-3 flex flex-col gap-2">
                             <Link

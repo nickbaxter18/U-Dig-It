@@ -4,6 +4,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 
+import { PAYMENT_STATUS, type PaymentStatus } from '@/lib/constants/payment-status';
+import { getErrorMessage } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { createClient } from '@/lib/supabase/server';
@@ -119,8 +121,15 @@ export async function POST(req: NextRequest) {
       : `Rental Payment: ${booking.equipment.make} ${booking.equipment.model} (${booking.bookingNumber})`;
 
     // Check if this specific payment type is already paid
-    const existingPayment = booking.payments?.find(
-      (p: unknown) => p.type === paymentType && p.status === 'completed'
+    // Type the payment relation properly
+    type PaymentRelation = {
+      id: string;
+      type: string;
+      status: PaymentStatus | string;
+      amount: number | string;
+    };
+    const existingPayment = (booking.payments as PaymentRelation[] | undefined)?.find(
+      (p) => p.type === paymentType && p.status === PAYMENT_STATUS.COMPLETED
     );
     if (existingPayment) {
       return NextResponse.json(
@@ -214,18 +223,19 @@ export async function POST(req: NextRequest) {
       sessionId: session.id,
     });
   } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error);
     logger.error(
       'Checkout creation error:',
       {
         component: 'api-create-checkout',
         action: 'error',
-        metadata: { error: error.message },
+        metadata: { error: errorMessage },
       },
-      error
+      error instanceof Error ? error : undefined
     );
     return NextResponse.json(
       {
-        error: error.message || 'Failed to create checkout session',
+        error: errorMessage || 'Failed to create checkout session',
       },
       { status: 500 }
     );

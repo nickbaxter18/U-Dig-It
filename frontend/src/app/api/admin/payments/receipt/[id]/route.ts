@@ -89,7 +89,7 @@ export const GET = withRateLimit(
             action: 'error',
             metadata: {
               status,
-              paymentId: id,
+              paymentId,
               errorName: error instanceof Error ? error.name : typeof error,
               errorMessage: error instanceof Error ? error.message : String(error),
               errorStack: error instanceof Error ? error.stack : undefined,

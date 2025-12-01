@@ -55,6 +55,7 @@ interface BookingDetails {
     status: string | null;
     type: string | null;
     documentUrl: string | null;
+    signedDocumentPath: string | null;
     signedAt: string | null;
     createdAt: string | null;
   }[];
@@ -147,6 +148,115 @@ export default function BookingDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [viewingInsuranceDocId, setViewingInsuranceDocId] = useState<string | null>(null);
+  const [viewingContractId, setViewingContractId] = useState<string | null>(null);
+
+  // Handle viewing contract document with signed URL
+  const handleViewContract = async (contractId: string, documentUrl: string | null, signedDocumentPath: string | null) => {
+    // Prefer signedDocumentPath (storage path) over documentUrl (which may be expired)
+    const pathToUse = signedDocumentPath || documentUrl;
+
+    if (!pathToUse || pathToUse.trim() === '') {
+      setError('No contract document available to view');
+      return;
+    }
+
+    setViewingContractId(contractId);
+    try {
+      // If it's already a full external URL and NOT a supabase storage URL, open directly
+      if (pathToUse.startsWith('http://') || pathToUse.startsWith('https://')) {
+        if (!pathToUse.includes('/storage/v1/object/') && !pathToUse.includes('supabase.co')) {
+          window.open(pathToUse, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
+
+      // For storage paths, generate signed URL client-side
+      let cleanPath = pathToUse.trim();
+      if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+      if (cleanPath.endsWith('/')) cleanPath = cleanPath.slice(0, -1);
+
+      // Try multiple bucket names (codebase uses both 'signed-contracts' and 'contracts')
+      const bucketsToTry = ['signed-contracts', 'contracts'];
+
+      for (const bucketName of bucketsToTry) {
+        const { data, error } = await supabase.storage
+          .from(bucketName)
+          .createSignedUrl(cleanPath, 3600);
+
+        if (!error && data?.signedUrl) {
+          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
+
+      throw new Error('Could not generate contract URL from any storage bucket');
+    } catch (err) {
+      logger.error('Failed to view contract document', {
+        component: 'BookingDetailsPage',
+        action: 'view_contract_error',
+        metadata: { contractId, error: err instanceof Error ? err.message : String(err) },
+      }, err instanceof Error ? err : undefined);
+      setError('Failed to view contract. Please try again.');
+    } finally {
+      setViewingContractId(null);
+    }
+  };
+
+  // Handle viewing insurance document with signed URL
+  const handleViewInsuranceDoc = async (docId: string, fileUrl: string | null) => {
+    if (!fileUrl || fileUrl.trim() === '') {
+      setError('No file available to view');
+      return;
+    }
+
+    setViewingInsuranceDocId(docId);
+    try {
+      // If it's already a full external URL, open directly
+      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+        if (!fileUrl.includes('/storage/v1/object/') && !fileUrl.includes('supabase.co')) {
+          window.open(fileUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
+
+      // For storage paths, generate signed URL client-side
+      let cleanPath = fileUrl.trim();
+      if (cleanPath.startsWith('/')) cleanPath = cleanPath.substring(1);
+      if (cleanPath.endsWith('/')) cleanPath = cleanPath.slice(0, -1);
+
+      // Try insurance-documents bucket first
+      const { data: data1, error: error1 } = await supabase.storage
+        .from('insurance-documents')
+        .createSignedUrl(cleanPath, 3600);
+
+      if (!error1 && data1?.signedUrl) {
+        window.open(data1.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      // Fallback to insurance bucket
+      const { data: data2, error: error2 } = await supabase.storage
+        .from('insurance')
+        .createSignedUrl(cleanPath, 3600);
+
+      if (!error2 && data2?.signedUrl) {
+        window.open(data2.signedUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      throw new Error('Could not generate document URL');
+    } catch (err) {
+      logger.error('Failed to view insurance document', {
+        component: 'BookingDetailsPage',
+        action: 'view_insurance_error',
+        metadata: { docId, error: err instanceof Error ? err.message : String(err) },
+      }, err instanceof Error ? err : undefined);
+      setError('Failed to view document. Please try again.');
+    } finally {
+      setViewingInsuranceDocId(null);
+    }
+  };
 
   useEffect(() => {
     // Wait for auth to initialize
@@ -222,7 +332,7 @@ export default function BookingDetailsPage() {
         const [contractsResponse, paymentsResponse, insuranceResponse] = await Promise.all([
           supabase
             .from('contracts')
-            .select('id, contractNumber, status, type, documentUrl, signedAt, createdAt')
+            .select('id, contractNumber, status, type, documentUrl, signedDocumentPath, signedAt, createdAt')
             .eq('bookingId', params.id as string)
             .order('createdAt', { ascending: false }),
           supabase
@@ -634,15 +744,19 @@ export default function BookingDetailsPage() {
                           Signed {formatDateTime(signedContract.signedAt)}
                         </p>
                       )}
-                      {signedContract.documentUrl ? (
-                        <a
-                          href={signedContract.documentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-3 inline-flex items-center text-xs font-semibold text-blue-700 underline transition hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                      {signedContract.documentUrl || signedContract.signedDocumentPath ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewContract(
+                            signedContract.id,
+                            signedContract.documentUrl,
+                            signedContract.signedDocumentPath
+                          )}
+                          disabled={viewingContractId === signedContract.id}
+                          className="mt-3 inline-flex items-center text-xs font-semibold text-blue-700 underline transition hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
                         >
-                          Download contract
-                        </a>
+                          {viewingContractId === signedContract.id ? 'Opening...' : 'View contract'}
+                        </button>
                       ) : (
                         <p className="mt-3 text-xs text-gray-500">
                           Document link not yet available.
@@ -673,14 +787,13 @@ export default function BookingDetailsPage() {
                               </p>
                             </div>
                             {doc.fileUrl ? (
-                              <a
-                                href={doc.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="shrink-0 rounded-md border border-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                              <button
+                                onClick={() => handleViewInsuranceDoc(doc.id, doc.fileUrl)}
+                                disabled={viewingInsuranceDocId === doc.id}
+                                className="shrink-0 rounded-md border border-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
                               >
-                                View
-                              </a>
+                                {viewingInsuranceDocId === doc.id ? 'Loading...' : 'View'}
+                              </button>
                             ) : (
                               <span className="shrink-0 text-xs text-gray-400">No file</span>
                             )}

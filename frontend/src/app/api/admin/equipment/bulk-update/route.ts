@@ -35,7 +35,7 @@ export const POST = withRateLimit(RateLimitPresets.VERY_STRICT, async (request: 
     const body = await request.json();
     const validated = equipmentBulkUpdateSchema.parse(body);
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service role client not initialized', {
         component: 'admin-equipment-bulk-api',

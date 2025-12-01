@@ -52,8 +52,46 @@ async function ensureApiKeyConfigured() {
   }
 }
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'U-Dig It Rentals';
+import { getEmailFromAddress, getEmailFromName } from './secrets/email';
+
+// Cache for email config (loaded from Supabase Vault or env)
+let cachedFromEmail: string | null = null;
+let cachedFromName: string | null = null;
+
+/**
+ * Get the validated FROM_EMAIL from Supabase Vault, env vars, or system_config.
+ * SendGrid requires the from address to be a verified Sender Identity.
+ */
+async function getValidatedFromEmail(): Promise<string> {
+  if (cachedFromEmail) {
+    return cachedFromEmail;
+  }
+  cachedFromEmail = await getEmailFromAddress();
+  return cachedFromEmail;
+}
+
+/**
+ * Get the FROM_NAME from Supabase Vault, env vars, or default.
+ */
+async function getValidatedFromName(): Promise<string> {
+  if (cachedFromName) {
+    return cachedFromName;
+  }
+  cachedFromName = await getEmailFromName();
+  return cachedFromName;
+}
+
+/**
+ * Get the complete FROM configuration for email sending.
+ * Loads from Supabase Vault, env vars, or system_config.
+ */
+async function getFromConfig(): Promise<{ email: string; name: string }> {
+  const [email, name] = await Promise.all([
+    getValidatedFromEmail(),
+    getValidatedFromName(),
+  ]);
+  return { email, name };
+}
 const COMPANY_NAME = 'U-Dig It Rentals';
 const HST_REGISTRATION_NUMBER = '744292160 RT0001';
 const HST_REGISTRATION_DISPLAY = `HST/GST Registration: ${HST_REGISTRATION_NUMBER}`;
@@ -249,10 +287,13 @@ export async function sendBookingConfirmationEmail(
     'The U-Dig It Rentals Team'
   );
 
+  // Load from config from Supabase Vault or env
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: customer.email,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: `Booking Confirmation - ${booking.bookingNumber}`,
@@ -272,8 +313,11 @@ export async function sendBookingConfirmationEmail(
     return { success: true, messageId: 'sent' };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    // Type-safe error details extraction
     const errorDetails =
-      error instanceof Error && 'response' in error ? (error as any).response?.body : undefined;
+      error instanceof Error && 'response' in error
+        ? (error.response as { body?: unknown } | undefined)?.body
+        : undefined;
 
     logger.error(
       'Failed to send booking confirmation email',
@@ -465,10 +509,12 @@ export async function sendPaymentReceiptEmail(
     'The U-Dig It Rentals Team'
   );
 
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: customer.email,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: `Payment Receipt - ${booking.bookingNumber}`,
@@ -579,11 +625,16 @@ export async function sendSpinWinnerEmail(
     'Need help? Call (506) 643-1575 or reply to this email.',
   ];
 
+  const [fromEmail, fromName] = await Promise.all([
+    getValidatedFromEmail(),
+    getValidatedFromName(),
+  ]);
+
   const msg = {
     to: email,
     from: {
-      email: FROM_EMAIL,
-      name: FROM_NAME,
+      email: fromEmail,
+      name: fromName,
     },
     subject: `🎉 You Won ${formattedAmount} Off - Use Within 48 Hours!`,
     html,
@@ -690,11 +741,16 @@ export async function sendSpinExpiryReminder(
     'Need help? Call (506) 643-1575 or reply to this email.',
   ];
 
+  const [fromEmail, fromName] = await Promise.all([
+    getValidatedFromEmail(),
+    getValidatedFromName(),
+  ]);
+
   const msg = {
     to: email,
     from: {
-      email: FROM_EMAIL,
-      name: FROM_NAME,
+      email: fromEmail,
+      name: fromName,
     },
     subject: `⏰ Your ${formattedAmount} Discount Expires in 24 Hours!`,
     html,
@@ -730,10 +786,12 @@ export async function sendSpinExpiryReminder(
  * Send lead magnet email with equipment rental checklist
  */
 export async function sendLeadMagnetEmail(email: string, name?: string) {
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: email,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: '📋 Your FREE Equipment Rental Checklist',
@@ -889,10 +947,12 @@ export async function sendAdminBookingNotification(
   },
   customer: { email: string; firstName: string; lastName: string; phone?: string }
 ) {
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: 'nickbaxter@udigit.ca',
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: `🎉 New Booking: ${booking.bookingNumber}`,
@@ -1112,10 +1172,12 @@ export async function sendBookingCompletionEmail(
 
   const textBody = textLines.join('\n');
 
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: customer.email,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: `🎉 All Set! Your Equipment is Ready - ${booking.bookingNumber}`,
@@ -1162,10 +1224,12 @@ export async function sendAdminBookingCompletedNotification(
   },
   customer: { email: string; firstName: string; lastName: string; phone?: string }
 ) {
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: 'nickbaxter@udigit.ca',
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: `✅ Booking Complete - Schedule Delivery: ${booking.bookingNumber}`,
@@ -1287,6 +1351,17 @@ export async function sendAdminBookingCompletedNotification(
  * Build invoice payment receipt email content (HTML + text + subject).
  * Shared between the email sender and the admin receipt download endpoint.
  */
+// Payment history entry for displaying all payments on a receipt
+export interface PaymentHistoryEntry {
+  id: string;
+  amount: number;
+  method: string;
+  status: string;
+  paidAt: string;
+  isCurrentPayment: boolean;
+  notes?: string | null; // Optional notes for manual payments
+}
+
 export function buildInvoicePaymentReceiptEmail(
   booking: {
     bookingNumber: string;
@@ -1296,6 +1371,7 @@ export function buildInvoicePaymentReceiptEmail(
     subtotal: number | string | null;
     taxes: number | string | null;
     totalAmount: number | string | null;
+    balanceAmount?: number | string | null; // Current outstanding balance
     dailyRate?: number | string | null;
     floatFee?: number | string | null;
     deliveryFee?: number | string | null;
@@ -1323,6 +1399,7 @@ export function buildInvoicePaymentReceiptEmail(
     method?: string | null;
     paidAt: string;
     transactionId?: string | null;
+    status?: string | null; // Payment status for balance calculation
   },
   customer: {
     email: string;
@@ -1330,7 +1407,8 @@ export function buildInvoicePaymentReceiptEmail(
     lastName: string;
     company?: string | null;
     phone?: string | null;
-  }
+  },
+  paymentHistory?: PaymentHistoryEntry[] // Optional payment history for complete display
 ): {
   subject: string;
   html: string;
@@ -1542,6 +1620,94 @@ export function buildInvoicePaymentReceiptEmail(
       `
       : '';
 
+  // Calculate balances correctly based on payment status
+  const currentBalance = safeNumber(booking.balanceAmount);
+  const totalAmount = safeNumber(booking.totalAmount);
+  const isPendingPayment = !payment.status || payment.status === 'pending' || payment.status === 'processing';
+
+  // Calculate total paid from payment history (excluding pending/processing payments)
+  // NOTE: 'succeeded' does not exist in payments_status_enum - use 'completed' instead
+  const completedPayments = (paymentHistory || []).filter(
+    p => p.status === 'completed'
+  );
+  const totalPaidFromHistory = completedPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  // Check if current payment is already included in payment history (any status)
+  const currentPaymentInHistory = (paymentHistory || []).some(p => p.isCurrentPayment);
+  const currentPaymentIsCompleted = completedPayments.some(p => p.isCurrentPayment);
+
+  // For pending/processing payments: balance hasn't been updated yet, so currentBalance IS the "before" amount
+  // For completed payments: balance was updated, so we need to add payment back to get "before"
+  const previousBalance = isPendingPayment
+    ? currentBalance  // Balance hasn't been updated yet
+    : Math.max(0, currentBalance + paymentAmount);  // Balance was updated, add payment back
+
+  // Verify previousBalance using payment history for accuracy
+  // If current payment is completed and in history, exclude it from totalPaid to get "before"
+  const totalPaidBeforeCurrent = currentPaymentIsCompleted
+    ? totalPaidFromHistory - paymentAmount
+    : totalPaidFromHistory;
+  const calculatedPreviousBalance = Math.max(0, totalAmount - totalPaidBeforeCurrent);
+
+  // Use the more accurate calculation (take the minimum to be conservative)
+  const verifiedPreviousBalance = Math.max(0, Math.min(previousBalance, calculatedPreviousBalance, totalAmount));
+
+  // Expected balance after this payment
+  const newBalance = isPendingPayment
+    ? Math.max(0, currentBalance - paymentAmount)  // Expected after payment
+    : currentBalance;  // Already reflects the new balance
+
+  // Verify newBalance using payment history
+  const totalPaidAfterCurrent = isPendingPayment
+    ? totalPaidFromHistory + paymentAmount  // Will be paid
+    : totalPaidFromHistory;  // Already paid
+  const calculatedNewBalance = Math.max(0, totalAmount - totalPaidAfterCurrent);
+  const verifiedNewBalance = Math.max(0, Math.min(newBalance, calculatedNewBalance, totalAmount));
+
+  const showPaymentBreakdown = paymentAmount > 0;
+
+  // Use verified balances
+  const finalPreviousBalance = verifiedPreviousBalance;
+  const finalNewBalance = verifiedNewBalance;
+
+  // Build payment history HTML if we have any payment history
+  // Show history if there are 2+ payments OR if there's at least 1 other payment besides current
+  const hasPaymentHistory = paymentHistory && paymentHistory.length > 0;
+  const hasMultiplePayments = paymentHistory && paymentHistory.length > 1;
+  const paymentHistoryHtml = hasPaymentHistory
+    ? `
+      <div style="margin-top:16px; padding:14px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+        <p style="margin:0 0 10px 0; font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#64748b;">${hasMultiplePayments ? 'All Payments' : 'Payment History'}</p>
+        ${paymentHistory!
+          .map(
+            (p) => `
+            <div style="margin-bottom:${p.notes ? '10px' : '6px'}; font-size:13px; ${p.isCurrentPayment ? 'font-weight:600; color:#047857;' : 'color:#334155;'}">
+              <div style="display:flex; justify-content:space-between;">
+                <span>${p.isCurrentPayment ? '→ ' : ''}${p.status === 'pending' || p.status === 'processing' ? 'Outstanding Balance' : escapeHtml(p.method)}</span>
+                <span>${formatCurrency(p.amount)}</span>
+              </div>
+              ${p.notes ? `<div style="margin-top:4px; font-size:11px; color:#64748b; font-style:italic;">${escapeHtml(p.notes)}</div>` : ''}
+            </div>
+          `
+          )
+          .join('')}
+        ${hasMultiplePayments ? `
+        <div style="margin-top:10px; padding-top:8px; border-top:1px solid #e2e8f0;">
+          <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; color:#0f172a; margin-bottom:4px;">
+            <span>Total Paid:</span>
+            <span>${formatCurrency(totalPaidFromHistory + (!isPendingPayment && !currentPaymentIsCompleted ? paymentAmount : 0))}</span>
+          </div>
+          ${isPendingPayment ? `
+          <div style="font-size:11px; color:#64748b; font-style:italic;">
+            Note: Pending payments are not included in Total Paid until completed.
+          </div>
+          ` : ''}
+        </div>
+        ` : ''}
+      </div>
+    `
+    : '';
+
   const summaryHtml = `
     <div style="margin-top:24px; padding-top:18px; border-top:2px solid #d1d5db; font-size:14px; color:#374151;">
       <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
@@ -1562,10 +1728,36 @@ export function buildInvoicePaymentReceiptEmail(
         <span>${formatCurrency(totalPaid)}</span>
       </div>
       ${
-        securityDeposit > 0
-          ? `<div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px; color:#1d4ed8;">
-              <span>Security Deposit</span>
-              <span>${formatCurrency(securityDeposit)}</span>
+        showPaymentBreakdown
+          ? `
+          <div style="margin-top:20px; padding:16px; background:linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius:12px; border:1px solid #10b981;">
+            <p style="margin:0 0 12px 0; font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#047857;">${isPendingPayment ? 'Payment Pending' : 'Payment Received'}</p>
+            ${
+              finalPreviousBalance > 0
+                ? `<div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px; color:#065f46;">
+                    <span>Balance Before:</span>
+                    <span>${formatCurrency(finalPreviousBalance)}</span>
+                  </div>`
+                : ''
+            }
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:16px; font-weight:700; color:#047857;">
+              <span>This Payment (${isPendingPayment ? 'Outstanding Balance' : escapeHtml(payment.method || 'Payment')}):</span>
+              <span>- ${formatCurrency(paymentAmount)}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:1px solid #10b981; font-size:15px; font-weight:700; color:#065f46;">
+              <span>${finalNewBalance > 0 ? 'Remaining Balance:' : 'Balance:'}</span>
+              <span>${finalNewBalance > 0 ? formatCurrency(finalNewBalance) : '$0.00 ✓'}</span>
+            </div>
+            ${paymentHistoryHtml}
+          </div>
+          `
+          : ''
+      }
+      ${
+        !showPaymentBreakdown && finalNewBalance > 0
+          ? `<div style="display:flex; justify-content:space-between; margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb; font-size:14px; font-weight:600; color:#dc2626;">
+              <span>Outstanding Balance</span>
+              <span>${formatCurrency(finalNewBalance)}</span>
             </div>`
           : ''
       }
@@ -1699,8 +1891,31 @@ export function buildInvoicePaymentReceiptEmail(
       : '',
     `• Subtotal before tax: ${formatCurrency(subtotalAfterDiscount)}`,
     `• HST (15%): ${formatCurrency(taxesAmount)}`,
-    `• Total Paid: ${formatCurrency(totalPaid)}`,
-    securityDeposit > 0 ? `• Security Deposit: ${formatCurrency(securityDeposit)}` : '',
+    `• Total Amount: ${formatCurrency(totalPaid)}`,
+    '',
+    showPaymentBreakdown ? `--- ${isPendingPayment ? 'Payment Pending' : 'Payment Applied'} ---` : '',
+    showPaymentBreakdown && finalPreviousBalance > 0
+      ? `• Balance Before: ${formatCurrency(finalPreviousBalance)}`
+      : '',
+    showPaymentBreakdown ? `• This Payment (${isPendingPayment ? 'Outstanding Balance' : (payment.method || 'Payment')}): -${formatCurrency(paymentAmount)}` : '',
+    showPaymentBreakdown
+      ? `• ${finalNewBalance > 0 ? 'Remaining Balance' : 'Balance'}: ${finalNewBalance > 0 ? formatCurrency(finalNewBalance) : '$0.00 ✓'}`
+      : '',
+    // Include payment history in text version
+    ...(hasPaymentHistory
+      ? [
+          '',
+          '--- All Payments ---',
+          ...paymentHistory!.map(
+            (p) =>
+              `• ${p.status === 'pending' || p.status === 'processing' ? 'Outstanding Balance' : p.method}: ${formatCurrency(p.amount)}${p.isCurrentPayment ? ' ← this payment' : ''}${p.notes ? ` - ${p.notes}` : ''}`
+          ),
+          `• Total Paid: ${formatCurrency(totalPaidFromHistory + (isPendingPayment || !currentPaymentIsCompleted ? paymentAmount : 0))}`,
+        ]
+      : []),
+    !showPaymentBreakdown && finalNewBalance > 0
+      ? `• Outstanding Balance: ${formatCurrency(finalNewBalance)}`
+      : '',
     '',
     'Need assistance? Call (506) 555-0199 or reply to this email.',
   ].filter(Boolean);
@@ -1724,11 +1939,12 @@ export async function sendInvoicePaymentConfirmation(
   customer: Parameters<typeof buildInvoicePaymentReceiptEmail>[2]
 ) {
   const { subject, html, text } = buildInvoicePaymentReceiptEmail(booking, payment, customer);
+  const fromEmail = await getValidatedFromEmail();
 
   const msg = {
     to: customer.email,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject,
@@ -1871,11 +2087,16 @@ export async function sendSecurityHoldReminderEmail(params: {
     'The U-Dig It Rentals Team',
   ];
 
+  const [fromEmail, fromName] = await Promise.all([
+    getValidatedFromEmail(),
+    getValidatedFromName(),
+  ]);
+
   const msg = {
     to: params.email,
     from: {
-      email: FROM_EMAIL,
-      name: FROM_NAME,
+      email: fromEmail,
+      name: fromName,
     },
     subject: `⏰ Reminder: $500 Security Hold Coming Soon - Booking ${params.bookingNumber}`,
     html,
@@ -1990,11 +2211,16 @@ export async function sendSecurityHoldReleaseEmail(params: {
     'The U-Dig It Rentals Team',
   ];
 
+  const [fromEmail, fromName] = await Promise.all([
+    getValidatedFromEmail(),
+    getValidatedFromName(),
+  ]);
+
   const msg = {
     to: params.email,
     from: {
-      email: FROM_EMAIL,
-      name: FROM_NAME,
+      email: fromEmail,
+      name: fromName,
     },
     subject: `✅ Security Hold Released - ${formattedAmount} Available - Booking ${params.bookingNumber}`,
     html,
@@ -2032,10 +2258,12 @@ export async function sendSecurityHoldReleaseEmail(params: {
  * Send test email (for verification)
  */
 export async function sendTestEmail(toEmail: string) {
+  const fromEmail = await getValidatedFromEmail();
+
   const msg = {
     to: toEmail,
     from: {
-      email: FROM_EMAIL,
+      email: fromEmail,
       name: COMPANY_NAME,
     },
     subject: 'Test Email - U-Dig It Rentals',

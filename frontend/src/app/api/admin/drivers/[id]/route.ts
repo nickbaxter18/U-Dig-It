@@ -1,12 +1,34 @@
+import { z } from 'zod';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
 
+const driverUpdateSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  phone: z.string().min(10).max(20).optional(),
+  licenseNumber: z.string().max(50).nullable().optional(),
+  licenseExpiry: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'License expiry must be in YYYY-MM-DD format'), z.null()])
+    .optional()
+    .nullable(),
+  vehicleType: z.string().max(50).nullable().optional(),
+  vehicleRegistration: z.string().max(50).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  isAvailable: z.boolean().optional(),
+  currentLocation: z.string().max(200).nullable().optional(),
+  activeDeliveries: z.number().int().min(0).optional(),
+  totalDeliveriesCompleted: z.number().int().min(0).optional(),
+});
+
 export const GET = withRateLimit(
   RateLimitPresets.MODERATE,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       const adminResult = await requireAdmin(request);
       if (adminResult.error) return adminResult.error;
@@ -16,7 +38,14 @@ export const GET = withRateLimit(
         return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
       }
 
-      const { id } = params;
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id } = resolvedParams;
+
+      // Validate id is present and is a valid UUID format
+      if (!id || id === 'undefined' || id.trim() === '') {
+        return NextResponse.json({ error: 'Driver ID is required' }, { status: 400 });
+      }
 
       // ✅ Fetch driver from Supabase
       const { data: driver, error: driverError } = await supabase
@@ -56,9 +85,11 @@ export const GET = withRateLimit(
         {
           component: 'drivers-api',
           action: 'fetch_driver_error',
-          metadata: { error: error.message },
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+          },
         },
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
 
       return NextResponse.json({ error: 'Failed to fetch driver' }, { status: 500 });
@@ -68,7 +99,10 @@ export const GET = withRateLimit(
 
 export const PATCH = withRateLimit(
   RateLimitPresets.STRICT,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       const adminResult = await requireAdmin(request);
 
@@ -80,29 +114,112 @@ export const PATCH = withRateLimit(
         return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
       }
 
-      const { id } = params;
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id } = resolvedParams;
+
+      // Validate id is present and is a valid UUID format
+      if (!id || id === 'undefined' || id.trim() === '') {
+        return NextResponse.json({ error: 'Driver ID is required' }, { status: 400 });
+      }
+
+      // Basic UUID format validation
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        return NextResponse.json(
+          { error: `Invalid driver ID format: ${id}` },
+          { status: 400 }
+        );
+      }
       const body = await request.json();
 
+      // Preprocess: Convert empty strings to null for optional fields
+      const preprocessedBody: Record<string, unknown> = { ...body };
+      const optionalStringFields = [
+        'licenseNumber',
+        'licenseExpiry',
+        'vehicleType',
+        'vehicleRegistration',
+        'notes',
+        'currentLocation',
+      ];
+
+      for (const field of optionalStringFields) {
+        if (field in preprocessedBody) {
+          const value = preprocessedBody[field];
+          if (value === null || value === undefined) {
+            preprocessedBody[field] = null;
+          } else if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (trimmed === '') {
+              preprocessedBody[field] = null;
+            } else {
+              preprocessedBody[field] = trimmed;
+            }
+          }
+        }
+      }
+
+      // Validate request body
+      let validated;
+      try {
+        validated = driverUpdateSchema.parse(preprocessedBody);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          logger.error(
+            'Driver update validation failed',
+            {
+              component: 'drivers-api',
+              action: 'validation_error',
+              metadata: {
+                driverId: id,
+                errors: validationError.issues,
+                receivedBody: preprocessedBody,
+              },
+            },
+            validationError
+          );
+          return NextResponse.json(
+            { error: 'Invalid request data', details: validationError.issues },
+            { status: 400 }
+          );
+        }
+        throw validationError;
+      }
+
       // Build update object
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
 
-      if (body.name !== undefined) updateData.name = body.name;
-      if (body.phone !== undefined) updateData.phone = body.phone;
-      if (body.licenseNumber !== undefined) updateData.license_number = body.licenseNumber;
-      if (body.licenseExpiry !== undefined) updateData.license_expiry = body.licenseExpiry;
-      if (body.vehicleType !== undefined) updateData.vehicle_type = body.vehicleType;
-      if (body.vehicleRegistration !== undefined)
-        updateData.vehicle_registration = body.vehicleRegistration;
-      if (body.notes !== undefined) updateData.notes = body.notes;
-      if (body.isAvailable !== undefined) updateData.is_available = body.isAvailable;
-      if (body.currentLocation !== undefined) updateData.current_location = body.currentLocation;
-      if (body.activeDeliveries !== undefined) updateData.active_deliveries = body.activeDeliveries;
-      if (body.totalDeliveriesCompleted !== undefined)
-        updateData.total_deliveries_completed = body.totalDeliveriesCompleted;
+      if (validated.name !== undefined) updateData.name = validated.name;
+      if (validated.phone !== undefined) updateData.phone = validated.phone;
+      if (validated.licenseNumber !== undefined)
+        updateData.license_number = validated.licenseNumber || null;
+      if (validated.licenseExpiry !== undefined)
+        updateData.license_expiry = validated.licenseExpiry && validated.licenseExpiry.trim() ? validated.licenseExpiry.trim() : null;
+      if (validated.vehicleType !== undefined) updateData.vehicle_type = validated.vehicleType || null;
+      if (validated.vehicleRegistration !== undefined)
+        updateData.vehicle_registration = validated.vehicleRegistration || null;
+      if (validated.notes !== undefined) updateData.notes = validated.notes || null;
+      if (validated.isAvailable !== undefined) updateData.is_available = validated.isAvailable;
+      if (validated.currentLocation !== undefined)
+        updateData.current_location = validated.currentLocation || null;
+      if (validated.activeDeliveries !== undefined)
+        updateData.active_deliveries = validated.activeDeliveries;
+      if (validated.totalDeliveriesCompleted !== undefined)
+        updateData.total_deliveries_completed = validated.totalDeliveriesCompleted;
 
       // Update driver
+      logger.debug('Updating driver', {
+        component: 'drivers-api',
+        action: 'update_driver',
+        metadata: {
+          driverId: id,
+          updateData: Object.keys(updateData),
+        },
+      });
+
       const { data: driver, error: driverError } = await supabase
         .from('drivers')
         .update(updateData)
@@ -111,10 +228,33 @@ export const PATCH = withRateLimit(
         .single();
 
       if (driverError) {
+        logger.error(
+          'Database error updating driver',
+          {
+            component: 'drivers-api',
+            action: 'database_error',
+            metadata: {
+              driverId: id,
+              errorCode: driverError.code,
+              errorMessage: driverError.message,
+              errorDetails: driverError.details,
+              updateData: Object.keys(updateData),
+            },
+          },
+          driverError as Error
+        );
+
         if (driverError.code === 'PGRST116') {
           return NextResponse.json({ error: 'Driver not found' }, { status: 404 });
         }
-        throw new Error(`Database error: ${driverError.message}`);
+        return NextResponse.json(
+          {
+            error: 'Failed to update driver',
+            details: driverError.message,
+            code: driverError.code,
+          },
+          { status: 500 }
+        );
       }
 
       logger.info('Driver updated successfully', {
@@ -140,14 +280,23 @@ export const PATCH = withRateLimit(
         },
       });
     } catch (error: unknown) {
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: 'Invalid request data', details: error.issues },
+          { status: 400 }
+        );
+      }
+
       logger.error(
         'Failed to update driver',
         {
           component: 'drivers-api',
           action: 'update_driver_error',
-          metadata: { error: error.message },
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+          },
         },
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
 
       return NextResponse.json({ error: 'Failed to update driver' }, { status: 500 });
@@ -157,7 +306,10 @@ export const PATCH = withRateLimit(
 
 export const DELETE = withRateLimit(
   RateLimitPresets.VERY_STRICT,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       const adminResult = await requireAdmin(request);
 
@@ -169,7 +321,14 @@ export const DELETE = withRateLimit(
         return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
       }
 
-      const { id } = params;
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id } = resolvedParams;
+
+      // Validate id is present and is a valid UUID format
+      if (!id || id === 'undefined' || id.trim() === '') {
+        return NextResponse.json({ error: 'Driver ID is required' }, { status: 400 });
+      }
 
       // Check if driver has active deliveries
       const { data: activeDeliveries } = await supabase
@@ -206,9 +365,11 @@ export const DELETE = withRateLimit(
         {
           component: 'drivers-api',
           action: 'delete_driver_error',
-          metadata: { error: error.message },
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+          },
         },
-        error
+        error instanceof Error ? error : new Error(String(error))
       );
 
       return NextResponse.json({ error: 'Failed to delete driver' }, { status: 500 });

@@ -288,6 +288,32 @@ class ErrorHandler {
 // Export singleton instance
 export const errorHandler = new ErrorHandler();
 
+// Type guard utilities for error handling
+/**
+ * Type guard to check if an unknown value is an Error instance
+ */
+export function isError(error: unknown): error is Error {
+  return error instanceof Error;
+}
+
+/**
+ * Get error message from unknown error type
+ * Handles Error instances, strings, and other error-like objects
+ */
+export function getErrorMessage(error: unknown): string {
+  if (isError(error)) return error.message;
+  if (typeof error === 'string') return error;
+  if (
+    error &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message;
+  }
+  return 'Unknown error';
+}
+
 // Utility function for handling async errors
 export async function handleAsyncError<T>(
   operation: () => Promise<T>,

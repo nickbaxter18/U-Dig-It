@@ -2,7 +2,7 @@
 
 import { Calendar, CreditCard, DollarSign, Download, TrendingDown, TrendingUp } from 'lucide-react';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { requestFinancialExport } from '@/lib/api/admin/payments';
 import { logger } from '@/lib/logger';
@@ -289,6 +289,22 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
     fetchFinancialSummary();
   }, [fetchFinancialSummary]);
 
+  // Memoize percentage calculations - MUST be before any early returns
+  const paymentMethodPercentages = useMemo(
+    () => ({
+      card: summary?.totalRevenue && summary.totalRevenue > 0
+        ? (summary.paymentMethodBreakdown.card / summary.totalRevenue) * 100
+        : 0,
+      bank_transfer: summary?.totalRevenue && summary.totalRevenue > 0
+        ? (summary.paymentMethodBreakdown.bank_transfer / summary.totalRevenue) * 100
+        : 0,
+      other: summary?.totalRevenue && summary.totalRevenue > 0
+        ? (summary.paymentMethodBreakdown.other / summary.totalRevenue) * 100
+        : 0,
+    }),
+    [summary?.totalRevenue, summary?.paymentMethodBreakdown]
+  );
+
   const handleExport = async () => {
     try {
       setExporting(true);
@@ -496,15 +512,12 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
                 <div
                   className="h-2 rounded-full bg-blue-600"
                   style={{
-                    width: `${summary.totalRevenue > 0 ? (summary.paymentMethodBreakdown.card / summary.totalRevenue) * 100 : 0}%`,
+                    width: `${paymentMethodPercentages.card}%`,
                   }}
                 ></div>
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                {summary.totalRevenue > 0
-                  ? ((summary.paymentMethodBreakdown.card / summary.totalRevenue) * 100).toFixed(1)
-                  : 0}
-                % of total
+                {paymentMethodPercentages.card.toFixed(1)}% of total
               </div>
             </div>
 
@@ -522,18 +535,12 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
                 <div
                   className="h-2 rounded-full bg-green-600"
                   style={{
-                    width: `${summary.totalRevenue > 0 ? (summary.paymentMethodBreakdown.bank_transfer / summary.totalRevenue) * 100 : 0}%`,
+                    width: `${paymentMethodPercentages.bank_transfer}%`,
                   }}
                 ></div>
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                {summary.totalRevenue > 0
-                  ? (
-                      (summary.paymentMethodBreakdown.bank_transfer / summary.totalRevenue) *
-                      100
-                    ).toFixed(1)
-                  : 0}
-                % of total
+                {paymentMethodPercentages.bank_transfer.toFixed(1)}% of total
               </div>
             </div>
 
@@ -551,15 +558,12 @@ export function FinancialReportsSection({ dateRange = 'month' }: FinancialReport
                 <div
                   className="h-2 rounded-full bg-gray-600"
                   style={{
-                    width: `${summary.totalRevenue > 0 ? (summary.paymentMethodBreakdown.other / summary.totalRevenue) * 100 : 0}%`,
+                    width: `${paymentMethodPercentages.other}%`,
                   }}
                 ></div>
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                {summary.totalRevenue > 0
-                  ? ((summary.paymentMethodBreakdown.other / summary.totalRevenue) * 100).toFixed(1)
-                  : 0}
-                % of total
+                {paymentMethodPercentages.other.toFixed(1)}% of total
               </div>
             </div>
           </div>

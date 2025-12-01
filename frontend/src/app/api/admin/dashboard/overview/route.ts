@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { COMPLETED_PAYMENT_STATUSES } from '@/lib/constants/payment-status';
+import { getErrorMessage } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { type TableRow } from '@/lib/supabase/typed-helpers';
 
 type DateRangeKey = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
@@ -27,6 +30,18 @@ interface EquipmentUtilizationPoint {
   utilization_pct: number;
   hours_used: number;
   revenue_generated: number;
+}
+
+// Type definitions for query results
+type PaymentRow = Pick<TableRow<'payments'>, 'id' | 'createdAt' | 'processedAt' | 'amount' | 'status' | 'amountRefunded' | 'type'>;
+// Type for debug query that includes bookingId
+type PaymentRowWithBooking = PaymentRow & { bookingId?: string | null };
+
+interface RevenueTrendRow {
+  bucket_date: string;
+  gross_revenue: number | string | null;
+  refunded_amount: number | string | null;
+  payments_count: number | string | null;
 }
 
 const ACTIVE_BOOKING_STATUSES = [
@@ -425,6 +440,9 @@ export async function GET(request: NextRequest) {
         previousStart.setTime(previousStart.getTime() - duration);
         previousStart.setHours(0, 0, 0, 0);
 
+        // Note: 'custom' is not a valid DateRangeKey, but we use it internally to track custom date ranges
+        // The range parameter is still used for the response metadata
+        // @ts-expect-error - 'custom' is used internally to track custom date ranges
         range = 'custom';
       } catch (err) {
         logger.warn('Invalid date parameters in dashboard API', {
@@ -481,9 +499,9 @@ export async function GET(request: NextRequest) {
     // Helper function to safely query materialized views with fallback
     const safeQueryView = async <T>(
       viewName: string,
-      queryFn: () => Promise<{ data: T | null; error: any }>,
-      fallbackFn?: () => Promise<{ data: T | null; error: any }>
-    ): Promise<{ data: T | null; error: null }> => {
+      queryFn: () => Promise<{ data: T | null; error: { message?: string; code?: string } | null }>,
+      fallbackFn?: () => Promise<{ data: T | null; error: { message?: string; code?: string } | null }>
+    ): Promise<{ data: T | null; error: { message?: string; code?: string } | null }> => {
       try {
         const result = await queryFn();
         // Check if error is "relation does not exist" OR if data is empty/null
@@ -527,7 +545,7 @@ export async function GET(request: NextRequest) {
           }
         }
         return result;
-      } catch (err) {
+      } catch {
         logger.warn(`Error querying ${viewName}, using fallback`, {
           component: 'admin-dashboard-api',
           action: 'view_query_error',
@@ -540,14 +558,15 @@ export async function GET(request: NextRequest) {
     let queryResults;
     try {
       queryResults = await Promise.all([
-        safeQueryView('mv_dashboard_kpis', () =>
-          supabase
+        safeQueryView('mv_dashboard_kpis', async () => {
+          const result = await supabase
             .from('mv_dashboard_kpis')
             .select('snapshot_date, generated_at')
             .order('snapshot_date', { ascending: false })
             .limit(1)
-            .maybeSingle()
-        ),
+            .maybeSingle();
+          return { data: result.data, error: result.error };
+        }),
         safeQueryView(
           'mv_revenue_trends',
           async () => {
@@ -561,10 +580,34 @@ export async function GET(request: NextRequest) {
               .order('bucket_date', { ascending: true });
 
             // Check if materialized view data is complete (covers the full date range)
-            // If the view is stale (missing recent dates), we should use fallback
+            // If the view is stale (missing recent dates) or empty, we should use fallback
             let isDataComplete = false;
+
+            // Always use fallback for real-time data - materialized views may be stale
+            // This ensures we always get current payment data
+            if (!result.data || (Array.isArray(result.data) && result.data.length === 0)) {
+              logger.info('Materialized view returned empty data, using fallback for real-time data', {
+                component: 'admin-dashboard-api',
+                action: 'mv_revenue_trends_empty',
+                metadata: {
+                  range,
+                  dateRange: { start: currentStartISO, end: currentEndISO },
+                },
+              });
+              // Return error to trigger fallback
+              const emptyError = {
+                message: 'Materialized view data is empty',
+                code: 'STALE_DATA',
+                details: 'Materialized view returned no data, using fallback',
+              };
+              return {
+                data: result.data,
+                error: emptyError,
+              };
+            }
+
             if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-              const viewDates = result.data.map((r: any) => r.bucket_date).sort();
+              const viewDates = result.data.map((r: RevenueTrendRow) => r.bucket_date).sort();
               const firstDate = viewDates[0];
               const lastDate = viewDates[viewDates.length - 1];
               const today = toDateString(new Date());
@@ -600,14 +643,14 @@ export async function GET(request: NextRequest) {
                 });
                 // Return error to trigger fallback
                 // Ensure error object has the correct structure for detection
-                const staleError = {
+                const staleError: { message: string; code: string; details: string } = {
                   message: 'Materialized view data is stale',
                   code: 'STALE_DATA',
                   details: `View has data from ${firstDate} to ${lastDate}, but needs ${currentStartISO} to ${currentEndISO}`,
                 };
                 return {
                   data: result.data,
-                  error: staleError as any,
+                  error: staleError,
                 };
               }
             }
@@ -641,8 +684,9 @@ export async function GET(request: NextRequest) {
             const currentEndISO = currentEnd.toISOString();
 
             // Debug: Check ALL payments to see what we have (development only)
+            let allPaymentsDebug: PaymentRow[] | undefined;
             if (process.env.NODE_ENV === 'development') {
-              const { data: allPaymentsDebug, error: debugError } = await supabase
+              const { data: debugPayments, error: debugError } = await supabase
                 .from('payments')
                 .select(
                   'id, createdAt, processedAt, amount, status, amountRefunded, type, bookingId'
@@ -650,13 +694,14 @@ export async function GET(request: NextRequest) {
                 .order('createdAt', { ascending: false })
                 .limit(10);
 
-              if (!debugError && allPaymentsDebug) {
+              if (!debugError && debugPayments) {
+                allPaymentsDebug = debugPayments;
                 logger.debug('Recent payments in database (for debugging)', {
                   component: 'admin-dashboard-api',
                   action: 'debug_all_payments',
                   metadata: {
-                    totalRecentPayments: allPaymentsDebug.length,
-                    payments: allPaymentsDebug.map((p: any) => ({
+                    totalRecentPayments: debugPayments.length,
+                    payments: debugPayments.map((p: PaymentRowWithBooking) => ({
                       id: p.id?.substring(0, 8),
                       status: p.status,
                       type: p.type,
@@ -665,21 +710,27 @@ export async function GET(request: NextRequest) {
                       processedAt: p.processedAt,
                       createdAtDateStr: toDateStringFromISO(p.createdAt),
                       processedAtDateStr: toDateStringFromISO(p.processedAt),
-                      bookingId: p.bookingId?.substring(0, 8),
+                      bookingId: p.bookingId?.substring(0, 8) ?? null, // Use actual bookingId from query
                     })),
                   },
                 });
               }
             }
 
-            // Query payments with basic filters to reduce data transfer
+            // Query payments with basic filters
             // We filter by status and type in database, then do precise date filtering in JavaScript
             // This approach handles the processedAt/createdAt fallback logic correctly
+            // FIX: Use explicit AND logic by grouping the OR condition with parentheses
+            // This ensures: (status IN completed_statuses) AND (type IS NULL OR type != 'refund')
+            // IMPORTANT: Include 'id' field for logging and debugging
+            // Note: We don't filter by date in the database query because we need to handle
+            // both processedAt (preferred) and createdAt (fallback) dates, which is easier in JavaScript
             const { data: payments, error } = await supabase
               .from('payments')
-              .select('createdAt, processedAt, amount, status, amountRefunded, type')
-              .eq('status', 'completed')
-              .or('type.is.null,type.neq.refund'); // Include null types and non-refund types
+              .select('id, createdAt, processedAt, amount, status, amountRefunded, type')
+              .in('status', COMPLETED_PAYMENT_STATUSES)
+              .or('and(type.is.null),and(type.neq.refund)') // Grouped OR: (type IS NULL) OR (type != 'refund'), ANDed with status filter
+              .limit(10000); // Safety limit to prevent memory issues
 
             if (error) {
               logger.error(
@@ -701,7 +752,36 @@ export async function GET(request: NextRequest) {
               return { data: null, error };
             }
 
-            // Log if no payments found at all (this is important for debugging)
+            // Log ALL payment query results (critical for debugging revenue issues)
+            logger.info('Payment query results', {
+              component: 'admin-dashboard-api',
+              action: 'payment_query_results',
+              metadata: {
+                dateRange: { start: startDateStr, end: endDateStr },
+                range,
+                queryFilters: {
+                  status: COMPLETED_PAYMENT_STATUSES,
+                  typeFilter: 'type.is.null,type.neq.refund',
+                },
+                paymentsCount: payments?.length ?? 0,
+                hasError: !!error,
+                errorMessage: error ? getErrorMessage(error) : undefined,
+                samplePayments: payments?.slice(0, 10).map((p: PaymentRow) => ({
+                  id: p.id?.substring(0, 8),
+                  status: p.status,
+                  type: p.type,
+                  amount: p.amount,
+                  createdAt: p.createdAt,
+                  processedAt: p.processedAt,
+                  createdAtDateStr: toDateStringFromISO(p.createdAt),
+                  processedAtDateStr: toDateStringFromISO(p.processedAt),
+                  amountRefunded: p.amountRefunded,
+                })),
+                allPaymentsCount: allPaymentsDebug?.length ?? 0,
+                allPaymentsStatuses: allPaymentsDebug?.map((p: PaymentRow) => p.status) ?? [],
+              },
+            });
+
             if (!payments || payments.length === 0) {
               logger.warn('No completed payments found in database', {
                 component: 'admin-dashboard-api',
@@ -710,28 +790,14 @@ export async function GET(request: NextRequest) {
                   dateRange: { start: startDateStr, end: endDateStr },
                   range,
                   queryFilters: {
-                    status: 'completed',
+                    status: COMPLETED_PAYMENT_STATUSES,
                     typeFilter: 'type.is.null,type.neq.refund',
                   },
+                  hasError: !!error,
+                  errorMessage: error ? getErrorMessage(error) : undefined,
                   allPaymentsCount: allPaymentsDebug?.length ?? 0,
-                  allPaymentsStatuses: allPaymentsDebug?.map((p: any) => p.status) ?? [],
-                },
-              });
-            } else {
-              logger.info('Found completed payments (before date filtering)', {
-                component: 'admin-dashboard-api',
-                action: 'completed_payments_found',
-                metadata: {
-                  count: payments.length,
-                  samplePayments: payments.slice(0, 5).map((p: any) => ({
-                    status: p.status,
-                    type: p.type,
-                    amount: p.amount,
-                    createdAt: p.createdAt,
-                    processedAt: p.processedAt,
-                    createdAtDateStr: toDateStringFromISO(p.createdAt),
-                    processedAtDateStr: toDateStringFromISO(p.processedAt),
-                  })),
+                  allPaymentsStatuses: allPaymentsDebug?.map((p: PaymentRow) => p.status) ?? [],
+                  allPaymentsTypes: allPaymentsDebug?.map((p: PaymentRow) => p.type) ?? [],
                 },
               });
             }
@@ -802,7 +868,7 @@ export async function GET(request: NextRequest) {
                 component: 'admin-dashboard-api',
                 action: 'revenue_payment_query_details',
                 metadata: {
-                  samplePayments: (payments ?? []).slice(0, 5).map((p: any) => ({
+                  samplePayments: (payments ?? []).slice(0, 5).map((p: PaymentRow) => ({
                     id: p.id?.substring(0, 8),
                     processedAt: p.processedAt,
                     createdAt: p.createdAt,
@@ -810,15 +876,15 @@ export async function GET(request: NextRequest) {
                     status: p.status,
                     type: p.type,
                     paymentDateStr: p.processedAt
-                      ? toDateStringFromISO(p.processedAt)
-                      : toDateStringFromISO(p.createdAt),
+                      ? toDateStringFromISO(p.processedAt) ?? ''
+                      : toDateStringFromISO(p.createdAt) ?? '',
                     inRange:
                       (p.processedAt
-                        ? toDateStringFromISO(p.processedAt)
-                        : toDateStringFromISO(p.createdAt)) >= startDateStr &&
+                        ? toDateStringFromISO(p.processedAt) ?? ''
+                        : toDateStringFromISO(p.createdAt) ?? '') >= startDateStr &&
                       (p.processedAt
-                        ? toDateStringFromISO(p.processedAt)
-                        : toDateStringFromISO(p.createdAt)) <= endDateStr,
+                        ? toDateStringFromISO(p.processedAt) ?? ''
+                        : toDateStringFromISO(p.createdAt) ?? '') <= endDateStr,
                   })),
                 },
               });
@@ -832,7 +898,7 @@ export async function GET(request: NextRequest) {
                   range,
                   totalPayments: (payments ?? []).length,
                   dateRange: { start: startDateStr, end: endDateStr },
-                  allPaymentDates: (payments ?? []).slice(0, 10).map((p: any) => ({
+                  allPaymentDates: (payments ?? []).slice(0, 10).map((p: PaymentRow) => ({
                     processedAt: p.processedAt,
                     createdAt: p.createdAt,
                     dateStr: p.processedAt
@@ -884,58 +950,48 @@ export async function GET(request: NextRequest) {
               }
             });
 
-            const result = Array.from(grouped.entries()).map(([bucket_date, values]) => ({
+            const result: RevenueTrendRow[] = Array.from(grouped.entries()).map(([bucket_date, values]) => ({
               bucket_date,
               ...values,
-            })) as any;
+            }));
 
-            // Enhanced logging for grouped results
-            if (result.length > 0 || filteredPayments.length > 0) {
-              const totalGross = result.reduce(
-                (sum: number, r: any) => sum + Number(r.gross_revenue || 0),
-                0
-              );
-              const totalRefunded = result.reduce(
-                (sum: number, r: any) => sum + Number(r.refunded_amount || 0),
-                0
-              );
-              const totalNet = totalGross - totalRefunded;
+            // Enhanced logging for grouped results - ALWAYS log for debugging revenue issues
+            const totalGross = result.reduce(
+              (sum: number, r: RevenueTrendRow) => sum + Number(r.gross_revenue || 0),
+              0
+            );
+            const totalRefunded = result.reduce(
+              (sum: number, r: RevenueTrendRow) => sum + Number(r.refunded_amount || 0),
+              0
+            );
+            const totalNet = totalGross - totalRefunded;
 
-              logger.info('Revenue fallback grouping complete', {
-                component: 'admin-dashboard-api',
-                action: 'revenue_fallback_grouping',
-                metadata: {
-                  range,
-                  dateRange: { start: startDateStr, end: endDateStr },
-                  totalPaymentsQueried: (payments ?? []).length,
-                  filteredPaymentsCount: filteredPayments.length,
-                  groupedDatesCount: result.length,
-                  groupedData: result.slice(0, 10).map((r: any) => ({
-                    date: r.bucket_date,
-                    gross: Number(r.gross_revenue || 0),
-                    refunded: Number(r.refunded_amount || 0),
-                    net: Number(r.gross_revenue || 0) - Number(r.refunded_amount || 0),
-                    count: Number(r.payments_count || 0),
-                  })),
-                  totals: {
-                    gross: totalGross,
-                    refunded: totalRefunded,
-                    net: totalNet,
-                  },
+            logger.info('Revenue fallback grouping complete', {
+              component: 'admin-dashboard-api',
+              action: 'revenue_fallback_grouping',
+              metadata: {
+                range,
+                dateRange: { start: startDateStr, end: endDateStr },
+                totalPaymentsQueried: (payments ?? []).length,
+                filteredPaymentsCount: filteredPayments.length,
+                groupedDatesCount: result.length,
+                groupedData: result.slice(0, 10).map((r: RevenueTrendRow) => ({
+                  date: r.bucket_date,
+                  gross: Number(r.gross_revenue || 0),
+                  refunded: Number(r.refunded_amount || 0),
+                  net: Number(r.gross_revenue || 0) - Number(r.refunded_amount || 0),
+                  count: Number(r.payments_count || 0),
+                })),
+                totals: {
+                  gross: totalGross,
+                  refunded: totalRefunded,
+                  net: totalNet,
                 },
-              });
-            } else if (process.env.NODE_ENV === 'development') {
-              logger.debug('Payment grouping complete - no data', {
-                component: 'admin-dashboard-api',
-                action: 'revenue_payment_grouping',
-                metadata: {
-                  groupedCount: result.length,
-                  filteredPaymentsCount: filteredPayments.length,
-                  totalPaymentsQueried: (payments ?? []).length,
-                },
-              });
-            }
+                hasRevenue: totalNet > 0,
+              },
+            });
 
+            // ALWAYS return result, even if empty (chart will show zero-filled dates)
             return {
               data: result,
               error: null,
@@ -983,7 +1039,7 @@ export async function GET(request: NextRequest) {
 
             // Check if materialized view data is stale (same logic as current period)
             if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-              const viewDates = result.data.map((r: any) => r.bucket_date).sort();
+              const viewDates = result.data.map((r: RevenueTrendRow) => r.bucket_date).sort();
               const firstDate = viewDates[0];
               const lastDate = viewDates[viewDates.length - 1];
               const today = toDateString(new Date());
@@ -1014,14 +1070,14 @@ export async function GET(request: NextRequest) {
                   }
                 );
                 // Return error to trigger fallback
-                const staleError = {
+                const staleError: { message: string; code: string; details: string } = {
                   message: 'Materialized view data is stale',
                   code: 'STALE_DATA',
                   details: `View has data from ${firstDate} to ${lastDate}, but needs ${previousStartDateStr} to ${previousEndDateStr}`,
                 };
                 return {
                   data: result.data,
-                  error: staleError as any,
+                  error: staleError,
                 };
               }
             }
@@ -1035,14 +1091,19 @@ export async function GET(request: NextRequest) {
             // Include all payment types (payment, deposit, additional_charge) but exclude refunds
             const startDateStr = toDateString(previousStart);
             const endDateStr = toDateString(previousEnd);
-            const previousStartISO = previousStart.toISOString();
-            const previousEndISO = previousEnd.toISOString();
+            // Note: previousStartISO and previousEndISO are available if needed for date range queries
+            // const previousStartISO = previousStart.toISOString();
+            // const previousEndISO = previousEnd.toISOString();
 
+            // FIX: Use explicit AND logic by grouping the OR condition with parentheses
+            // This ensures: (status IN completed_statuses) AND (type IS NULL OR type != 'refund')
+            // Add safety limit to prevent memory issues with large datasets
             const { data: payments, error } = await supabase
               .from('payments')
               .select('createdAt, processedAt, amount, status, amountRefunded, type')
-              .eq('status', 'completed')
-              .or('type.is.null,type.neq.refund'); // Include null types and non-refund types
+              .in('status', COMPLETED_PAYMENT_STATUSES)
+              .or('and(type.is.null),and(type.neq.refund)') // Grouped OR: (type IS NULL) OR (type != 'refund'), ANDed with status filter
+              .limit(10000); // Safety limit to prevent memory issues
 
             if (error) {
               logger.warn('Error fetching payments for previous period revenue trends', {
@@ -1096,21 +1157,21 @@ export async function GET(request: NextRequest) {
               grouped.set(date, entry);
             });
 
-            const result = Array.from(grouped.entries()).map(([bucket_date, values]) => ({
+            const result: TrendPoint[] = Array.from(grouped.entries()).map(([bucket_date, values]) => ({
               bucket_date,
               gross_revenue: values.gross_revenue,
               refunded_amount: values.refunded_amount,
               payments_count: values.payments_count,
-            })) as any;
+            }));
 
             // Enhanced logging for previous period fallback
             if (result.length > 0 || filteredPayments.length > 0) {
               const totalGross = result.reduce(
-                (sum: number, r: any) => sum + Number(r.gross_revenue || 0),
+                (sum: number, r: TrendPoint) => sum + Number(r.gross_revenue || 0),
                 0
               );
               const totalRefunded = result.reduce(
-                (sum: number, r: any) => sum + Number(r.refunded_amount || 0),
+                (sum: number, r: TrendPoint) => sum + Number(r.refunded_amount || 0),
                 0
               );
               const totalNet = totalGross - totalRefunded;
@@ -1124,7 +1185,7 @@ export async function GET(request: NextRequest) {
                   totalPaymentsQueried: (payments ?? []).length,
                   filteredPaymentsCount: filteredPayments.length,
                   groupedDatesCount: result.length,
-                  groupedData: result.slice(0, 10).map((r: any) => ({
+                  groupedData: result.slice(0, 10).map((r: RevenueTrendRow) => ({
                     date: r.bucket_date,
                     gross: Number(r.gross_revenue || 0),
                     refunded: Number(r.refunded_amount || 0),
@@ -1171,7 +1232,7 @@ export async function GET(request: NextRequest) {
 
             // Check if materialized view data covers the requested date range
             if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-              const viewDates = result.data.map((r: any) => r.bucket_date).sort();
+              const viewDates = result.data.map((r: BookingTrendPoint) => r.bucket_date).sort();
               const firstDate = viewDates[0];
               const lastDate = viewDates[viewDates.length - 1];
 
@@ -1193,14 +1254,14 @@ export async function GET(request: NextRequest) {
                   }
                 );
                 // Return error to trigger fallback
-                const incompleteError = {
+                const incompleteError: { message: string; code: string; details: string } = {
                   message: 'Materialized view data is incomplete',
                   code: 'STALE_DATA',
                   details: `View has data from ${firstDate} to ${lastDate}, but needs ${currentStartISO} to ${currentEndISO}`,
                 };
                 return {
                   data: result.data,
-                  error: incompleteError as any,
+                  error: incompleteError,
                 };
               }
             }
@@ -1212,7 +1273,8 @@ export async function GET(request: NextRequest) {
               .from('bookings')
               .select('createdAt, status')
               .gte('createdAt', currentStart.toISOString())
-              .lte('createdAt', currentEnd.toISOString());
+              .lte('createdAt', currentEnd.toISOString())
+              .limit(10000); // Safety limit to prevent memory issues
             if (error) return { data: null, error };
             const grouped = new Map<
               string,
@@ -1241,7 +1303,7 @@ export async function GET(request: NextRequest) {
               data: Array.from(grouped.entries()).map(([bucket_date, values]) => ({
                 bucket_date,
                 ...values,
-              })) as any,
+              })) as BookingTrendPoint[],
               error: null,
             };
           }
@@ -1265,7 +1327,7 @@ export async function GET(request: NextRequest) {
 
             // Check if materialized view data is stale (same logic as current period and revenue previous)
             if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-              const viewDates = result.data.map((r: any) => r.bucket_date).sort();
+              const viewDates = result.data.map((r: BookingTrendPoint) => r.bucket_date).sort();
               const firstDate = viewDates[0];
               const lastDate = viewDates[viewDates.length - 1];
               const today = toDateString(new Date());
@@ -1296,14 +1358,14 @@ export async function GET(request: NextRequest) {
                   }
                 );
                 // Return error to trigger fallback
-                const staleError = {
+                const staleError: { message: string; code: string; details: string } = {
                   message: 'Materialized view data is stale',
                   code: 'STALE_DATA',
                   details: `View has data from ${firstDate} to ${lastDate}, but needs ${previousStartDateStr} to ${previousEndDateStr}`,
                 };
                 return {
                   data: result.data,
-                  error: staleError as any,
+                  error: staleError,
                 };
               }
             }
@@ -1315,7 +1377,8 @@ export async function GET(request: NextRequest) {
               .from('bookings')
               .select('createdAt, status')
               .gte('createdAt', previousStart.toISOString())
-              .lte('createdAt', previousEnd.toISOString());
+              .lte('createdAt', previousEnd.toISOString())
+              .limit(10000); // Safety limit to prevent memory issues
             if (error) return { data: null, error };
             const grouped = new Map<
               string,
@@ -1344,18 +1407,19 @@ export async function GET(request: NextRequest) {
               data: Array.from(grouped.entries()).map(([bucket_date, values]) => ({
                 bucket_date,
                 ...values,
-              })) as any,
+              })) as BookingTrendPoint[],
               error: null,
             };
           }
         ),
-        safeQueryView('mv_equipment_utilization', () =>
-          supabase
+        safeQueryView('mv_equipment_utilization', async () => {
+          const result = await supabase
             .from('mv_equipment_utilization')
             .select('snapshot_date, equipment_id, utilization_pct, hours_used, revenue_generated')
             .gte('snapshot_date', currentStartISO)
-            .lte('snapshot_date', currentEndISO)
-        ),
+            .lte('snapshot_date', currentEndISO);
+          return { data: result.data, error: result.error };
+        }),
         supabase
           .from('equipment')
           .select(
@@ -1383,24 +1447,26 @@ export async function GET(request: NextRequest) {
           .eq('status', 'cancelled')
           .gte('createdAt', currentStart.toISOString())
           .lte('createdAt', currentEnd.toISOString()),
-        safeQueryView('alerts', () =>
-          supabase
+        safeQueryView('alerts', async () => {
+          const result = await supabase
             .from('alerts')
             .select(
               'id, type, severity, entity_type, entity_id, summary, details, detected_at, acknowledged_at, acknowledged_by, status, created_at'
             )
             .order('detected_at', { ascending: false })
-            .limit(10)
-        ),
-        safeQueryView('mv_alert_candidates', () =>
-          supabase
+            .limit(10);
+          return { data: result.data, error: result.error };
+        }),
+        safeQueryView('mv_alert_candidates', async () => {
+          const result = await supabase
             .from('mv_alert_candidates')
             .select(
               'id, type, severity, entity_type, entity_id, summary, details, detected_at, acknowledged_at, acknowledged_by, status, created_at'
             )
             .order('detected_at', { ascending: false })
-            .limit(10)
-        ),
+            .limit(10);
+          return { data: result.data, error: result.error };
+        }),
       ]);
     } catch (queryError) {
       logger.error(
@@ -1440,6 +1506,28 @@ export async function GET(request: NextRequest) {
     const bookingTrend = (bookingTrendResult.data ?? []) as BookingTrendPoint[];
     const previousBookingTrend = (previousBookingTrendResult.data ?? []) as BookingTrendPoint[];
 
+    // Log revenue trend data for debugging
+    logger.info('Revenue trend data extracted', {
+      component: 'admin-dashboard-api',
+      action: 'revenue_trend_extracted',
+      metadata: {
+        range,
+        revenueTrendLength: revenueTrend.length,
+        revenueTrendError: revenueTrendResult.error ? revenueTrendResult.error.message : null,
+        revenueTrendSample: revenueTrend.slice(0, 5).map((r: TrendPoint) => ({
+          bucket_date: r.bucket_date,
+          gross_revenue: r.gross_revenue,
+          refunded_amount: r.refunded_amount,
+          net_revenue: Number(r.gross_revenue ?? 0) - Number(r.refunded_amount ?? 0),
+          payments_count: r.payments_count,
+        })),
+        hasRevenueData: revenueTrend.some((r: TrendPoint) => {
+          const net = Number(r.gross_revenue ?? 0) - Number(r.refunded_amount ?? 0);
+          return net > 0;
+        }),
+      },
+    });
+
     // Comprehensive logging for monthly ranges
     if (range === 'month') {
       logger.info('Monthly view data check', {
@@ -1451,19 +1539,19 @@ export async function GET(request: NextRequest) {
           previousRevenueTrendLength: previousRevenueTrend.length,
           bookingTrendLength: bookingTrend.length,
           previousBookingTrendLength: previousBookingTrend.length,
-          previousRevenueSample: previousRevenueTrend.slice(0, 5).map((r: any) => ({
+          previousRevenueSample: previousRevenueTrend.slice(0, 5).map((r: TrendPoint) => ({
             bucket_date: r.bucket_date,
             gross_revenue: r.gross_revenue,
             refunded_amount: r.refunded_amount,
             net_revenue: Number(r.gross_revenue ?? 0) - Number(r.refunded_amount ?? 0),
           })),
           previousBookingSample: previousBookingTrend.slice(0, 5),
-          previousRevenueHasData: previousRevenueTrend.some((r: any) => {
+          previousRevenueHasData: previousRevenueTrend.some((r: TrendPoint) => {
             const net = Number(r.gross_revenue ?? 0) - Number(r.refunded_amount ?? 0);
             return net > 0;
           }),
           previousBookingHasData: previousBookingTrend.some(
-            (b: any) => Number(b.total_bookings ?? 0) > 0
+            (b: BookingTrendPoint) => Number(b.total_bookings ?? 0) > 0
           ),
         },
       });
@@ -1505,7 +1593,7 @@ export async function GET(request: NextRequest) {
           (acc, row) => acc + Number(row.refunded_amount ?? 0),
           0
         ),
-        sampleData: previousRevenueTrend.slice(0, 5).map((r: any) => ({
+        sampleData: previousRevenueTrend.slice(0, 5).map((r: TrendPoint) => ({
           date: r.bucket_date,
           gross: Number(r.gross_revenue ?? 0),
           refunded: Number(r.refunded_amount ?? 0),
@@ -1583,8 +1671,8 @@ export async function GET(request: NextRequest) {
       cancelledBookings: cancelledBookingsTotal,
       averageBookingValue,
       equipmentUtilization,
-      snapshotDate: dashboardKpiResult.data?.snapshot_date ?? null,
-      lastGeneratedAt: dashboardKpiResult.data?.generated_at ?? null,
+      snapshotDate: (dashboardKpiResult.data as { snapshot_date?: string } | null)?.snapshot_date ?? null,
+      lastGeneratedAt: (dashboardKpiResult.data as { generated_at?: string } | null)?.generated_at ?? null,
     };
 
     return NextResponse.json({
@@ -1627,7 +1715,7 @@ export async function GET(request: NextRequest) {
       metadata: {
         // Use current time since we're querying live data (payments table fallback provides real-time data)
         generatedAt: new Date().toISOString(),
-        snapshotDate: dashboardKpiResult.data?.snapshot_date ?? null,
+        snapshotDate: (dashboardKpiResult.data as { snapshot_date?: string } | null)?.snapshot_date ?? null,
         range,
         comparisonRange: {
           start: previousStart.toISOString(),
@@ -1642,6 +1730,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
+    const dateRange = searchParams.get('range') || 'month';
 
     logger.error(
       'Admin dashboard overview error',
@@ -1650,7 +1739,7 @@ export async function GET(request: NextRequest) {
         action: 'overview_fetch_failed',
         metadata: {
           error: errorMessage,
-          range,
+          range: dateRange,
           hasStack: !!errorStack,
         },
       },
@@ -1697,7 +1786,22 @@ function buildChartsPayload(params: {
     revenue_generated: string | number | null;
   }>;
 }) {
-  const revenueSeries = params.revenueCurrent.map((row: unknown) => {
+  // Log input data for debugging
+  logger.info('Building charts payload', {
+    component: 'admin-dashboard-api',
+    action: 'build_charts_payload',
+    metadata: {
+      revenueCurrentLength: params.revenueCurrent.length,
+      revenueCurrentSample: params.revenueCurrent.slice(0, 3).map((r: TrendPoint) => ({
+        bucket_date: r.bucket_date,
+        gross_revenue: r.gross_revenue,
+        refunded_amount: r.refunded_amount,
+        payments_count: r.payments_count,
+      })),
+    },
+  });
+
+  const revenueSeries = params.revenueCurrent.map((row: TrendPoint) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     const net = gross - refunds;
@@ -1739,7 +1843,7 @@ function buildChartsPayload(params: {
     { grossRevenue: 0, refundedAmount: 0, netRevenue: 0 }
   );
 
-  const revenueComparison = params.revenuePrevious.map((row: unknown) => {
+  const revenueComparison = params.revenuePrevious.map((row: RevenueTrendRow) => {
     const gross = Number(row.gross_revenue ?? 0);
     const refunds = Number(row.refunded_amount ?? 0);
     const net = gross - refunds;
@@ -1808,21 +1912,41 @@ function buildChartsPayload(params: {
     }
   }
 
-  const utilizationDetails = params.equipmentSummary.map((item: unknown) => {
+  interface EquipmentSummaryItem {
+    id: string;
+    unitId: string | null;
+    make: string | null;
+    model: string | null;
+    status?: string | null;
+    utilization_rate?: number | string | null;
+    total_rental_days?: number | null;
+    revenue_generated?: number | string | null;
+  }
+
+  const utilizationDetails = params.equipmentSummary.map((item: EquipmentSummaryItem) => {
     const latestSnapshot = utilizationMap.get(item.id);
-    const utilizationPct =
+    const utilizationRateValue = item.utilization_rate;
+    // Calculate utilization percentage and cap at 100%
+    // Utilization can't exceed 100% (equipment can't be used more than 100% of available time)
+    const rawUtilizationPct =
       latestSnapshot !== undefined
         ? Number(latestSnapshot.utilization_pct ?? 0)
-        : Number(item.utilization_rate ?? 0);
+        : typeof utilizationRateValue === 'number' ? utilizationRateValue : typeof utilizationRateValue === 'string' ? Number(utilizationRateValue) || 0 : 0;
+    const utilizationPct = Math.min(100, Math.max(0, rawUtilizationPct)); // Cap between 0-100%
+
+    // Convert hours_used to days (hours / 24)
+    // If we have a snapshot with hours_used, convert to days
+    // Otherwise use total_rental_days which is already in days
+    const rentedDays = latestSnapshot
+      ? Math.round((Number(latestSnapshot.hours_used ?? 0) / 24) * 10) / 10 // Round to 1 decimal place
+      : Number(item.total_rental_days ?? 0);
 
     return {
       equipmentId: item.id,
       label: buildEquipmentLabel(item),
       status: (item.status ?? 'unknown') as string,
       utilizationPct,
-      rentedDays: latestSnapshot
-        ? Number(latestSnapshot.hours_used ?? 0)
-        : (item.total_rental_days ?? 0),
+      rentedDays,
       revenue:
         latestSnapshot !== undefined
           ? Number(latestSnapshot.revenue_generated ?? 0)

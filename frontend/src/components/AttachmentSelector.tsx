@@ -41,7 +41,7 @@ export default function AttachmentSelector({
     async function fetchAttachments() {
       const { data, error } = await supabase
         .from('equipment_attachments')
-        .select('*')
+        .select('id, name, attachment_type, daily_rate, weekly_rate, monthly_rate, compatible_models, compatible_equipment_categories, description, images, quantity_available, quantity_in_use, is_active, included_with_rental, requires_training, condition, serial_number, replacement_cost, specifications, created_at, updated_at')
         .eq('is_active', true)
         .contains('compatible_models', [equipmentModel])
         .order('attachment_type', { ascending: true })

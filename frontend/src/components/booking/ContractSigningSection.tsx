@@ -5,6 +5,8 @@
 
 'use client';
 
+import { logger } from '@/lib/logger';
+
 import EnhancedContractSigner from '../contracts/EnhancedContractSigner';
 import SignedContractDisplay from '../contracts/SignedContractDisplay';
 
@@ -22,8 +24,39 @@ export default function ContractSigningSection({
   onSigned,
 }: ContractSigningSectionProps) {
   // If contract is already signed, show the detailed signed contract display
-  if (contract?.status === 'signed' || contract?.status === 'completed' || completedDuringBooking) {
-    return <SignedContractDisplay contractId={contract.id} bookingNumber={booking.bookingNumber} />;
+  if (contract && (contract.status === 'signed' || contract.status === 'completed' || completedDuringBooking)) {
+    if (!contract.id) {
+      logger.error(
+        'Contract missing ID',
+        {
+          component: 'ContractSigningSection',
+          action: 'contract_missing_id',
+        },
+        new Error('Contract object exists but missing id field')
+      );
+      return (
+        <div className="rounded-lg bg-white p-6 shadow-sm">
+          <div className="text-center text-red-600">
+            <p>Error: Contract information is incomplete.</p>
+          </div>
+        </div>
+      );
+    }
+    return <SignedContractDisplay contractId={contract.id} bookingNumber={booking?.bookingNumber || 'N/A'} />;
+  }
+
+  // If no contract exists yet, allow signing to create one
+  if (!contract || !contract.id) {
+    // Contract doesn't exist yet - show signer to create one
+    if (!booking?.id) {
+      return (
+        <div className="rounded-lg bg-white p-6 shadow-sm">
+          <div className="text-center text-red-600">
+            <p>Error: Booking information is missing.</p>
+          </div>
+        </div>
+      );
+    }
   }
 
   // Use the full EnhancedContractSigner from Step 4

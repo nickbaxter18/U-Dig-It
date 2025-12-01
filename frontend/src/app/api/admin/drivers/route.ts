@@ -10,11 +10,14 @@ import { requireAdmin } from '@/lib/supabase/requireAdmin';
 const driverCreateSchema = z.object({
   name: z.string().min(1).max(200),
   phone: z.string().min(10).max(20),
-  licenseNumber: z.string().max(50).optional(),
-  licenseExpiry: z.string().datetime().optional().nullable(),
-  vehicleType: z.string().max(50).optional(),
-  vehicleRegistration: z.string().max(50).optional(),
-  notes: z.string().max(2000).optional(),
+  licenseNumber: z.string().max(50).nullable().optional(),
+  licenseExpiry: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'License expiry must be in YYYY-MM-DD format'), z.null()])
+    .optional()
+    .nullable(),
+  vehicleType: z.string().max(50).nullable().optional(),
+  vehicleRegistration: z.string().max(50).nullable().optional(),
+  notes: z.string().max(2000).nullable().optional(),
   isAvailable: z.boolean().default(true),
 });
 
@@ -99,7 +102,34 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
 
     // Parse and validate request body
     const body = await request.json();
-    const validated = driverCreateSchema.parse(body);
+
+    // Preprocess: Convert empty strings to null for optional fields
+    const preprocessedBody: Record<string, unknown> = { ...body };
+    const optionalStringFields = [
+      'licenseNumber',
+      'licenseExpiry',
+      'vehicleType',
+      'vehicleRegistration',
+      'notes',
+    ];
+
+    for (const field of optionalStringFields) {
+      if (field in preprocessedBody) {
+        const value = preprocessedBody[field];
+        if (value === null || value === undefined) {
+          preprocessedBody[field] = null;
+        } else if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed === '') {
+            preprocessedBody[field] = null;
+          } else {
+            preprocessedBody[field] = trimmed;
+          }
+        }
+      }
+    }
+
+    const validated = driverCreateSchema.parse(preprocessedBody);
     const {
       name,
       phone,

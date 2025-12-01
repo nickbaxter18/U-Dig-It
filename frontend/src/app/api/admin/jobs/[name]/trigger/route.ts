@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: { name: s
       data: { user },
     } = await supabase.auth.getUser();
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service client unavailable for job trigger', {
         component: 'admin-jobs-trigger',

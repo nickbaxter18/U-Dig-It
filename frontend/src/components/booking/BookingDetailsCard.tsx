@@ -315,7 +315,11 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
 
                   const subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount;
                   const finalTaxes = subtotalAfterDiscount * 0.15; // 15% HST on discounted amount
-                  const finalTotal = subtotalAfterDiscount + finalTaxes;
+                  const calculatedTotal = subtotalAfterDiscount + finalTaxes;
+                  // Use balance amount if available, otherwise use calculated total
+                  const finalTotal = booking.balanceAmount !== undefined && booking.balanceAmount !== null
+                    ? Number(booking.balanceAmount)
+                    : calculatedTotal;
 
                   return (
                     <>
@@ -326,7 +330,9 @@ export default function BookingDetailsCard({ booking }: BookingDetailsCardProps)
 
                       {/* Total */}
                       <div className="flex justify-between border-t-2 border-gray-300 pt-2">
-                        <span className="font-semibold text-gray-900">Total Amount</span>
+                        <span className="font-semibold text-gray-900">
+                          {booking.balanceAmount !== undefined && booking.balanceAmount !== null ? 'Outstanding Balance' : 'Total Amount'}
+                        </span>
                         <span className="text-lg font-bold text-gray-900">
                           ${finalTotal.toFixed(2)}
                         </span>

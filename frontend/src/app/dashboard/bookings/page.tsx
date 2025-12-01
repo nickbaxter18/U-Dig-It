@@ -20,6 +20,7 @@ interface Booking {
   deliveryProvince: string | null;
   deliveryPostalCode: string | null;
   totalAmount: string;
+  balance_amount?: number | null;
   securityDeposit: string;
   status: string;
   type: string;
@@ -55,7 +56,7 @@ export default function BookingsPage() {
         const supabase = createClient();
         const { data, error: fetchError } = await supabase
           .from('bookings')
-          .select('*')
+          .select('*, balance_amount')
           .eq('customerId', user.id)
           .order('createdAt', { ascending: false });
 
@@ -254,9 +255,11 @@ export default function BookingsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-[#E1BC56]">
-                        {formatCurrency(parseFloat(booking.totalAmount))}
+                        {formatCurrency(booking.balance_amount ?? parseFloat(booking.totalAmount))}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">Total Amount</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {booking.balance_amount !== undefined && booking.balance_amount !== null ? 'Outstanding Balance' : 'Total Amount'}
+                      </p>
                     </div>
                   </div>
 

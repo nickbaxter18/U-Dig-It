@@ -7,10 +7,9 @@ import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 import { createServiceClient } from '@/lib/supabase/service';
 
 import type {
-  PermissionCheckOptions,
-  PermissionCheckResult,
-  PermissionContext,
-  PermissionString,
+    PermissionCheckOptions,
+    PermissionContext,
+    PermissionString
 } from './types';
 
 // Detect if running client-side
@@ -154,7 +153,19 @@ export async function hasPermission(
         hasPermission = result.hasPermission === true;
       } catch (apiError) {
         // Capture comprehensive error details
-        const errorDetails: any = {
+        type ErrorDetails = {
+          userId: string;
+          permission: string;
+          errorMessage?: string;
+          errorStack?: string;
+          errorName?: string;
+          errorCode?: string | number;
+          errorString?: string;
+          errorKeys?: string[];
+          errorType?: string;
+          stringifyError?: string;
+        };
+        const errorDetails: ErrorDetails = {
           userId,
           permission,
         };
@@ -167,10 +178,14 @@ export async function hasPermission(
           try {
             errorDetails.errorString = JSON.stringify(apiError);
             errorDetails.errorKeys = Object.keys(apiError);
-            if ('message' in apiError) errorDetails.errorMessage = (apiError as any).message;
-            if ('stack' in apiError) errorDetails.errorStack = (apiError as any).stack;
-            if ('name' in apiError) errorDetails.errorName = (apiError as any).name;
-            if ('code' in apiError) errorDetails.errorCode = (apiError as any).code;
+            const errorObj = apiError as Record<string, unknown>;
+            if ('message' in errorObj) errorDetails.errorMessage = String(errorObj.message);
+            if ('stack' in errorObj) errorDetails.errorStack = String(errorObj.stack);
+            if ('name' in errorObj) errorDetails.errorName = String(errorObj.name);
+            if ('code' in errorObj) {
+              const codeValue = errorObj.code;
+              errorDetails.errorCode = typeof codeValue === 'string' || typeof codeValue === 'number' ? codeValue : undefined;
+            }
           } catch (stringifyError) {
             errorDetails.stringifyError = String(stringifyError);
           }
@@ -186,7 +201,7 @@ export async function hasPermission(
             action: 'api_error',
             metadata: errorDetails,
           },
-          apiError
+          apiError instanceof Error ? apiError : undefined
         );
         // Raw error already logged above
 
@@ -199,7 +214,7 @@ export async function hasPermission(
       }
     } else {
       // Server-side: use direct RPC
-      const supabase = createServiceClient();
+      const supabase = await createServiceClient();
       if (!supabase) {
         logger.error('Service client not available for permission check', {
           component: 'permissions-checker',
@@ -217,7 +232,8 @@ export async function hasPermission(
 
       if (error) {
         // Check if function doesn't exist (migration not applied)
-        const errorCode = (error as any)?.code;
+        // Type PostgREST error structure
+        const errorCode = (error as { code?: string | number })?.code;
         const errorMessage = error.message || '';
 
         if (
@@ -255,11 +271,15 @@ export async function hasPermission(
 
     return hasPermission;
   } catch (error) {
-    logger.error('Unexpected error checking permission', {
-      component: 'permissions-checker',
-      action: 'has_permission',
-      metadata: { userId, permission },
-    });
+    logger.error(
+      'Unexpected error checking permission',
+      {
+        component: 'permissions-checker',
+        action: 'has_permission',
+        metadata: { userId, permission },
+      },
+      error instanceof Error ? error : undefined
+    );
     return false;
   }
 }
@@ -312,17 +332,21 @@ export async function hasAnyPermission(
         const result = await response.json();
         return result.hasPermission === true;
       } catch (apiError) {
-        logger.error('Permission check API error', {
-          component: 'permissions-checker',
-          action: 'has_any_permission',
-          metadata: { userId, permissions },
-        });
+        logger.error(
+          'Permission check API error',
+          {
+            component: 'permissions-checker',
+            action: 'has_any_permission',
+            metadata: { userId, permissions },
+          },
+          apiError instanceof Error ? apiError : undefined
+        );
         return false;
       }
     }
 
     // Server-side: use direct RPC
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       return false;
     }
@@ -334,7 +358,8 @@ export async function hasAnyPermission(
 
     if (error) {
       // Check if function doesn't exist (migration not applied)
-      const errorCode = (error as any)?.code;
+      // Type PostgREST error structure
+      const errorCode = (error as { code?: string | number })?.code;
       const errorMessage = error.message || '';
 
       if (
@@ -359,11 +384,15 @@ export async function hasAnyPermission(
 
     return data === true;
   } catch (error) {
-    logger.error('Unexpected error checking any permission', {
-      component: 'permissions-checker',
-      action: 'has_any_permission',
-      metadata: { userId, permissions },
-    });
+    logger.error(
+      'Unexpected error checking any permission',
+      {
+        component: 'permissions-checker',
+        action: 'has_any_permission',
+        metadata: { userId, permissions },
+      },
+      error instanceof Error ? error : undefined
+    );
     return false;
   }
 }
@@ -416,17 +445,21 @@ export async function hasAllPermissions(
         const result = await response.json();
         return result.hasPermission === true;
       } catch (apiError) {
-        logger.error('Permission check API error', {
-          component: 'permissions-checker',
-          action: 'has_all_permissions',
-          metadata: { userId, permissions },
-        });
+        logger.error(
+          'Permission check API error',
+          {
+            component: 'permissions-checker',
+            action: 'has_all_permissions',
+            metadata: { userId, permissions },
+          },
+          apiError instanceof Error ? apiError : undefined
+        );
         return false;
       }
     }
 
     // Server-side: use direct RPC
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       return false;
     }
@@ -438,7 +471,8 @@ export async function hasAllPermissions(
 
     if (error) {
       // Check if function doesn't exist (migration not applied)
-      const errorCode = (error as any)?.code;
+      // Type PostgREST error structure
+      const errorCode = (error as { code?: string | number })?.code;
       const errorMessage = error.message || '';
 
       if (
@@ -463,11 +497,15 @@ export async function hasAllPermissions(
 
     return data === true;
   } catch (error) {
-    logger.error('Unexpected error checking all permissions', {
-      component: 'permissions-checker',
-      action: 'has_all_permissions',
-      metadata: { userId, permissions },
-    });
+    logger.error(
+      'Unexpected error checking all permissions',
+      {
+        component: 'permissions-checker',
+        action: 'has_all_permissions',
+        metadata: { userId, permissions },
+      },
+      error instanceof Error ? error : undefined
+    );
     return false;
   }
 }
@@ -490,7 +528,7 @@ export async function getUserPermissions(userId: string): Promise<{
       };
     }
 
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       logger.error('Service client not available for getting user permissions', {
         component: 'permissions-checker',
@@ -546,11 +584,15 @@ export async function getUserPermissions(userId: string): Promise<{
       roles: roleNames,
     };
   } catch (error) {
-    logger.error('Unexpected error getting user permissions', {
-      component: 'permissions-checker',
-      action: 'get_user_permissions',
-      metadata: { userId },
-    });
+    logger.error(
+      'Unexpected error getting user permissions',
+      {
+        component: 'permissions-checker',
+        action: 'get_user_permissions',
+        metadata: { userId },
+      },
+      error instanceof Error ? error : undefined
+    );
     return { permissions: [], roles: [] };
   }
 }
@@ -560,7 +602,7 @@ export async function getUserPermissions(userId: string): Promise<{
  */
 export async function getPermissionContext(userId: string): Promise<PermissionContext | null> {
   try {
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       return null;
     }
@@ -586,11 +628,15 @@ export async function getPermissionContext(userId: string): Promise<PermissionCo
       roles,
     };
   } catch (error) {
-    logger.error('Unexpected error getting permission context', {
-      component: 'permissions-checker',
-      action: 'get_permission_context',
-      metadata: { userId },
-    });
+    logger.error(
+      'Unexpected error getting permission context',
+      {
+        component: 'permissions-checker',
+        action: 'get_permission_context',
+        metadata: { userId },
+      },
+      error instanceof Error ? error : undefined
+    );
     return null;
   }
 }
@@ -620,7 +666,7 @@ export function clearPermissionCache(): void {
  */
 export async function rebuildUserPermissionCache(userId: string): Promise<void> {
   try {
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       return;
     }
@@ -632,10 +678,14 @@ export async function rebuildUserPermissionCache(userId: string): Promise<void> 
     // Invalidate in-memory cache to force refresh
     invalidateUserCache(userId);
   } catch (error) {
-    logger.error('Failed to rebuild permission cache', {
-      component: 'permissions-checker',
-      action: 'rebuild_user_permission_cache',
-      metadata: { userId },
-    });
+    logger.error(
+      'Failed to rebuild permission cache',
+      {
+        component: 'permissions-checker',
+        action: 'rebuild_user_permission_cache',
+        metadata: { userId },
+      },
+      error instanceof Error ? error : undefined
+    );
   }
 }

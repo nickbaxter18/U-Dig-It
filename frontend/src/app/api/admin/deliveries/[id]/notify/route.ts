@@ -7,11 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { createInAppNotification } from '@/lib/notification-service';
 import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
-import { getSendGridApiKey } from '@/lib/secrets/email';
+import { getSendGridApiKey, getEmailFromAddress, getEmailFromName } from '@/lib/secrets/email';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
-
-const FROM_EMAIL = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
-const FROM_NAME = process.env.EMAIL_FROM_NAME || 'U-Dig It Rentals';
 
 const deliveryNotificationSchema = z.object({
   status: z.enum(['in_transit', 'delivered', 'completed']),
@@ -271,17 +268,20 @@ export const POST = withRateLimit(
 
       const emailContent = getEmailContent();
 
-      // Send email via SendGrid
+      // Send email via SendGrid - load config from Supabase Vault
       try {
-        const { getSendGridApiKey } = await import('@/lib/secrets/email');
-        const sendgridApiKey = await getSendGridApiKey();
+        const [sendgridApiKey, fromEmail, fromName] = await Promise.all([
+          getSendGridApiKey(),
+          getEmailFromAddress(),
+          getEmailFromName(),
+        ]);
         sgMail.setApiKey(sendgridApiKey);
 
         await sgMail.send({
           to: customer.email,
           from: {
-            email: FROM_EMAIL,
-            name: FROM_NAME,
+            email: fromEmail,
+            name: fromName,
           },
           subject: emailContent.subject,
           html: emailContent.html,

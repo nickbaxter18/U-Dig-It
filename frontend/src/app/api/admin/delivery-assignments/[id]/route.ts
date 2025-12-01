@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const validatedData = deliveryAssignmentUpdateSchema.parse(body);
 
     // Create service role client for privileged operations
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
 
     // Update delivery assignment with service role
     const { data, error: updateError } = await supabaseAdmin

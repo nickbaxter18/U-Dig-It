@@ -1,220 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { rateLimit } from '@/lib/rate-limiter';
+import { RateLimitPresets } from '@/lib/rate-limiter';
+import { requireAdminServer } from '@/lib/supabase/requireAdminServer';
+import { runDailyBalanceReconciliation } from '@/lib/jobs/daily-balance-reconciliation';
 import { logger } from '@/lib/logger';
-import { RateLimitPresets, withRateLimit } from '@/lib/rate-limiter';
-import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
-import { requireAdmin } from '@/lib/supabase/requireAdmin';
-import { createServiceClient } from '@/lib/supabase/service';
-import {
-  reconciliationQuerySchema,
-  reconciliationTriggerSchema,
-} from '@/lib/validators/admin/payments';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: NextRequest) => {
-  const adminResult = await requireAdmin(request);
-
-  if (adminResult.error) return adminResult.error;
-
-  const supabase = adminResult.supabase;
-
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-  }
-
-  const searchParams = Object.fromEntries(new URL(request.url).searchParams);
-  const parsed = reconciliationQuerySchema.safeParse({
-    status: searchParams.status ?? undefined,
-    limit: searchParams.limit ? Number(searchParams.limit) : undefined,
-    page: searchParams.page ? Number(searchParams.page) : undefined,
-  });
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid query parameters', details: parsed.error.issues },
-      { status: 400 }
-    );
-  }
-
-  const { status, limit } = parsed.data;
-  const page = parsed.data.page || 1;
-  const pageSize = Math.min(Math.max(limit || 20, 1), 100);
-  const rangeStart = (page - 1) * pageSize;
-  const rangeEnd = rangeStart + pageSize - 1;
-
-  let query = supabase
-    .from('payout_reconciliations')
-    .select(
-      'id, stripe_payout_id, arrival_date, amount, currency, status, details, reconciled_by, reconciled_at, created_at, updated_at',
-      { count: 'exact' }
-    )
-    .order('arrival_date', { ascending: false })
-    .range(rangeStart, rangeEnd);
-
-  if (status) {
-    query = query.eq('status', status);
-  }
-
-  const { data, error: fetchError, count } = await query;
-
-  if (fetchError) {
-    logger.error(
-      'Failed to fetch payout reconciliations',
-      {
-        component: 'admin-reconciliation',
-        action: 'fetch_failed',
-        metadata: { status, page, pageSize },
-      },
-      fetchError
-    );
-    return NextResponse.json({ error: 'Unable to load payout reconciliations' }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    payouts: data ?? [],
-    total: count || 0,
-    page,
-    pageSize,
-  });
-});
-
-export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextRequest) => {
-  const adminResult = await requireAdmin(request);
-
-  if (adminResult.error) return adminResult.error;
-
-  const supabase = adminResult.supabase;
-
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase client not configured' }, { status: 500 });
-  }
-
-  // Get user for logging
-  const { user } = adminResult;
-
-  let body: unknown = {};
+/**
+ * POST /api/admin/payments/reconcile
+ *
+ * Manually trigger balance reconciliation
+ *
+ * Request body (optional):
+ * {
+ *   limit?: number,         // Max bookings to validate (default: 1000)
+ *   minDiscrepancy?: number // Minimum discrepancy to report (default: 0.01)
+ *   autoCorrect?: boolean   // Whether to auto-correct small discrepancies (default: true)
+ * }
+ */
+export async function POST(request: NextRequest) {
   try {
-    body = await request.json();
-  } catch {
-    // ignore empty body
-  }
-
-  const parsed = reconciliationTriggerSchema.safeParse(body ?? {});
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid request body', details: parsed.error.issues },
-      { status: 400 }
-    );
-  }
-
-  try {
-    const sinceISO =
-      parsed.data.since ?? new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    const sinceDate = new Date(sinceISO);
-    if (Number.isNaN(sinceDate.valueOf())) {
-      return NextResponse.json({ error: 'Invalid date supplied for "since"' }, { status: 400 });
+    // Rate limiting (stricter for reconciliation)
+    const rateLimitResult = await rateLimit(request, RateLimitPresets.STRICT);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
+      );
     }
 
-    const arrivalGte = Math.floor(sinceDate.getTime() / 1000);
+    // Admin authentication
+    const { supabase, user, error: authError } = await requireAdminServer();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const secretKey = await getStripeSecretKey();
-    const stripe = createStripeClient(secretKey);
+    const body = await request.json().catch(() => ({}));
+    const {
+      limit = 1000,
+      minDiscrepancy = 0.01,
+      autoCorrect = true,
+    } = body;
 
-    const payouts = await stripe.payouts.list({
-      limit: 50,
-      arrival_date: { gte: arrivalGte },
-      expand: ['data.summary'],
+    logger.info('Manual balance reconciliation triggered', {
+      component: 'api-reconcile',
+      action: 'reconciliation_triggered',
+      metadata: {
+        triggeredBy: user.id,
+        limit,
+        minDiscrepancy,
+        autoCorrect,
+      },
     });
 
-    const payoutIds = payouts.data.map((payout) => payout.id);
+    // Run reconciliation
+    const result = await runDailyBalanceReconciliation({
+      limit,
+      minDiscrepancy,
+      autoCorrectThreshold: autoCorrect ? minDiscrepancy : 0,
+    });
 
-    const serviceClient = createServiceClient();
-    const dbClient = serviceClient ?? supabase;
-
-    let existingStatusMap = new Map<string, string>();
-    if (payoutIds.length > 0) {
-      const { data: existingRows, error: existingError } = await dbClient
-        .from('payout_reconciliations')
-        .select('stripe_payout_id, status')
-        .in('stripe_payout_id', payoutIds);
-
-      if (!existingError && existingRows) {
-        existingStatusMap = new Map(
-          existingRows.map((row) => [row.stripe_payout_id as string, row.status as string])
-        );
-      }
-    }
-
-    const processedIds: string[] = [];
-    const nowIso = new Date().toISOString();
-
-    for (const payout of payouts.data) {
-      const status = existingStatusMap.get(payout.id) ?? 'pending';
-      const existingCreated = existingStatusMap.has(payout.id) ? undefined : nowIso;
-
-      const payloadRow: Record<string, unknown> = {
-        stripe_payout_id: payout.id,
-        amount: Number(payout.amount ?? 0) / 100,
-        currency: payout.currency?.toUpperCase() ?? 'CAD',
-        arrival_date: payout.arrival_date
-          ? new Date(payout.arrival_date * 1000).toISOString()
-          : null,
-        status,
-        details: {
-          stripeStatus: payout.status,
-          automatic: payout.automatic,
-          balanceTransaction: payout.balance_transaction,
-          failureCode: payout.failure_code,
-          failureMessage: payout.failure_message,
-          method: payout.method,
-          metadata: payout.metadata ?? {},
-          summary: (payout as any).summary ?? null,
-        },
-        updated_at: nowIso,
-      };
-
-      if (existingCreated === nowIso) {
-        payloadRow.created_at = nowIso;
-      }
-
-      const { error: upsertError } = await dbClient
-        .from('payout_reconciliations')
-        .upsert(payloadRow, { onConflict: 'stripe_payout_id' });
-
-      if (upsertError) {
-        logger.error(
-          'Failed to upsert payout reconciliation record',
-          {
-            component: 'admin-reconciliation',
-            action: 'sync_failed',
-            metadata: { payoutId: payout.id },
-          },
-          upsertError
-        );
-        continue;
-      }
-
-      processedIds.push(payout.id);
-    }
-
-    logger.info('Stripe payout reconciliation sync complete', {
-      component: 'admin-reconciliation',
-      action: 'sync_success',
-      metadata: { processedCount: processedIds.length, adminId: user?.id || 'unknown' },
+    logger.info('Manual balance reconciliation completed', {
+      component: 'api-reconcile',
+      action: 'reconciliation_complete',
+      metadata: {
+        totalValidated: result.totalValidated,
+        discrepancies: result.discrepancies,
+        autoCorrected: result.autoCorrected,
+        requiresManualReview: result.requiresManualReview,
+        durationMs: result.durationMs,
+      },
     });
 
     return NextResponse.json({
-      synced: processedIds.length,
-      payoutIds: processedIds,
+      success: true,
+      message: 'Reconciliation completed successfully',
+      result,
     });
-  } catch (err) {
+  } catch (error) {
     logger.error(
-      'Stripe payout reconciliation sync failed',
-      { component: 'admin-reconciliation', action: 'sync_error' },
-      err instanceof Error ? err : new Error(String(err))
+      'Error running balance reconciliation',
+      {
+        component: 'api-reconcile',
+        action: 'reconciliation_error',
+      },
+      error instanceof Error ? error : undefined
     );
-    return NextResponse.json({ error: 'Failed to sync payouts from Stripe' }, { status: 500 });
+
+    return NextResponse.json(
+      { error: 'Internal server error', message: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
-});
+}

@@ -22,6 +22,10 @@ interface Equipment {
   specifications?: unknown;
   createdAt: string;
   updatedAt: string;
+  similarity?: number;
+  keywordMatch?: boolean;
+  rank?: number;
+  semanticScore?: number;
 }
 
 interface SearchResult {
@@ -36,10 +40,22 @@ interface SearchResultsProps {
   results: SearchResult;
   loading: boolean;
   onPageChange: (page: number) => void;
+  searchMode?: 'keyword' | 'semantic' | 'hybrid';
 }
 
-export function SearchResults({ results, loading, onPageChange }: SearchResultsProps) {
+export function SearchResults({ results, loading, onPageChange, searchMode = 'keyword' }: SearchResultsProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Helper function to extract location string from JSONB or string
+  const extractLocation = (location: unknown): string => {
+    if (!location) return 'Main Yard';
+    if (typeof location === 'string') return location;
+    if (typeof location === 'object' && location !== null) {
+      const loc = location as { name?: string; city?: string; address?: string };
+      return loc.name || loc.city || loc.address || 'Main Yard';
+    }
+    return 'Main Yard';
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-CA', {
@@ -166,23 +182,46 @@ export function SearchResults({ results, loading, onPageChange }: SearchResultsP
                 className="rounded-lg border p-4 transition-shadow hover:shadow-md"
               >
                 <div className="mb-3 flex items-start justify-between">
-                  <div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
                     <h4 className="text-lg font-semibold text-gray-900">{equipment.unitId}</h4>
+                      {searchMode !== 'keyword' && equipment.rank === 1 && (
+                        <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                          Best Match
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">
                       {equipment.make} {equipment.model} ({equipment.year})
                     </p>
                   </div>
+                  <div className="flex flex-col items-end gap-1">
                   <span
                     className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(equipment.status)}`}
                   >
                     {equipment.status.replace('_', ' ')}
                   </span>
+                    {searchMode !== 'keyword' && equipment.similarity !== undefined && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500">Match:</span>
+                        <div className="relative h-2 w-16 overflow-hidden rounded-full bg-gray-200">
+                          <div
+                            className="h-full bg-kubota-orange transition-all"
+                            style={{ width: `${equipment.similarity * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-gray-700">
+                          {Math.round(equipment.similarity * 100)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mb-4 space-y-2">
                   <div className="flex items-center text-sm text-gray-600">
                     <MapPin className="mr-2 h-4 w-4" />
-                    {equipment.location}
+                    {extractLocation(equipment.location)}
                   </div>
                   {equipment.totalEngineHours && (
                     <div className="flex items-center text-sm text-gray-600">
@@ -282,7 +321,7 @@ export function SearchResults({ results, loading, onPageChange }: SearchResultsP
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                       <div className="flex items-center">
                         <MapPin className="mr-1 h-4 w-4 text-gray-400" />
-                        {equipment.location}
+                        {extractLocation(equipment.location)}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">

@@ -57,9 +57,10 @@ export default function SignedContractDisplay({
 
   const fetchContract = useCallback(async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('contracts')
-        .select('*')
+        .select('id, bookingId, type, status, signedAt, signedDocumentUrl, signedDocumentPath, completedAt, createdAt, updatedAt, contractNumber, documentUrl, signatures')
         .eq('id', contractId)
         .single();
 
@@ -71,6 +72,7 @@ export default function SignedContractDisplay({
         {
           component: 'SignedContractDisplay',
           action: 'error',
+          metadata: { contractId },
         },
         error instanceof Error ? error : new Error(String(error))
       );
@@ -78,6 +80,10 @@ export default function SignedContractDisplay({
       setLoading(false);
     }
   }, [contractId]);
+
+  useEffect(() => {
+    fetchContract();
+  }, [fetchContract]);
 
   useEffect(() => {
     let isActive = true;
@@ -98,18 +104,34 @@ export default function SignedContractDisplay({
 
       setGeneratingUrl(true);
       try {
-        const { data, error } = await supabase.storage
-          .from('signed-contracts')
-          .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+        // Try multiple bucket names (codebase uses both 'signed-contracts' and 'contracts')
+        const bucketsToTry = ['signed-contracts', 'contracts'];
+        let signedUrl: string | null = null;
 
-        if (error || !data?.signedUrl) {
-          logger.warn('Failed to create signed URL for contract', {
+        for (const bucketName of bucketsToTry) {
+          const { data, error } = await supabase.storage
+            .from(bucketName)
+            .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);
+
+          if (!error && data?.signedUrl) {
+            signedUrl = data.signedUrl;
+            logger.info('Created signed URL for contract', {
+              component: 'SignedContractDisplay',
+              action: 'signed_url_success',
+              metadata: { contractId, bucket: bucketName, path: storagePath },
+            });
+            break;
+          }
+        }
+
+        if (!signedUrl) {
+          logger.warn('Failed to create signed URL for contract from any bucket', {
             component: 'SignedContractDisplay',
             action: 'signed_url_warning',
             metadata: {
               contractId,
               path: storagePath,
-              error: error?.message || 'signed_url_missing',
+              bucketsAttempted: bucketsToTry,
             },
           });
           if (isActive) {
@@ -119,7 +141,7 @@ export default function SignedContractDisplay({
         }
 
         if (isActive) {
-          setDownloadUrl(data.signedUrl);
+          setDownloadUrl(signedUrl);
         }
       } catch (err) {
         logger.error(
@@ -162,19 +184,47 @@ export default function SignedContractDisplay({
     );
   }
 
-  if (!contract || contract.status !== 'signed') {
-    return null;
+  if (!contract) {
+    return (
+      <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="text-center text-gray-500">
+          <p>Contract not found.</p>
+        </div>
+      </div>
+    );
   }
 
-  const signedDate = new Date(contract.signedAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  // Accept both 'signed' and 'completed' status
+  if (contract.status !== 'signed' && contract.status !== 'completed') {
+    return (
+      <div className="rounded-lg bg-white p-6 shadow-sm">
+        <div className="text-center text-gray-500">
+          <p>Contract is not signed yet. Status: {contract.status}</p>
+        </div>
+      </div>
+    );
+  }
 
-  const customerName = contract.signatures?.customer?.name || 'Customer';
+  const signedDate = contract.signedAt
+    ? new Date(contract.signedAt).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Not available';
+
+  // Safely extract customer name from signatures or use fallback
+  const customerName =
+    (contract.signatures &&
+      typeof contract.signatures === 'object' &&
+      'customer' in contract.signatures &&
+      contract.signatures.customer &&
+      typeof contract.signatures.customer === 'object' &&
+      'name' in contract.signatures.customer &&
+      contract.signatures.customer.name) ||
+    'Customer';
 
   return (
     <div className="rounded-lg border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm">
@@ -211,31 +261,43 @@ export default function SignedContractDisplay({
               Signed
             </span>
           </div>
-          <div>
-            <p className="text-gray-600">Completed</p>
-            <p className="font-semibold text-gray-900">
-              {new Date(contract.completedAt).toLocaleDateString()}
-            </p>
-          </div>
+          {contract.completedAt && (
+            <div>
+              <p className="text-gray-600">Completed</p>
+              <p className="font-semibold text-gray-900">
+                {new Date(contract.completedAt).toLocaleDateString()}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Signature Preview */}
-      {contract.signatures?.customer?.signature && (
-        <div className="mb-4 rounded-lg bg-white p-4">
-          <p className="mb-2 text-sm font-semibold text-gray-700">Electronic Signature</p>
-          <div className="inline-block rounded-lg border-2 border-gray-200 bg-gray-50 p-3">
-            <img
-              src={contract.signatures.customer.signature}
-              alt="Customer Signature"
-              className="max-h-24 max-w-xs"
-            />
+      {contract.signatures &&
+        typeof contract.signatures === 'object' &&
+        'customer' in contract.signatures &&
+        contract.signatures.customer &&
+        typeof contract.signatures.customer === 'object' &&
+        'signature' in contract.signatures.customer &&
+        contract.signatures.customer.signature && (
+          <div className="mb-4 rounded-lg bg-white p-4">
+            <p className="mb-2 text-sm font-semibold text-gray-700">Electronic Signature</p>
+            <div className="inline-block rounded-lg border-2 border-gray-200 bg-gray-50 p-3">
+              <img
+                src={String(contract.signatures.customer.signature)}
+                alt="Customer Signature"
+                className="max-h-24 max-w-xs"
+                onError={(e) => {
+                  // Hide image if it fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              🔒 Legally binding electronic signature - PIPEDA & UECA compliant
+            </p>
           </div>
-          <p className="mt-2 text-xs text-gray-500">
-            🔒 Legally binding electronic signature - PIPEDA & UECA compliant
-          </p>
-        </div>
-      )}
+        )}
 
       {/* Download Actions */}
       <div className="flex flex-wrap gap-3">

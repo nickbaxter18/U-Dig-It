@@ -8,6 +8,8 @@ alwaysApply: false
 
 When creating or modifying components, follow this workflow:
 
+**Systematic Problem-Solving**: If encountering issues or making complex decisions, use the systematic problem-solving framework: `systematic-problem-solving.mdc` - Framework 2: Feature Implementation
+
 ### Pre-Implementation
 
 1. **Check Existing Components**
@@ -131,6 +133,46 @@ Follow the exact structure from YOUR codebase:
    - Test validation logic
    - Test error handling
 
+### Type Safety with Supabase
+
+When using Supabase queries in components:
+
+1. **Use Typed Helpers** (Preferred)
+   ```typescript
+   import { typedSelect, TableRow } from '@/lib/supabase/typed-helpers';
+   import { supabase } from '@/lib/supabase/client';
+
+   // Type-safe query
+   const { data, error } = await typedSelect(supabase, 'bookings', 'id, status, totalAmount')
+     .eq('customerId', userId);
+
+   // Type-safe result
+   type Booking = TableRow<'bookings'>;
+   ```
+
+2. **Use Generated Types** (Alternative)
+   ```typescript
+   import type { Tables } from '@/../../supabase/types';
+
+   type Booking = Tables<'bookings'>;
+   const booking: Booking = data[0]; // Properly typed
+   ```
+
+3. **Never Use `as any`**
+   ```typescript
+   // ❌ WRONG
+   const booking = data as any;
+
+   // ✅ CORRECT
+   const booking = data as Tables<'bookings'>;
+   // Or use typedSelect() helper
+   ```
+
+4. **Verify Types Compile**
+   - Run `pnpm type-check` before committing
+   - Fix any type errors immediately
+   - Types must match database schema
+
 ### Common Mistakes
 
 1. Don't forget 'use client' for interactive components
@@ -138,3 +180,5 @@ Follow the exact structure from YOUR codebase:
 3. Validate on both client and server
 4. Handle errors gracefully - use error handler
 5. Don't access process.env directly - use secrets loaders
+6. Use typed Supabase helpers or generated types - never `as any`
+7. Verify types compile before committing

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -17,20 +17,36 @@ export function useSupabaseQuery<T>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Stabilize query object to prevent unnecessary re-renders
+  const stableQuery = useMemo(() => {
+    return {
+      select: query.select,
+      eqKey: query.eq?.key,
+      eqValue: query.eq?.value,
+      limit: query.limit,
+    };
+  }, [query.select, query.eq?.key, query.eq?.value, query.limit]);
+
   useEffect(() => {
     if (!options?.enabled) return;
+
+    // Require explicit column selection - no default SELECT *
+    if (!stableQuery.select) {
+      setError('Column selection is required. Please specify query.select');
+      setLoading(false);
+      return;
+    }
 
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const selectValue = query.select || '*';
-        const eqKey = query.eq?.key;
-        const eqValue = query.eq?.value;
-        const limitValue = query.limit || 100;
+        const eqKey = stableQuery.eqKey;
+        const eqValue = stableQuery.eqValue;
+        const limitValue = stableQuery.limit || 100;
 
-        let supabaseQuery = supabase.from(table).select(selectValue);
+        let supabaseQuery = supabase.from(table).select(stableQuery.select);
         if (eqKey && eqValue !== undefined) {
           supabaseQuery = supabaseQuery.eq(eqKey, eqValue);
         }
@@ -48,7 +64,7 @@ export function useSupabaseQuery<T>(
     };
 
     fetchData();
-  }, [table, query.select, query.eq?.key, query.eq?.value, query.limit, options?.enabled]);
+  }, [table, stableQuery.select, stableQuery.eqKey, stableQuery.eqValue, stableQuery.limit, options?.enabled]);
 
   return { data, loading, error, refetch: () => window.location.reload() };
 }
@@ -57,7 +73,10 @@ export function useSupabaseQuery<T>(
 export function useEquipment(id?: string) {
   return useSupabaseQuery<Tables<'equipment'>>(
     'equipment',
-    id ? { select: '*', eq: { key: 'id', value: id } } : { select: '*' },
+    {
+      select: 'id, unitId, serialNumber, make, model, year, status, location, dailyRate, weeklyRate, monthlyRate, nextMaintenanceDue, lastMaintenanceDate, totalEngineHours, specifications, createdAt, updatedAt, type, description, replacementValue, overageHourlyRate, images, notes, hourly_rate, half_day_rate, minimum_rental_hours, dailyHourAllowance, weeklyHourAllowance',
+      eq: id ? { key: 'id', value: id } : undefined,
+    },
     { enabled: true }
   );
 }
@@ -68,6 +87,7 @@ export function useBookings(userId?: string) {
     {
       select: `
         *,
+        balance_amount,
         equipment:equipment_id (
           id, model, make, year, dailyRate, images
         ),
@@ -111,6 +131,7 @@ export function useUserBookings() {
           .select(
             `
             *,
+            balance_amount,
             equipment:equipment_id (
               id, model, make, year, dailyRate, images
             )

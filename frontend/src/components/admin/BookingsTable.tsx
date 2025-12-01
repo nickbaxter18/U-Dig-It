@@ -405,7 +405,7 @@ export function BookingsTable({
                       <div className="flex items-center">
                         <DollarSign className="mr-1 h-4 w-4 text-gray-400" aria-hidden="true" />
                         <span className="text-sm font-medium text-gray-900">
-                          {formatCurrency(booking.total)}
+                          {formatCurrency(booking.balanceAmount ?? booking.total)}
                         </span>
                       </div>
                     </td>

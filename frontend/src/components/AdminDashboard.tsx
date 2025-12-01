@@ -42,6 +42,7 @@ interface Booking {
   endDate: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   total: number;
+  balanceAmount?: number | null;
   deliveryAddress: string;
   createdAt: string;
 }
@@ -524,7 +525,7 @@ export default function AdminDashboard() {
                         {getStatusText(booking.status)}
                       </span>
                       <p className="mt-2 text-lg font-semibold text-gray-900">
-                        {formatCurrency(booking.total)}
+                        {formatCurrency(booking.balanceAmount ?? booking.total)}
                       </p>
                       <div className="mt-2 space-x-2">
                         <Link

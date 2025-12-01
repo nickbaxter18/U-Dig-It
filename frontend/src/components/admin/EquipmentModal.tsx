@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 
@@ -22,15 +22,31 @@ interface Equipment {
   nextMaintenance?: string | Date;
   totalEngineHours?: number;
   specifications?: unknown;
+  type?: string;
+  description?: string;
+  replacementValue?: number;
+  overageHourlyRate?: number;
 }
+
+const EQUIPMENT_TYPES = [
+  { value: 'svl75', label: 'SVL75 Track Loader' },
+  { value: 'svl95', label: 'SVL95 Track Loader' },
+  { value: 'excavator', label: 'Excavator' },
+  { value: 'skid_steer', label: 'Skid Steer' },
+  { value: 'backhoe', label: 'Backhoe' },
+  { value: 'wheel_loader', label: 'Wheel Loader' },
+  { value: 'mini_excavator', label: 'Mini Excavator' },
+  { value: 'other', label: 'Other' },
+];
 
 interface EquipmentModalProps {
   equipment: Equipment | null;
   onSave: (equipment: Partial<Equipment>) => void;
   onClose: () => void;
+  saving?: boolean;
 }
 
-export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalProps) {
+export function EquipmentModal({ equipment, onSave, onClose, saving = false }: EquipmentModalProps) {
   const [formData, setFormData] = useState({
     unitId: '',
     serialNumber: '',
@@ -45,6 +61,10 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
     lastMaintenance: '',
     nextMaintenance: '',
     totalEngineHours: 0,
+    type: 'svl75',
+    description: '',
+    replacementValue: 75000,
+    overageHourlyRate: 50,
     specifications: {
       engine: '',
       horsepower: '',
@@ -87,6 +107,10 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
             ? equipment.nextMaintenance.toISOString().slice(0, 10)
             : equipment.nextMaintenance || '',
         totalEngineHours: equipment.totalEngineHours || 0,
+        type: equipment.type || 'svl75',
+        description: equipment.description || '',
+        replacementValue: equipment.replacementValue || 75000,
+        overageHourlyRate: equipment.overageHourlyRate || 50,
         specifications: {
           engine: specs?.engine || '',
           horsepower: specs?.horsepower || '',
@@ -105,6 +129,10 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
       lastMaintenance: formData.lastMaintenance || undefined,
       nextMaintenance: formData.nextMaintenance || undefined,
       totalEngineHours: formData.totalEngineHours || undefined,
+      type: formData.type,
+      description: formData.description || undefined,
+      replacementValue: formData.replacementValue,
+      overageHourlyRate: formData.overageHourlyRate,
     };
 
     onSave(equipmentData);
@@ -233,6 +261,35 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   <option value="OUT_OF_SERVICE">Out of Service</option>
                 </select>
               </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Equipment Type *
+                </label>
+                <select
+                  required
+                  value={formData.type}
+                  onChange={(e) => handleInputChange('type', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                >
+                  {EQUIPMENT_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  rows={3}
+                  placeholder="Brief description of the equipment..."
+                />
+              </div>
             </div>
 
             {/* Pricing */}
@@ -279,6 +336,38 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
                   value={formData.monthlyRate}
                   onChange={(e) => handleInputChange('monthlyRate', parseFloat(e.target.value))}
                   className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Overage Hourly Rate *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={formData.overageHourlyRate}
+                  onChange={(e) => handleInputChange('overageHourlyRate', parseFloat(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  placeholder="Rate for hours over allowance"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Replacement Value *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={formData.replacementValue}
+                  onChange={(e) => handleInputChange('replacementValue', parseFloat(e.target.value))}
+                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2"
+                  placeholder="Equipment replacement value"
                 />
               </div>
 
@@ -380,15 +469,26 @@ export function EquipmentModal({ equipment, onSave, onClose }: EquipmentModalPro
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              disabled={saving}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={saving}
+              className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {equipment ? 'Update Equipment' : 'Add Equipment'}
+              {saving ? (
+                <span className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </span>
+              ) : equipment ? (
+                'Update Equipment'
+              ) : (
+                'Add Equipment'
+              )}
             </button>
           </div>
         </form>

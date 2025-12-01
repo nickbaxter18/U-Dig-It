@@ -10,13 +10,25 @@ import { supportMessageCreateSchema } from '@/lib/validators/admin/support';
 
 export const GET = withRateLimit(
   RateLimitPresets.MODERATE,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       const result = await requireAdmin(request);
       if ('error' in result && result.error) return result.error;
-      const supabase = result.supabase ?? createServiceClient();
+      const supabase = result.supabase ?? (await createServiceClient());
       if (!supabase) {
         return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
+      }
+
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id: ticketId } = resolvedParams;
+
+      // Validate ticketId
+      if (!ticketId || ticketId === 'undefined' || ticketId.trim() === '') {
+        return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
       }
 
       // Get user for logging - not needed for GET, but available if needed
@@ -51,7 +63,7 @@ export const GET = withRateLimit(
         `,
           { count: 'exact' }
         )
-        .eq('ticket_id', params.id)
+        .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true })
         .range(rangeStart, rangeEnd);
 
@@ -61,7 +73,7 @@ export const GET = withRateLimit(
           {
             component: 'admin-support-messages',
             action: 'fetch_failed',
-            metadata: { ticketId: params.id },
+            metadata: { ticketId },
           },
           fetchError
         );
@@ -78,12 +90,21 @@ export const GET = withRateLimit(
         },
       });
     } catch (err) {
+      // Handle params for error logging
+      let ticketId = 'unknown';
+      try {
+        const resolvedParams = params instanceof Promise ? await params : params;
+        ticketId = resolvedParams?.id || 'unknown';
+      } catch {
+        // Ignore errors in error handler
+      }
+
       logger.error(
         'Unexpected error fetching support messages',
         {
           component: 'admin-support-messages',
           action: 'fetch_unexpected',
-          metadata: { ticketId: params.id },
+          metadata: { ticketId },
         },
         err instanceof Error ? err : new Error(String(err))
       );
@@ -94,13 +115,25 @@ export const GET = withRateLimit(
 
 export const POST = withRateLimit(
   RateLimitPresets.STRICT,
-  async (request: NextRequest, { params }: { params: { id: string } }) => {
+  async (
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> | { id: string } }
+  ) => {
     try {
       const result = await requireAdmin(request);
       if ('error' in result && result.error) return result.error;
-      const supabase = result.supabase ?? createServiceClient();
+      const supabase = result.supabase ?? (await createServiceClient());
       if (!supabase) {
         return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
+      }
+
+      // Handle params as Promise or object (Next.js 16 compatibility)
+      const resolvedParams = params instanceof Promise ? await params : params;
+      const { id: ticketId } = resolvedParams;
+
+      // Validate ticketId
+      if (!ticketId || ticketId === 'undefined' || ticketId.trim() === '') {
+        return NextResponse.json({ error: 'Ticket ID is required' }, { status: 400 });
       }
 
       // Get user for logging
@@ -111,7 +144,7 @@ export const POST = withRateLimit(
       const { data: ticket, error: ticketError } = await supabase
         .from('support_tickets')
         .select('id, status')
-        .eq('id', params.id)
+        .eq('id', ticketId)
         .maybeSingle();
 
       if (ticketError || !ticket) {
@@ -121,7 +154,7 @@ export const POST = withRateLimit(
       const { data: message, error: insertError } = await supabase
         .from('support_messages')
         .insert({
-          ticket_id: params.id,
+          ticket_id: ticketId,
           sender_type: 'admin',
           sender_id: user?.id || 'unknown',
           message_text: payload.message,
@@ -137,7 +170,7 @@ export const POST = withRateLimit(
           {
             component: 'admin-support-messages',
             action: 'create_failed',
-            metadata: { ticketId: params.id },
+            metadata: { ticketId },
           },
           insertError ?? new Error('Missing message data')
         );
@@ -147,12 +180,12 @@ export const POST = withRateLimit(
       await supabase
         .from('support_tickets')
         .update({ last_message_at: new Date().toISOString() })
-        .eq('id', params.id);
+        .eq('id', ticketId);
 
       logger.info('Support message posted', {
         component: 'admin-support-messages',
         action: 'message_created',
-        metadata: { ticketId: params.id, messageId: message.id, adminId: user?.id || 'unknown' },
+        metadata: { ticketId, messageId: message.id, adminId: user?.id || 'unknown' },
       });
 
       return NextResponse.json({ message });
@@ -164,12 +197,21 @@ export const POST = withRateLimit(
         );
       }
 
+      // Handle params for error logging
+      let ticketId = 'unknown';
+      try {
+        const resolvedParams = params instanceof Promise ? await params : params;
+        ticketId = resolvedParams?.id || 'unknown';
+      } catch {
+        // Ignore errors in error handler
+      }
+
       logger.error(
         'Unexpected error creating support message',
         {
           component: 'admin-support-messages',
           action: 'create_unexpected',
-          metadata: { ticketId: params.id },
+          metadata: { ticketId },
         },
         err instanceof Error ? err : new Error(String(err))
       );

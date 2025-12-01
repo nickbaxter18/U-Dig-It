@@ -33,6 +33,8 @@ interface Contract {
     bookingNumber: string;
     customer: {
       name: string;
+      firstName?: string;
+      lastName?: string;
       email: string;
     };
     equipment: {
@@ -87,15 +89,46 @@ export default function AdminContractsPage() {
   const bookingIdParam = useMemo(() => searchParams?.get('booking') ?? null, [searchParams]);
   const [exporting, setExporting] = useState(false);
 
+  // Debounce search term to avoid excessive API calls
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchContracts(bookingIdParam ?? undefined);
-  }, [bookingIdParam]);
+  }, [bookingIdParam, debouncedSearchTerm, statusFilter, typeFilter]);
 
   const fetchContracts = async (bookingId?: string) => {
     try {
       setLoading(true);
-      const url = bookingId ? `/api/admin/contracts?booking=${bookingId}` : '/api/admin/contracts';
+      const params = new URLSearchParams();
+
+      if (bookingId) {
+        params.set('booking', bookingId);
+      }
+
+      if (debouncedSearchTerm.trim()) {
+        params.set('search', debouncedSearchTerm.trim());
+      }
+
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+
+      if (typeFilter !== 'all') {
+        params.set('type', typeFilter);
+      }
+
+      const queryString = params.toString();
+      const url = `/api/admin/contracts${queryString ? `?${queryString}` : ''}`;
       const response = await fetchWithAuth(url);
+
       if (response.ok) {
         const data = await response.json();
         const items: Contract[] = data.contracts || [];
@@ -121,17 +154,47 @@ export default function AdminContractsPage() {
     }
   };
 
+  // Server-side filtering is now handled by the API, so we just display all contracts
+  // For instant feedback while typing, show client-side filtered results if search term hasn't been debounced yet
   const filteredContracts = contracts.filter((contract) => {
-    const matchesSearch =
-      contract.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.booking.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contract.booking.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
+    // If search term is different from debounced term, apply client-side filtering for instant feedback
+    if (searchTerm && searchTerm !== debouncedSearchTerm) {
+      const normalizedSearchTerm = searchTerm.toLowerCase().trim();
 
+      // Helper function to check if search term matches at word boundaries
+      const matchesWordBoundary = (text: string, search: string): boolean => {
+        if (!text || !search) return false;
+        // Split into words and check if any word starts with the search term
+        const words = text.split(/\s+/);
+        return words.some(word => word.toLowerCase().startsWith(search));
+      };
+
+      const contractNumber = contract.contractNumber?.toString() || '';
+      const bookingNumber = contract.booking?.bookingNumber?.toString() || '';
+      const customerFirstName = contract.booking?.customer?.firstName?.toString().toLowerCase() ||
+                                 contract.booking?.customer?.name?.toString().split(' ')[0]?.toLowerCase() || '';
+      const customerLastName = contract.booking?.customer?.lastName?.toString().toLowerCase() ||
+                               contract.booking?.customer?.name?.toString().split(' ').slice(1).join(' ').toLowerCase() || '';
+      const customerFullName = `${customerFirstName} ${customerLastName}`.trim();
+      const customerEmail = contract.booking?.customer?.email?.toString().toLowerCase() || '';
+
+      // Check contract number and booking number (exact substring match is fine)
+      const matchesSearch =
+        contractNumber.toLowerCase().includes(normalizedSearchTerm) ||
+        bookingNumber.toLowerCase().includes(normalizedSearchTerm) ||
+        customerEmail.includes(normalizedSearchTerm) ||
+        customerFirstName.startsWith(normalizedSearchTerm) ||
+        customerLastName.startsWith(normalizedSearchTerm) ||
+        matchesWordBoundary(customerFullName, normalizedSearchTerm);
+
+      if (!matchesSearch) return false;
+    }
+
+    // Server-side filtering handles status and type filters, but we keep this as a safety check
     const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
     const matchesType = typeFilter === 'all' || contract.type === typeFilter;
 
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesStatus && matchesType;
   });
 
   const _handleStatusUpdate = async (contractId: string, newStatus: string) => {

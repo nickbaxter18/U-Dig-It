@@ -117,6 +117,13 @@ export const exportQuerySchema = z.object({
     .default(20),
 });
 
+export const refundRequestSchema = z.object({
+  paymentId: uuid(),
+  amount: money.positive(),
+  reason: z.string().min(1).max(500),
+  stripePaymentIntentId: z.string().optional(),
+});
+
 export type ManualPaymentCreateInput = z.infer<typeof manualPaymentCreateSchema>;
 export type ManualPaymentUpdateInput = z.infer<typeof manualPaymentUpdateSchema>;
 export type InstallmentCreateInput = z.infer<typeof installmentCreateSchema>;
@@ -127,4 +134,5 @@ export type ReconciliationTriggerInput = z.infer<typeof reconciliationTriggerSch
 export type ReconciliationUpdateInput = z.infer<typeof reconciliationUpdateSchema>;
 export type ExportCreateInput = z.infer<typeof exportCreateSchema>;
 export type ExportQueryInput = z.infer<typeof exportQuerySchema>;
+export type RefundRequestInput = z.infer<typeof refundRequestSchema>;
 

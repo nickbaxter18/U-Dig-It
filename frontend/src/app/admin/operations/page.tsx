@@ -8,10 +8,43 @@ import { useRouter } from 'next/navigation';
 
 import { PermissionGate } from '@/components/admin/PermissionGate';
 
+import type { Database } from '@/../../supabase/types';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 // Added Supabase import
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+
+// Type definitions for Supabase query results
+type BookingRow = Database['public']['Tables']['bookings']['Row'];
+type DriverRow = Database['public']['Tables']['drivers']['Row'];
+type DeliveryAssignmentInsert = Database['public']['Tables']['delivery_assignments']['Insert'];
+
+// Type for booking query with relations
+type BookingWithRelations = Pick<
+  BookingRow,
+  | 'id'
+  | 'bookingNumber'
+  | 'startDate'
+  | 'endDate'
+  | 'deliveryAddress'
+  | 'deliveryCity'
+  | 'deliveryProvince'
+  | 'deliveryPostalCode'
+  | 'specialInstructions'
+  | 'internalNotes'
+  | 'status'
+  | 'type'
+> & {
+  equipment: { id: string; make: string; model: string } | null;
+  customer: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
+};
 
 interface Delivery {
   id: string;
@@ -49,7 +82,6 @@ export default function OperationsManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [view, setView] = useState<'list' | 'calendar'>('list');
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningDelivery, setAssigningDelivery] = useState<Delivery | null>(null);
@@ -104,64 +136,62 @@ export default function OperationsManagement() {
       if (bookingsError) throw bookingsError;
 
       // Transform bookings to Delivery format
-      const deliveriesData: Delivery[] = ((bookingsData || []) as unknown[]).map(
-        (booking: unknown) => {
-          const firstName = booking.customer?.firstName || '';
-          const lastName = booking.customer?.lastName || '';
-          const customerName =
-            `${firstName} ${lastName}`.trim() || booking.customer?.email || 'Unknown Customer';
+      const deliveriesData: Delivery[] = (bookingsData || []).map((booking: BookingWithRelations) => {
+        const firstName = booking.customer?.firstName || '';
+        const lastName = booking.customer?.lastName || '';
+        const customerName =
+          `${firstName} ${lastName}`.trim() || booking.customer?.email || 'Unknown Customer';
 
-          // Map booking status to delivery status
-          let deliveryStatus: Delivery['status'] = 'scheduled';
-          switch (booking.status) {
-            case 'confirmed':
-            case 'paid':
-            case 'insurance_verified':
-            case 'ready_for_pickup':
-              deliveryStatus = 'scheduled';
-              break;
-            case 'delivered':
-              deliveryStatus = 'delivered';
-              break;
-            case 'in_progress':
-              deliveryStatus = 'in_transit';
-              break;
-            case 'completed':
-              deliveryStatus = 'completed';
-              break;
-            case 'cancelled':
-              deliveryStatus = 'cancelled';
-              break;
-          }
-
-          const fullAddress =
-            `${booking.deliveryAddress || ''}, ${booking.deliveryCity || ''}, ${booking.deliveryProvince || 'NB'} ${booking.deliveryPostalCode || ''}`.trim();
-
-          return {
-            id: booking.id,
-            bookingId: booking.id,
-            bookingNumber: booking.bookingNumber,
-            customerName,
-            customerPhone: booking.customer?.phone || 'N/A',
-            equipmentName: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
-            deliveryAddress: fullAddress,
-            scheduledDate: new Date(booking.startDate),
-            status: deliveryStatus,
-            estimatedDuration: 45, // Default estimation
-            specialInstructions: booking.specialInstructions || undefined,
-            deliveryNotes: booking.internalNotes || undefined,
-            pickupDate: new Date(booking.endDate),
-            pickupAddress: fullAddress, // Same address for pickup
-          };
+        // Map booking status to delivery status
+        let deliveryStatus: Delivery['status'] = 'scheduled';
+        switch (booking.status) {
+          case 'confirmed':
+          case 'paid':
+          case 'insurance_verified':
+          case 'ready_for_pickup':
+            deliveryStatus = 'scheduled';
+            break;
+          case 'delivered':
+            deliveryStatus = 'delivered';
+            break;
+          case 'in_progress':
+            deliveryStatus = 'in_transit';
+            break;
+          case 'completed':
+            deliveryStatus = 'completed';
+            break;
+          case 'cancelled':
+            deliveryStatus = 'cancelled';
+            break;
         }
-      );
+
+        const fullAddress =
+          `${booking.deliveryAddress || ''}, ${booking.deliveryCity || ''}, ${booking.deliveryProvince || 'NB'} ${booking.deliveryPostalCode || ''}`.trim();
+
+        return {
+          id: booking.id,
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          customerName,
+          customerPhone: booking.customer?.phone || 'N/A',
+          equipmentName: `${booking.equipment?.make || 'Kubota'} ${booking.equipment?.model || 'SVL-75'}`,
+          deliveryAddress: fullAddress,
+          scheduledDate: new Date(booking.startDate),
+          status: deliveryStatus,
+          estimatedDuration: 45, // Default estimation
+          specialInstructions: booking.specialInstructions || undefined,
+          deliveryNotes: booking.internalNotes || undefined,
+          pickupDate: new Date(booking.endDate),
+          pickupAddress: fullAddress, // Same address for pickup
+        };
+      });
 
       setDeliveries(deliveriesData);
 
       // ✅ FIXED: Fetch drivers from Supabase
       const { data: driversData, error: driversError } = await supabase
         .from('drivers')
-        .select('*')
+        .select('id, name, phone, license_number, license_expiry, vehicle_type, vehicle_registration, is_available, current_location, active_deliveries, total_deliveries_completed, notes, user_id, created_at, updated_at')
         .order('name', { ascending: true });
 
       if (driversError) {
@@ -173,17 +203,15 @@ export default function OperationsManagement() {
         setDrivers([]);
       } else {
         // Transform to Driver format
-        const transformedDrivers: Driver[] = ((driversData || []) as unknown[]).map(
-          (driver: unknown) => ({
-            id: driver.id,
-            name: driver.name,
-            phone: driver.phone || 'N/A',
-            licenseNumber: driver.license_number || 'N/A',
-            isAvailable: driver.is_available,
-            currentLocation: driver.current_location || undefined,
-            activeDeliveries: driver.active_deliveries || 0,
-          })
-        );
+        const transformedDrivers: Driver[] = (driversData || []).map((driver: DriverRow) => ({
+          id: driver.id,
+          name: driver.name,
+          phone: driver.phone || 'N/A',
+          licenseNumber: driver.license_number || 'N/A',
+          isAvailable: driver.is_available ?? false,
+          currentLocation: driver.current_location || undefined,
+          activeDeliveries: driver.active_deliveries || 0,
+        }));
         setDrivers(transformedDrivers);
       }
     } catch (err) {
@@ -219,12 +247,13 @@ export default function OperationsManagement() {
       if (!user) throw new Error('Not authenticated');
 
       // Create delivery assignment
-      const { error: assignError } = await supabase.from('delivery_assignments').insert({
+      const assignmentData: DeliveryAssignmentInsert = {
         booking_id: assigningDelivery.bookingId,
         driver_id: selectedDriverId,
         assigned_by: user.id,
         status: 'assigned',
-      });
+      };
+      const { error: assignError } = await supabase.from('delivery_assignments').insert(assignmentData);
 
       if (assignError) throw assignError;
 
@@ -432,26 +461,6 @@ export default function OperationsManagement() {
             className="rounded-md bg-green-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             Manage Drivers
-          </button>
-          <button
-            onClick={() => setView('list')}
-            className={`rounded-md px-4 py-2.5 text-sm font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              view === 'list'
-                ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-500'
-            }`}
-          >
-            List View
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={`rounded-md px-4 py-2.5 text-sm font-medium shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              view === 'calendar'
-                ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-500'
-            }`}
-          >
-            Calendar View
           </button>
         </div>
       </div>

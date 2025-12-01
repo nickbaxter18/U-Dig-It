@@ -547,6 +547,40 @@ const perfAdvisors = await mcp_supabase_get_advisors({
 
 ---
 
+## 🔍 Comprehensive Audit & Fix Process
+
+**For thorough, end-to-end component/page fixes:**
+
+Use the **Comprehensive Component/Page Audit & Fix Prompt** when you need:
+- Complete audit of ALL issues (not just one)
+- Systematic fixes with verification after each
+- End-to-end testing after all fixes
+- Cross-component verification
+- Regression testing
+
+**Reference**: `docs/guides/COMPREHENSIVE_COMPONENT_AUDIT_AND_FIX.md`
+
+**Key Features**:
+- **Complete Audit FIRST** - Find ALL issues before fixing ANY
+- **Categorize & Prioritize** - Organize all issues before fixing
+- **Systematic Fixes** - One category at a time with verification
+- **End-to-End Verification** - Complete testing after all fixes
+- **Cross-Component Checks** - Verify related components still work
+- **Regression Testing** - Ensure existing features weren't broken
+
+**When to Use**:
+- Fixing existing components/pages with issues
+- Comprehensive refactoring
+- Major bug fixes affecting multiple components
+- Quality assurance audits
+
+**When NOT to Use**:
+- Simple, single-issue fixes (use regular workflow)
+- New component creation (use component development workflow)
+- New API route creation (use API route development workflow)
+
+---
+
 ## 📖 Related Documents
 
 - **AI_CODING_REFERENCE.md** - Coding patterns and quick reference
@@ -554,6 +588,7 @@ const perfAdvisors = await mcp_supabase_get_advisors({
 - **API_ROUTES_INDEX.md** - API endpoint catalog
 - **QUICK_COMMANDS.md** - Command reference
 - **.cursor/rules/ai-workflow-optimization.mdc** - Workflow rules
+- **COMPREHENSIVE_COMPONENT_AUDIT_AND_FIX.md** - Comprehensive audit & fix process
 
 ---
 

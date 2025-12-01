@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const supabase = createServiceClient();
+  const supabase = await createServiceClient();
   if (!supabase) {
     logger.error('Supabase service client unavailable for IDKit webhook', {
       component: 'id-verification',

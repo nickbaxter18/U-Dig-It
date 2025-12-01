@@ -1,13 +1,12 @@
 'use client';
 
-import { X } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 
 import { AdminModal } from '@/components/admin/AdminModal';
 
 import { logger } from '@/lib/logger';
-import { supabase } from '@/lib/supabase/client';
+import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
 
 interface CustomerEditModalProps {
   customer: {
@@ -63,12 +62,11 @@ export function CustomerEditModal({ customer, isOpen, onClose, onSave }: Custome
     try {
       setSaving(true);
 
-      // Update customer in Supabase
-      const supabaseAny: any = supabase;
-
-      const { error: updateError } = await supabaseAny
-        .from('users')
-        .update({
+      // Update customer via API route
+      const response = await fetchWithAuth(`/api/admin/customers/${customer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
           phone: formData.phone,
@@ -77,11 +75,15 @@ export function CustomerEditModal({ customer, isOpen, onClose, onSave }: Custome
           city: formData.city,
           province: formData.province,
           postalCode: formData.postalCode,
-          updatedAt: new Date().toISOString(),
-        })
-        .eq('id', customer.id);
+        }),
+      });
 
-      if (updateError) throw updateError;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorMessage =
+          errorData.error || errorData.details || 'Failed to update customer';
+        throw new Error(errorMessage);
+      }
 
       logger.info('Customer updated', {
         component: 'CustomerEditModal',

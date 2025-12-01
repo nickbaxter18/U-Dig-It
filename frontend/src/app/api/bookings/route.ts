@@ -5,12 +5,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { calculateBookingPricing, calculateRentalDays } from '@/lib/booking/pricing';
 import {
-  sanitizeAddress,
-  sanitizeBookingID,
-  sanitizeEmail,
-  sanitizePhone,
-  sanitizePostalCode,
-  sanitizeTextInput,
+    sanitizeAddress,
+    sanitizeBookingID,
+    sanitizeEmail,
+    sanitizePhone,
+    sanitizePostalCode,
+    sanitizeTextInput,
 } from '@/lib/input-sanitizer';
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
@@ -40,6 +40,8 @@ const bookingSchema = z.object({
     postalCode: z.string().min(1, 'Postal code is required'),
     province: z.string().min(1, 'Province is required'),
     distanceKm: z.number().min(0).max(500).optional(),
+    lat: z.number().min(-90).max(90).optional(), // Latitude for PostGIS
+    lng: z.number().min(-180).max(180).optional(), // Longitude for PostGIS
   }),
   notes: z.string().max(MAX_NOTES_LENGTH).optional(),
   addons: z
@@ -162,16 +164,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: conflictingBookings, error: availabilityError } = await supabase
+    // Check availability: For active rentals, use actualStartDate/actualEndDate
+    // For confirmed/pending bookings, use startDate/endDate
+    // Query 1: Check conflicts with confirmed/pending bookings using startDate/endDate
+    const { data: scheduledConflicts, error: scheduledError } = await supabase
       .from('bookings')
-      .select('id, startDate, endDate')
+      .select('id, startDate, endDate, status')
       .eq('equipmentId', equipment.id)
-      .not('status', 'in', '("cancelled","rejected","no_show")')
-      .or(`and(startDate.lte.${sanitized.endDate},endDate.gte.${sanitized.startDate})`);
+      .not('status', 'in', '("cancelled","rejected","no_show","active","in_progress")')
+      .lte('startDate', sanitized.endDate)
+      .gte('endDate', sanitized.startDate);
 
-    if (availabilityError) {
-      throw availabilityError;
+    if (scheduledError) {
+      throw scheduledError;
     }
+
+    // Query 2: Check conflicts with active rentals using actualStartDate/actualEndDate
+    const { data: activeConflicts, error: activeError } = await supabase
+      .from('bookings')
+      .select('id, actualStartDate, actualEndDate, status')
+      .eq('equipmentId', equipment.id)
+      .in('status', ['active', 'in_progress'])
+      .not('actualStartDate', 'is', null)
+      .not('actualEndDate', 'is', null)
+      .lte('actualStartDate', sanitized.endDate)
+      .gte('actualEndDate', sanitized.startDate);
+
+    if (activeError) {
+      throw activeError;
+    }
+
+    // Combine conflicts from both queries
+    const conflictingBookings = [
+      ...(scheduledConflicts || []),
+      ...(activeConflicts || []),
+    ];
 
     if (conflictingBookings && conflictingBookings.length > 0) {
       return NextResponse.json(
@@ -381,6 +408,10 @@ function buildBookingInsert(params: {
     deliveryProvince: sanitized.deliveryAddress.province,
     deliveryPostalCode: sanitized.deliveryAddress.postalCode,
     distanceKm: sanitized.deliveryAddress.distanceKm ?? null,
+    // Store geography point if coordinates are provided
+    delivery_location_geography: sanitized.deliveryAddress.lat && sanitized.deliveryAddress.lng
+      ? `SRID=4326;POINT(${sanitized.deliveryAddress.lng} ${sanitized.deliveryAddress.lat})`
+      : null,
     subtotal: pricing.subtotal,
     taxes: pricing.taxes,
     deliveryFee: pricing.deliveryFee,

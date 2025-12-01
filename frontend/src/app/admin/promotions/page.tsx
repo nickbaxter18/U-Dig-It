@@ -1,23 +1,32 @@
 'use client';
 
 import {
-  CheckCircle,
-  Copy,
-  DollarSign,
-  Download,
-  Edit,
-  Percent,
-  Plus,
-  Tag,
-  Trash2,
-  XCircle,
+    CheckCircle,
+    Copy,
+    DollarSign,
+    Download,
+    Edit,
+    Eye,
+    EyeOff,
+    Megaphone,
+    Percent,
+    Plus,
+    Tag,
+    Trash2,
+    XCircle,
 } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 
+import type { Database } from '@/../../supabase/types';
+
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import { typedInsert, typedUpdate } from '@/lib/supabase/typed-helpers';
+
+// Type definitions for Supabase query results
+type DiscountCodeRow = Database['public']['Tables']['discount_codes']['Row'];
 
 interface DiscountCode {
   id: string;
@@ -55,10 +64,121 @@ export default function PromotionsPage() {
     isActive: true,
   });
   const [exporting, setExporting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Banner visibility toggle state
+  const [bannerEnabled, setBannerEnabled] = useState(true);
+  const [bannerLoading, setBannerLoading] = useState(true);
+  const [bannerToggling, setBannerToggling] = useState(false);
+
+  // Spin Wheel banner visibility toggle state
+  const [spinWheelBannerEnabled, setSpinWheelBannerEnabled] = useState(true);
+  const [spinWheelBannerToggling, setSpinWheelBannerToggling] = useState(false);
 
   useEffect(() => {
     fetchDiscounts();
+    fetchBannerConfig();
   }, []);
+
+  const fetchBannerConfig = async () => {
+    try {
+      setBannerLoading(true);
+      const response = await fetchWithAuth('/api/config/banner');
+      const data = await response.json();
+      setBannerEnabled(data.specialOffersBanner === true || data.enabled === true);
+      setSpinWheelBannerEnabled(data.spinWheelBanner === true);
+    } catch {
+      // Default to enabled if fetch fails
+      setBannerEnabled(true);
+      setSpinWheelBannerEnabled(true);
+    } finally {
+      setBannerLoading(false);
+    }
+  };
+
+  const handleToggleBanner = async () => {
+    try {
+      setBannerToggling(true);
+      const newValue = !bannerEnabled;
+
+      const response = await fetchWithAuth('/api/config/banner', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newValue, bannerType: 'special_offers' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update banner setting');
+      }
+
+      setBannerEnabled(newValue);
+      alert(`✅ Special Offers Banner ${newValue ? 'enabled' : 'disabled'}!`);
+    } catch (err) {
+      logger.error(
+        'Failed to toggle banner',
+        { component: 'PromotionsPage', action: 'toggle_banner' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to update banner setting');
+    } finally {
+      setBannerToggling(false);
+    }
+  };
+
+  const handleToggleSpinWheelBanner = async () => {
+    try {
+      setSpinWheelBannerToggling(true);
+      const newValue = !spinWheelBannerEnabled;
+
+      const response = await fetchWithAuth('/api/config/banner', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newValue, bannerType: 'spin_wheel' }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update spin wheel banner setting');
+      }
+
+      setSpinWheelBannerEnabled(newValue);
+      alert(`✅ Spin Wheel Banner ${newValue ? 'enabled' : 'disabled'}!`);
+    } catch (err) {
+      logger.error(
+        'Failed to toggle spin wheel banner',
+        { component: 'PromotionsPage', action: 'toggle_spin_wheel_banner' },
+        err instanceof Error ? err : new Error(String(err))
+      );
+      alert('Failed to update spin wheel banner setting');
+    } finally {
+      setSpinWheelBannerToggling(false);
+    }
+  };
+
+  // Helper function to convert date input string to ISO timestamp or null
+  const formatDateForInsert = (dateString: string, isEndOfDay = false): string | null => {
+    if (!dateString || dateString.trim() === '') {
+      return null;
+    }
+    // Date input provides YYYY-MM-DD format
+    // Convert to ISO timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)
+    if (isEndOfDay) {
+      // For valid_until, set to end of day (23:59:59.999) in UTC
+      // This ensures the discount is valid for the entire day
+      const date = new Date(dateString + 'T23:59:59.999Z');
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date.toISOString();
+    } else {
+      // For valid_from, set to start of day (00:00:00) in UTC
+      const date = new Date(dateString + 'T00:00:00.000Z');
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+      return date.toISOString();
+    }
+  };
 
   const fetchDiscounts = async () => {
     try {
@@ -67,26 +187,26 @@ export default function PromotionsPage() {
 
       const { data, error: queryError } = await supabase
         .from('discount_codes')
-        .select('*')
+        .select('id, code, name, type, value, is_active, max_uses, max_uses_per_user, used_count, min_booking_amount, valid_from, valid_until, applicable_equipment_types, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (queryError) throw queryError;
 
-      const discountsData: DiscountCode[] = (data || []).map((disc: unknown) => ({
+      const discountsData: DiscountCode[] = (data || []).map((disc: DiscountCodeRow) => ({
         id: disc.id,
         code: disc.code,
         name: disc.name,
-        type: disc.type,
-        value: parseFloat(disc.value),
-        maxUses: disc.max_uses,
+        type: disc.type as 'percentage' | 'fixed' | 'fixed_amount',
+        value: parseFloat(String(disc.value || '0')),
+        maxUses: disc.max_uses ?? undefined,
         usedCount: disc.used_count || 0,
         maxUsesPerUser: disc.max_uses_per_user || 1,
-        minBookingAmount: disc.min_booking_amount ? parseFloat(disc.min_booking_amount) : undefined,
-        validFrom: disc.valid_from ? new Date(disc.valid_from) : undefined,
-        validUntil: disc.valid_until ? new Date(disc.valid_until) : undefined,
-        applicableEquipmentTypes: disc.applicable_equipment_types,
-        isActive: disc.is_active,
-        createdAt: new Date(disc.created_at),
+        minBookingAmount: disc.min_booking_amount ? parseFloat(String(disc.min_booking_amount)) : undefined,
+        validFrom: disc.valid_from ? new Date(String(disc.valid_from)) : undefined,
+        validUntil: disc.valid_until ? new Date(String(disc.valid_until)) : undefined,
+        applicableEquipmentTypes: (disc.applicable_equipment_types as string[]) || undefined,
+        isActive: disc.is_active ?? false,
+        createdAt: disc.created_at ? new Date(disc.created_at) : new Date(),
       }));
 
       setDiscounts(discountsData);
@@ -105,32 +225,45 @@ export default function PromotionsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    setSubmitting(true);
+    setSubmitError(null);
+
     try {
+      // Format dates: convert empty strings to null, date strings to ISO timestamps
+      // valid_from = start of day, valid_until = end of day (to cover the entire day)
+      const validFromFormatted = formatDateForInsert(formData.validFrom, false);
+      const validUntilFormatted = formatDateForInsert(formData.validUntil, true);
+
       if (editingDiscount) {
-        // Update
-        const supabaseClient: any = supabase;
-        const { error: updateError } = await supabaseClient
-          .from('discount_codes')
-          .update({
+        // Update using typed helper
+        const { error: updateError } = await typedUpdate(
+          supabase,
+          'discount_codes',
+          {
             name: formData.name,
             type: formData.type,
             value: formData.value,
             max_uses: formData.maxUses || null,
             max_uses_per_user: formData.maxUsesPerUser,
             min_booking_amount: formData.minBookingAmount || null,
-            valid_from: formData.validFrom || null,
-            valid_until: formData.validUntil || null,
+            valid_from: validFromFormatted,
+            valid_until: validUntilFormatted,
             is_active: formData.isActive,
             updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingDiscount.id);
+          }
+        ).eq('id', editingDiscount.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          // Extract detailed error message
+          const errorMessage = updateError.message || 'Failed to update discount code';
+          const errorDetails = updateError.details ? ` ${updateError.details}` : '';
+          const errorHint = updateError.hint ? ` ${updateError.hint}` : '';
+          throw new Error(`${errorMessage}${errorDetails}${errorHint}`);
+        }
         alert('✅ Discount code updated!');
       } else {
-        // Create
-        const supabaseClient2: any = supabase;
-        const { error: insertError } = await supabaseClient2.from('discount_codes').insert({
+        // Create using typed helper
+        const { error: insertError } = await typedInsert(supabase, 'discount_codes', {
           code: formData.code.toUpperCase(),
           name: formData.name,
           type: formData.type,
@@ -138,12 +271,18 @@ export default function PromotionsPage() {
           max_uses: formData.maxUses || null,
           max_uses_per_user: formData.maxUsesPerUser,
           min_booking_amount: formData.minBookingAmount || null,
-          valid_from: formData.validFrom || null,
-          valid_until: formData.validUntil || null,
+          valid_from: validFromFormatted,
+          valid_until: validUntilFormatted,
           is_active: formData.isActive,
         });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          // Extract detailed error message
+          const errorMessage = insertError.message || 'Failed to create discount code';
+          const errorDetails = insertError.details ? ` ${insertError.details}` : '';
+          const errorHint = insertError.hint ? ` ${insertError.hint}` : '';
+          throw new Error(`${errorMessage}${errorDetails}${errorHint}`);
+        }
         alert('✅ Discount code created!');
       }
 
@@ -152,12 +291,20 @@ export default function PromotionsPage() {
       resetForm();
       await fetchDiscounts();
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save discount code';
+      setSubmitError(errorMessage);
       logger.error(
         'Failed to save discount code',
-        {},
+        {
+          component: 'PromotionsPage',
+          action: editingDiscount ? 'update' : 'create',
+          error: errorMessage,
+        },
         err instanceof Error ? err : new Error(String(err))
       );
-      alert('Failed to save discount code');
+      alert(`Failed to save discount code: ${errorMessage}`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -178,6 +325,7 @@ export default function PromotionsPage() {
 
   const handleEdit = (discount: DiscountCode) => {
     setEditingDiscount(discount);
+    setSubmitError(null);
     setFormData({
       code: discount.code,
       name: discount.name,
@@ -195,17 +343,15 @@ export default function PromotionsPage() {
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
-      const supabaseClient3: any = supabase;
-      const { error } = await supabaseClient3
-        .from('discount_codes')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
+      const { error } = await typedUpdate(supabase, 'discount_codes', {
+        is_active: !currentStatus,
+      }).eq('id', id);
 
       if (error) throw error;
 
       await fetchDiscounts();
       alert(`✅ Discount code ${!currentStatus ? 'activated' : 'deactivated'}!`);
-    } catch (err) {
+    } catch {
       alert('Failed to update discount code');
     }
   };
@@ -227,7 +373,7 @@ export default function PromotionsPage() {
 
       await fetchDiscounts();
       alert('✅ Discount code deleted!');
-    } catch (err) {
+    } catch {
       alert('Failed to delete discount code');
     }
   };
@@ -263,8 +409,8 @@ export default function PromotionsPage() {
   };
 
   const activeDiscounts = discounts.filter((d) => d.isActive).length;
-  const totalUses = discounts.reduce((sum: unknown, d: unknown) => sum + d.usedCount, 0);
-  const totalSavings = discounts.reduce((sum: unknown, d: unknown) => {
+  const totalUses = discounts.reduce((sum: number, d: DiscountCode) => sum + d.usedCount, 0);
+  const totalSavings = discounts.reduce((sum: number, d: DiscountCode) => {
     if (d.type === 'percentage') {
       // Can't calculate without booking data
       return sum;
@@ -303,6 +449,7 @@ export default function PromotionsPage() {
             onClick={() => {
               resetForm();
               setEditingDiscount(null);
+              setSubmitError(null);
               setShowAddModal(true);
             }}
             className="bg-blue-600 flex items-center space-x-2 rounded-md px-4 py-2 text-white hover:bg-blue-700"
@@ -319,6 +466,112 @@ export default function PromotionsPage() {
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
+
+      {/* Banner Toggle Card */}
+      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${bannerEnabled ? 'bg-red-100' : 'bg-gray-100'}`}>
+              <Megaphone className={`h-6 w-6 ${bannerEnabled ? 'text-red-600' : 'text-gray-400'}`} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Special Offers Banner</h3>
+              <p className="text-sm text-gray-500">
+                {bannerEnabled ? 'The promotional banner is visible to all visitors' : 'The promotional banner is hidden from visitors'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
+              bannerEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+            }`}>
+              {bannerEnabled ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Visible
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  Hidden
+                </>
+              )}
+            </span>
+            <button
+              onClick={handleToggleBanner}
+              disabled={bannerLoading || bannerToggling}
+              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                bannerEnabled ? 'bg-red-600 focus:ring-red-500' : 'bg-gray-200 focus:ring-gray-500'
+              }`}
+              role="switch"
+              aria-checked={bannerEnabled}
+              aria-label="Toggle banner visibility"
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  bannerEnabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spin Wheel Banner Toggle */}
+      <div className="rounded-lg border border-gray-200 bg-gradient-to-br from-gray-900 via-gray-800 to-black p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-full ${spinWheelBannerEnabled ? 'bg-yellow-100' : 'bg-gray-600'}`}>
+              <svg
+                className={`h-6 w-6 ${spinWheelBannerEnabled ? 'text-yellow-600' : 'text-gray-400'}`}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Spin Wheel Banner</h3>
+              <p className="text-sm text-gray-300">
+                {spinWheelBannerEnabled ? '"Win Up To $100 Off" banner is visible in navigation' : '"Win Up To $100 Off" banner is hidden from navigation'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ${
+              spinWheelBannerEnabled ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-600 text-gray-300'
+            }`}>
+              {spinWheelBannerEnabled ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Visible
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  Hidden
+                </>
+              )}
+            </span>
+            <button
+              onClick={handleToggleSpinWheelBanner}
+              disabled={bannerLoading || spinWheelBannerToggling}
+              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                spinWheelBannerEnabled ? 'bg-yellow-500 focus:ring-yellow-500' : 'bg-gray-500 focus:ring-gray-500'
+              }`}
+              role="switch"
+              aria-checked={spinWheelBannerEnabled}
+              aria-label="Toggle spin wheel banner visibility"
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  spinWheelBannerEnabled ? 'translate-x-7' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -507,6 +760,13 @@ export default function PromotionsPage() {
                 {editingDiscount ? 'Edit Discount Code' : 'Create New Discount Code'}
               </h3>
 
+              {/* Error Display */}
+              {submitError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm text-red-800">{submitError}</p>
+                </div>
+              )}
+
               <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
@@ -514,13 +774,13 @@ export default function PromotionsPage() {
                     <input
                       type="text"
                       required
-                      disabled={!!editingDiscount}
+                      disabled={!!editingDiscount || submitting}
                       value={formData.code}
                       onChange={(e) =>
                         setFormData({ ...formData, code: e.target.value.toUpperCase() })
                       }
                       placeholder="SUMMER2025"
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 font-mono focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 font-mono focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -529,10 +789,11 @@ export default function PromotionsPage() {
                     <input
                       type="text"
                       required
+                      disabled={submitting}
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Summer 2025 Promotion"
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -540,13 +801,14 @@ export default function PromotionsPage() {
                     <label className="mb-1 block text-sm font-medium text-gray-700">Type *</label>
                     <select
                       value={formData.type}
+                      disabled={submitting}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
                           type: e.target.value as 'percentage' | 'fixed' | 'fixed_amount',
                         })
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       <option value="percentage">Percentage Off</option>
                       <option value="fixed">Fixed Amount Off</option>
@@ -560,6 +822,7 @@ export default function PromotionsPage() {
                     <input
                       type="number"
                       required
+                      disabled={submitting}
                       min="0"
                       max={formData.type === 'percentage' ? '100' : undefined}
                       step={formData.type === 'percentage' ? '1' : '0.01'}
@@ -567,7 +830,7 @@ export default function PromotionsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, value: parseFloat(e.target.value) })
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -578,6 +841,7 @@ export default function PromotionsPage() {
                     <input
                       type="number"
                       min="1"
+                      disabled={submitting}
                       value={formData.maxUses || ''}
                       onChange={(e) =>
                         setFormData({
@@ -586,7 +850,7 @@ export default function PromotionsPage() {
                         })
                       }
                       placeholder="Unlimited"
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -597,12 +861,13 @@ export default function PromotionsPage() {
                     <input
                       type="number"
                       required
+                      disabled={submitting}
                       min="1"
                       value={formData.maxUsesPerUser}
                       onChange={(e) =>
                         setFormData({ ...formData, maxUsesPerUser: parseInt(e.target.value) })
                       }
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -613,6 +878,7 @@ export default function PromotionsPage() {
                     <input
                       type="number"
                       min="0"
+                      disabled={submitting}
                       step="0.01"
                       value={formData.minBookingAmount || ''}
                       onChange={(e) =>
@@ -622,7 +888,7 @@ export default function PromotionsPage() {
                         })
                       }
                       placeholder="No minimum"
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -632,9 +898,10 @@ export default function PromotionsPage() {
                     </label>
                     <input
                       type="date"
+                      disabled={submitting}
                       value={formData.validFrom}
                       onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -644,9 +911,10 @@ export default function PromotionsPage() {
                     </label>
                     <input
                       type="date"
+                      disabled={submitting}
                       value={formData.validUntil}
                       onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
-                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                      className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -654,9 +922,10 @@ export default function PromotionsPage() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
+                        disabled={submitting}
                         checked={formData.isActive}
                         onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                        className="text-kubota-orange focus:ring-kubota-orange rounded"
+                        className="text-kubota-orange focus:ring-kubota-orange rounded disabled:cursor-not-allowed"
                       />
                       <span className="ml-2 text-sm text-gray-700">
                         Active (can be used immediately)
@@ -668,20 +937,30 @@ export default function PromotionsPage() {
                 <div className="flex justify-end space-x-3 border-t border-gray-200 pt-4">
                   <button
                     type="button"
+                    disabled={submitting}
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingDiscount(null);
+                      setSubmitError(null);
                       resetForm();
                     }}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-blue-600 rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    disabled={submitting}
+                    className="bg-blue-600 rounded-md px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {editingDiscount ? 'Update Discount' : 'Create Discount'}
+                    {submitting ? (
+                      <span className="flex items-center">
+                        <span className="border-premium-gold mr-2 h-4 w-4 animate-spin rounded-full border-b-2"></span>
+                        {editingDiscount ? 'Updating...' : 'Creating...'}
+                      </span>
+                    ) : (
+                      editingDiscount ? 'Update Discount' : 'Create Discount'
+                    )}
                   </button>
                 </div>
               </form>

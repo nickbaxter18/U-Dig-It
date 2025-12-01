@@ -10,6 +10,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import NotificationCenter from '@/components/NotificationCenter';
 import { useAuth } from '@/components/providers/SupabaseAuthProvider';
+import { UserAvatar } from '@/components/UserAvatar';
 
 import { RealtimeConnectionIndicator } from './RealtimeConnectionIndicator';
 
@@ -44,9 +45,6 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
       };
     }
   }, [showUserMenu]);
-
-  const userInitial =
-    user?.user_metadata?.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'A';
 
   const userName = user?.user_metadata?.firstName || user?.email || 'Admin User';
   const userEmail = user?.email || '';
@@ -206,17 +204,14 @@ export function AdminHeader({ onMenuClick }: AdminHeaderProps) {
               aria-label="User menu"
               aria-expanded={showUserMenu}
             >
-              <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-premium-gold to-premium-gold-dark shadow-md ring-2 ring-white transition-transform duration-200 hover:scale-105">
-                {user?.user_metadata?.avatar_url ? (
-                  <img
-                    src={user.user_metadata.avatar_url}
-                    alt={`${userName}'s profile picture`}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-sm font-semibold text-black">{userInitial}</span>
-                )}
-              </div>
+              <UserAvatar
+                avatarUrl={user?.user_metadata?.avatar_url}
+                firstName={user?.user_metadata?.firstName}
+                lastName={user?.user_metadata?.lastName}
+                email={user?.email}
+                size="md"
+                className="shadow-md ring-2 ring-white transition-transform duration-200 hover:scale-105"
+              />
             </button>
 
             {/* Dropdown menu with smooth animations */}

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service client unavailable for notification processing', {
         component: 'cron-process-notifications',
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
 
     // Update job run record with error
     if (jobRun) {
-      const supabaseAdmin = createServiceClient();
+      const supabaseAdmin = await createServiceClient();
       if (supabaseAdmin) {
         await supabaseAdmin
           .from('job_runs')
@@ -302,7 +302,12 @@ async function processEmailNotification(
       throw new Error('Invalid email recipient format');
     }
 
-    const fromEmail = process.env.EMAIL_FROM || 'NickBaxter@udigit.ca';
+    // Load email config from Supabase Vault
+    const { getEmailFromAddress, getEmailFromName } = await import('@/lib/secrets/email');
+    const [fromEmail, fromName] = await Promise.all([
+      getEmailFromAddress(),
+      getEmailFromName(),
+    ]);
     const subject = notification.subject || 'Notification from U-Dig It Rentals';
 
     // Build email body from payload
@@ -321,7 +326,7 @@ async function processEmailNotification(
       to: emailAddress,
       from: {
         email: fromEmail,
-        name: 'U-Dig It Rentals',
+        name: fromName,
       },
       subject,
       html: htmlBody,

@@ -33,6 +33,7 @@ interface BookingDetails {
   subtotal: string;
   taxes: string;
   totalAmount: string;
+  balance_amount?: number | null;
   deliveryFee: string;
   securityDeposit: string;
   status: string;
@@ -68,7 +69,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
         const supabase = createClient();
         const { data, error: fetchError } = await supabase
           .from('bookings')
-          .select('*')
+          .select('*, balance_amount')
           .eq('id', params.id)
           .eq('customerId', user.id) // Ensure user can only see their own bookings
           .single();
@@ -307,9 +308,9 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
                   <span className="font-medium">{formatCurrency(parseFloat(booking.taxes))}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                  <span>Total</span>
+                  <span>{booking.balance_amount !== undefined && booking.balance_amount !== null ? 'Outstanding Balance' : 'Total'}</span>
                   <span className="text-[#E1BC56]">
-                    {formatCurrency(parseFloat(booking.totalAmount))}
+                    {formatCurrency(booking.balance_amount ?? parseFloat(booking.totalAmount))}
                   </span>
                 </div>
                 <div className="mt-3 border-t pt-3">

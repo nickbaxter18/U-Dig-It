@@ -106,9 +106,21 @@ Quick reference for all API endpoints in the project.
   - Query params: `?status=completed&limit=50`
   - Auth: Admin required
 
+- **`POST /api/admin/payments/retry/[id]`** - Retry failed payment
+  - Path params: `id` - Payment ID
+  - Auth: Admin required
+  - Rate limited: VERY_STRICT
+  - Description: Retries a failed payment by creating a new Stripe checkout session
+  - Returns: `{ success: boolean, newStatus: string, paymentIntentStatus: string }`
+
 - **`POST /api/admin/payments/refund`** - Process refund
   - Body: `{ paymentId, amount?, reason? }`
   - Auth: Admin required
+
+- **`GET /api/admin/payments/receipt/[id]`** - Generate payment receipt
+  - Path params: `id` - Payment ID
+  - Auth: Admin required
+  - Returns: HTML receipt for download
 
 ---
 

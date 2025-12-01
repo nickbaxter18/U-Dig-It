@@ -13,6 +13,7 @@ import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { typedInsert } from '@/lib/supabase/typed-helpers';
 import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
 import { contractNumberFromBooking } from '@/lib/utils';
 
@@ -90,10 +91,16 @@ export default function EnhancedContractSigner({
 
         let fullName = '';
 
-        const userDataAny: any = userData;
-        if (!error && userDataAny?.firstName && userDataAny?.lastName) {
+        // Type the user data properly
+        type UserDataWithName = {
+          firstName?: string | null;
+          lastName?: string | null;
+          [key: string]: unknown;
+        };
+        const typedUserData = userData as UserDataWithName | null;
+        if (!error && typedUserData?.firstName && typedUserData?.lastName) {
           // Primary: Use public.users table (Personal Information)
-          fullName = `${userDataAny.firstName} ${userDataAny.lastName}`;
+          fullName = `${typedUserData.firstName} ${typedUserData.lastName}`;
 
           logger.info('Auto-populated from user profile table', {
             component: 'EnhancedContractSigner',
@@ -212,10 +219,7 @@ export default function EnhancedContractSigner({
       // Create contract record
       const contractNumber = contractNumberFromBooking(bookingData.bookingNumber);
 
-      const supabaseAny: any = supabase;
-      const { data: contract, error: contractError } = await supabaseAny
-        .from('contracts')
-        .insert({
+      const { data: contract, error: contractError } = await typedInsert(supabase, 'contracts', {
           contractNumber,
           bookingId,
           legalVersions: {
@@ -384,7 +388,10 @@ export default function EnhancedContractSigner({
         },
         error instanceof Error ? error : new Error(String(error))
       );
-      const errorMessage = error?.message || error?.error?.message || 'Unknown error occurred';
+      // Type guard for error with message property
+      type ErrorWithMessage = { message?: string; error?: { message?: string }; code?: string; details?: string; hint?: string };
+      const errorWithProps = error as ErrorWithMessage;
+      const errorMessage = errorWithProps?.message || errorWithProps?.error?.message || 'Unknown error occurred';
       logger.error(
         'Error details:',
         {
@@ -392,9 +399,9 @@ export default function EnhancedContractSigner({
           action: 'error',
           metadata: {
             message: errorMessage,
-            code: error?.code,
-            details: error?.details,
-            hint: error?.hint,
+            code: errorWithProps?.code,
+            details: errorWithProps?.details,
+            hint: errorWithProps?.hint,
           },
         },
         error instanceof Error ? error : new Error(String(error))

@@ -1,8 +1,10 @@
+import Stripe from 'stripe';
+
 import { NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/lib/logger';
-import { createServiceClient } from '@/lib/supabase/service';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
+import { createServiceClient } from '@/lib/supabase/service';
 
 const JOB_NAME = 'reconcile_stripe_payouts';
 
@@ -15,7 +17,17 @@ const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
  * Should be called by cron service nightly
  */
 export async function GET(request: NextRequest) {
-  let jobRun: any = null;
+  // Type job run record
+  type JobRunRecord = {
+    id: string;
+    job_name: string;
+    status: string;
+    started_at: string;
+    completed_at: string | null;
+    error_message: string | null;
+    [key: string]: unknown;
+  } | null;
+  let jobRun: JobRunRecord = null;
   try {
     // Verify authorization
     const authHeader = request.headers.get('authorization');
@@ -34,7 +46,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabaseAdmin = createServiceClient();
+    const supabaseAdmin = await createServiceClient();
     if (!supabaseAdmin) {
       logger.error('Service client unavailable for payout reconciliation', {
         component: 'cron-reconcile-payouts',
@@ -131,7 +143,7 @@ export async function GET(request: NextRequest) {
             failureMessage: payout.failure_message,
             method: payout.method,
             metadata: payout.metadata ?? {},
-            summary: (payout as any).summary ?? null,
+            summary: (payout as Stripe.Payout & { summary?: unknown }).summary ?? null,
           },
           updated_at: nowIso,
         };
@@ -218,7 +230,7 @@ export async function GET(request: NextRequest) {
 
     // Update job run record with error
     if (jobRun) {
-      const supabaseAdmin = createServiceClient();
+      const supabaseAdmin = await createServiceClient();
       if (supabaseAdmin) {
         await supabaseAdmin
           .from('job_runs')

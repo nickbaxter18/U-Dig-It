@@ -14,19 +14,26 @@ import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { updateBillingStatus } from '@/lib/booking/billing-status';
 import { checkAndCompleteBookingIfReady } from '@/lib/check-and-complete-booking';
-import { sendInvoicePaymentConfirmation } from '@/lib/email-service';
+import { PAYMENT_STATUS, type PaymentStatus } from '@/lib/constants/payment-status';
+import {
+    sendInvoicePaymentConfirmation,
+    sendPaymentReceiptEmail,
+} from '@/lib/email-service';
+import { getErrorMessage, isError } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import {
-  broadcastInAppNotificationToAdmins,
-  createInAppNotification,
+    broadcastInAppNotificationToAdmins,
+    createInAppNotification,
 } from '@/lib/notification-service';
 import {
-  createStripeClient,
-  getStripeSecretKey,
-  getStripeWebhookSecret,
+    createStripeClient,
+    getStripeSecretKey,
+    getStripeWebhookSecret,
 } from '@/lib/stripe/config';
 import { createServiceClient } from '@/lib/supabase/service';
+import type { TypedSupabaseClient } from '@/lib/supabase/typed-helpers';
 import { formatCurrency } from '@/lib/utils';
 
 async function getStripeInstance() {
@@ -76,7 +83,7 @@ const normalizeEquipmentRecord = (raw: unknown): EquipmentRecord | null => {
 const CONTRACT_SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hour validity for evidence links
 
 async function generateSignedContractUrl(
-  supabase: unknown,
+  supabase: TypedSupabaseClient,
   path: string | null | undefined,
   fallbackUrl: string | null | undefined
 ): Promise<string | null> {
@@ -102,7 +109,7 @@ async function generateSignedContractUrl(
   return fallbackUrl ?? null;
 }
 
-async function getBookingNotificationContext(supabase: unknown, bookingId: string) {
+async function getBookingNotificationContext(supabase: TypedSupabaseClient, bookingId: string) {
   const { data, error } = await supabase
     .from('bookings')
     .select('id, bookingNumber, customerId')
@@ -151,12 +158,13 @@ export async function POST(request: NextRequest) {
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err: unknown) {
+      const errorMessage = getErrorMessage(err);
       logger.error('Webhook signature verification failed', {
         component: 'stripe-webhook',
         action: 'verification_failed',
-        metadata: { error: err.message },
-      });
-      return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+        metadata: { error: errorMessage },
+      }, isError(err) ? err : undefined);
+      return NextResponse.json({ error: `Webhook Error: ${errorMessage}` }, { status: 400 });
     }
 
     logger.info('Webhook received', {
@@ -166,7 +174,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Use service role client for webhooks (no user session available)
-    const supabase = createServiceClient();
+    const supabase = await createServiceClient();
     if (!supabase) {
       logger.error('Supabase service client unavailable for Stripe webhook', {
         component: 'stripe-webhook',
@@ -234,14 +242,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error);
     logger.error(
       'Webhook processing failed',
       {
         component: 'stripe-webhook',
         action: 'error',
-        metadata: { error: error.message },
+        metadata: { error: errorMessage },
       },
-      error
+      isError(error) ? error : undefined
     );
 
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
@@ -252,18 +261,50 @@ export async function POST(request: NextRequest) {
  * Handle checkout.session.completed
  * Payment completed successfully via Stripe Checkout
  */
-async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: unknown) {
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: TypedSupabaseClient) {
   const bookingId = session.metadata?.bookingId;
-  const paymentId = session.metadata?.paymentId;
+  let paymentId = session.metadata?.paymentId;
   const paymentType = session.metadata?.paymentType || 'payment';
 
-  if (!bookingId || !paymentId) {
-    logger.warn('Checkout session completed but missing metadata', {
+  if (!bookingId) {
+    logger.warn('Checkout session completed but missing bookingId', {
       component: 'stripe-webhook',
-      action: 'checkout_no_metadata',
+      action: 'checkout_no_booking_id',
       metadata: { sessionId: session.id },
     });
     return;
+  }
+
+  // Fallback: Look up payment by session ID if paymentId not in metadata
+  if (!paymentId) {
+    logger.info('PaymentId not in metadata, looking up by session ID', {
+      component: 'stripe-webhook',
+      action: 'lookup_payment_by_session',
+      metadata: { sessionId: session.id, bookingId },
+    });
+
+    const { data: paymentBySession, error: lookupError } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('stripeCheckoutSessionId', session.id)
+      .eq('bookingId', bookingId)
+      .maybeSingle();
+
+    if (lookupError || !paymentBySession) {
+      logger.warn('Failed to find payment by session ID', {
+        component: 'stripe-webhook',
+        action: 'payment_lookup_failed',
+        metadata: { sessionId: session.id, bookingId, error: lookupError?.message },
+      });
+      return;
+    }
+
+    paymentId = paymentBySession.id;
+    logger.info('Found payment by session ID', {
+      component: 'stripe-webhook',
+      action: 'payment_found_by_session',
+      metadata: { sessionId: session.id, paymentId, bookingId },
+    });
   }
 
   logger.info('Checkout session completed', {
@@ -285,11 +326,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     metadata: { paymentId, sessionId: session.id },
   });
 
-  const sessionData = session as any;
-  const processedAt =
-    sessionData.status_transitions?.paid_at != null
-      ? new Date(sessionData.status_transitions.paid_at * 1000).toISOString()
-      : new Date().toISOString();
+  // Use session payment_status or created timestamp for processedAt
+  // Note: Stripe Session type doesn't include status_transitions in TypeScript types
+  // but it may be available at runtime. Use created timestamp as fallback.
+  const processedAt = session.created
+    ? new Date(session.created * 1000).toISOString()
+    : new Date().toISOString();
 
   const metadata = {
     ...(session.metadata ?? {}),
@@ -323,6 +365,78 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       action: 'payment_updated',
       metadata: { paymentId, updatedCount: updatedPayment?.length || 0 },
     });
+
+    // CRITICAL: Recalculate booking balance after payment completion
+    // This ensures balance_amount reflects all completed payments (manual + Stripe)
+    // Note: Deposits are excluded from balance calculation, but we still recalculate
+    // to ensure balance is accurate after any payment type
+    logger.info('Recalculating booking balance after payment completion', {
+      component: 'stripe-webhook',
+      action: 'balance_recalculation_start',
+      metadata: { bookingId, paymentId, paymentType },
+    });
+
+    const newBalance = await recalculateBookingBalance(bookingId);
+    if (newBalance === null) {
+      logger.warn('Balance recalculation failed after payment completion', {
+        component: 'stripe-webhook',
+        action: 'balance_recalculation_failed',
+        metadata: { bookingId, paymentId },
+      });
+    } else {
+      logger.info('Balance recalculated successfully after payment completion', {
+        component: 'stripe-webhook',
+        action: 'balance_recalculated',
+        metadata: {
+          bookingId,
+          paymentId,
+          newBalance,
+          paymentAmount: (session.amount_total || 0) / 100,
+          paymentType,
+        },
+      });
+
+      // Update billing status after balance recalculation
+      const newBillingStatus = await updateBillingStatus(bookingId);
+      if (newBillingStatus === null) {
+        logger.warn('Billing status update failed after payment completion', {
+          component: 'stripe-webhook',
+          action: 'billing_status_update_failed',
+          metadata: { bookingId, paymentId },
+        });
+      }
+    }
+
+    // Create ledger entry for audit trail
+    // Note: entry_type uses 'balance' for regular payments (enum: deposit, balance, refund, manual, adjustment, fee)
+    // source uses enum: stripe, manual, system
+    const paymentAmount = (session.amount_total || 0) / 100;
+    const ledgerEntry = {
+      booking_id: bookingId,
+      entry_type: paymentType === 'deposit' ? 'deposit' : 'balance',
+      amount: paymentAmount,
+      currency: session.currency?.toUpperCase() || 'CAD',
+      source: 'stripe',
+      reference_id: paymentId,
+      description: `Stripe ${paymentType === 'deposit' ? 'deposit' : 'payment'} via checkout`,
+      created_by: null, // created_by is UUID type, use null for system entries
+    };
+
+    const { error: ledgerError } = await supabase.from('financial_ledger').insert(ledgerEntry);
+
+    if (ledgerError) {
+      logger.warn('Stripe payment recorded but ledger entry failed', {
+        component: 'stripe-webhook',
+        action: 'ledger_insert_failed',
+        metadata: { paymentId, bookingId, error: ledgerError?.message },
+      });
+    } else {
+      logger.info('Ledger entry created for Stripe payment', {
+        component: 'stripe-webhook',
+        action: 'ledger_entry_created',
+        metadata: { paymentId, bookingId, amount: paymentAmount },
+      });
+    }
   }
 
   // Check if all payments are completed for this booking
@@ -331,11 +445,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     .select('type, status')
     .eq('bookingId', bookingId);
 
-  const paymentCompleted = allPayments?.some(
-    (p: unknown) => p.type === 'payment' && p.status === 'completed'
+  // Type the payment query results
+  type PaymentQueryResult = {
+    type: string;
+    status: PaymentStatus | string;
+  };
+
+  // Use payment status constants for consistency
+  const paymentCompleted = (allPayments as PaymentQueryResult[] | null)?.some(
+    (p) =>
+      p.type === 'payment' && p.status === PAYMENT_STATUS.COMPLETED
   );
-  const depositCompleted = allPayments?.some(
-    (p: unknown) => p.type === 'deposit' && p.status === 'completed'
+  const depositCompleted = (allPayments as PaymentQueryResult[] | null)?.some(
+    (p) =>
+      p.type === 'deposit' && p.status === PAYMENT_STATUS.COMPLETED
   );
 
   // Update booking status if payment (not deposit) is completed
@@ -487,21 +610,88 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
     }
   }
 
-  // TODO: Send payment receipt email
-  // await supabase.functions.invoke('send-email', {
-  //   body: {
-  //     to: session.customer_email,
-  //     template: 'payment_receipt',
-  //     data: { bookingId, amount: (session.amount_total || 0) / 100 }
-  //   }
-  // });
+  // Send payment receipt email for all payment types
+  try {
+    const { data: paymentRecord } = await supabase
+      .from('payments')
+      .select('id, amount, type, status, method, paymentNumber, stripePaymentIntentId')
+      .eq('id', paymentId)
+      .single();
+
+    const { data: bookingForReceipt } = await supabase
+      .from('bookings')
+      .select(
+        `
+        bookingNumber,
+        customerId,
+        startDate,
+        totalAmount,
+        equipment:equipmentId(make, model)
+      `
+      )
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingForReceipt?.customerId) {
+      const { data: customerForReceipt } = await supabase
+        .from('users')
+        .select('email, firstName, lastName')
+        .eq('id', bookingForReceipt.customerId)
+        .single();
+
+      if (paymentRecord && bookingForReceipt && customerForReceipt) {
+        await sendPaymentReceiptEmail(
+          {
+            bookingNumber: bookingForReceipt.bookingNumber,
+            equipment: normalizeEquipmentRecord(bookingForReceipt.equipment) || { make: undefined, model: undefined },
+            totalAmount: paymentRecord.amount,
+            startDate: bookingForReceipt.startDate,
+          },
+          {
+            type: paymentRecord.type || paymentType,
+            amount: paymentRecord.amount,
+            status: paymentRecord.status,
+            method: paymentRecord.method || 'Credit Card',
+            stripePaymentIntentId: paymentRecord.stripePaymentIntentId || undefined,
+          },
+          {
+            email: customerForReceipt.email,
+            firstName: customerForReceipt.firstName || '',
+            lastName: customerForReceipt.lastName || '',
+          }
+        );
+
+        logger.info('Payment receipt email sent', {
+          component: 'stripe-webhook',
+          action: 'receipt_email_sent',
+          metadata: {
+            bookingId,
+            paymentId,
+            paymentType,
+            customerEmail: customerForReceipt.email,
+          },
+        });
+      }
+    }
+  } catch (receiptEmailError) {
+    logger.error(
+      'Failed to send payment receipt email',
+      {
+        component: 'stripe-webhook',
+        action: 'receipt_email_error',
+        metadata: { bookingId, paymentId },
+      },
+      receiptEmailError as Error
+    );
+    // Don't fail webhook if receipt email fails
+  }
 }
 
 /**
  * Handle setup_intent.succeeded
  * Save payment method ID to booking for future off_session charges
  */
-async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supabase: unknown) {
+async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supabase: TypedSupabaseClient) {
   const bookingId = setupIntent.metadata?.bookingId;
 
   if (!bookingId) {
@@ -535,7 +725,7 @@ async function handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent, supab
  */
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
-  supabase: unknown
+  supabase: TypedSupabaseClient
 ) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
@@ -601,7 +791,7 @@ async function handlePaymentIntentSucceeded(
  * Handle payment_intent.canceled
  * Hold released (either $50 voided or $500 released)
  */
-async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, supabase: unknown) {
+async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, supabase: TypedSupabaseClient) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
 
@@ -660,7 +850,7 @@ async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent, 
  * Handle payment_intent.payment_failed
  * Hold authorization failed (card declined, insufficient funds, etc.)
  */
-async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, supabase: unknown) {
+async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, supabase: TypedSupabaseClient) {
   const bookingId = paymentIntent.metadata.bookingId;
   const purpose = paymentIntent.metadata.purpose;
 
@@ -760,7 +950,7 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent, su
  */
 async function handleAmountCapturableUpdated(
   paymentIntent: Stripe.PaymentIntent,
-  supabase: unknown
+  _supabase: TypedSupabaseClient
 ) {
   const bookingId = paymentIntent.metadata.bookingId;
 
@@ -779,7 +969,7 @@ async function handleAmountCapturableUpdated(
  * Handle charge.dispute.created
  * Customer filed a dispute - attach evidence kit
  */
-async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: unknown) {
+async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: TypedSupabaseClient) {
   const paymentIntentId = dispute.payment_intent as string;
 
   // Find booking from payment intent ID
@@ -832,16 +1022,16 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: unknown) 
     booking.contract?.signedDocumentUrl ?? null
   );
 
-  // Prepare evidence kit
-  const evidence: any = {
+  // Prepare evidence kit - use Stripe's DisputeUpdateParams type
+  const evidence: Stripe.DisputeUpdateParams['evidence'] = {
     customer_name: `${booking.customer.firstName} ${booking.customer.lastName}`,
     customer_email_address: booking.customer.email,
     customer_purchase_ip: booking.metadata?.bookingIp || null,
-    receipt: signedContractUrl,
+    receipt: signedContractUrl || undefined,
   };
 
   // Add dispute-specific evidence
-  if (dispute.reason === 'fraudulent') {
+  if (dispute.reason === 'fraudulent' && evidence) {
     evidence.uncategorized_text = [
       `Customer signed rental agreement on ${booking.contract?.signedAt || 'N/A'}.`,
       `Equipment delivered to ${booking.deliveryAddress}.`,
@@ -861,11 +1051,12 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: unknown) 
       metadata: { disputeId: dispute.id, bookingId },
     });
   } catch (error: unknown) {
+    const errorMessage = getErrorMessage(error);
     logger.error('Failed to submit dispute evidence', {
       component: 'stripe-webhook',
       action: 'evidence_failed',
-      metadata: { disputeId: dispute.id, error: error.message },
-    });
+      metadata: { disputeId: dispute.id, error: errorMessage },
+    }, isError(error) ? error : undefined);
   }
 
   // Alert admin for manual review
@@ -898,7 +1089,7 @@ async function handleDisputeCreated(dispute: Stripe.Dispute, supabase: unknown) 
  * Handle charge.dispute.updated
  * Dispute status changed (won, lost, under review)
  */
-async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: unknown) {
+async function handleDisputeUpdated(dispute: Stripe.Dispute, _supabase: TypedSupabaseClient) {
   logger.info('Dispute updated', {
     component: 'stripe-webhook',
     action: 'dispute_updated',
@@ -934,7 +1125,7 @@ async function handleDisputeUpdated(dispute: Stripe.Dispute, supabase: unknown) 
  * Handle payout.paid
  * Payout successfully transferred to bank account
  */
-async function handlePayoutPaid(payout: Stripe.Payout, supabase: unknown) {
+async function handlePayoutPaid(payout: Stripe.Payout, supabase: TypedSupabaseClient) {
   logger.info('Payout paid', {
     component: 'stripe-webhook',
     action: 'payout_paid',
@@ -999,7 +1190,7 @@ async function handlePayoutPaid(payout: Stripe.Payout, supabase: unknown) {
  * Handle payout.failed
  * Payout failed to transfer
  */
-async function handlePayoutFailed(payout: Stripe.Payout, supabase: unknown) {
+async function handlePayoutFailed(payout: Stripe.Payout, supabase: TypedSupabaseClient) {
   logger.error('Payout failed', {
     component: 'stripe-webhook',
     action: 'payout_failed',
@@ -1068,7 +1259,7 @@ async function handlePayoutFailed(payout: Stripe.Payout, supabase: unknown) {
  * Handle payout.created
  * New payout created (scheduled or manual)
  */
-async function handlePayoutCreated(payout: Stripe.Payout, supabase: unknown) {
+async function handlePayoutCreated(payout: Stripe.Payout, supabase: TypedSupabaseClient) {
   logger.info('Payout created', {
     component: 'stripe-webhook',
     action: 'payout_created',

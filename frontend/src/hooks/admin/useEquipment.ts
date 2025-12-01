@@ -15,7 +15,9 @@ export function useEquipment({ statusFilter = 'all', searchTerm = '' }: UseEquip
 
       if (error) {
         // Fallback to manual query
-        let query = supabase.from('equipment').select('*');
+        let query = supabase
+          .from('equipment')
+          .select('id, unitId, serialNumber, make, model, year, status, location, dailyRate, weeklyRate, monthlyRate, nextMaintenanceDue, lastMaintenanceDate, totalEngineHours, specifications, createdAt, updatedAt, type, description, replacementValue, overageHourlyRate, images, notes, hourly_rate, half_day_rate, minimum_rental_hours, dailyHourAllowance, weeklyHourAllowance');
         if (statusFilter !== 'all') {
           query = query.eq('status', statusFilter);
         }

@@ -1,19 +1,19 @@
 'use client';
 
 import {
-  AlertTriangle,
-  Bell,
-  CheckCircle,
-  DollarSign,
-  FileText,
-  Globe,
-  Key,
-  RefreshCw,
-  Save,
-  Settings,
-  Shield,
-  Users,
-  XCircle,
+    AlertTriangle,
+    Bell,
+    CheckCircle,
+    DollarSign,
+    FileText,
+    Globe,
+    Key,
+    RefreshCw,
+    Save,
+    Settings,
+    Shield,
+    Users,
+    XCircle,
 } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
@@ -21,7 +21,6 @@ import { useEffect, useState } from 'react';
 import { AdminUserModal, type AdminUserSummary } from '@/components/admin/AdminUserModal';
 import { JobsMonitor } from '@/components/admin/JobsMonitor';
 import { NotificationRulesManager } from '@/components/admin/NotificationRulesManager';
-import { PermissionAuditLog } from '@/components/admin/PermissionAuditLog';
 import { PermissionGate } from '@/components/admin/PermissionGate';
 import { PermissionManager } from '@/components/admin/PermissionManager';
 import { ScheduledReportsManager } from '@/components/admin/ScheduledReportsManager';
@@ -29,6 +28,12 @@ import { ScheduledReportsManager } from '@/components/admin/ScheduledReportsMana
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import {
+  validateGeneralSettings,
+  validatePricingSettings,
+  validateSecuritySettings,
+  validateIntegrationSettings,
+} from '@/lib/validation/settings-validators';
 
 interface SystemSettings {
   general: {
@@ -99,6 +104,9 @@ export function SettingsPageClient() {
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUserSummary | null>(null);
   const [adminActionError, setAdminActionError] = useState<string | null>(null);
   const [adminActionLoading, setAdminActionLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [revealedSecrets, setRevealedSecrets] = useState<Set<string>>(new Set());
 
   // Define tabs array before useEffects that reference it
   const tabs = [
@@ -138,18 +146,14 @@ export function SettingsPageClient() {
       setLoading(true);
       setError(null);
 
-      // ✅ BULLETPROOF: Fetch settings from Supabase system_settings table
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('system_settings')
-        .select('category, settings');
+      // ✅ Fetch settings from API route
+      const response = await fetchWithAuth('/api/admin/settings');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to fetch settings');
+      }
 
-      if (settingsError) throw settingsError;
-
-      // Transform array of settings into SystemSettings object
-      const settingsMap: any = {};
-      (settingsData || []).forEach((item: { category: string; settings: any }) => {
-        settingsMap[item.category] = item.settings;
-      });
+      const { data: settingsMap } = await response.json();
 
       // Add default values for any missing settings
       const loadedSettings: SystemSettings = {
@@ -336,65 +340,60 @@ export function SettingsPageClient() {
       setError(null);
       setSuccess(null);
 
-      // ✅ BULLETPROOF: Save settings to Supabase system_settings table
-      // Get current user ID for audit trail
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // ✅ Save settings via API route
+      const response = await fetchWithAuth('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updates: [
+            {
+              category: 'general',
+              settings: settings.general,
+            },
+            {
+              category: 'pricing',
+              settings: settings.pricing,
+            },
+            {
+              category: 'notifications',
+              settings: settings.notifications,
+            },
+            {
+              category: 'integrations',
+              settings: settings.integrations,
+            },
+            {
+              category: 'security',
+              settings: settings.security,
+            },
+          ],
+        }),
+      });
 
-      if (!user) {
-        throw new Error('Not authenticated');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+
+        // Handle validation errors from API
+        if (errorData.details && typeof errorData.details === 'object') {
+          setValidationErrors(errorData.details);
+          throw new Error(errorData.error || 'Validation failed. Please check the fields below.');
+        }
+
+        const errorMessage = errorData.error || 'Failed to save settings';
+        throw new Error(errorMessage);
       }
-
-      // Prepare upsert data for all categories
-      const settingsToSave = [
-        {
-          category: 'general',
-          settings: settings.general,
-          updated_by: user.id,
-        },
-        {
-          category: 'pricing',
-          settings: settings.pricing,
-          updated_by: user.id,
-        },
-        {
-          category: 'notifications',
-          settings: settings.notifications,
-          updated_by: user.id,
-        },
-        {
-          category: 'integrations',
-          settings: settings.integrations,
-          updated_by: user.id,
-        },
-        {
-          category: 'security',
-          settings: settings.security,
-          updated_by: user.id,
-        },
-      ];
-
-      // ✅ Save all settings in one transaction
-      const supabaseClient4: any = supabase;
-      const { error: saveError } = await supabaseClient4
-        .from('system_settings')
-        .upsert(settingsToSave, {
-          onConflict: 'category',
-        });
-
-      if (saveError) throw saveError;
 
       logger.info('Settings saved successfully', {
         component: 'SettingsPage',
         action: 'settings_saved',
         metadata: {
-          categories: settingsToSave.map((s) => s.category),
-          updatedBy: user.id,
+          categories: ['general', 'pricing', 'notifications', 'integrations', 'security'],
         },
       });
 
       setSuccess('Settings saved successfully!');
+      setHasUnsavedChanges(false);
+      setValidationErrors({});
       setTimeout(() => setSuccess(null), 3000);
 
       // Refresh settings to ensure UI matches database
@@ -416,13 +415,69 @@ export function SettingsPageClient() {
   const handleSettingChange = (section: keyof SystemSettings, field: string, value: unknown) => {
     if (!settings) return;
 
-    setSettings({
+    const updatedSettings = {
       ...settings,
       [section]: {
         ...settings[section],
         [field]: value,
       },
-    });
+    };
+
+    setSettings(updatedSettings);
+    setHasUnsavedChanges(true);
+
+    // Validate the changed field
+    const errorKey = `${section}.${field}`;
+    const newErrors = { ...validationErrors };
+
+    try {
+      if (section === 'general') {
+        const result = validateGeneralSettings(updatedSettings.general);
+        if (result.errors[field]) {
+          newErrors[errorKey] = result.errors[field];
+        } else {
+          delete newErrors[errorKey];
+        }
+      } else if (section === 'pricing') {
+        const result = validatePricingSettings(updatedSettings.pricing);
+        if (result.errors[field]) {
+          newErrors[errorKey] = result.errors[field];
+        } else {
+          delete newErrors[errorKey];
+        }
+      } else if (section === 'security') {
+        const result = validateSecuritySettings(updatedSettings.security);
+        if (result.errors[field] || result.errors[field]) {
+          // Handle IP ranges array validation
+          const ipRangeError = Object.keys(result.errors).find((k) => k.startsWith('allowedIpRanges'));
+          if (ipRangeError) {
+            newErrors[`security.${ipRangeError}`] = result.errors[ipRangeError];
+          }
+          if (result.errors[field]) {
+            newErrors[errorKey] = result.errors[field];
+          } else {
+            delete newErrors[errorKey];
+          }
+        } else {
+          delete newErrors[errorKey];
+        }
+      } else if (section === 'integrations') {
+        const result = validateIntegrationSettings(updatedSettings.integrations);
+        if (result.errors[field]) {
+          newErrors[errorKey] = result.errors[field];
+        } else {
+          delete newErrors[errorKey];
+        }
+      }
+    } catch (err) {
+      // Validation error - keep existing error or clear it
+      logger.error('Validation error', {
+        component: 'SettingsPageClient',
+        action: 'validation_error',
+      }, err instanceof Error ? err : new Error(String(err)));
+    }
+
+    setValidationErrors(newErrors);
   };
 
   if (loading) {
@@ -443,6 +498,16 @@ export function SettingsPageClient() {
     );
   }
 
+  // Helper function to get validation error for a field
+  const getFieldError = (section: string, field: string): string | undefined => {
+    return validationErrors[`${section}.${field}`];
+  };
+
+  // Helper function to check if field has error
+  const hasFieldError = (section: string, field: string): boolean => {
+    return !!validationErrors[`${section}.${field}`];
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-h-0">
       {/* Header */}
@@ -462,6 +527,20 @@ export function SettingsPageClient() {
           <span>{saving ? 'Saving...' : 'Save Settings'}</span>
         </button>
       </div>
+
+      {/* Unsaved Changes Warning */}
+      {hasUnsavedChanges && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4">
+          <div className="flex">
+            <AlertTriangle className="h-5 w-5 text-yellow-400" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-yellow-800">
+                You have unsaved changes. Don't forget to save!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success/Error Messages */}
       {success && (
@@ -571,8 +650,15 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('general', 'maxBookingsPerDay', parseInt(e.target.value))
                   }
-                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className={`focus:ring-premium-gold w-full rounded-md border px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 ${
+                    hasFieldError('general', 'maxBookingsPerDay')
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                 />
+                {getFieldError('general', 'maxBookingsPerDay') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('general', 'maxBookingsPerDay')}</p>
+                )}
               </div>
             </div>
 
@@ -621,8 +707,15 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('pricing', 'baseDailyRate', parseFloat(e.target.value))
                   }
-                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className={`focus:ring-premium-gold w-full rounded-md border px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 ${
+                    hasFieldError('pricing', 'baseDailyRate')
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                 />
+                {getFieldError('pricing', 'baseDailyRate') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('pricing', 'baseDailyRate')}</p>
+                )}
               </div>
 
               <div>
@@ -864,14 +957,48 @@ export function SettingsPageClient() {
                     <label className="mb-2 block text-sm font-medium text-gray-700">
                       Stripe Secret Key
                     </label>
-                    <input
-                      type="password"
-                      value={settings.integrations.stripeSecretKey}
-                      onChange={(e) =>
-                        handleSettingChange('integrations', 'stripeSecretKey', e.target.value)
-                      }
-                      className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
-                    />
+                    <div className="relative">
+                      <input
+                        type={revealedSecrets.has('stripeSecretKey') ? 'text' : 'password'}
+                        value={settings.integrations.stripeSecretKey || ''}
+                        onChange={(e) =>
+                          handleSettingChange('integrations', 'stripeSecretKey', e.target.value)
+                        }
+                        className={`focus:ring-premium-gold w-full rounded-md border px-3 py-2 pr-24 focus:border-transparent focus:outline-none focus:ring-2 ${
+                          hasFieldError('integrations', 'stripeSecretKey')
+                            ? 'border-red-300'
+                            : 'border-gray-300'
+                        }`}
+                        placeholder="sk_..."
+                      />
+                      {settings.integrations.stripeSecretKey && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (revealedSecrets.has('stripeSecretKey')) {
+                              setRevealedSecrets((prev) => {
+                                const next = new Set(prev);
+                                next.delete('stripeSecretKey');
+                                return next;
+                              });
+                            } else {
+                              setRevealedSecrets((prev) => new Set(prev).add('stripeSecretKey'));
+                            }
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+                        >
+                          {revealedSecrets.has('stripeSecretKey') ? 'Hide' : 'Reveal'}
+                        </button>
+                      )}
+                    </div>
+                    {getFieldError('integrations', 'stripeSecretKey') && (
+                      <p className="mt-1 text-sm text-red-600">{getFieldError('integrations', 'stripeSecretKey')}</p>
+                    )}
+                    {settings.integrations.stripeSecretKey && !revealedSecrets.has('stripeSecretKey') && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Secret key is masked. Click "Reveal" to view or edit.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -946,8 +1073,15 @@ export function SettingsPageClient() {
                   onChange={(e) =>
                     handleSettingChange('security', 'sessionTimeout', parseInt(e.target.value))
                   }
-                  className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                  className={`focus:ring-premium-gold w-full rounded-md border px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 ${
+                    hasFieldError('security', 'sessionTimeout')
+                      ? 'border-red-300'
+                      : 'border-gray-300'
+                  }`}
                 />
+                {getFieldError('security', 'sessionTimeout') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('security', 'sessionTimeout')}</p>
+                )}
               </div>
 
               <div>
@@ -1008,9 +1142,23 @@ export function SettingsPageClient() {
                   )
                 }
                 rows={4}
-                className="focus:ring-premium-gold w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
+                className={`focus:ring-premium-gold w-full rounded-md border px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 ${
+                  Object.keys(validationErrors).some((k) => k.startsWith('security.allowedIpRanges'))
+                    ? 'border-red-300'
+                    : 'border-gray-300'
+                }`}
                 placeholder="192.168.1.0/24&#10;10.0.0.0/8"
               />
+              {Object.keys(validationErrors)
+                .filter((k) => k.startsWith('security.allowedIpRanges'))
+                .map((errorKey) => (
+                  <p key={errorKey} className="mt-1 text-sm text-red-600">
+                    {validationErrors[errorKey]}
+                  </p>
+                ))}
+              <p className="mt-1 text-xs text-gray-500">
+                Format: Use CIDR notation (e.g., 192.168.1.0/24). One IP range per line.
+              </p>
             </div>
           </div>
         )}

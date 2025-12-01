@@ -11,8 +11,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { getErrorMessage, isError } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { typedSelect, typedUpdate } from '@/lib/supabase/typed-helpers';
 import { triggerCompletionCheck } from '@/lib/trigger-completion-check';
 
 export default function SimpleSignPage({ params }: { params: { id: string } }) {
@@ -24,24 +26,55 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
+  const [booking, setBooking] = useState<{
+    id: string;
+    bookingNumber: string;
+    startDate: string;
+    endDate: string;
+    totalAmount: number;
+    securityDeposit: number;
+    customer?: { firstName: string; lastName: string; email: string } | null;
+    equipment?: { make: string; model: string; unitId: string } | null;
+  } | null>(null);
 
   const fetchBooking = useCallback(async () => {
-    const { data } = await supabase
+    // Fetch booking with all required fields
+    const { data, error } = await supabase
       .from('bookings')
-      .select(
-        `
-        *,
-        equipment:equipmentId (make, model, unitId),
-        customer:customerId (firstName, lastName, email)
-      `
-      )
+      .select('id, bookingNumber, startDate, endDate, totalAmount, securityDeposit, equipment:equipmentId(make, model, unitId), customer:customerId(firstName, lastName, email)')
       .eq('id', params.id)
       .single();
 
+    if (error) {
+      const errorMessage = getErrorMessage(error);
+      logger.error(
+        'Failed to fetch booking',
+        {
+          component: 'sign-simple-page',
+          action: 'fetch_booking_failed',
+          metadata: { bookingId: params.id, error: errorMessage },
+        },
+        isError(error) ? error : undefined
+      );
+      return;
+    }
+
     if (data) {
-      setBooking(data);
-      const customer = (data as any)?.customer;
+      // Type the booking with relations
+      type BookingWithRelations = {
+        id: string;
+        bookingNumber: string;
+        startDate: string;
+        endDate: string;
+        totalAmount: number;
+        securityDeposit: number;
+        customer?: { firstName: string; lastName: string; email: string } | null;
+        equipment?: { make: string; model: string; unitId: string } | null;
+      };
+      const typedBooking = data as unknown as BookingWithRelations;
+      setBooking(typedBooking);
+
+      const customer = typedBooking.customer;
       if (customer) {
         setName(`${customer.firstName} ${customer.lastName}`);
       }
@@ -109,25 +142,33 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
     try {
       setSubmitting(true);
 
-      // Get contract - Using type assertion to bypass overly restrictive RLS types
-      const supabaseAny: any = supabase;
-      const { data: contract } = await supabaseAny
-        .from('contracts')
-        .select('*')
+      // Get contract using typed helper
+      const { data: contract } = await typedSelect(
+        supabase,
+        'contracts',
+        'id, bookingId, type, status, signedAt, signedDocumentUrl, createdAt, updatedAt, contractNumber, documentUrl'
+      )
         .eq('bookingId', params.id)
         .single();
 
       if (!contract) throw new Error('Contract not found');
 
-      // Update contract as signed
-      const { error } = await supabaseAny
-        .from('contracts')
-        .update({
-          status: 'signed',
-          signedAt: new Date().toISOString(),
-          completedAt: new Date().toISOString(),
-          signatures: {
-            customer: {
+      // Check if contract is an error object (GenericStringError)
+      if ('error' in contract && contract.error === true) {
+        throw new Error('Contract not found');
+      }
+
+      // Type assert contract to ensure it has the id property
+      type ContractRow = { id: string };
+      const typedContract = contract as unknown as ContractRow;
+
+      // Update contract as signed using typed helper
+      const { error } = await typedUpdate(supabase, 'contracts', {
+        status: 'signed',
+        signedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        signatures: {
+          customer: {
               name,
               date,
               signature,
@@ -136,9 +177,12 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
             },
           },
         })
-        .eq('id', contract.id);
+        .eq('id', typedContract.id);
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+      }
 
       logger.info('✅ Contract signed successfully', {
         component: 'sign-simple-page',
@@ -172,14 +216,15 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
       // Redirect to manage page
       router.push(`/booking/${params.id}/manage`);
     } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error);
       logger.error(
         'Signing error',
         {
           component: 'app-page',
           action: 'error',
-          metadata: { error: error instanceof Error ? error.message : String(error) },
+          metadata: { error: errorMessage },
         },
-        error instanceof Error ? error : undefined
+        isError(error) ? error : undefined
       );
       alert('Failed to sign contract. Please try again.');
     } finally {
@@ -202,7 +247,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
         <div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
           <h1 className="mb-2 text-2xl font-bold text-gray-900">Equipment Rental Agreement</h1>
           <p className="text-gray-600">
-            Booking #{booking.bookingNumber} - {booking.equipment.make} {booking.equipment.model}
+            Booking #{booking.bookingNumber} - {booking.equipment?.make} {booking.equipment?.model}
           </p>
         </div>
 
@@ -221,9 +266,9 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
               <h3 className="mb-2 font-semibold">Equipment Details:</h3>
               <ul className="space-y-1 text-sm">
                 <li>
-                  • Equipment: {booking.equipment.make} {booking.equipment.model}
+                  • Equipment: {booking.equipment?.make} {booking.equipment?.model}
                 </li>
-                <li>• Unit ID: {booking.equipment.unitId}</li>
+                <li>• Unit ID: {booking.equipment?.unitId}</li>
                 <li>
                   • Rental Period: {new Date(booking.startDate).toLocaleDateString()} to{' '}
                   {new Date(booking.endDate).toLocaleDateString()}
@@ -335,7 +380,7 @@ export default function SimpleSignPage({ params }: { params: { id: string } }) {
                 I have read and agree to the terms and conditions of this Equipment Rental
                 Agreement. I understand that my electronic signature is legally binding and
                 equivalent to a handwritten signature.
-                {booking.equipment.model?.toLowerCase().includes('svl75') && (
+                {booking.equipment?.model?.toLowerCase().includes('svl75') && (
                   <strong className="mt-2 block text-gray-900">
                     I acknowledge that I have reviewed the SVL75-3 Equipment Rider and understand
                     all safety, insurance, and operating requirements including the "No COI, No

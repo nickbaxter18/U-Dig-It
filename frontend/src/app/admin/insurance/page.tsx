@@ -1,21 +1,24 @@
 'use client';
 
 import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Download,
-  Eye,
-  FileText,
-  Shield,
-  XCircle,
+    AlertTriangle,
+    CheckCircle,
+    Clock,
+    Download,
+    Eye,
+    FileText,
+    Shield,
+    XCircle,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { AdminModal } from '@/components/admin/AdminModal';
+import { getErrorMessage, isError } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
 import { fetchWithAuth } from '@/lib/supabase/fetchWithAuth';
+import { typedUpdate } from '@/lib/supabase/typed-helpers';
 
 interface InsuranceDocument {
   id: string;
@@ -39,6 +42,36 @@ interface InsuranceDocument {
   createdAt: Date;
 }
 
+/**
+ * Type for insurance document query result with relations
+ */
+interface InsuranceDocumentQueryResult {
+  id: string;
+  documentNumber: string;
+  bookingId: string;
+  type: 'coi' | 'binder' | 'policy' | 'endorsement';
+  status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'expired';
+  insuranceCompany?: string | null;
+  policyNumber?: string | null;
+  effectiveDate?: string | null;
+  expiresAt?: string | null;
+  generalLiabilityLimit?: string | null;
+  equipmentLimit?: string | null;
+  fileUrl: string;
+  fileName: string;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
+  reviewNotes?: string | null;
+  createdAt: string;
+  booking?: {
+    bookingNumber: string;
+    customer?: {
+      firstName: string | null;
+      lastName: string | null;
+    } | null;
+  } | null;
+}
+
 export default function InsurancePage() {
   const [documents, setDocuments] = useState<InsuranceDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +82,49 @@ export default function InsurancePage() {
   const [showDetails, setShowDetails] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+
+  // Generate signed URL and open document
+  const handleViewDocument = async (documentId: string, fileUrl: string) => {
+    if (!fileUrl || fileUrl.trim() === '') {
+      setError('No file available to view');
+      return;
+    }
+
+    setViewingDocId(documentId);
+    try {
+      // If it's already a full external URL, open directly
+      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+        if (!fileUrl.includes('/storage/v1/object/') && !fileUrl.includes('supabase.co')) {
+          window.open(fileUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+      }
+
+      // Use API to generate signed URL
+      const response = await fetchWithAuth(`/api/admin/insurance/${documentId}/view`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate URL (${response.status})`);
+      }
+
+      const data = await response.json();
+      if (data.url) {
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+      } else {
+        throw new Error('No URL returned from API');
+      }
+    } catch (err) {
+      logger.error('Failed to view document', {
+        component: 'InsurancePage',
+        action: 'view_error',
+        metadata: { documentId, error: err instanceof Error ? err.message : String(err) },
+      }, err instanceof Error ? err : undefined);
+      setError(err instanceof Error ? err.message : 'Failed to view document');
+    } finally {
+      setViewingDocId(null);
+    }
+  };
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -94,22 +170,22 @@ export default function InsurancePage() {
 
       if (queryError) throw queryError;
 
-      const docsData: InsuranceDocument[] = (data || []).map((doc: unknown) => {
-        const booking = doc.booking || {};
-        const customer = booking.customer || {};
+      const docsData: InsuranceDocument[] = (data || []).map((doc: InsuranceDocumentQueryResult) => {
+        const booking = doc.booking || null;
+        const customer = booking?.customer || null;
         const customerName =
-          `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
+          `${customer?.firstName || ''} ${customer?.lastName || ''}`.trim() || 'Unknown';
 
         return {
           id: doc.id,
           documentNumber: doc.documentNumber,
           bookingId: doc.bookingId,
-          bookingNumber: booking.bookingNumber || 'N/A',
+          bookingNumber: booking?.bookingNumber || 'N/A',
           customerName,
           type: doc.type,
           status: doc.status,
-          insuranceCompany: doc.insuranceCompany,
-          policyNumber: doc.policyNumber,
+          insuranceCompany: doc.insuranceCompany || undefined,
+          policyNumber: doc.policyNumber || undefined,
           effectiveDate: doc.effectiveDate ? new Date(doc.effectiveDate) : undefined,
           expiresAt: doc.expiresAt ? new Date(doc.expiresAt) : undefined,
           generalLiabilityLimit: doc.generalLiabilityLimit
@@ -119,20 +195,21 @@ export default function InsurancePage() {
           fileUrl: doc.fileUrl,
           fileName: doc.fileName,
           reviewedAt: doc.reviewedAt ? new Date(doc.reviewedAt) : undefined,
-          reviewedBy: doc.reviewedBy,
-          reviewNotes: doc.reviewNotes,
+          reviewedBy: doc.reviewedBy || undefined,
+          reviewNotes: doc.reviewNotes || undefined,
           createdAt: new Date(doc.createdAt),
         };
       });
 
       setDocuments(docsData);
     } catch (err) {
+      const errorMessage = getErrorMessage(err);
       logger.error(
         'Failed to fetch insurance documents',
-        { component: 'InsurancePage' },
-        err instanceof Error ? err : new Error(String(err))
+        { component: 'InsurancePage', action: 'fetch_documents_failed', metadata: { error: errorMessage } },
+        isError(err) ? err : undefined
       );
-      setError(err instanceof Error ? err.message : 'Failed to fetch insurance documents');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -151,25 +228,19 @@ export default function InsurancePage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const supabaseClient: any = supabase;
-      const { error: updateError } = await supabaseClient
-        .from('insurance_documents')
-        .update({
-          status: 'approved',
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: user.id,
-          reviewNotes: reviewNotes || 'Approved - All requirements met',
-        })
-        .eq('id', selectedDoc.id);
+      const { error: updateError } = await typedUpdate(supabase, 'insurance_documents', {
+        status: 'approved',
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: user.id,
+        reviewNotes: reviewNotes || 'Approved - All requirements met',
+      }).eq('id', selectedDoc.id);
 
       if (updateError) throw updateError;
 
       // Update associated booking status
-      const bookingClient: any = supabase;
-      await bookingClient
-        .from('bookings')
-        .update({ status: 'insurance_verified' })
-        .eq('id', selectedDoc.bookingId);
+      await typedUpdate(supabase, 'bookings', {
+        status: 'insurance_verified',
+      }).eq('id', selectedDoc.bookingId);
 
       logger.info('Insurance document approved', {
         component: 'InsurancePage',
@@ -203,16 +274,12 @@ export default function InsurancePage() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const supabaseClient2: any = supabase;
-      const { error: updateError } = await supabaseClient2
-        .from('insurance_documents')
-        .update({
-          status: 'rejected',
-          reviewedAt: new Date().toISOString(),
-          reviewedBy: user.id,
-          reviewNotes: reviewNotes,
-        })
-        .eq('id', selectedDoc.id);
+      const { error: updateError } = await typedUpdate(supabase, 'insurance_documents', {
+        status: 'rejected',
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: user.id,
+        reviewNotes: reviewNotes,
+      }).eq('id', selectedDoc.id);
 
       if (updateError) throw updateError;
 
@@ -534,11 +601,16 @@ export default function InsurancePage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => window.open(doc.fileUrl, '_blank')}
-                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => handleViewDocument(doc.id, doc.fileUrl)}
+                        disabled={viewingDocId === doc.id}
+                        className="text-blue-600 hover:text-blue-800 disabled:opacity-50"
                         title="Download Document"
                       >
-                        <Download className="h-4 w-4" />
+                        {viewingDocId === doc.id ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -551,181 +623,191 @@ export default function InsurancePage() {
 
       {/* Review Modal */}
       {showDetails && selectedDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl">
-            <div className="p-6">
-              <div className="mb-6 flex items-start justify-between">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Insurance Document Review - {selectedDoc.documentNumber}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowDetails(false);
-                    setSelectedDoc(null);
-                    setReviewNotes('');
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <XCircle className="h-6 w-6" />
-                </button>
+        <AdminModal
+          isOpen={showDetails}
+          onClose={() => {
+            setShowDetails(false);
+            setSelectedDoc(null);
+            setReviewNotes('');
+          }}
+          title={`Insurance Document Review - ${selectedDoc.documentNumber}`}
+          maxWidth="6xl"
+        >
+          <div className="p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-gray-900">Document Information</h4>
+                <div className="space-y-1.5 text-sm">
+                  <div>
+                    <strong>Type:</strong> {getTypeLabel(selectedDoc.type)}
+                  </div>
+                  <div>
+                    <strong>Status:</strong>
+                    <span
+                      className={`ml-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusColor(selectedDoc.status)}`}
+                    >
+                      {selectedDoc.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Customer:</strong> {selectedDoc.customerName}
+                  </div>
+                  <div>
+                    <strong>Booking:</strong> {selectedDoc.bookingNumber}
+                  </div>
+                  <div>
+                    <strong>Uploaded:</strong> {selectedDoc.createdAt.toLocaleString()}
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Document Information</h4>
-                  <div className="space-y-2 text-sm">
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-gray-900">Insurance Details</h4>
+                <div className="space-y-1.5 text-sm">
+                  {selectedDoc.insuranceCompany && (
                     <div>
-                      <strong>Type:</strong> {getTypeLabel(selectedDoc.type)}
+                      <strong>Company:</strong> {selectedDoc.insuranceCompany}
                     </div>
+                  )}
+                  {selectedDoc.policyNumber && (
                     <div>
-                      <strong>Status:</strong>
-                      <span
-                        className={`ml-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(selectedDoc.status)}`}
-                      >
-                        {selectedDoc.status.replace('_', ' ')}
-                      </span>
+                      <strong>Policy #:</strong> {selectedDoc.policyNumber}
                     </div>
+                  )}
+                  {selectedDoc.effectiveDate && (
                     <div>
-                      <strong>Customer:</strong> {selectedDoc.customerName}
+                      <strong>Effective:</strong> {selectedDoc.effectiveDate.toLocaleDateString()}
                     </div>
+                  )}
+                  {selectedDoc.expiresAt && (
                     <div>
-                      <strong>Booking:</strong> {selectedDoc.bookingNumber}
-                    </div>
-                    <div>
-                      <strong>Uploaded:</strong> {selectedDoc.createdAt.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Insurance Details</h4>
-                  <div className="space-y-2 text-sm">
-                    {selectedDoc.insuranceCompany && (
-                      <div>
-                        <strong>Company:</strong> {selectedDoc.insuranceCompany}
-                      </div>
-                    )}
-                    {selectedDoc.policyNumber && (
-                      <div>
-                        <strong>Policy #:</strong> {selectedDoc.policyNumber}
-                      </div>
-                    )}
-                    {selectedDoc.effectiveDate && (
-                      <div>
-                        <strong>Effective:</strong> {selectedDoc.effectiveDate.toLocaleDateString()}
-                      </div>
-                    )}
-                    {selectedDoc.expiresAt && (
-                      <div>
-                        <strong>Expires:</strong> {selectedDoc.expiresAt.toLocaleDateString()}
-                        {selectedDoc.expiresAt < new Date() && (
-                          <span className="ml-2 text-red-600">(Expired!)</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Coverage Limits</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {selectedDoc.generalLiabilityLimit && (
-                      <div className="rounded-md bg-blue-50 p-3">
-                        <p className="text-xs text-gray-600">General Liability</p>
-                        <p className="text-lg font-semibold text-gray-900">
-                          ${selectedDoc.generalLiabilityLimit.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                    {selectedDoc.equipmentLimit && (
-                      <div className="rounded-md bg-green-50 p-3">
-                        <p className="text-xs text-gray-600">Equipment Coverage</p>
-                        <p className="text-lg font-semibold text-gray-900">
-                          ${selectedDoc.equipmentLimit.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Document Preview */}
-                <div className="md:col-span-2">
-                  <h4 className="mb-3 text-sm font-medium text-gray-900">Document</h4>
-                  <div className="rounded-md border border-gray-200 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <FileText className="mr-2 h-6 w-6 text-kubota-orange" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {selectedDoc.fileName}
-                          </p>
-                          <p className="text-xs text-gray-500">Click to view full document</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => window.open(selectedDoc.fileUrl, '_blank')}
-                        className="bg-kubota-orange rounded-md px-4 py-2 text-sm text-white hover:bg-orange-600"
-                      >
-                        <Download className="mr-2 inline h-4 w-4" />
-                        View/Download
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Review Notes */}
-                <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm font-medium text-gray-900">
-                    Review Notes {selectedDoc.status === 'pending' && '(Required for rejection)'}
-                  </label>
-                  <textarea
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    rows={4}
-                    placeholder="Add notes about this insurance document..."
-                    className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2"
-                  />
-                </div>
-
-                {selectedDoc.reviewedAt && (
-                  <div className="md:col-span-2">
-                    <h4 className="mb-2 text-sm font-medium text-gray-900">Review History</h4>
-                    <div className="rounded-md bg-gray-50 p-3 text-sm">
-                      <div>
-                        <strong>Reviewed:</strong> {selectedDoc.reviewedAt.toLocaleString()}
-                      </div>
-                      {selectedDoc.reviewNotes && (
-                        <div className="mt-2">
-                          <strong>Notes:</strong> {selectedDoc.reviewNotes}
-                        </div>
+                      <strong>Expires:</strong> {selectedDoc.expiresAt.toLocaleDateString()}
+                      {selectedDoc.expiresAt < new Date() && (
+                        <span className="ml-2 text-red-600">(Expired!)</span>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              {/* Actions */}
-              {selectedDoc.status !== 'approved' && selectedDoc.status !== 'rejected' && (
-                <div className="mt-6 flex justify-end space-x-3 border-t border-gray-200 pt-6">
-                  <button
-                    onClick={handleReject}
-                    className="rounded-md bg-red-600 px-6 py-2 text-sm font-medium text-white hover:bg-red-700"
-                  >
-                    <XCircle className="mr-2 inline h-4 w-4" />
-                    Reject Document
-                  </button>
-                  <button
-                    onClick={handleApprove}
-                    className="bg-kubota-orange rounded-md px-6 py-2 text-sm font-medium text-white hover:bg-orange-600"
-                  >
-                    <CheckCircle className="mr-2 inline h-4 w-4" />
-                    Approve Document
-                  </button>
+              <div className="md:col-span-2">
+                <h4 className="mb-2 text-sm font-medium text-gray-900">Coverage Limits</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedDoc.generalLiabilityLimit && (
+                    <div className="rounded-md bg-blue-50 p-2.5">
+                      <p className="text-xs text-gray-600">General Liability</p>
+                      <p className="text-base font-semibold text-gray-900">
+                        ${selectedDoc.generalLiabilityLimit.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedDoc.equipmentLimit && (
+                    <div className="rounded-md bg-green-50 p-2.5">
+                      <p className="text-xs text-gray-600">Equipment Coverage</p>
+                      <p className="text-base font-semibold text-gray-900">
+                        ${selectedDoc.equipmentLimit.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Document Preview */}
+              <div className="md:col-span-2">
+                <h4 className="mb-2 text-sm font-medium text-gray-900">Document</h4>
+                <div className="rounded-md border border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FileText className="mr-2 h-5 w-5 text-kubota-orange" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedDoc.fileName}
+                        </p>
+                        <p className="text-xs text-gray-500">Click to view full document</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewDocument(selectedDoc.id, selectedDoc.fileUrl);
+                      }}
+                      disabled={viewingDocId === selectedDoc.id}
+                      className="bg-kubota-orange rounded-md px-3 py-1.5 text-sm text-white hover:bg-orange-600 disabled:opacity-50"
+                    >
+                      {viewingDocId === selectedDoc.id ? (
+                        <>
+                          <div className="mr-1.5 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="mr-1.5 inline h-3.5 w-3.5" />
+                          View/Download
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Review Notes */}
+              <div className="md:col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-gray-900">
+                  Review Notes {selectedDoc.status === 'pending' && '(Required for rejection)'}
+                </label>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Add notes about this insurance document..."
+                  className="focus:ring-kubota-orange w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2"
+                />
+              </div>
+
+              {selectedDoc.reviewedAt && (
+                <div className="md:col-span-2">
+                  <h4 className="mb-1.5 text-sm font-medium text-gray-900">Review History</h4>
+                  <div className="rounded-md bg-gray-50 p-2.5 text-sm">
+                    <div>
+                      <strong>Reviewed:</strong> {selectedDoc.reviewedAt.toLocaleString()}
+                    </div>
+                    {selectedDoc.reviewNotes && (
+                      <div className="mt-1.5">
+                        <strong>Notes:</strong> {selectedDoc.reviewNotes}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
+
+            {/* Actions */}
+            {selectedDoc.status !== 'approved' && selectedDoc.status !== 'rejected' && (
+              <div className="mt-4 flex justify-end space-x-3 border-t border-gray-200 pt-4">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleReject();
+                  }}
+                  className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  <XCircle className="mr-1.5 inline h-4 w-4" />
+                  Reject Document
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleApprove();
+                  }}
+                  className="bg-kubota-orange rounded-md px-5 py-2 text-sm font-medium text-white hover:bg-orange-600"
+                >
+                  <CheckCircle className="mr-1.5 inline h-4 w-4" />
+                  Approve Document
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        </AdminModal>
       )}
     </div>
   );

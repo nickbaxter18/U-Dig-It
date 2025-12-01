@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/spin-reminders",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/daily-balance-reconciliation",
+      "schedule": "0 2 * * *"
     }
   ]
 }

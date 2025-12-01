@@ -60,7 +60,7 @@ export const POST = withRateLimit(
       });
 
       // Update last_run_at
-      const supabaseAdmin = createServiceClient();
+      const supabaseAdmin = await createServiceClient();
       if (supabaseAdmin) {
         await supabaseAdmin
           .from('scheduled_reports')

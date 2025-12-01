@@ -14,6 +14,20 @@ export async function fetchWithAuth(input: FetchInput, init: FetchOptions = {}) 
       component: 'fetchWithAuth',
       action: 'get_session',
     });
+
+    // First, try to get the current user (this validates the session with the server)
+    // This is more reliable than getSession() which only returns cached session
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError) {
+      logger.warn('getUser failed, trying to get session anyway', {
+        component: 'fetchWithAuth',
+        action: 'get_user_failed',
+        metadata: { error: userError.message },
+      });
+    }
+
+    // Get the current session (after getUser potentially refreshed it)
     const {
       data: { session },
       error: sessionError,
@@ -31,10 +45,50 @@ export async function fetchWithAuth(input: FetchInput, init: FetchOptions = {}) 
       throw new Error(`Failed to get session: ${sessionError.message}`);
     }
 
+    // Check if session is expired or about to expire (within 5 minutes)
+    const now = Math.floor(Date.now() / 1000);
+    const expiresAt = session?.expires_at ?? 0;
+    const isExpiringSoon = expiresAt > 0 && expiresAt - now < 300; // 5 minutes
+
+    if (session && isExpiringSoon) {
+      logger.debug('Session expiring soon, refreshing', {
+        component: 'fetchWithAuth',
+        action: 'session_refresh',
+        metadata: { expiresAt, now, timeLeft: expiresAt - now },
+      });
+
+      // Try to refresh the session
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        logger.warn('Failed to refresh session', {
+          component: 'fetchWithAuth',
+          action: 'refresh_failed',
+          metadata: { error: refreshError.message },
+        });
+      } else if (refreshData.session) {
+        logger.debug('Session refreshed successfully', {
+          component: 'fetchWithAuth',
+          action: 'session_refreshed',
+        });
+      }
+    }
+
+    // Get the final session after any refreshes
+    const {
+      data: { session: finalSession },
+    } = await supabase.auth.getSession();
+
     logger.debug('Session retrieved', {
       component: 'fetchWithAuth',
       action: 'session_retrieved',
-      metadata: { hasSession: !!session },
+      metadata: {
+        hasSession: !!finalSession,
+        hasAccessToken: !!finalSession?.access_token,
+        accessTokenLength: finalSession?.access_token?.length ?? 0,
+        accessTokenPreview: finalSession?.access_token ? finalSession.access_token.substring(0, 20) + '...' : 'null',
+        userId: finalSession?.user?.id ?? 'none',
+        expiresAt: finalSession?.expires_at ?? 'none',
+      },
     });
 
     // For FormData, don't set Content-Type - browser will set it with boundary
@@ -42,16 +96,24 @@ export async function fetchWithAuth(input: FetchInput, init: FetchOptions = {}) 
     // Create headers - for FormData, start with empty headers to let browser set Content-Type
     const headers = isFormData ? new Headers() : new Headers(init.headers ?? {});
 
-    if (session?.access_token) {
-      headers.set('Authorization', `Bearer ${session.access_token}`);
+    if (finalSession?.access_token) {
+      headers.set('Authorization', `Bearer ${finalSession.access_token}`);
       logger.debug('Added Authorization header', {
         component: 'fetchWithAuth',
         action: 'auth_header_added',
+        metadata: {
+          tokenLength: finalSession.access_token.length,
+          headerSet: headers.has('Authorization'),
+        },
       });
     } else {
       logger.warn('No access token in session', {
         component: 'fetchWithAuth',
         action: 'no_access_token',
+        metadata: {
+          hasSession: !!finalSession,
+          sessionKeys: finalSession ? Object.keys(finalSession) : [],
+        },
       });
     }
 

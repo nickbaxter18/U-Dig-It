@@ -1,12 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Ignore TypeScript and ESLint errors during build
-  // TypeScript errors are being addressed incrementally via API routes migration
+  // TypeScript and ESLint errors must be fixed before build
+  // Use SKIP_TYPE_CHECK environment variable only for emergency builds
   typescript: {
-    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true' || true,
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true',
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: process.env.SKIP_ESLINT === 'true',
   },
 
   serverExternalPackages: [
@@ -150,8 +150,10 @@ const nextConfig = {
   },
 
   // Turbopack Configuration (Next.js 16+)
-  // Empty config allows webpack config to coexist with Turbopack
-  turbopack: {},
+  // Set root to current directory (frontend) to avoid lockfile detection issues
+  turbopack: {
+    root: '.', // Explicitly set to frontend directory to avoid workspace root confusion
+  },
 
   // Compiler Options
   compiler: {

@@ -125,7 +125,48 @@ export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: Next
     }
 
     if (search) {
-      query = query.or(`bookingNumber.ilike.%${search}%,deliveryAddress.ilike.%${search}%`);
+      // Search for matching customers by name
+      const { data: matchingCustomers } = await supabase
+        .from('users')
+        .select('id')
+        .or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,email.ilike.%${search}%`)
+        .limit(100);
+
+      const customerIds = matchingCustomers?.map((c) => c.id) || [];
+
+      // Search for matching equipment by make/model
+      const { data: matchingEquipment } = await supabase
+        .from('equipment')
+        .select('id')
+        .or(`make.ilike.%${search}%,model.ilike.%${search}%,unitId.ilike.%${search}%`)
+        .limit(100);
+
+      const equipmentIds = matchingEquipment?.map((e) => e.id) || [];
+
+      // Build search conditions for direct booking fields
+      const searchConditions: string[] = [
+        `bookingNumber.ilike.%${search}%`,
+        `deliveryAddress.ilike.%${search}%`,
+      ];
+
+      // If we have matching customers or equipment, add them to search conditions
+      // Limit to first 20 IDs per type to prevent URL length issues
+      if (customerIds.length > 0) {
+        customerIds.slice(0, 20).forEach((customerId) => {
+          searchConditions.push(`customerId.eq.${customerId}`);
+        });
+      }
+
+      if (equipmentIds.length > 0) {
+        equipmentIds.slice(0, 20).forEach((equipmentId) => {
+          searchConditions.push(`equipmentId.eq.${equipmentId}`);
+        });
+      }
+
+      // Apply OR filter with all conditions
+      if (searchConditions.length > 0) {
+        query = query.or(searchConditions.join(','));
+      }
     }
 
     const { data, error: queryError, count } = await query.range(rangeStart, rangeEnd);

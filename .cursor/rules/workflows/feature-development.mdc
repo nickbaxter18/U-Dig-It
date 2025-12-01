@@ -8,6 +8,8 @@ alwaysApply: false
 
 When creating a new feature, follow this workflow:
 
+**Systematic Problem-Solving**: Use the systematic problem-solving framework for complex features: `systematic-problem-solving.mdc` - Framework 2: Feature Implementation and Systematic Problem Decomposition
+
 ### Pre-Implementation
 
 Reference checklist: @docs/reference/AI_WORKFLOW_CHECKLISTS.md:8-36

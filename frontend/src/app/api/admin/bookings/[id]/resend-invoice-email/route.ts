@@ -19,7 +19,7 @@ export const POST = withRateLimit(
       if (adminResult.error) return adminResult.error;
 
       const { id: bookingId } = await params;
-      const adminSupabase = createServiceClient();
+      const adminSupabase = await createServiceClient();
 
       // Fetch full booking details
       const { data: fullBooking, error: bookingError } = await adminSupabase

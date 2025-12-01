@@ -14,7 +14,7 @@ export const GET = withRateLimit(
     try {
       const result = await requireAdmin(request);
       if ('error' in result && result.error) return result.error;
-      const supabase = result.supabase ?? createServiceClient();
+      const supabase = result.supabase ?? (await createServiceClient());
       if (!supabase) {
         return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
       }
@@ -64,7 +64,7 @@ export const PATCH = withRateLimit(
     try {
       const result = await requireAdmin(request);
       if ('error' in result && result.error) return result.error;
-      const supabase = result.supabase ?? createServiceClient();
+      const supabase = result.supabase ?? (await createServiceClient());
       if (!supabase) {
         return NextResponse.json({ error: 'Supabase client unavailable' }, { status: 500 });
       }

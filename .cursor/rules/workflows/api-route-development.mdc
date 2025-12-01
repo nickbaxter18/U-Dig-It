@@ -8,6 +8,8 @@ alwaysApply: false
 
 When creating or modifying API routes, follow this workflow.
 
+**Systematic Problem-Solving**: If encountering issues or making complex decisions, use the systematic problem-solving framework: `systematic-problem-solving.mdc` - Framework 2: Feature Implementation
+
 **Quick Reference**: @frontend/src/app/api/AGENTS.md
 **Detailed Patterns**: @frontend/src/app/api/.cursor/rules/api-route-patterns.mdc
 

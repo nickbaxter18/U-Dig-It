@@ -134,8 +134,6 @@ export const GET = withRateLimit(RateLimitPresets.MODERATE, async (request: Next
         component: 'admin-manual-payments',
         action: 'fetch_unexpected',
         metadata: {
-          bookingId,
-          status,
           errorName: err instanceof Error ? err.name : typeof err,
           errorMessage: err instanceof Error ? err.message : String(err),
           errorStack: err instanceof Error ? err.stack : undefined,
@@ -172,7 +170,7 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
     const body = await request.json();
     const payload = manualPaymentCreateSchema.parse(body);
 
-    const serviceClient = createServiceClient();
+    const serviceClient = await createServiceClient();
     if (!serviceClient) {
       return NextResponse.json({ error: 'Storage configuration unavailable' }, { status: 500 });
     }
@@ -210,14 +208,34 @@ export const POST = withRateLimit(RateLimitPresets.STRICT, async (request: NextR
     // Recalculate balance if payment is created as 'completed'
     // Otherwise, balance will be updated when payment status changes to 'completed' (handled in PATCH route)
     if (payload.status === 'completed') {
+      logger.info('Triggering balance recalculation after manual payment creation (completed)', {
+        component: 'admin-manual-payments',
+        action: 'balance_recalculation_triggered',
+        metadata: {
+          bookingId: payload.bookingId,
+          manualPaymentId: manualPayment.id,
+          amount: payload.amount,
+        },
+      });
+
       const newBalance = await recalculateBookingBalance(payload.bookingId);
       if (newBalance === null) {
-        logger.warn('Balance recalculation failed after manual payment creation', {
+        logger.error('Balance recalculation failed after manual payment creation', {
           component: 'admin-manual-payments',
           action: 'balance_recalculation_failed',
           metadata: { bookingId: payload.bookingId, manualPaymentId: manualPayment.id },
         });
       } else {
+        logger.info('Balance recalculated successfully after manual payment creation', {
+          component: 'admin-manual-payments',
+          action: 'balance_recalculated',
+          metadata: {
+            bookingId: payload.bookingId,
+            manualPaymentId: manualPayment.id,
+            newBalance,
+            paymentAmount: payload.amount,
+          },
+        });
         // Update billing status after balance recalculation
         const newBillingStatus = await updateBillingStatus(payload.bookingId);
         if (newBillingStatus === null) {

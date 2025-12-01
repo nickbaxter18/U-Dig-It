@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { updateBillingStatus } from '@/lib/booking/billing-status';
 import { logger } from '@/lib/logger';
 import { RateLimitPresets, rateLimit } from '@/lib/rate-limiter';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
 import { requireAdmin } from '@/lib/supabase/requireAdmin';
+import { refundRequestSchema } from '@/lib/validators/admin/payments';
+import { ZodError } from 'zod';
 
 /**
  * POST /api/admin/payments/refund
@@ -39,19 +43,21 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    const { paymentId, amount, reason } = body;
 
-    if (!paymentId || !amount || !reason) {
-      return NextResponse.json(
-        { error: 'Missing required fields: paymentId, amount, reason' },
-        { status: 400 }
-      );
+    let validatedBody;
+    try {
+      validatedBody = refundRequestSchema.parse(body);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          { error: 'Invalid request body', details: error.issues },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const refundAmount = parseFloat(amount);
-    if (Number.isNaN(refundAmount) || refundAmount <= 0) {
-      return NextResponse.json({ error: 'Invalid refund amount' }, { status: 400 });
-    }
+    const { paymentId, amount: refundAmount, reason } = validatedBody;
 
     // Get payment details from database
     const { data: payment, error: paymentError } = await supabase
@@ -188,6 +194,56 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // CRITICAL: Recalculate booking balance after refund
+    // Refunds increase the balance (less was paid)
+    logger.info('Triggering balance recalculation after refund', {
+      component: 'admin-refund-api',
+      action: 'balance_recalculation_triggered',
+      metadata: {
+        bookingId: payment.bookingId,
+        paymentId,
+        refundAmount,
+      },
+    });
+
+    const newBalance = await recalculateBookingBalance(payment.bookingId);
+    if (newBalance === null) {
+      logger.error('Balance recalculation failed after refund', {
+        component: 'admin-refund-api',
+        action: 'balance_recalculation_failed',
+        metadata: {
+          bookingId: payment.bookingId,
+          paymentId,
+          refundAmount,
+        },
+      });
+      // Don't fail the request, but log the error
+    } else {
+      logger.info('Balance recalculated successfully after refund', {
+        component: 'admin-refund-api',
+        action: 'balance_recalculated',
+        metadata: {
+          bookingId: payment.bookingId,
+          paymentId,
+          newBalance,
+          refundAmount,
+        },
+      });
+
+      // Update billing status after balance recalculation
+      const newBillingStatus = await updateBillingStatus(payment.bookingId);
+      if (newBillingStatus === null) {
+        logger.warn('Billing status update failed after refund', {
+          component: 'admin-refund-api',
+          action: 'billing_status_update_failed',
+          metadata: {
+            bookingId: payment.bookingId,
+            paymentId,
+          },
+        });
+      }
+    }
+
     logger.info('Refund completed successfully', {
       component: 'admin-refund-api',
       action: 'refund_complete',
@@ -195,6 +251,8 @@ export async function POST(request: NextRequest) {
         paymentId,
         refundAmount,
         stripeRefundId: stripeRefund?.id,
+        bookingId: payment.bookingId,
+        newBalance,
       },
     });
 
@@ -203,6 +261,7 @@ export async function POST(request: NextRequest) {
       refundId: stripeRefund?.id ?? null,
       amount: refundAmount,
       status: isFullRefund ? 'refunded' : 'partially_refunded',
+      bookingBalance: newBalance ?? undefined,
     });
   } catch (error: unknown) {
     logger.error(

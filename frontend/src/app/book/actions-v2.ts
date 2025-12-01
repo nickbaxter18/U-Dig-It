@@ -6,14 +6,14 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
 import {
-  type AvailabilityResult,
-  type SmartSuggestion,
-  availabilityService,
+    type AvailabilityResult,
+    type SmartSuggestion,
+    availabilityService,
 } from '@/lib/availability-service';
 import { logger } from '@/lib/logger';
 import {
-  broadcastInAppNotificationToAdmins,
-  createInAppNotification,
+    broadcastInAppNotificationToAdmins,
+    createInAppNotification,
 } from '@/lib/notification-service';
 import { supabaseApi } from '@/lib/supabase/api-client';
 import { createClient } from '@/lib/supabase/server';
@@ -119,7 +119,8 @@ export async function checkAvailabilityEnhanced(
       };
     }
 
-    const equipmentId = (equipment as unknown[])[0].id;
+    type EquipmentItem = { id: string };
+    const equipmentId = (equipment as EquipmentItem[])[0].id;
 
     // Check availability for the selected dates
     const availabilityResponse = await supabaseApi.checkAvailability(
@@ -309,7 +310,8 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
       };
     }
 
-    const equipmentItem = (equipment as unknown[])[0];
+    type EquipmentItem = { id: string };
+    const equipmentItem = (equipment as EquipmentItem[])[0];
     const equipmentId = equipmentItem.id;
 
     // Enhanced availability check with alternatives
@@ -339,8 +341,16 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
     }
 
     // Calculate enhanced pricing
-    const equipmentDetails = Array.isArray(equipment) ? (equipment as unknown[])[0] : equipment;
-    const dailyRate = (equipmentDetails as any)?.dailyRate || 450;
+    // Type the equipment details properly
+    type EquipmentWithRate = {
+      id: string;
+      dailyRate?: number | null;
+      [key: string]: unknown;
+    };
+    const equipmentDetails = Array.isArray(equipment)
+      ? (equipment as EquipmentWithRate[])[0]
+      : (equipment as EquipmentWithRate);
+    const dailyRate = equipmentDetails?.dailyRate ?? 450;
     const subtotal = dailyRate * diffDays;
 
     // Use calculated delivery fee from LocationPicker if available, otherwise fall back to city lookup
@@ -375,7 +385,7 @@ export async function createBookingEnhanced(formData: FormData): Promise<Booking
       // Re-validate the coupon code on the server
       const { data: discountCode } = await supabase
         .from('discount_codes')
-        .select('*')
+        .select('id, code, name, type, value, is_active, max_uses, max_uses_per_user, used_count, min_booking_amount, valid_from, valid_until, applicable_equipment_types, created_at, updated_at')
         .eq('code', validatedData.couponCode.toUpperCase())
         .eq('is_active', true)
         .single();

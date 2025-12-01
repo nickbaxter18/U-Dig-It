@@ -10,6 +10,7 @@ import { useAuth } from '@/components/providers/SupabaseAuthProvider';
 
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
+import { typedInsert } from '@/lib/supabase/typed-helpers';
 
 interface SupportTicket {
   id: string;
@@ -225,20 +226,15 @@ export default function SupportPage() {
       // MIGRATED: Create ticket in Supabase
       const ticketNumber = `TKT-${Date.now().toString().slice(-8)}`;
 
-      const supabaseAny: any = supabase;
-      const { data, error } = await supabaseAny
-        .from('support_tickets')
-        .insert([
-          {
-            ticket_number: ticketNumber,
-            customer_id: user.id,
-            subject: ticketForm.subject,
-            description: ticketForm.description,
-            priority: ticketForm.priority,
-            status: 'open',
-            category: ticketForm.category || 'General',
-          },
-        ])
+      const { data, error } = await typedInsert(supabase, 'support_tickets', {
+        ticket_number: ticketNumber,
+        customer_id: user.id,
+        subject: ticketForm.subject,
+        description: ticketForm.description,
+        priority: ticketForm.priority,
+        status: 'open',
+        category: ticketForm.category || 'General',
+      })
         .select()
         .single();
 
@@ -475,7 +471,7 @@ export default function SupportPage() {
 
                 {/* FAQ Categories */}
                 <div className="space-y-4">
-                  {faqItems.map((item: unknown, index: unknown) => (
+                  {faqItems.map((item: FAQItem, index: number) => (
                     <div key={index} className="overflow-hidden rounded-lg border border-gray-200">
                       <button
                         onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}

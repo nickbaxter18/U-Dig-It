@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { recalculateBookingBalance } from '@/lib/booking/balance';
+import { updateBillingStatus } from '@/lib/booking/billing-status';
 import { checkAndCompleteBookingIfReady } from '@/lib/check-and-complete-booking';
 import { logger } from '@/lib/logger';
 import { createStripeClient, getStripeSecretKey } from '@/lib/stripe/config';
@@ -130,6 +132,68 @@ export async function POST(request: NextRequest) {
 
     if (bookingId) {
       try {
+        // CRITICAL: Recalculate booking balance after payment completion
+        // This ensures balance_amount reflects all completed payments
+        logger.info('Recalculating booking balance after payment completion', {
+          component: 'checkout-complete-api',
+          action: 'balance_recalculation_start',
+          metadata: { bookingId, paymentId, paymentType },
+        });
+
+        const newBalance = await recalculateBookingBalance(bookingId);
+        if (newBalance === null) {
+          logger.warn('Balance recalculation failed after payment completion', {
+            component: 'checkout-complete-api',
+            action: 'balance_recalculation_failed',
+            metadata: { bookingId, paymentId },
+          });
+        } else {
+          logger.info('Balance recalculated successfully after payment completion', {
+            component: 'checkout-complete-api',
+            action: 'balance_recalculated',
+            metadata: {
+              bookingId,
+              paymentId,
+              newBalance,
+              paymentAmount: (session.amount_total || 0) / 100,
+              paymentType,
+            },
+          });
+
+          // Update billing status after balance recalculation
+          const newBillingStatus = await updateBillingStatus(bookingId);
+          if (newBillingStatus === null) {
+            logger.warn('Billing status update failed after payment completion', {
+              component: 'checkout-complete-api',
+              action: 'billing_status_update_failed',
+              metadata: { bookingId, paymentId },
+            });
+          }
+        }
+
+        // Update booking status to 'paid' if this was an invoice payment
+        if (paymentType === 'payment' || paymentType === 'invoice') {
+          const { error: bookingUpdateError } = await supabase
+            .from('bookings')
+            .update({ status: 'paid' })
+            .eq('id', bookingId);
+
+          if (bookingUpdateError) {
+            logger.error('Failed to update booking status', {
+              component: 'checkout-complete-api',
+              action: 'booking_update_error',
+              metadata: { bookingId, error: bookingUpdateError },
+            });
+          } else {
+            logger.info('Booking status updated to paid', {
+              component: 'checkout-complete-api',
+              action: 'booking_paid',
+              metadata: { bookingId },
+            });
+          }
+        }
+
+        // Check if booking is ready to be confirmed
         await checkAndCompleteBookingIfReady(
           bookingId,
           paymentType === 'deposit' ? 'Security Deposit Paid' : 'Invoice Paid'

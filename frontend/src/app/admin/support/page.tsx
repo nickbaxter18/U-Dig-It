@@ -1,16 +1,16 @@
 'use client';
 
 import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Download,
-  MessageSquare,
-  Search,
-  User,
-  UserPlus,
-  X,
-  XCircle,
+    AlertCircle,
+    CheckCircle,
+    Clock,
+    Download,
+    MessageSquare,
+    Search,
+    User,
+    UserPlus,
+    X,
+    XCircle,
 } from 'lucide-react';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -20,13 +20,14 @@ import MessageThread from '@/components/admin/support/MessageThread';
 import SLADisplay from '@/components/admin/support/SLADisplay';
 
 import {
-  fetchSupportTickets,
-  updateSupportTicket,
-  updateSupportTicketCategory,
-  updateSupportTicketInternalNotes,
-  updateSupportTicketPriority,
-  updateSupportTicketResolutionNotes,
-  updateSupportTicketSatisfaction,
+    assignSupportTicket,
+    fetchSupportTickets,
+    updateSupportTicket,
+    updateSupportTicketCategory,
+    updateSupportTicketInternalNotes,
+    updateSupportTicketPriority,
+    updateSupportTicketResolutionNotes,
+    updateSupportTicketSatisfaction,
 } from '@/lib/api/admin/support';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase/client';
@@ -71,6 +72,7 @@ export default function SupportPage() {
   const [satisfactionScore, setSatisfactionScore] = useState<number | null>(null);
   const [updatingNotes, setUpdatingNotes] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
   const [bulkActionStatus, setBulkActionStatus] = useState<string>('');
   const [bulkAssignTo, setBulkAssignTo] = useState<string>('');
@@ -89,7 +91,21 @@ export default function SupportPage() {
         .order('firstName', { ascending: true });
 
       if (error) throw error;
-      setAdminUsers((data || []) as any);
+      // Type the admin users query result
+      type AdminUserQueryResult = {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+      };
+      setAdminUsers(
+        (data || []).map((user: AdminUserQueryResult) => ({
+          id: user.id,
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          email: user.email || '',
+        }))
+      );
     } catch (err) {
       logger.error(
         'Failed to fetch admin users',
@@ -114,7 +130,30 @@ export default function SupportPage() {
 
       // Response format: { tickets: SupportTicket[], total: number, page: number, pageSize: number }
       // Transform dates from strings to Date objects
-      const ticketsData: SupportTicket[] = (response.tickets || []).map((ticket: any) => ({
+      type TicketResponseItem = {
+        id: string;
+        ticketNumber: string;
+        customerId: string;
+        customerName: string;
+        customerEmail: string;
+        bookingId?: string;
+        bookingNumber?: string;
+        equipmentId?: string;
+        equipmentName?: string;
+        subject: string;
+        description: string;
+        priority: string;
+        status: string;
+        category?: string;
+        assignedTo?: string;
+        assignedToName?: string;
+        createdAt: string;
+        resolvedAt?: string;
+        firstResponseAt?: string;
+        responseTime?: number;
+        [key: string]: unknown;
+      };
+      const ticketsData: SupportTicket[] = (response.tickets || []).map((ticket: TicketResponseItem) => ({
         ...ticket,
         createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
         resolvedAt: ticket.resolvedAt ? new Date(ticket.resolvedAt) : undefined,
@@ -134,10 +173,18 @@ export default function SupportPage() {
     }
   }, [statusFilter, priorityFilter, assignToMe, searchTerm]);
 
+  // Initial data fetch - only run once on mount
   useEffect(() => {
     fetchTickets();
     fetchAdminUsers();
-  }, [fetchTickets, fetchAdminUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Refetch tickets when filters change
+  useEffect(() => {
+    fetchTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, priorityFilter, assignToMe, searchTerm]);
 
   // Load ticket details (notes, satisfaction) when ticket is selected
   useEffect(() => {
@@ -154,64 +201,100 @@ export default function SupportPage() {
             }
           }
         } catch (err) {
-          logger.warn(
-            'Failed to load ticket details',
-            { component: 'SupportPage', action: 'load_ticket_details_failed' },
-            err instanceof Error ? err : undefined
-          );
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          logger.warn('Failed to load ticket details', {
+            component: 'SupportPage',
+            action: 'load_ticket_details_failed',
+            metadata: { error: errorMessage },
+          });
         }
       };
       loadTicketDetails();
     }
-  }, [selectedTicket?.id]);
+  }, [selectedTicket]);
 
   const handleAssignTicket = async (ticketId: string, adminId?: string) => {
+    if (actionLoading === `assign-${ticketId}`) return; // Prevent duplicate clicks
+
     try {
+      setActionLoading(`assign-${ticketId}`);
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const supabaseClient: any = supabase;
-      const { error: updateError } = await supabaseClient
-        .from('support_tickets')
-        .update({
-          assigned_to: adminId || user.id,
-          assigned_at: new Date().toISOString(),
-          status: 'in_progress',
-        })
-        .eq('id', ticketId);
+      const assigneeId = adminId || user.id;
 
-      if (updateError) throw updateError;
+      // Use the API function instead of direct Supabase update
+      await assignSupportTicket(ticketId, {
+        assigneeId,
+      });
+
+      // Get user name for display
+      const adminUser = adminUsers.find((u) => u.id === assigneeId);
+      const assignedToName = adminUser
+        ? `${adminUser.firstName} ${adminUser.lastName}`.trim() || adminUser.email
+        : user.email || 'Admin';
+
+      // Update selected ticket state immediately for instant UI feedback
+      if (selectedTicket && selectedTicket.id === ticketId) {
+        setSelectedTicket({
+          ...selectedTicket,
+          assignedTo: assigneeId,
+          assignedToName,
+          status: 'in_progress',
+        });
+      }
 
       await fetchTickets();
       alert('✅ Ticket assigned successfully!');
     } catch (err) {
       logger.error(
         'Failed to assign ticket',
-        {},
+        {
+          component: 'SupportPage',
+          action: 'assign_ticket_error',
+          metadata: { ticketId, error: err instanceof Error ? err.message : String(err) },
+        },
         err instanceof Error ? err : new Error(String(err))
       );
-      alert('Failed to assign ticket');
+      alert(`Failed to assign ticket: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
+    if (actionLoading === `status-${ticketId}-${newStatus}`) return; // Prevent duplicate clicks
+
     try {
-      await updateSupportTicket(ticketId, { status: newStatus as any });
-      await fetchTickets();
-      // Update selected ticket if it's the one being updated
+      setActionLoading(`status-${ticketId}-${newStatus}`);
+
+      // Type the status properly - must match SupportTicketUpdateInput enum
+      const validStatus = newStatus as 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
+      await updateSupportTicket(ticketId, { status: validStatus });
+
+      // Update selected ticket immediately for instant UI feedback
       if (selectedTicket && selectedTicket.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, status: newStatus as any });
+        setSelectedTicket({ ...selectedTicket, status: validStatus });
       }
+
+      await fetchTickets();
       alert(`✅ Ticket status updated to ${newStatus}!`);
     } catch (err) {
       logger.error(
         'Failed to update ticket status',
-        { component: 'SupportPage', action: 'update_status_failed' },
+        {
+          component: 'SupportPage',
+          action: 'update_status_error',
+          metadata: { ticketId, newStatus, error: err instanceof Error ? err.message : String(err) },
+        },
         err instanceof Error ? err : new Error(String(err))
       );
-      alert('Failed to update ticket status');
+      alert(`Failed to update ticket status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -220,7 +303,9 @@ export default function SupportPage() {
       await updateSupportTicketPriority(ticketId, priority);
       await fetchTickets();
       if (selectedTicket && selectedTicket.id === ticketId) {
-        setSelectedTicket({ ...selectedTicket, priority: priority as any });
+        // Type the priority properly - must match SupportTicket interface
+        const validPriority = priority as 'low' | 'medium' | 'high' | 'critical';
+        setSelectedTicket({ ...selectedTicket, priority: validPriority });
       }
     } catch (err) {
       logger.error(
@@ -511,7 +596,7 @@ export default function SupportPage() {
     tickets.filter((t) => t.responseTime).length > 0
       ? tickets
           .filter((t) => t.responseTime)
-          .reduce((sum: unknown, t: unknown) => sum + (t.responseTime || 0), 0) /
+          .reduce((sum: number, t: { responseTime?: number | null }) => sum + (t.responseTime || 0), 0) /
         tickets.filter((t) => t.responseTime).length
       : 0;
 
@@ -524,10 +609,10 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
           <p className="text-gray-600">
             Manage customer support requests, technical issues, and inquiries.
@@ -536,7 +621,7 @@ export default function SupportPage() {
         <button
           onClick={handleExportTickets}
           disabled={exporting}
-          className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center space-x-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
         >
           <Download className="h-4 w-4" />
           <span>{exporting ? 'Exporting…' : 'Export CSV'}</span>
@@ -710,11 +795,11 @@ export default function SupportPage() {
 
       {/* Tickets Table */}
       <div className="overflow-hidden rounded-lg bg-white shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <input
                     ref={selectAllRef}
                     type="checkbox"
@@ -727,28 +812,28 @@ export default function SupportPage() {
                     onChange={handleToggleSelectAll}
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Ticket
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Subject
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell">
                   Priority
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 xl:table-cell">
                   Assigned To
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell">
                   Created
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                   Actions
                 </th>
               </tr>
@@ -761,7 +846,7 @@ export default function SupportPage() {
                     key={ticket.id}
                     className={`hover:bg-gray-50 ${isSelected ? 'bg-premium-gold-50/30' : ''}`}
                   >
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <input
                         type="checkbox"
                         className="h-4 w-4 rounded border-gray-300 text-premium-gold focus:ring-premium-gold"
@@ -771,39 +856,51 @@ export default function SupportPage() {
                         onClick={(e) => e.stopPropagation()}
                       />
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <div className="text-sm font-medium text-gray-900">{ticket.ticketNumber}</div>
                       {ticket.bookingNumber && (
-                        <div className="text-sm text-gray-500">Booking: {ticket.bookingNumber}</div>
+                        <div className="text-xs text-gray-500">Booking: {ticket.bookingNumber}</div>
                       )}
+                      {/* Show customer on mobile */}
+                      <div className="mt-1 text-xs text-gray-600 lg:hidden">
+                        {ticket.customerName}
+                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="hidden whitespace-nowrap px-4 py-4 lg:table-cell">
                       <div className="flex items-center">
                         <User className="mr-2 h-4 w-4 text-gray-400" />
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {ticket.customerName}
                           </div>
-                          <div className="text-sm text-gray-500">{ticket.customerEmail}</div>
+                          <div className="text-xs text-gray-500">{ticket.customerEmail}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="max-w-xs truncate text-sm font-medium text-gray-900">
                         {ticket.subject}
                       </div>
                       {ticket.equipmentName && (
-                        <div className="text-sm text-gray-500">Re: {ticket.equipmentName}</div>
+                        <div className="text-xs text-gray-500">Re: {ticket.equipmentName}</div>
                       )}
+                      {/* Show priority on mobile */}
+                      <div className="mt-1 md:hidden">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPriorityColor(ticket.priority)}`}
+                        >
+                          {ticket.priority}
+                        </span>
+                      </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="hidden whitespace-nowrap px-4 py-4 md:table-cell">
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPriorityColor(ticket.priority)}`}
                       >
                         {ticket.priority}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="whitespace-nowrap px-4 py-4">
                       <div className="flex items-center">
                         {getStatusIcon(ticket.status)}
                         <span
@@ -813,21 +910,21 @@ export default function SupportPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                    <td className="hidden whitespace-nowrap px-4 py-4 text-sm text-gray-900 xl:table-cell">
                       {ticket.assignedToName || (
                         <button
                           onClick={() => handleAssignTicket(ticket.id)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="text-blue-600 hover:text-blue-800 text-xs"
                         >
                           Assign to me
                         </button>
                       )}
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    <td className="hidden whitespace-nowrap px-4 py-4 text-xs text-gray-500 lg:table-cell">
                       {ticket.createdAt.toLocaleDateString()}
                       <div className="text-xs">{ticket.createdAt.toLocaleTimeString()}</div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                    <td className="whitespace-nowrap px-4 py-4 text-right text-sm font-medium">
                       <button
                         onClick={() => {
                           setSelectedTicket(ticket);
@@ -848,8 +945,24 @@ export default function SupportPage() {
 
       {/* Ticket Details Modal */}
       {showDetails && selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600 bg-opacity-50 p-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-600 bg-opacity-50 p-4"
+          onClick={(e) => {
+            // Close modal when clicking backdrop, but not when clicking content
+            if (e.target === e.currentTarget) {
+              setShowDetails(false);
+              setSelectedTicket(null);
+              setShowInternalNotes(false);
+              setInternalNotes('');
+              setResolutionNotes('');
+              setSatisfactionScore(null);
+            }
+          }}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="mb-6 flex items-start justify-between">
                 <div>
@@ -1076,19 +1189,31 @@ export default function SupportPage() {
                   <div className="flex flex-wrap gap-2">
                     {!selectedTicket.assignedTo && (
                       <button
-                        onClick={() => handleAssignTicket(selectedTicket.id)}
-                        className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAssignTicket(selectedTicket.id);
+                        }}
+                        disabled={actionLoading === `assign-${selectedTicket.id}`}
+                        className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Assign to Me
+                        {actionLoading === `assign-${selectedTicket.id}` ? 'Assigning...' : 'Assign to Me'}
                       </button>
                     )}
 
                     {selectedTicket.status === 'open' && (
                       <button
-                        onClick={() => handleUpdateStatus(selectedTicket.id, 'in_progress')}
-                        className="rounded-md bg-orange-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleUpdateStatus(selectedTicket.id, 'in_progress');
+                        }}
+                        disabled={actionLoading === `status-${selectedTicket.id}-in_progress`}
+                        className="rounded-md bg-orange-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Start Working
+                        {actionLoading === `status-${selectedTicket.id}-in_progress` ? 'Updating...' : 'Start Working'}
                       </button>
                     )}
 
@@ -1131,7 +1256,10 @@ export default function SupportPage() {
                     )}
 
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         window.location.href = `/admin/customers?search=${selectedTicket.customerEmail}`;
                       }}
                       className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
